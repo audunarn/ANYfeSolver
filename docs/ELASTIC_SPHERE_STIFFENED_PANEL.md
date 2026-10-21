@@ -1,5 +1,52 @@
 # Elastic sphere stiffened-panel initial state (2026-10-20)
 
+## S11 accepted static candidate: complete installed cycle and release gates
+
+The opt-in static sphere-panel workflow is accepted on local Windows and packaged
+as 0.4.7+contact.candidate.20261021.s11. A fresh uninterrupted installed public
+CLI completed open equilibrium, first touch, loading through 1 mm, complete
+unloading and original-open recovery: **12 accepted states, one permitted
+bisection, 1455.663050299976 process seconds**. All ten prefix array archives match
+the earlier saved states exactly. The original componentwise open-recovery bound
+1e-10 + 1e-8*abs(reference) passed; maximum excess was
+-9.999932291215377e-11. Peak contact force was 2107.500297906452 N, residual
+2.3859415008929422e-6 N, and whole-face lower bound
+-19.978252498586724 micrometres against the unchanged -50 micrometre requirement.
+Final contact force was zero. No owned process survived.
+
+Independent Sonnet review found no blocking defect in the changed connected
+solver, geometry, exact inactive-branch proof, certificate and bridge code.
+Retained unchanged bound/skin/mechanics dependencies keep their prior scope;
+the review is not an independent mechanical accuracy reference. Fifty-seven
+installed focused checks pass, including rejection, cancellation and gate-failure
+rollback/no-bisection paths. Initial test-double/fixture failures are preserved.
+
+The retained contact-candidate CI passed its build, Windows and Ubuntu jobs,
+including transferred checkpoint and declared cross-host parity checks:
+https://github.com/audunarn/ANYsolver/actions/runs/39614951215
+This is regression coverage for retained workflows, not paired-host S11 response
+qualification. The broader matrix is separate and has pre-existing failure nodes;
+its exact current/baseline disposition is retained with the release evidence and
+must not be reported as all green.
+
+Follow the bundled installation guide, then run from the bundle directory:
+
+    python -m examples.elastic_sphere_panel_indentation --output indentation.json
+
+The final six-wheel candidate was cold-installed and its origins/pins/JIT-off/
+single-thread settings verified. All 735 solver files match release source;
+relative to the scientifically exercised s11unload1 artifact only trailing
+whitespace in the new proof helper differs, with identical parsed code.
+Delivered examples are byte-identical. Independent review, scientific result,
+wheel/source identities, original failures, budget closure and CI disposition:
+C:/ANYworkspaceWork/contact-incremental-delivery-20261020/indentation-s11-acceptance-release-v1/DELIVERY_RECEIPT.json.
+
+This remains a faceted, frictionless, elastic static development candidate.
+Falling, velocity/acceleration, impact/rebound, friction/plasticity, public restart,
+general accuracy and paired-host S11 qualification are not established.
+Earlier status sections below are retained history.
+
+
 ## S11 unloading ambiguity repair: restored local recovery passed
 
 Both actual refused geometries are preserved: corner 395 against faces 44/45
