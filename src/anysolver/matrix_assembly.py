@@ -5603,6 +5603,8 @@ def assemble_mass_matrix(model: "FEModel") -> Tuple[sparse.csr_matrix, Dict[str,
 
 def _add_point_masses_to_matrix(model: "FEModel", matrix: sparse.csr_matrix) -> sparse.csr_matrix:
     """Add lumped point masses to the translational-DOF diagonal of ``matrix``."""
+    from .concentrated_mass import add_to_matrix
+    matrix = add_to_matrix(model.mesh, matrix)
     point_masses = getattr(model.mesh, "point_masses", None)
     if not point_masses:
         return matrix

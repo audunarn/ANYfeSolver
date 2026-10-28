@@ -165,6 +165,7 @@ def _model_state(model: Any) -> Any:
                   for node_id, node in mesh.nodes.items()),
             id(token), None if token is None else int(token[0]),
             _constraint_fingerprints(model), _plain_state(mesh.point_masses),
+            _plain_state(getattr(mesh, "concentrated_masses", {})),
             _plain_state(model.materials), id(activity),
             None if activity is None else _plain_state(activity))
 

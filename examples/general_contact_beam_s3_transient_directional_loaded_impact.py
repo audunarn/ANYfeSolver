@@ -31,6 +31,24 @@ def independent_shell_coefficients(model):
     psi=bend_trace/shear_trace;phi=2*psi/(1+2*psi)
     return gradients,area*phi*H,dict(phi_squared=phi,bending_trace=bend_trace,unrelaxed_shear_trace=shear_trace)
 
+def independent_membrane(model,u):
+    """Isotropic plane-stress CST von Karman membrane with in-plane motion held.
+
+    Skin ux,uy,rz are supported, so the strain is e=(wx^2/2, wy^2/2, wx*wy)
+    (engineering shear), constant over the flat triangle. Returns the energy
+    and its gradient with respect to the three skin w coordinates.
+    """
+    xy=np.array([model.mesh.nodes[n].coords()[:2] for n in (3,4,5)])
+    interpolation=np.c_[np.ones(3),xy];gradients=np.linalg.inv(interpolation)[1:,:].T
+    area=abs(np.linalg.det(interpolation))/2;E=1.e5;nu=.3;t=1/64
+    C=E*t/(1-nu**2)*np.array(((1,nu,0),(nu,1,0),(0,0,(1-nu)/2)))
+    w=u[[model.mesh.dof_manager.get_node_dofs(n)[2] for n in (3,4,5)]]
+    gx,gy=gradients.T@w;strain=np.array((.5*gx*gx,.5*gy*gy,gx*gy));resultant=C@strain
+    energy=.5*area*strain@resultant
+    # d strain/d(gx,gy) = ((gx,0),(0,gy),(gy,gx)); chain through constant shape gradients.
+    slope_gradient=area*np.array(((gx,0.),(0.,gy),(gy,gx))).T@resultant
+    return float(energy),gradients@slope_gradient
+
 def independent_reference(model,u,v):
     ids={n:model.mesh.dof_manager.get_node_dofs(n) for n in model.mesh.nodes}
     L=float(model.mesh.nodes[2].x-model.mesh.nodes[1].x)
@@ -51,6 +69,7 @@ def independent_reference(model,u,v):
     shell=.5*c*(gamma@gamma);force[sd[:,2]]+=c*gradients@gamma
     # Only the tied rotational chart is compared: distribute the total tied derivative once.
     force[ids[3][4]]+=c*gamma[0];force[ids[3][3]]-=c*gamma[1]
+    membrane,membrane_force=independent_membrane(model,u);force[sd[:,2]]+=membrane_force
     xy=np.array([model.mesh.nodes[n].coords()[:2] for n in (3,4,5)]);area=abs(np.linalg.det(np.c_[np.ones(3),xy]))/2
     mass[sd[:,2],sd[:,2]]=area*(1/64)/3
     kinetic=.5*v@(mass@v)
@@ -69,7 +88,7 @@ def independent_reference(model,u,v):
         stationary=-poly[1]/(2*poly[2])
         if 0<stationary<1:candidates.append(stationary)
     minimum=min(float(np.polynomial.polynomial.polyval(x,poly)) for x in candidates)
-    return dict(independent_min_gap=minimum,energy=float(beam+shell+contact+kinetic),beam=float(beam),shell=float(shell),contact=float(contact),kinetic=float(kinetic),details=details),force,mass
+    return dict(independent_min_gap=minimum,energy=float(beam+shell+membrane+contact+kinetic),beam=float(beam),shell=float(shell),membrane=membrane,contact=float(contact),kinetic=float(kinetic),details=details),force,mass
 
 def run(*,dt=DT,end=END,restart=None,acceleration_unknown=True):
     from anysolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls

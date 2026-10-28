@@ -1070,3 +1070,6 @@ from .result_capsule import (RecoveryCapsuleError, SINK_METHODS,
                              export_recovery_capsule, export_recovery_capsule_to_sink)
 __all__ += ['export_recovery_capsule', 'export_recovery_capsule_to_sink',
             'RecoveryCapsuleError', 'SINK_METHODS']
+
+from .pressure_regions import (PressureRegionError, RegionLoad, add_region_load, element_kernel, region_wrench, wet_region_load)
+__all__ += ['PressureRegionError', 'RegionLoad', 'add_region_load', 'element_kernel', 'region_wrench', 'wet_region_load']

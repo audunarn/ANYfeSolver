@@ -763,6 +763,9 @@ class LoadCase:
         # load-case-only added masses.
         if self.gravity is not None:
             acceleration = np.asarray(self.gravity, dtype=float)
+            from .concentrated_mass import entries
+            for node, value in entries(mesh):
+                F[np.asarray(node.dofs)] += value.matrix() @ np.r_[acceleration, np.zeros(3)]
             combined_masses: Dict[int, float] = {}
             for node_id, mass in getattr(mesh, "point_masses", {}).items():
                 combined_masses[int(node_id)] = combined_masses.get(int(node_id), 0.0) + float(mass)
@@ -1294,6 +1297,8 @@ def _plain_coupled_element_state(data: dict) -> bool:
 
 def _builtin_acceleration_inputs(state: dict, mesh_state: dict, material_getter: Any,
                                  elements: Any, loaded_nodes: set) -> bool:
+    if mesh_state.get("concentrated_masses"):
+        return False  # preserve the public validated mass/load observation route
     acceleration = state.get("gravity")
     if not _plain_numeric_array(acceleration) or not _mass_classes_are_untouched():
         return False

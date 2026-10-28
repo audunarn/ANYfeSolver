@@ -300,6 +300,8 @@ def calculate_mass_properties(model: "FEModel", reference_point: Any = None) -> 
         if mass_value > 0.0:
             points.append((mass_value, node.coords()))
 
+    from .concentrated_mass import entries
+    points.extend((v.mass, np.asarray(n.coords()) + v.offset) for n, v in entries(model.mesh) if v.mass > 0.)
     M, assembly_info = assemble_mass_matrix(model)
     origin = np.zeros(3, dtype=float)
     origin_modes, rbm_origin = _project_rigid_inertia(model, M, origin)

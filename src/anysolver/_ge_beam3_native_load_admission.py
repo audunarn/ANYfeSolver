@@ -21,7 +21,7 @@ def assemble_nodal_forces(load,mesh,dof_manager,*,guard,activity=None):
         raise ValueError('private native beam requires owned load dictionaries')
     if load.element_loads or load.pressure_loads or load.gravity is not None or load.added_node_masses or load.follower_pressure is not False:
         raise ValueError('private native beam admits nodal forces only; pressure, line work, gravity and follower loads require native qualification')
-    if activity is not None or mesh.element_activity is not None or mesh.point_masses:
+    if activity is not None or mesh.element_activity is not None or mesh.point_masses or getattr(mesh,'concentrated_masses',None):
         raise ValueError('private native beam activity/dynamics not admitted')
     force=np.zeros(dof_manager.total_dofs)
     for node,value in load.nodal_loads.items():

@@ -423,6 +423,7 @@ class FEMesh:
     elements: Dict[int, 'Element'] = field(default_factory=dict)
     dof_manager: DOFManager = field(default_factory=DOFManager)
     point_masses: Dict[int, float] = field(default_factory=dict)
+    concentrated_masses: dict = field(default_factory=dict, kw_only=True)
     element_activity: Optional[object] = None
     revisions: Dict[str, int] = field(default_factory=lambda: {
         "topology": 0,
@@ -489,6 +490,8 @@ class FEMesh:
 
     def __setstate__(self, state: Mapping[str, Any]) -> None:
         self.__dict__.update(state)
+        # Meshes pickled before concentrated masses existed lack this field.
+        self.__dict__.setdefault("concentrated_masses", {})
         if "_qualified_direct_state_token" not in self.__dict__:
             object.__setattr__(
                 self,
@@ -740,6 +743,16 @@ class FEModel:
         if mass == 0.0:
             return
         self.mesh.point_masses[node_id] = self.mesh.point_masses.get(node_id, 0.0) + mass
+        self.mesh.bump_revision("mass")
+
+    def add_concentrated_mass(self, node_id, mass, *, offset=(0.,0.,0.), inertia_cg=((0.,0.,0.),)*3):
+        """Add physical mass and CG inertia, rigidly attached at a six-DOF node."""
+        from .concentrated_mass import ConcentratedMass
+        node = self.mesh.get_node(int(node_id))
+        if node is None or len(node.dofs) != 6:
+            raise ValueError("concentrated mass requires an existing six-DOF attachment node")
+        value = ConcentratedMass(mass, offset, inertia_cg)
+        self.mesh.concentrated_masses.setdefault(int(node_id), []).append(value)
         self.mesh.bump_revision("mass")
 
     def add_boundary_condition(self, bc: 'BoundaryCondition'):

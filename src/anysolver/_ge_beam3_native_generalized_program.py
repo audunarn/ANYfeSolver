@@ -27,7 +27,8 @@ def _model_identity(model, maximum_elements):
     from ._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
     elements=tuple(sorted(model.mesh.elements.items()));n=model.mesh.dof_manager.total_dofs
     if not 1<=len(elements)<=maximum_elements or n!=6*len(model.mesh.nodes) or n>512:raise ValueError('bounded standalone distributed model required')
-    if model.constraint_equations or model.mesh.point_masses or model.mesh.element_activity is not None:
+    if (model.constraint_equations or model.mesh.point_masses or getattr(model.mesh,'concentrated_masses',None)
+            or model.mesh.element_activity is not None):
         raise ValueError('distributed MPC/activity/dynamics not admitted')
     for eid,e in elements:
         if type(e) is not NativeGeneralizedStaticElement or eid!=e.element_id or model.materials.get(e.material_name) is not e.section:

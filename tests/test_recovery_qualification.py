@@ -103,6 +103,7 @@ def test_nonlinear_result_displacements_are_default_and_mismatch_is_rejected() -
         "result_type": "SimpleNamespace",
         "status": "completed",
         "load_factor": 0.75,
+        "corotational_shell_rotation_stable": False,
     }
     assert recovered.element_stresses[1]["membrane_xx"][0] == pytest.approx(125.0)
 

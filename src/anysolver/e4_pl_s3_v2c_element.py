@@ -1771,29 +1771,66 @@ class StrictFlatLinearE4PLS3V2CShellElement(
             raise StrictFlatLinearCapabilityError(
                 "strict-flat S3 V2C source authority admits uniform pressure only"
             )
+        load_local = np.zeros(18, dtype=np.float64)
+        for xi, eta in HAMMER_POINTS:
+            weight = value * area / 3.0
+            density = self._pressure_virtual_work_density_local(geometry, xi, eta)
+            load_local += weight * density
+        transform = np.asarray(geometry["local_from_external"], dtype=np.float64)
+        return transform.T @ load_local
+
+    @staticmethod
+    def _pressure_virtual_work_density_local(geometry: Dict[str, Any], xi: float, eta: float) -> np.ndarray:
+        """Local 18-vector of the native pressure virtual work per unit pressure and unit area at (xi, eta).
+
+        Single source of the native transverse-pressure interpolation (translation along the chart normal plus the
+        rotational terms l and m); the uniform dead load and the variable/partial-region service both use it.
+        """
+
         local = np.asarray(geometry["local_coordinates"], dtype=np.float64)
         a = np.empty(3, dtype=np.float64)
         b = np.empty(3, dtype=np.float64)
         for node, first, second in ((0, 1, 2), (1, 2, 0), (2, 0, 1)):
             a[node] = local[second, 0] - local[first, 0]
             b[node] = local[first, 1] - local[second, 1]
-        load_local = np.zeros(18, dtype=np.float64)
-        for xi, eta in HAMMER_POINTS:
-            shape = np.asarray((1.0 - xi - eta, xi, eta), dtype=np.float64)
-            for node, first, second in ((0, 1, 2), (1, 2, 0), (2, 0, 1)):
-                l_value = 0.5 * shape[node] * (
-                    b[second] * shape[first] - b[first] * shape[second]
-                )
-                m_value = 0.5 * shape[node] * (
-                    a[first] * shape[second] - a[second] * shape[first]
-                )
-                base = 6 * node
-                weight = value * area / 3.0
-                load_local[base + 2] += weight * shape[node]
-                load_local[base + 3] -= weight * l_value
-                load_local[base + 4] += weight * m_value
+        shape = np.asarray((1.0 - xi - eta, xi, eta), dtype=np.float64)
+        density = np.zeros(18, dtype=np.float64)
+        for node, first, second in ((0, 1, 2), (1, 2, 0), (2, 0, 1)):
+            l_value = 0.5 * shape[node] * (
+                b[second] * shape[first] - b[first] * shape[second]
+            )
+            m_value = 0.5 * shape[node] * (
+                a[first] * shape[second] - a[second] * shape[first]
+            )
+            base = 6 * node
+            density[base + 2] = shape[node]
+            density[base + 3] = -l_value
+            density[base + 4] = m_value
+        return density
+
+    def compute_native_pressure_density(self, mesh: FEMesh, points: Any) -> Tuple[np.ndarray, float]:
+        """Global 18-vector densities per unit pressure and unit physical area at reference points.
+
+        ``points`` are (xi, eta) of the unit reference triangle in external node order.  Returns ``(density(M, 18),
+        area)``; ``area * 2 * d(xi) d(eta)`` is the physical area measure.  Explicit variable/partial-region
+        service: the legacy scalar-only dead-load API above is unchanged.
+        """
+
+        geometry = self._geometry(mesh)
+        pts = np.asarray(points, dtype=np.float64).reshape(-1, 2)
+        if not np.isfinite(pts).all():
+            raise ValueError("pressure region points must be finite")
         transform = np.asarray(geometry["local_from_external"], dtype=np.float64)
-        return transform.T @ load_local
+        order = tuple(int(v) for v in geometry["internal_order"])
+        rows = []
+        for x, y in pts:
+            # External barycentric coordinates -> internal chart (internal node j is external node order[j]).
+            external = (1.0 - float(x) - float(y), float(x), float(y))
+            internal = tuple(external[order[j]] for j in range(3))
+            rows.append(
+                self._pressure_virtual_work_density_local(geometry, internal[1], internal[2])
+            )
+        return np.array(rows) @ transform, float(geometry["area"])
 
     # Explicitly seal every inherited mechanics or persistence route not
     # authorized by the Stage-1 equation map.

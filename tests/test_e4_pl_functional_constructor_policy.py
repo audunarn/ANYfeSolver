@@ -81,6 +81,8 @@ def test_functional_lane_direct_shell_calls_are_non_q4_or_explicit_refusal() -> 
 
     expected_non_q4 = Counter(
         {
+            # Added recovery test exercises Q8, never legacy Q4.
+            ("tests/test_recovery_shell_frames.py", "model8"): 1,
             ("tests/test_fe_solver_contact.py", "_q8_panel"): 1,
             ("tests/test_fe_solver_contact.py", "_tri_panel"): 1,
             (
@@ -270,7 +272,7 @@ def test_functional_lane_direct_shell_calls_are_non_q4_or_explicit_refusal() -> 
             ): 1,
             (
                 "tests/test_e4_pl_q4_current_tangent.py",
-                "test_isotropic_initial_field_and_orthotropic_hill_updates_retain_exact_tangent",
+                "test_isotropic_initial_field_and_orthotropic_hill_plastic_updates_are_refused",
             ): 1,
             (
                 "tests/test_e4_pl_q4_current_tangent.py",
@@ -341,6 +343,9 @@ def test_functional_lane_direct_shell_calls_are_non_q4_or_explicit_refusal() -> 
         }
     )
     expected_qualified_q4.update({
+        ("tests/test_arc_length_predictor_reuse.py", "panel"): 1,
+        ("tests/test_q4_assumed_strain_plasticity.py", "test_hill48_plastic_q4_is_refused_with_typed_error"): 1,
+        ("tests/test_wave_surface_regions.py", "test_qualified_formulations_match_their_native_dead_pressure_or_are_refused"): 1,
         ("tests/test_b2_f10_f11_point_attachment.py", "specimen"): 1,
         ("tests/test_stiffened_shell_b2_nodal_rigid_footprint.py", "_independent"): 1,
         ("tests/test_stiffened_shell_b2_physical_rigid_footprint.py", "test_distorted_skew_frozen_shell_tensor_frame_and_scalar_work"): 1,

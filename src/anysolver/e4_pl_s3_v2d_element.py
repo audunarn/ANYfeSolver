@@ -1841,6 +1841,17 @@ class NativeParityE4PLS3V2DShellElement(
     ) -> np.ndarray:
         return self.compute_dead_transverse_pressure_load(mesh, pressure)
 
+    # Shared (not duplicated) native pressure virtual-work density; V2D delegates its pressure routes to V2C by
+    # unbound call, so the same static helper must be bound on this class.
+    _pressure_virtual_work_density_local = staticmethod(
+        StrictFlatLinearE4PLS3V2CShellElement._pressure_virtual_work_density_local
+    )
+
+    def compute_native_pressure_density(self, mesh: FEMesh, points: Any) -> Tuple[np.ndarray, float]:
+        return StrictFlatLinearE4PLS3V2CShellElement.compute_native_pressure_density(
+            self, mesh, points
+        )
+
     @staticmethod
     def compute_native_surface_shape_functions(
         xi: Any, eta: Any

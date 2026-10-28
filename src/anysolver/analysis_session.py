@@ -551,6 +551,7 @@ class AnalysisSession:
 
     def mass_plan(self, model: Optional["FEModel"] = None) -> StructuralMatrixPlan:
         from .matrix_assembly import assemble_mass_matrix
+        from .concentrated_mass import identity as concentrated_mass_identity
 
         with self._lock:
             owned = self._require_model(model)
@@ -560,7 +561,8 @@ class AnalysisSession:
                 "geometry",
                 "material",
                 "mass",
-            ), self._activity_contribution_key(owned, "mass"), tuple(
+            ), self._activity_contribution_key(owned, "mass"),
+                concentrated_mass_identity(owned.mesh), tuple(
                 (int(node_id), float(value))
                 for node_id, value in sorted(owned.mesh.point_masses.items())
             ))
@@ -766,6 +768,7 @@ class AnalysisSession:
         np.ndarray,
     ]:
         from .matrix_assembly import assemble_load_vector
+        from .concentrated_mass import identity as concentrated_mass_identity
 
         with self._lock:
             owned = self._require_model(model)
@@ -785,6 +788,7 @@ class AnalysisSession:
                         "mass",
                     ),
                     self._activity_contribution_key(owned, "load"),
+                    concentrated_mass_identity(owned.mesh),
                     pattern,
                 )
                 cached_load = self._load_vectors.get(load_key)

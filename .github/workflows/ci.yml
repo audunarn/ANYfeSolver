@@ -94,19 +94,19 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: audunarn/ANYgeometry
-          ref: 91846898b03fa02b029abde82508eddb981efdc0
+          ref: ebbe0e3b500a3f0cfcc62059c3dac4b0ac178b6c
           path: .ecosystem/ANYgeometry
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: audunarn/ANYmesh
-          ref: 2ccef378c3efb4ba3a9957b9ab896ac8fc454b9d
+          ref: b6f7cf466865b1c4c34b8e5511ace97d00290f6c
           path: .ecosystem/ANYmesh
           persist-credentials: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: audunarn/ANYfileIO
-          ref: db73950018e1c87dab0ca618c25c965030ba08ce
+          ref: 32f3bb65e3843d6fd7af6c4fdf76ce472a7f6555
           path: .ecosystem/ANYfileIO
           persist-credentials: false
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
