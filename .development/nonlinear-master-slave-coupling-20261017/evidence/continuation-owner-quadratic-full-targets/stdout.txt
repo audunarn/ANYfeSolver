@@ -1,7 +1,0 @@
-============================= test session starts =============================
-platform win32 -- Python 3.13.9, pytest-9.0.1, pluggy-1.6.0 -- C:\Github\ANYsolver\.venv\Scripts\python.exe
-rootdir: C:\Github\ANYsolver
-configfile: pyproject.toml
-collecting ... collected 11 items / 9 deselected / 2 selected
-
-tests/test_nonlinear_beam_shell_slice3_continuation.py::test_dc_full_target_plasticity_and_equilibrium[direct] 

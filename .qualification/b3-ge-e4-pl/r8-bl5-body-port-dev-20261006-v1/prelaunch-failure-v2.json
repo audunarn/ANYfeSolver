@@ -1,8 +1,0 @@
-{
-  "source_sha256": "c80451d4a5ec4e8804498fca47f8030d9671fa0d6b30215d8b9d2ee01566a007",
-  "exit_code": 1,
-  "failure": "FileNotFoundError: immutable upstream ccx-v1/supervisor-function-v2.py does not exist; version-string replacement affected upstream path",
-  "command": "C:/Python/Python314/python.exe run-v2.py",
-  "status": "FAILED_BEFORE_CHILD_LAUNCH",
-  "native_RHS": 0
-}

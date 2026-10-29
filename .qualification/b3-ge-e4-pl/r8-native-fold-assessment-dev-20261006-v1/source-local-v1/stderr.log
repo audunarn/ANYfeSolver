@@ -1,5 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-native-fold-assessment-dev-20261006-v1\entry-v2.py", line 79, in <module>
-    assert module.__version__==version and Path(module.__file__).resolve().is_relative_to(CI.resolve())
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError

@@ -1,5 +1,0 @@
-* Getting build dependencies for wheel...
-running egg_info
-error: Cannot update time stamp of directory 'src\ANYsolver.egg-info'
-
-ERROR Backend subprocess exited when trying to invoke get_requires_for_build_wheel

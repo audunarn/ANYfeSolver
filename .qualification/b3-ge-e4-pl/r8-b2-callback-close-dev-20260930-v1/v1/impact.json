@@ -1,7 +1,0 @@
-{
-  "only_changed_method": [
-    "solve_linear_many"
-  ],
-  "unchanged_kernel_modules": 385,
-  "reuse": "Prior exact134 installed suite75 unchanged GE/L1/fibre/finite controls reused;59 B2/consumer checks rerun with8 newcases. Scoped F10/F11 65scientificcases reuse unchanged compile/trace/KKT/solve_linear primitives; solve_linear_many lifecycle change cannot affect their calculations. No general qualification."
-}

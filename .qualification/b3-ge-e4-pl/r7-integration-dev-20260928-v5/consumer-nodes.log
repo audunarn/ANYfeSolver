@@ -1,5 +1,0 @@
-::test_ge_point_panel_constructs_solves_and_reopens
-::test_reopened_ge_panel_restores_and_continues_finite_accepted_state
-::test_ge_point_panel_rejects_changed_profile_and_native_beam
-
-3 tests collected in 1.05s

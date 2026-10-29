@@ -1,9 +1,0 @@
-Supporting same-family OpenAI read review: no source blocker found.
-S3 generalised-only admission retains stable_s3=False; fibre legacy numeric
-selection remains excluded. Distinct S3 identities preserve previous Q4/J2
-contracts. Elastic publication mirrors force ownership and public example stays
-within admitted scope. Consequential missing negatives: fibre S3 and shell-J2 S3
-must reject atomically. Generalized recovery must be compared explicitly across
-restore/continuation (shared old helper omitted those records). Root added a
-separate focused test file; review requested no parked curve execution.
-No reviewer tests or edits; no aggregate/different-family acceptance.

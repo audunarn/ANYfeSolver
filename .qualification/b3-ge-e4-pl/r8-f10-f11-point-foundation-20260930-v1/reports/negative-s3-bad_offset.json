@@ -1,6 +1,0 @@
-{
-  "case": "s3-bad_offset",
-  "rejected": true,
-  "exception": "ValueError",
-  "message": "three finite local offset coordinates required"
-}

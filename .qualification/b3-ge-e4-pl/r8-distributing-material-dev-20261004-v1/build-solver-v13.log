@@ -1,7 +1,0 @@
-Processing c:\github\anysolver\.perf2-worktrees\stiffened-main-reconcile-20261001
-  Preparing metadata (pyproject.toml): started
-  Preparing metadata (pyproject.toml): finished with status 'done'
-Building wheels for collected packages: ANYsolver
-Failed to build ANYsolver
-  WARNING: Building wheel for ANYsolver failed: [WinError 5] Access is denied: 'c:\\users\\audunarnesennyhus\\appdata\\local\\pip\\cache\\wheels\\e7\\36'
-ERROR: Failed to build one or more wheels

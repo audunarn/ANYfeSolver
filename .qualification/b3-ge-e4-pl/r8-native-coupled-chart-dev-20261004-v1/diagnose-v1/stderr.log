@@ -1,9 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-native-coupled-chart-dev-20261004-v1\diagnose-prefix-v1.py", line 45, in <module>
-    kind, generation, arrays = packed(owner)
-                               ~~~~~~^^^^^^^
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\tests\test_stiffened_shell_distributing_native_material.py", line 65, in packed
-    header = json.loads(raw[start:start+header_size])
-  File "C:\Python\Python314\Lib\json\__init__.py", line 347, in loads
-    s = s.decode(detect_encoding(s), 'surrogatepass')
-UnicodeDecodeError: 'utf-8' codec can't decode byte 0xa1 in position 3564: invalid start byte

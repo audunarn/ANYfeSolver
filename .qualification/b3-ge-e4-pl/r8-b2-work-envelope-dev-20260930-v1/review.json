@@ -1,8 +1,0 @@
-{
-  "independent_reviewer": "/root/b2_point_acceptance_gap",
-  "scope": "root applied-work fix only",
-  "result": "No remaining consequential finding after scaled_rhs nonzero-to-zero guard",
-  "envelope_reviewer": "/root integration owner, not envelope implementer",
-  "envelope_result": "Signed selected extrema, first ties, immutable complete-prefix reporting agree with result contract",
-  "qualification": "no aggregate acceptance"
-}

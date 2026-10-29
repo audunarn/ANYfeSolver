@@ -1,9 +1,0 @@
-Processing c:\users\auduna~1\appdata\local\temp\r8-b2-output-guard-installed-v1\anysolver-build-source
-  Preparing metadata (pyproject.toml): started
-  Preparing metadata (pyproject.toml): finished with status 'done'
-Building wheels for collected packages: ANYsolver
-  Building wheel for ANYsolver (pyproject.toml): started
-  Building wheel for ANYsolver (pyproject.toml): finished with status 'done'
-  Created wheel for ANYsolver: filename=anysolver-0.4.7-py3-none-any.whl size=2059296 sha256=19e3235a35b69e14f322867bf224b164789163c6cc7e2e808c0bba584c3c441e
-  Stored in directory: C:\Users\AudunArnesenNyhus\AppData\Local\Temp\pip-ephem-wheel-cache-xsqnh1rp\wheels\13\d2\f1\35a4b5b2417132b75c6aca964bd8a7df2e9ba1d8ecc55b1861
-Successfully built ANYsolver

@@ -1,8 +1,0 @@
-{
-  "status": "stopped_on_root_slot_hold",
-  "outcome": "No numerical result published",
-  "session": 18772,
-  "termination": "write_stdin Ctrl-C returned exit_code 1; subsequent exact-command psutil inventory found zero Python processes for this raw path",
-  "resource_record": "Supervisor termination preempted final execution.json; preserve existing stdout/stderr and binding snapshot, no resource-pass claim",
-  "authority": "Launch preceded receipt of root HOLD message; immediately stopped to return sole numerical slot"
-}

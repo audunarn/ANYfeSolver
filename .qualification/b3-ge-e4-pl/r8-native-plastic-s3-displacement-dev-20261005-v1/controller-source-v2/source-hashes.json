@@ -1,9 +1,0 @@
-{
-  "src/anysolver/_stiffened_shell_affine_endpoint.py": "0b3adde17cc54290bbcc3171a1807b4cb9644ceed28a3f21eb7669eca34429fd",
-  "src/anysolver/_stiffened_shell_displacement_checkpoint.py": "92ab624bd4637188965aeffb1a32d64454130dcc92fd2e1a60b982f4dd89a4e8",
-  "src/anysolver/_stiffened_shell_displacement_control.py": "9e90cfd7996ede85e716b3e8629478d5c37f50f749f64db53c23c0eeed3caa55",
-  "src/anysolver/_stiffened_shell_ge_checkpoint_binary.py": "ca0a9837c27dae190db855b0acb4e41bc5c2c1f43cea216ae64310c8156699f7",
-  "src/anysolver/_stiffened_shell_ge_finite_experimental.py": "0c0afa94956acd59581f315cd77d84e931cd9404b30f8b63e23b5c4b87e13563",
-  "src/anysolver/_stiffened_shell_ge_experimental.py": "fe209dfd7933917f684d3556c859af1ef042b4ed48507e12ceb11913fee37c15",
-  "tests/test_stiffened_shell_native_plastic_s3_displacement.py": "c586159b37b6824510c7e957ed857f051cfd1e8283f6c6c50bd5b9d8d9148236"
-}

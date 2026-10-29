@@ -1,9 +1,0 @@
-{
-  "classification": "deliberate owner interruption after both full-target failures, before dependent gates",
-  "root_authorized": true,
-  "pytest_group": 37204,
-  "command": "C:\\Github\\ANYsolver\\.venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider -p scripts.development_test_runtime --durations=10 --basetemp=C:\\Github\\ANYsolver\\.development\\nonlinear-master-slave-coupling-20261017\\gate-closure-20261019\\portable-runs\\anysolver-portable-ci-7oij9kry\\P01\\basetemp tests/test_nonlinear_beam_shell_slice3_continuation.py",
-  "ctrl_break_sent": false,
-  "force_fallback": true,
-  "timestamp": "2026-10-19T17:06:19.3817536+02:00"
-}

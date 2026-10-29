@@ -1,9 +1,0 @@
-Processing c:\users\auduna~1\appdata\local\temp\r8-ge-fibre-finite-installed-v2\build-source
-  Preparing metadata (pyproject.toml): started
-  Preparing metadata (pyproject.toml): finished with status 'done'
-Building wheels for collected packages: ANYsolver
-  Building wheel for ANYsolver (pyproject.toml): started
-  Building wheel for ANYsolver (pyproject.toml): finished with status 'done'
-  Created wheel for ANYsolver: filename=anysolver-0.4.7-py3-none-any.whl size=2062191 sha256=909f26ce982470dec3c2030ea72f78b227085672855c67b99897579c7872a531
-  Stored in directory: C:\Users\AudunArnesenNyhus\AppData\Local\Temp\pip-ephem-wheel-cache-9b72txk8\wheels\6f\dc\69\9d4c1a1d99ea21a01d392bcd480bfdba14492dfe4a430e0440
-Successfully built ANYsolver

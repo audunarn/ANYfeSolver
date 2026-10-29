@@ -1,1 +1,0 @@
-initial keys ['control', 'displacements', 'element_states', 'lam', 'step_index']

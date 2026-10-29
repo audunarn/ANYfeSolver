@@ -1,8 +1,0 @@
-{
-  "family": "OpenAI supporting review, not different-family acceptance",
-  "findings": "Failed runtime launch retained/charged;23sourcePASS;5captures/1border complete;same300ledger109.1353426used/190.8646574remaining. Local discrepancy above given-float bound; mixed norm alignment diagnostic only. No fold/element-defect/capacity acceptance.",
-  "reviewer": "/root/native_arc_oracle_review",
-  "scientific_acceptance": false,
-  "scope": "v2 receipts, captured hashes, source/wheel430,imports/runtimes, publicbytes and interpretation",
-  "status": "NO_CONSEQUENTIAL_EVIDENCE_MISMATCH"
-}

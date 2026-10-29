@@ -1,8 +1,0 @@
-warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'dependency-licenses.json', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/anysolver/prepared_static_measures.py', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/anysolver/prepared_static_recovery.py', LF will be replaced by CRLF the next time Git touches it
-src/anysolver/nonlinear_static.py:4275: trailing whitespace.
-+                                            corotational_tangent=( 
-src/anysolver/nonlinear_static.py:4282: trailing whitespace.
-+                                        context=( 

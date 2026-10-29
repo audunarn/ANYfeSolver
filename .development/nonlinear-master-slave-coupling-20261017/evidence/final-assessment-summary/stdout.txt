@@ -1,1 +1,0 @@
-{"mesh_results": 5, "arc_results": 1, "mesh_passed": false, "analytical_passed": false, "report": "C:\\Github\\ANYsolver\\.development\\nonlinear-master-slave-coupling-20261017\\assessment-summary.json"}

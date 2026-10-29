@@ -1,8 +1,0 @@
-{
-  "inputs": {
-    "screen.py": "afb3dd872fe6d0f84d5e840006b0638435c63ada01b8e969181556104f3a5102",
-    "run_bounded.py": "a1f432cc12c3b4445f86bd2f4a8b9288fbb3c9afb7ac198ee6e387bc6d575d07"
-  },
-  "wheel": "654ff57c2f2f29bf1cd4f24d5049bc17162b4bfc48d23b2fcfe853da80076213",
-  "fixture_manifest_sha256": "1d8142c1d2b191d7ad5c43af6a8e1433e946efb7c53cce7d64a69e00175e00f6"
-}

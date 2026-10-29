@@ -1,6 +1,0 @@
-The initial staging-line-ending audit incorrectly expected CRLF in HEAD.
-It raised AssertionError before modifying either file; PowerShell continued
-through intermediate-v2 build/install/check, 96 PASS. These records remain.
-Inspection confirmed HEAD LF and mixed CRLF/LF working files from patching.
-Final files normalized to original LF; parsed AST equality verified for both.
-Final v3 artifact and 96 installed checks bind final bytes. No equations changed.

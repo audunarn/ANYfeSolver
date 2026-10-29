@@ -1,8 +1,0 @@
-{
-  "status": "PREPARED_NOT_EXECUTED",
-  "candidate": "151cb3d4",
-  "supervisor_sha256": "02955d11fe4b6662867813c3c9193af97109b6584a1607016432afa61b181f5a",
-  "parser_errors": 0,
-  "repair": "Hash binding collected before process launch; no post-child hashing may bypass elapsed accounting",
-  "consumed_seconds": 0
-}

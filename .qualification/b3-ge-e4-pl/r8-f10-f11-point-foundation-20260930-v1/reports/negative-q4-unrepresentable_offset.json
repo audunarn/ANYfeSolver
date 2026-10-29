@@ -1,6 +1,0 @@
-{
-  "case": "q4-unrepresentable_offset",
-  "rejected": true,
-  "exception": "RepresentabilityError",
-  "message": "global physical B2 trace is not representable"
-}

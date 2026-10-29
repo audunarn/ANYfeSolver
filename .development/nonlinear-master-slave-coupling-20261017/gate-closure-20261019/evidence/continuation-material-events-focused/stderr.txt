@@ -1,9 +1,0 @@
-usage: run_portable_ci.py [-h] [--workers WORKERS]
-                          [--timeout-seconds TIMEOUT_SECONDS]
-                          [--matrix-shard-index MATRIX_SHARD_INDEX]
-                          [--matrix-shard-count MATRIX_SHARD_COUNT]
-                          [--matrix-subshard-index MATRIX_SUBSHARD_INDEX]
-                          [--matrix-subshard-count MATRIX_SUBSHARD_COUNT]
-                          [--development TEST [TEST ...]] [--jit {off,on}]
-                          [--memory-limit-mib MEMORY_LIMIT_MIB]
-run_portable_ci.py: error: unrecognized arguments: -k material_event

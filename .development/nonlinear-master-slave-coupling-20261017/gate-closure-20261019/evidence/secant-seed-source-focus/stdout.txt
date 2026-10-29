@@ -1,5 +1,0 @@
-[portable-ci] native cooperative deadline scale=4
-[development] exact targets=3; record=C:\Github\ANYsolver\.development\nonlinear-master-slave-coupling-20261017\gate-closure-20261019\portable-runs\anysolver-portable-ci-4b25quae\P01
-[portable-ci] starting P01/01 with 3 modules
-........................................................................ [ 87%]
-......

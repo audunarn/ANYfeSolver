@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-e02-double-output-dev-20261004-v1\parse-v1.py", line 6, in <module>
-    from scripts.r8_e02_double_output import compare_double_with_print
-ModuleNotFoundError: No module named 'scripts.r8_e02_double_output'

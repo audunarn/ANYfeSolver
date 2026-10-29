@@ -1,4 +1,0 @@
-[codex/b3-ge-e4-pl-integration 2d9ab38d] Add experimental finite BL5 line stepping and durable recovery
- 9 files changed, 442 insertions(+), 26 deletions(-)
- create mode 100644 scripts/experimental_stiffened_ge_bl5_history.py
- create mode 100644 tests/test_stiffened_shell_bl5_finite.py

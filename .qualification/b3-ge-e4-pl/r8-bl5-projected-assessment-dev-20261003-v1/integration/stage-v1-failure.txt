@@ -1,1 +1,0 @@
-First stage binding failure: fixture hash traversal included __pycache__ directory; module-byte parity loop completed, binding write failed. Repaired by restricting exact fixture files; preserve run-v1.py. Installed test process continued under supervisor; no product failure.

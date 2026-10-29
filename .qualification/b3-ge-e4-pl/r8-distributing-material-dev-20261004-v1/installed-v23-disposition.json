@@ -1,7 +1,0 @@
-{
-  "status": "FAILED_TEST_INVOCATION",
-  "passed": 96,
-  "failed": 8,
-  "cause": "standalone frozen G3c graph guard tests require their reviewed runner lease; none supplied or acquired; no authority replay permitted; do not repair by minting lease",
-  "scope": "retain all v23 raw; affected product tests passed; identity amendment requires new candidate verification"
-}

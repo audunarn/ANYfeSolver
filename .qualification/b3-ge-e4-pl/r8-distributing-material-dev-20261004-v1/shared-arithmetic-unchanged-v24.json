@@ -1,6 +1,0 @@
-{
-  "file": "src/anysolver/_ge_beam3_mixed_ad.py",
-  "sha256": "4249825c0ad8356207b35d1fc4b031b93eb0cb13603285b8f40c23534029066a",
-  "byte_identical_to_head": true,
-  "scope": "temporary unexecuted proposed scalar edit reverted before any numerical run; isolated existing kernel reused instead"
-}

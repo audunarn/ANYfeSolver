@@ -1,7 +1,0 @@
-# Native displacement chart mapping
-Decision: whether existing objective element/history maps permit a coordinate-only shell rebase without changing native physical/material state or accepted predecessor.
-Mapping R=Exp(theta)A -> theta_new=0,A_new=R, translations and beam/internal states untouched; covector g_new=J(theta)^(-T)g_old at endpoint. Physical support triples only. Accepted material predecessor remains distinct; S3 binding must match physical local total coordinates.
-First scratch replay uses recorded actual Q4/generalizedJ2 and allS3/fibreJ2 unload checkpoints, same predecessors/loads. Exact native beam material and S3 serialization; existingQ4 replay64eps criterion, physical frames, work/covector map, equilibrium/gaps. No public guard bypass. If maps fail, STOP identify equation; if pass, implement explicit chart checkpoint policy and atomic publication, test continued branches before admission.
-600s/2GiB/affinity1/pools1/JIToff; one job. Protected prior loadedchart failures not replayed, formalF03 untouched.
-
-Source contract clarification before numerical replay: assembled rows are spatial wrenches, so same-pose rows remain invariant. Coordinate covectors are J(theta)^T times spatial rows; newchartJ=I. Only tangent increment columns use the additive chart. Original coordinate-row formula applies to pulled-back covectors, not the assembled residual. Probev1 stopped before model evaluation due missingexamples path; version2 fixes import and interpretation.

@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\scripts\r8_bl5_projected_density_patch_dev.py", line 168, in <module>
-    pools=pools,cases=[run(a.fixed),run(a.growing)])
-                       ~~~^^^^^^^^^
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\scripts\r8_bl5_projected_density_patch_dev.py", line 95, in run
-    assert wrench_error<=1e-12
-           ^^^^^^^^^^^^^^^^^^^
-AssertionError

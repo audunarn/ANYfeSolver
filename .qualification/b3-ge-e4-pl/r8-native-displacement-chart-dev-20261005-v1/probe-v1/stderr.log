@@ -1,6 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-native-displacement-chart-dev-20261005-v1\probe-v1.py", line 26, in <module>
-    from test_stiffened_shell_native_s3_fibre_reversal import definition as s3_definition
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\tests\test_stiffened_shell_native_s3_fibre_reversal.py", line 10, in <module>
-    from examples.stiffened_shell_coupled_s3_adaptive_history import definition,activity,DIRECTION,CONTROL,OPTIONS
-ModuleNotFoundError: No module named 'examples'

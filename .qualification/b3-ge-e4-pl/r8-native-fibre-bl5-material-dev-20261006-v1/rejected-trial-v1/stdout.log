@@ -1,1 +1,0 @@
-{"outcome": "AdaptiveIncrementExhausted", "evaluations": 131, "linear_relative": 2.4588342964805805e-07, "derivative_errors": [{"direction": "rich", "errors": [0.02174595360178131, 0.019794501664260347, 0.00027996427431035184]}, {"direction": "Newton", "errors": [0.00027550217809085473, 0.0029099988563956484, 0.009738332499433209]}]}

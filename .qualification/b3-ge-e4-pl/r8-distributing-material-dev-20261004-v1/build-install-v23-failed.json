@@ -1,4 +1,0 @@
-{
-  "status": "SETUP_FAILED",
-  "cause": "asserted final consumer hash against earlier dist rather than final dist-v3; solver build completed, no install executed"
-}

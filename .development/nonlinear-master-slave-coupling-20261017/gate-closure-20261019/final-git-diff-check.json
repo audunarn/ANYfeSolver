@@ -1,7 +1,0 @@
-{
-  "exit_code": 2,
-  "output": "final-git-diff-check.txt",
-  "preexisting_whitespace_only": true,
-  "baseline_proof": "baseline-nonlinear_static.py",
-  "note": "The two trailing-space lines already occur in the saved entry source; no frozen source changed for formatting."
-}

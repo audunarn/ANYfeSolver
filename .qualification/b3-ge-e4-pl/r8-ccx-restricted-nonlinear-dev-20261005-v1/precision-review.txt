@@ -1,4 +1,0 @@
-Supporting OpenAI Read reviewer nonlinear_external_scope_audit.
-Official printoutnode.f and printoutint.f use1P,E13.6. Normalized nonzero represented values have nonzero mantissas, so canonical +/-0.000000E+00 has zero decimal-formatting uncertainty. This does not bound solver arithmetic error or prior numerical underflow.
-Restrict zero-special to known canonical scientific zero, retain ordinary decimal0 quantum; reject nonzero literal parsing to binary64zero and unsupported omitted-exponent forms. No scientific tolerance changed; format-source review is not pinned-binary qualification.
-No numerics by reviewer.

@@ -1,6 +1,0 @@
-Pre-test startup failure, 4 October 2026.
-Command: C:/Users/AudunArnesenNyhus/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe .qualification/b3-ge-e4-pl/r8-distributing-ge-reference-dev-20261004-v1/run-v1.py test
-Exit code: 1
-Pinned supervisor import failed with ModuleNotFoundError: No module named 'psutil'.
-No child test process, numerical work or test-v1 output directory started.
-Next command uses the preceding successful environment C:/Python/Python314/python.exe.

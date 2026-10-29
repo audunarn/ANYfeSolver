@@ -1,8 +1,0 @@
-{
-  "status": "CONSUMED",
-  "generations": [
-    14,
-    15
-  ],
-  "scope": "ONE ordered remaining-endpoint batch;Log-only3e-6/1e-6;no g13 replay"
-}

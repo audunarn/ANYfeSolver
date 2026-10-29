@@ -1,7 +1,0 @@
-{
-  "status": "failed",
-  "load_factors": [],
-  "failure_reason": "reference preload failed: None",
-  "policy": "B2_PHYSICAL_REFERENCE_GREEN_POINT_BUCKLING_V1_DEV",
-  "production_qualified": false
-}

@@ -1,7 +1,0 @@
-{
-  "files": 63,
-  "raw_bytes": 2899133,
-  "archive_bytes": 2259267,
-  "archive_sha256": "d4f5f53c0d6371aabb768bf0291dccb1023fdc2b6447f915ed1299c51adfb676",
-  "scope": "bounded static experimental source/artifact/raw failures/runners/fixtures/review; qualification open"
-}

@@ -1,8 +1,0 @@
-{
-  "reviewer": "/root/native_arc_oracle_review",
-  "mode": "Read",
-  "status": "NO_REMAINING_CONSEQUENTIAL_SOURCE_BLOCKER",
-  "review": "Explicit finiteness repaired original witnesses; both FD steps and plateau use fixed full-load denominator; trial branch/margin UNESTABLISHED and elastic_branch_proved false",
-  "python_or_numerical_execution": false,
-  "runtime_scientific_or_different_family_acceptance": false
-}

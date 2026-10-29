@@ -1,7 +1,0 @@
-Processing c:\users\audunarnesennyhus\appdata\local\temp\r8-b2-point-integrity-installed-v1\build-source
-  Preparing metadata (pyproject.toml): started
-  Preparing metadata (pyproject.toml): finished with status 'done'
-Building wheels for collected packages: ANYsolver
-Failed to build ANYsolver
-  WARNING: Building wheel for ANYsolver failed: [WinError 5] Access is denied: 'c:\\users\\audunarnesennyhus\\appdata\\local\\pip\\cache\\wheels\\ab'
-ERROR: Failed to build one or more wheels

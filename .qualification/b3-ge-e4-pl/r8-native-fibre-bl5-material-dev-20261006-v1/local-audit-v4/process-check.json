@@ -1,8 +1,0 @@
-{
-  "checked_utc": "2026-10-06T00:22:55.9215208Z",
-  "matching_python_processes": 0,
-  "processes": [],
-  "criterion": "Python command line contains local-audit-v4",
-  "execution_terminal_status": "completed",
-  "execution_terminal_exit_code": 0
-}

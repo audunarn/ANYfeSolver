@@ -1,9 +1,0 @@
-Processing c:\users\audunarnesennyhus\appdata\local\temp\r8-bl5-finite-installed-v3\build-source
-  Preparing metadata (pyproject.toml): started
-  Preparing metadata (pyproject.toml): finished with status 'done'
-Building wheels for collected packages: ANYsolver
-  Building wheel for ANYsolver (pyproject.toml): started
-  Building wheel for ANYsolver (pyproject.toml): finished with status 'done'
-  Created wheel for ANYsolver: filename=anysolver-0.4.7-py3-none-any.whl size=2070638 sha256=82ea8d422879559dd8482bdbb8d1c589d62fe28883e9ffdf3646573164599b39
-  Stored in directory: C:\Users\AudunArnesenNyhus\AppData\Local\Temp\pip-ephem-wheel-cache-la1cocre\wheels\af\63\ce\f013f0df7e161045b323fc7019325a10c489f7ec7f6dab40da
-Successfully built ANYsolver

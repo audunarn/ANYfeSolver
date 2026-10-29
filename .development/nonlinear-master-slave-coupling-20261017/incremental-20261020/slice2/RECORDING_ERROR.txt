@@ -1,1 +1,0 @@
-Metadata-only recording attempt failed after creating the verified source archive: KeyError: ANYSOLVER_ENABLE_RETIRED_PROGRAMME. The harness key is ANYSOLVER_RUN_RETIRED_PROGRAMME_TESTS. The archive was preserved and rechecked byte-for-byte before the corrected receipt was written. No numerical process or budget change occurred.

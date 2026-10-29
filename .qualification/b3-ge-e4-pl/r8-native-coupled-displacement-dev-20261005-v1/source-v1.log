@@ -1,9 +1,0 @@
-[development] exact targets=1; record=C:\Users\AudunArnesenNyhus\AppData\Local\Temp\anysolver-portable-ci-fy07us62\P01
-[portable-ci] starting P01/01 with 1 modules
-.                                                                        [100%]
-============================ slowest 10 durations =============================
-30.78s call     tests/test_stiffened_shell_native_coupled_displacement.py::test_coupled_native_displacement_material_prefix_restart
-
-(2 durations < 0.005s hidden.  Use -vv to show these durations.)
-1 passed in 34.63s
-[portable-ci] P01 exit=0

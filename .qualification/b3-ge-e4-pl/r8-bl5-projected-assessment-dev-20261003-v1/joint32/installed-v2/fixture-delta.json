@@ -1,5 +1,0 @@
-{
-  "source": "C:\\Github\\ANYsolver\\.perf2-worktrees\\stiffened-main-reconcile-20261001\\tests\\test_stiffened_shell_ge_experimental.py",
-  "sha256": "9562db7de7f68ade267c21731b81c1dc62dd3d4065a927bdd6c8bce6cefe85e9",
-  "unchanged_cases_evidence": "installed/ plus installed-affected/; only added second-correction cancellation case executed here"
-}

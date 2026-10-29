@@ -1,6 +1,0 @@
-{
-  "case": "q4-nonplanar",
-  "rejected": true,
-  "exception": "ValueError",
-  "message": "planar shell point support required"
-}

@@ -1,1 +1,0 @@
-{"screen_pass": false, "outcome": {"type": "AssertionError", "message": "", "attempts": []}, "accepted": [], "work_counts": {"fixed_attempts": 0, "assemblies": 1, "advances": 0, "boundary_proposals": 0, "physical_cell_responses": 3, "generalized_cell_responses": 2, "captured_preparations": 1, "cell_evaluations": 21, "cell_line_trials": 8}}

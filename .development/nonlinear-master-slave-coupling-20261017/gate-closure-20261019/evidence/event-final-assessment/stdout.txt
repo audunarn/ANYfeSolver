@@ -1,1 +1,0 @@
-{"candidate": "63f057b8538cfbe4f42c0939b81ab66dc80bd1d3b02e5c046ad4dc6217762184", "counts": {"collected": 548, "passed": 543, "failed": 5, "skipped": 0, "error": 0, "xfailed": 0, "xpassed": 0}, "source_mismatches": [], "protected_inputs_preserved": true, "scientific_acceptance": false}

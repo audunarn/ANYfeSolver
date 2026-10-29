@@ -1,9 +1,0 @@
-[development] exact targets=1; record=C:\Users\AudunArnesenNyhus\AppData\Local\Temp\anysolver-portable-ci-fj9lyjzk\P01
-[portable-ci] starting P01/01 with 1 modules
-.                                                                        [100%]
-============================ slowest 10 durations =============================
-6.55s call     tests/test_stiffened_shell_distributing_native_material.py::test_simultaneous_generalized_and_fibre_yield_codec_restart
-
-(2 durations < 0.005s hidden.  Use -vv to show these durations.)
-1 passed in 10.34s
-[portable-ci] P01 exit=0

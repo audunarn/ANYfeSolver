@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-b2-reference-buckling-installed-dev-20261006-v1\installed-entry-v1.py", line 61, in <module>
-    inspect_imports('before')
-    ~~~~~~~~~~~~~~~^^^^^^^^^^
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-b2-reference-buckling-installed-dev-20261006-v1\installed-entry-v1.py", line 51, in inspect_imports
-    assert path.is_relative_to(CI.resolve()),(phase,name,str(path))
-           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
-AssertionError: ('before', 'anymaterial', 'C:\\Github\\ANYmaterial\\src\\anymaterial\\__init__.py')

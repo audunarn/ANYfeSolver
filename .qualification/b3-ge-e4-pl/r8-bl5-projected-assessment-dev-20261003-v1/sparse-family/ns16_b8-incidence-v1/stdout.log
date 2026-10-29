@@ -1,1 +1,0 @@
-{"status": "HOLD_MECHANICAL_KERNEL", "fixture_case": "ns16_b8", "physical_order": 2785, "kernel_order": 2745, "kernel_error_upper": 5.855229651277453e-09, "physical_kernel_lower_bound": null, "elapsed_seconds": 84.65864000003785}

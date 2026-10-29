@@ -1,4 +1,0 @@
-{
-  "type": "IndexError",
-  "detail": "boolean index did not match indexed array along axis 0; size of axis is 1404 but size of corresponding boolean axis is 1188"
-}

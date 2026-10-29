@@ -1,7 +1,0 @@
-{
-  "status": "PRELAUNCH_GIT_PATH_REPAIR",
-  "failure": "Git filename-too-long while staging a nested frozen snapshot",
-  "repair": "Per-command core.longpaths=true; no repository/global configuration change",
-  "numerical_checks_started": 0,
-  "authority_consumed": 0
-}

@@ -1,6 +1,0 @@
-{
-  "script_sha256": "c3abae322a6f4e570aa9d86d88daf10c124ecf6e3e125d714a784baa8a85f647",
-  "source_binding_sha256": "24a5a62ed269c74fc02876f0ca4014b43ea7ad117a97cb3eab4741a80ff6ffbb",
-  "artifacts_sha256": "9c779d53ec7824c712340b4d463ba27a90dc28a31b06bcbf2b92e22c2eb12498",
-  "scope": "Installed compression development example; not G4B acceptance"
-}

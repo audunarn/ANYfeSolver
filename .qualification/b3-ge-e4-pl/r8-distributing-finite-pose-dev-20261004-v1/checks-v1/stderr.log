@@ -1,7 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-distributing-finite-pose-dev-20261004-v1\probe-v1.py", line 5, in <module>
-    from anysolver import _stiffened_shell_distributing_pose as pose
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\src\anysolver\_stiffened_shell_distributing_pose.py", line 153
-    rows="SPATIAL_RESISTING_WRENCHES", relative_log_limit_rad=.9*np.pi,
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-SyntaxError: keyword argument repeated: rows

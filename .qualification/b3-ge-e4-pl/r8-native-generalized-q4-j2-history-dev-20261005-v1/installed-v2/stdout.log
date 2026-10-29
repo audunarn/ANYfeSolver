@@ -1,3 +1,0 @@
-.                                                                        [100%]
-1 passed in 2.53s
-{"status": "PASSED_GENERALIZED_Q4J2_RESTART_NOT_QUALIFIED", "case_project_roundtrip": true, "exact_pending_programme_restart": true, "endpoint_sha256": "dfaf17c473401f339414ae2106e8a1b7f5af942b7f599f31537f6799a30adadc", "force_baseline_n": 1000.0, "amplitude": 0.06156619389397682, "actual_tip_force_n": 1006.1566193893976, "equilibrium": 1.4484545333322736e-10, "gap": 7.798304297352494e-18, "test_sha256": "bac73124eb9a175fe965ad36753e55fe90d3d53d3ef3884093c11cd624017a42", "fixture_sha256": "e91847b8d4db6f400e705f4c3bfb3d5b426c70b432323ae2bc0f181c03798db3"}

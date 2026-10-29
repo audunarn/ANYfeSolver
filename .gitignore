@@ -35,6 +35,10 @@ qc_results/
 .pytest_tmp_*/
 .pytest-b3-g0-*/
 .qualification/
+# Historical development outputs live outside the production checkout.
+# Existing tracked authority records and regression inputs remain versioned.
+/.development/
+/docs/agent_plans/development/
 # Raw local Q6 certificate feasibility archive; hash and receipt are versioned.
 /docs/agent_plans/B3_GE_E4_PL_G0_F03_Q6_X0_FULL_CERT_20260924/inverse_float64.bin
 /docs/agent_plans/B3_GE_E4_PL_G0_F03_Q6_X1_FULL_CERT_20260924/inverse_float64.bin
@@ -56,16 +60,3 @@ qc_results/
 /docs/agent_plans/B3_GE_E4_PL_G0_F03_Q6_*POSITIVITY*/positivity_inputs.npz
 /docs/agent_plans/B3_GE_E4_PL_G0_F03_Q6_*/positivity/lower_inverse_float64.bin
 /docs/agent_plans/B3_GE_E4_PL_G0_F03_Q6_*/positivity/positivity_inputs.npz
-
-# Local unpacked F06 attempts are preserved byte-for-byte in evidence-v1.zip.
-/.development/f06-j2-fibre-chart-20261008/source-v1-a1/
-/.development/f06-j2-fibre-chart-20261008/source-v2-a1/
-/.development/f06-j2-fibre-chart-20261008/installed-v3-a1/
-/.development/f06-j2-fibre-chart-20261008/installed-v4-a1/
-/.development/f06-j2-fibre-chart-20261008/run-v1.py
-/.development/f06-j2-fibre-chart-20261008/run-v2.py
-/.development/f06-j2-fibre-chart-20261008/run-v3.py
-/.development/f06-j2-fibre-chart-20261008/run-v4.py
-/.development/f06-j2-fibre-chart-20261008/installed-preflight-v3.json
-/.development/f06-j2-fibre-chart-20261008/installed-preflight-v4.json
-/.development/f06-j2-fibre-chart-20261008/replay-predicate-v1.json

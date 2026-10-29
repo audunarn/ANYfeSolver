@@ -1,9 +1,0 @@
-{
-  "previous": "C:\\Github\\ANYsolver\\.perf2-worktrees\\stiffened-main-reconcile-20261001\\.qualification\\b3-ge-e4-pl\\r8-ge-point-buckling-dev-20261005-v1",
-  "source_harness_hashes": {
-    "run-v1.py": "4a6979de5e5b5ade2ea2605b3b72566262f2b23bdf0d445751cd5415069d6225",
-    "build-v1.py": "052c1c51a63ab4a27faeb0378f7c893a4bc8859b14deccf06d1360c83d0d4bc3",
-    "installed-v1.py": "e65de9689696b5cac864ff786e82b079a7a224b05187ad0a7972bfc4ff4e1b7b"
-  },
-  "scope": "Reused supervision, new line and regression point tests; no execution during preparation"
-}

@@ -1,6 +1,0 @@
-{
-  "purpose": "actual accepted loaded noncommuting physical reset/restore/continue; elastic Q4/S3",
-  "criteria": "existing physical1e-9,work1e-8,rotation.05rad,commutator1e-5; no relaxed thresholds",
-  "ownercleanup": "pytest finalizers",
-  "release": false
-}

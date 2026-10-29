@@ -1,6 +1,0 @@
-{
-  "parent": "C:\\Users\\AudunArnesenNyhus\\AppData\\Local\\Temp\\r8-ge-point-native-project-installed-v1",
-  "unchanged": "all source modules and both wheels; 170 passed case inputs",
-  "changed": "single fixture multipliers tuple -> np.array",
-  "selection": "only prior failed low-position capture case"
-}

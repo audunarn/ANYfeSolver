@@ -1,6 +1,0 @@
-{
-  "passed": 59,
-  "inventory_sha256": "c0889b2c8f438349600535ed345fbe2c740f3a07a7424a38f292ba7c6b722b50",
-  "identity_sha256": "7f7e6df3fd204b1a034af0a0540215a3ac65a1beb7d9c77da4a3dd41055888ec",
-  "contract": "Exact source/site/artifacts/fixtures; only public example fresh-restore handling changed. Earlier full route remains failed."
-}

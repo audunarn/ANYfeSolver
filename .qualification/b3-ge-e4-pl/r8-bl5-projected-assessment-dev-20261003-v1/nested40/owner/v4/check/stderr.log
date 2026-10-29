@@ -1,6 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Users\AudunArnesenNyhus\AppData\Local\Temp\r8-bl5-nested40-owner-v4\owner.py", line 19, in <module>
-    from scripts.b3_e4_bl5_matched_mz_native_dev import rigid_maps
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\scripts\b3_e4_bl5_matched_mz_native_dev.py", line 26, in <module>
-    from b3_e4_bl5_coherent_aggregation_dev import model, physical_transfer
-ModuleNotFoundError: No module named 'b3_e4_bl5_coherent_aggregation_dev'

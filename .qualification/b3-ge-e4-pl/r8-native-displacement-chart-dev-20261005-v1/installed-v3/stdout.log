@@ -1,3 +1,0 @@
-......                                                                   [100%]
-6 passed in 50.77s
-{"status": "PASSED_NATIVE_CHART_INSTALLED_NOT_QUALIFIED", "cases": [{"name": "q4-generalized-j2", "case_project_roundtrip": true, "exact_chart_restart": true, "endpoint_sha256": "91290cbf2ad28f4ddcd9b28c77fd83147c14b067816172bf46d5938c93f0ff8d", "equilibrium": 1.447980468944326e-10, "gap": 7.798304297352494e-18, "chart_generation": 4}, {"name": "s3-fibre-j2", "case_project_roundtrip": true, "exact_chart_restart": true, "endpoint_sha256": "4cfde828802b478c30372d14db7cefaf190e8de709176bb0712a6b9f4febcd32", "equilibrium": 1.0468115430503346e-12, "gap": 2.0328790734103205e-20, "chart_generation": 4}], "sources": 520}

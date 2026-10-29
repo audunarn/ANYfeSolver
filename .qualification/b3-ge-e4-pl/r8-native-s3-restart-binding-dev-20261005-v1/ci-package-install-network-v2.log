@@ -1,5 +1,0 @@
-Processing c:\github\anysolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-native-s3-restart-binding-dev-20261005-v1\ci-wheels-network-v2\numpy-2.5.3-cp314-cp314-win_amd64.whl
-Processing c:\github\anysolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-native-s3-restart-binding-dev-20261005-v1\ci-wheels-network-v2\scipy-1.18.1-cp314-cp314-win_amd64.whl
-Installing collected packages: scipy, numpy
-
-Successfully installed numpy-2.5.3 scipy-1.18.1

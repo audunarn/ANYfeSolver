@@ -1,9 +1,0 @@
-{
-  "state": "ARTIFACT_BYTES_VERIFIED_INSTALLED_NUMERICAL_CHECK_PENDING",
-  "commit": "71dfeddbcc2d4328b251220ffeb8779ee5f93408",
-  "wheel_sha256": "4c7e38ab320c25efbabaacdc739e600b14504c34801d4546fbe0032c622d9762",
-  "package_payloads_equal": 428,
-  "source_test_example_helper_inputs_equal": 7,
-  "source_version_unchanged": "0.4.7",
-  "qualification": false
-}

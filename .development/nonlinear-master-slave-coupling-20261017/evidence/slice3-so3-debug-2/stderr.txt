@@ -1,6 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Github\ANYsolver\.development\nonlinear-master-slave-coupling-20261017\diagnostics\debug_so3_map.py", line 2, in <module>
-    from tests.test_nonlinear_beam_shell_coupling import (
-    ...<2 lines>...
-    )
-ModuleNotFoundError: No module named 'tests.test_nonlinear_beam_shell_coupling'

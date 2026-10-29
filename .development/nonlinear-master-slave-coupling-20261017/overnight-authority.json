@@ -1,9 +1,0 @@
-{
-  "instruction": "You are going into an overnight run. For 10 hours approvals are given for reasonable actions needed to complete slice 3.",
-  "recorded_utc": "2026-10-18T21:20:45Z",
-  "deadline_utc": "2026-10-19T07:20:45Z",
-  "scope": "Reasonable implementation, diagnosis, repair, verification and handoff necessary for Slice 3. Preserve scientific criteria, dirty work, evidence and public compatibility.",
-  "numerical_ledger_at_entry": "budget.json; cumulative allowance 14400 seconds; charged attempts preserved",
-  "execution_controls": "One numerical process tree at a time; 120-second diagnostic / 600-second regression process bounds; final 900-second verification reserve; record any necessary additive allocation under this authority prospectively.",
-  "excluded": "Commit, push, release, external-solver qualification and a second requested GPT Astra high-effort review remain outside the adopted delivery plan."
-}

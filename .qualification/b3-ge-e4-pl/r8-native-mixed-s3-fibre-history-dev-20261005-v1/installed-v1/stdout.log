@@ -1,3 +1,0 @@
-.                                                                        [100%]
-1 passed in 16.47s
-{"scope": "Installed all-S3/fibre signed history development, not qualification", "source_parent": "8e9121e1", "test_sha256": "486fe136681f130a4369f71bafa5ecaa27391ccb5fdcec364d61793ecfdab8cf", "fixture_sha256": "bf25a2c7e16172cfbf40df921809371eba28db8ae8f7ada232d655addc4461d5", "pytest_exit_code": 0, "status": "PASSED_S3_FIBRE_REVERSE_RESTART_NOT_QUALIFIED", "case_project_roundtrip": true, "exact_unload_prefix_continue": true, "positive_final_dissipation": true, "equilibrium": 2.053938263472783e-12, "gap": 7.68693268189492e-18, "example_sha256": "614abe876796ac08023ea5bfcf1c6a07dd2c33d2062bcb038823e706ad20fb28"}

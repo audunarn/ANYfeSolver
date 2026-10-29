@@ -1,9 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Users\AudunArnesenNyhus\AppData\Local\Temp\r8-bl5-scalar-lifting-v1\run_case.py", line 114, in <module>
-    result = evaluate()
-  File "C:\Users\AudunArnesenNyhus\AppData\Local\Temp\r8-bl5-scalar-lifting-v1\run_case.py", line 95, in evaluate
-    deficient = [lifting_case(nx, ny, nx, 1) for nx, ny in ((16, 4), (32, 8), (64, 16))]
-                 ~~~~~~~~~~~~^^^^^^^^^^^^^^^
-  File "C:\Users\AudunArnesenNyhus\AppData\Local\Temp\r8-bl5-scalar-lifting-v1\run_case.py", line 57, in lifting_case
-    raise ArithmeticError('preset modal reference budget exceeded')
-ArithmeticError: preset modal reference budget exceeded

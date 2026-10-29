@@ -1,6 +1,0 @@
-{
-  "status": "failed_metadata_premise",
-  "assertion": "source binding count equals429",
-  "actual": 434,
-  "explanation": "429 package files plus five build metadata files; no numerical job or product failure; artifact bytes already matched before assertion"
-}

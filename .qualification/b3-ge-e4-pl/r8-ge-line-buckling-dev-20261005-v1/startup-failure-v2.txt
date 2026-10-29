@@ -1,1 +1,0 @@
-Supervisor-startup failure: v2 runner retained dynamic mode+-v1 suffix; refused to reuse existing source-v1 directory. No child/numerical execution launched. Captured source-v2 preserved. Corrected fresh v3 runner has versioned dynamic suffix and immutable old supervisor path.

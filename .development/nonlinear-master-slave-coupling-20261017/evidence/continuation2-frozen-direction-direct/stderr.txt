@@ -1,7 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Github\ANYsolver\.development\nonlinear-master-slave-coupling-20261017\diagnostics\dc_frozen_direction_probe.py", line 195, in <module>
-    main()
-    ~~~~^^
-  File "C:\Github\ANYsolver\.development\nonlinear-master-slave-coupling-20261017\diagnostics\dc_frozen_direction_probe.py", line 139, in main
-    raise RuntimeError(f"no exhausted admitted search captured; status={result.status}")
-RuntimeError: no exhausted admitted search captured; status=stopped_at_limit

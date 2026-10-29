@@ -1,1 +1,0 @@
-Read-only aggregate v1 raised KeyError json_path for the first historical reused owner. Original v1 source retained; v2 restricts modern JSON path lookup to new owners. No numerical failure or native rerun.

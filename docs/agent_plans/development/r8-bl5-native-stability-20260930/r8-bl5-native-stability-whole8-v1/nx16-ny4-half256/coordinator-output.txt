@@ -1,2 +1,0 @@
-{"exit_code": 0, "status": "passed", "elapsed_seconds": 10.04566239999258, "process_tree_peak_rss_bytes": 196714496, "timeout_seconds": 600, "memory_limit_bytes": 8589934592}
-{"status": "COMPLETED_DEVELOPMENT_ONLY", "beta": 0.8865531822955011, "safe_case_floor": 0.4315772657074615, "elapsed_seconds": 8.12182919998304}

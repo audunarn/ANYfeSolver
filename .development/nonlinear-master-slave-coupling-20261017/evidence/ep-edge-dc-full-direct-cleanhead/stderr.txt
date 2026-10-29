@@ -1,5 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Github\ANYsolver\.development\nonlinear-master-slave-coupling-20261017\diagnostics\ep_edge_coupling.py", line 46, in <module>
-    from anysolver.corotational import build_nonlinear_rotating_mpc_map  # noqa: E402
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-ImportError: cannot import name 'build_nonlinear_rotating_mpc_map' from 'anysolver.corotational' (C:\Users\AudunArnesenNyhus\.gemini\antigravity\brain\4a032924-ea6f-4da7-9771-04d0bdf82a44\scratch\head_wt\src\anysolver\corotational.py)

@@ -1,1 +1,0 @@
-{"stage": "ckpt_probe", "coupling": "direct", "control": "force", "scale": 10000.0, "error": "NonlinearCheckpointError: checkpoint state for element 1 is incompatible"}

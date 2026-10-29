@@ -1,3 +1,0 @@
-.                                                                        [100%]
-1 passed in 16.54s
-{"pytest_exit": 0, "onsite_imports": 210, "case": "test_mixed_s3_staged_j2_history_restart_atomicity_and_plastic_rebase"}

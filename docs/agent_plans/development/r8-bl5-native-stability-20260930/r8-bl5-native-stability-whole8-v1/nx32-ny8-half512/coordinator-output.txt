@@ -1,9 +1,0 @@
-{"exit_code": 1, "status": "failed", "elapsed_seconds": 22.39813369998592, "process_tree_peak_rss_bytes": 288321536, "timeout_seconds": 600, "memory_limit_bytes": 8589934592}
-  File "C:\Users\AudunArnesenNyhus\AppData\Local\Temp\r8-bl5-native-stability-whole8-v1\nx32-ny8-half512\run_case.py", line 98, in evaluate
-    beam_lo, beam_hi, info = beam_bracket(force, moments, length=1., ell=.4,
-                             ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        arm=arm_b, width=.1, subdivisions=subdivision)
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\AudunArnesenNyhus\AppData\Local\Temp\r8-bl5-native-stability-whole8-v1\nx32-ny8-half512\scripts\b3_e4_bl5_reference_accuracy_dev.py", line 42, in beam_bracket
-    raise ArithmeticError('auxiliary inverse action failed')
-ArithmeticError: auxiliary inverse action failed

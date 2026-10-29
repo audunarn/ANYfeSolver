@@ -1,7 +1,0 @@
-Question: can pinned CCX2.23 emit binary64 nodal U/RF for exact balance?
-Existing reduced area Mx/Fy work agreement is within1%, but DAT print bounds cannot certify1e-8 balance.
-Discriminator: unchanged admitted10x4/nz2 Mx geometry/law/load/support; append output-only DOUBLE requests; one serial bounded child600s/2GiB/affinity1/pools1.
-If binary64 framing is confirmed, implement strict reader and validate actual balance against DAT bounds before selecting finest output-only comparison. If unavailable or ambiguous, retain exact output-precision blocker; do not change tolerance, compile solver or automatically refine.
-Not formalF03, qualification or a new physical reference law.
-Primary upstream binary vector writer: https://raw.githubusercontent.com/Dhondtguido/CalculiX/master/src/frdvector.c
-Coarse binary64 checks complete: 557U/37RF, all inside DAT resolution bounds, max raw wrench error2.2951e-10 SI. This is balance evaluated from binary64 output, not exact solver balance. Next ONE serial Mx/Fy pair uses saved40x16/nz4 decks, append-only output requests (verified reversible byte insertion), no model/refinement/criteria change. Frozen fine-binding-v1.json defines 1m length and Mx1N/Fy10N force scales, max component screen1e-8, before either fine solve. Outcome pass resolves output-resolution gap only; fail leaves a numerical-balance blocker. Scientific/independent acceptance stays open. One job at a time,600s/2GiB/affinity1/pools1; no formalF03.

@@ -1,9 +1,0 @@
-Processing c:\users\audunarnesennyhus\appdata\local\temp\r8-b2-callback-close-installed-v2\build-source
-  Preparing metadata (pyproject.toml): started
-  Preparing metadata (pyproject.toml): finished with status 'done'
-Building wheels for collected packages: ANYsolver
-  Building wheel for ANYsolver (pyproject.toml): started
-  Building wheel for ANYsolver (pyproject.toml): finished with status 'done'
-  Created wheel for ANYsolver: filename=anysolver-0.4.7-py3-none-any.whl size=2072930 sha256=0a7532a62f4b03ccc718a391f7a21d571dd917a2f01deac7cb745fee5ba87e8b
-  Stored in directory: C:\Users\AudunArnesenNyhus\AppData\Local\Temp\pip-ephem-wheel-cache-a8kc2r16\wheels\53\4c\ea\4f7e14849835388a3d510ffc0a5bdfd1ec9c04e133e12fc032
-Successfully built ANYsolver

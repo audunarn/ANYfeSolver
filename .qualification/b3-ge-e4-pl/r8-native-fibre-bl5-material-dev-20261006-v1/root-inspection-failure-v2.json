@@ -1,7 +1,0 @@
-{
-  "status": "FAILED_ROOT_INSPECTION",
-  "cause": "Root treated the report wrapper as the report itself; load_factor is inside report.",
-  "repair": "Read report and separately compare its material fields to the observed actual_final record.",
-  "evidence_mismatch_established": false,
-  "numerical_runs": 0
-}

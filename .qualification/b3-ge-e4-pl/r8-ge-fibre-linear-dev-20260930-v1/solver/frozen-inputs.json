@@ -1,7 +1,0 @@
-{
-  "scripts/experimental_stiffened_ge_panel.py": "69dbd8851354d5e76739b564c9896d7adab8fe3e8854c322dbe9c9101e51e60f",
-  "tests/test_stiffened_shell_ge_experimental.py": "27bef342fbd5be4b3569e80f46a873f31975804ca29c47a06717d368dcbca6a1",
-  "tests/test_stiffened_shell_ge_finite_experimental.py": "044f3badfb71657bedf22f10166c39403107fdeff9a69b886d78547f2db4e1ec",
-  "tests/test_stiffened_shell_ge_physical_fibre_linear.py": "15b600d4961a7166c7d7b7cab3006533bca37be5f191ddd5c986df07d8d9accf",
-  "pytest.ini": "578fc1cd12d8d642df8eff41d71d5119626e9f88f21fafadba6b1092ac840a93"
-}

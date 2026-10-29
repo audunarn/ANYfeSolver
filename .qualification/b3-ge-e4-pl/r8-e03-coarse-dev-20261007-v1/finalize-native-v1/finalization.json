@@ -1,7 +1,0 @@
-{
-  "status": "PROVISIONAL_COARSE_PHASE_COMPLETED",
-  "phase": "native",
-  "prior_attempt": "native-v1",
-  "physical_receipt_sha256": "61af33ed06c30e458f8e39100c9032257f5371fabee3bd970a92d3fa57934ce5",
-  "production_qualified": false
-}

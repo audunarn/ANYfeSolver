@@ -1,9 +1,0 @@
-[development] exact targets=1; record=C:\Users\AudunArnesenNyhus\AppData\Local\Temp\anysolver-portable-ci-jmr_n2gc\P01
-[portable-ci] starting P01/01 with 1 modules
-.                                                                        [100%]
-============================ slowest 10 durations =============================
-80.54s call     tests/test_stiffened_shell_distributing_native_reverse_flow.py::test_actual_native_biaxial_reverse_flow_and_restart
-
-(2 durations < 0.005s hidden.  Use -vv to show these durations.)
-1 passed in 84.42s (0:01:24)
-[portable-ci] P01 exit=0

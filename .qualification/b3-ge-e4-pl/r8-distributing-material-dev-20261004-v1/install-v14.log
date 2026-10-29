@@ -1,5 +1,0 @@
-Processing c:\github\anysolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-distributing-material-dev-20261004-v1\dist\anysolver-0.4.7-py3-none-any.whl
-Processing c:\github\anyfem\.worktrees\experimental-ge-panel-consumer\.qualification\stiffened-shell\r8-ge-material-compatibility-dev-20261004-v1\dist\anyfem-0.4.1-py3-none-any.whl
-Installing collected packages: anysolver, anyfem
-
-Successfully installed anyfem-0.4.1 anysolver-0.4.7

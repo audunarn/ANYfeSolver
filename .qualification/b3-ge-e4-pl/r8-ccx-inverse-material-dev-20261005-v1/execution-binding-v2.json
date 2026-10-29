@@ -1,8 +1,0 @@
-{
-  "script_sha256": "c42bfd20f26e926cb6696eedf0a55859b116b4aa5c8095493c0cdc4efc1a1732",
-  "test_sha256": "236532d07657358041ccf7957395dfea08f045d0d4e9fb9e2bc6640f5df630fc",
-  "supervisor_sha256": "ad9947c9268774a980041112004364d4daba6ce884fe339fab9f0d90b265d3ec",
-  "runner_sha256": "4cb4b0a726b6464a47c57ba2845db10d8120d6d98d7dd47613902c982d70bb64",
-  "executable_sha256": "27a9426a1ee2f72c38fbe892e0ffaf38e14867628ffd0235770261b6f3ec9c5f",
-  "scope": "Development inverse discriminator; original force failure and E04/G4D remain open"
-}

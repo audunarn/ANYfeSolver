@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-native-generalized-q4-j2-history-dev-20261005-v1\installed-v1.py", line 9, in <module>
-    raw=Path(__file__).resolve().parent;repo=raw.parents[2];root=raw/'installed-v1';root.mkdir(exist_ok=False)
-                                                                                    ~~~~~~~~~~^^^^^^^^^^^^^^^^
-  File "C:\Python\Python314\Lib\pathlib\__init__.py", line 1011, in mkdir
-    os.mkdir(self, mode)
-    ~~~~~~~~^^^^^^^^^^^^
-FileExistsError: [WinError 183] Cannot create a file when that file already exists: 'C:\\Github\\ANYsolver\\.perf2-worktrees\\stiffened-main-reconcile-20261001\\.qualification\\b3-ge-e4-pl\\r8-native-generalized-q4-j2-history-dev-20261005-v1\\installed-v1'

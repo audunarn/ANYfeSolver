@@ -1,9 +1,0 @@
-{
-  "src/anysolver/_ge_beam3_variational_shell.py": "e03107c5322d50f110a631b2791c293fe85ec46eb95e8337e1e0a71d5ce6cf3d",
-  "src/anysolver/_stiffened_shell_algorithmic_pullback.py": "a2cc5e9f7b31118d0b8b4a3bd5b6957c6dd9ed6686687dfee5a0dd2e4845ad7f",
-  "src/anysolver/_stiffened_shell_q4_algorithmic_pullback.py": "3fb5b0d88835bcf27032c6293df61b75816c37f7a57f00b456ab9742c42a5d85",
-  "src/anysolver/_stiffened_shell_ge_finite_experimental.py": "eb1236fab3e9805cdcbe1cc093fc401773296c17215ea6e5c133400cc657fb42",
-  "src/anysolver/_stiffened_shell_ge_experimental.py": "d091144a4e1cd1ab568739e59702d8f836349d6bfd0a6bfe4dfd7c60d24e2853",
-  "tests/test_stiffened_shell_material_rotation_numerics.py": "44b724a1d614f92d2fa79485e6453d91350001c9f87ac20946f867bb68321f1a",
-  "tests/data/stiffened_shell_material_pre_stable_rotation.bin": "2b05af24b0e67d74d978ce9fae9acaf12e640090b47b980613500b937e0756f8"
-}

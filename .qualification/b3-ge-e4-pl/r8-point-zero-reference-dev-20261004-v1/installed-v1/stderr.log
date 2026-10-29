@@ -1,7 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-point-zero-reference-dev-20261004-v1\probe-installed-v1.py", line 64, in <module>
-    consumer.save_case(panel,directory/'case.json')
-    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-point-zero-reference-dev-20261004-v1\site-v2\anyfem\solve\stiffened_shell.py", line 1496, in save_case
-    raise ValueError(f"experimental GE panel filename must end with {SUFFIX}")
-ValueError: experimental GE panel filename must end with .anyfem-ge.json

@@ -1,9 +1,0 @@
-{
-  "purpose": "Named diagnostic timeout admission for already-authorised unchanged default nx64 analytical pilot; no extra numerical allowance",
-  "authority": "analytical-refinement-extension-authority.json",
-  "script": ".development/nonlinear-master-slave-coupling-20261017/gate-closure-20261019/diagnostics/default_arc_refinement_observer.py",
-  "deadline_utc": "2026-10-19T18:09:38.9092685Z",
-  "attempts": {
-    "default-refinement-n64-e002-a30": 300
-  }
-}

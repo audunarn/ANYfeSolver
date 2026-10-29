@@ -1,9 +1,0 @@
-{
-  "wheel_sha256": "dea651b918e92871ffc017c6a435dd1f265d22e86f9a307d00d12ebd4abfa27b",
-  "modules": {
-    "anysolver/_stiffened_shell_b2_q4_panel_experimental.py": "135d50be413885db93d7360e66b198a2545d135052de2c16e7860dfcfedc02ee",
-    "anysolver/stiffened_shell.py": "6663f0ab2a90c509cfa767befd497f48b33a3b86d9692dde7285a937ed9db3b5"
-  },
-  "site": "C:\\Users\\AudunArnesenNyhus\\AppData\\Local\\Temp\\r8-b2-free-reference-modes-v3\\site",
-  "scope": "unreleased B2 free reference modal development"
-}

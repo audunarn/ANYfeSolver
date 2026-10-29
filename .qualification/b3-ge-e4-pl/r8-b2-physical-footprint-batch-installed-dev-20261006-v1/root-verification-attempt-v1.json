@@ -1,7 +1,0 @@
-{
-  "status": "failed_metadata_assumption",
-  "cause": "expected pytest_override as argv list; inspect actual scalar/string representation before comparison",
-  "consumed_bindings_equal": true,
-  "actual_override": "-o pythonpath=",
-  "no_numerical_rerun": true
-}

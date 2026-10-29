@@ -1,9 +1,0 @@
-{
-  "scope": "Existing native arc approved300s remainder; installed legacy-checkpoint compatibility only",
-  "test_sha256": "ae2566791951c75498384d91a87d5fc520452c7d741264c39a23e563ca3ea53a",
-  "fixture_sha256": "70b162593ee8939aea0755fa20a5d84956da58a435879518aa5e26ad0573f8dc",
-  "cap_seconds": 9,
-  "reserve_seconds": 1,
-  "full_jacobian_executed": false,
-  "prepared_without_runtime": true
-}

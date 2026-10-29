@@ -1,8 +1,0 @@
-{
-  "saved_U_relative_error": 4.1953276548028604e-10,
-  "U_denominator_m": 4.791906441436734e-07,
-  "saved_internal_relative_error": 4.0699540221882284e-10,
-  "internal_denominator_N": 29.53937594613013,
-  "saved_RF_matches_internal_root_max": 2.5774937739697634e-11,
-  "interpretation": "DEV reconstruction of same strong body operator; not external accuracy or equality of raw RF and physical support"
-}

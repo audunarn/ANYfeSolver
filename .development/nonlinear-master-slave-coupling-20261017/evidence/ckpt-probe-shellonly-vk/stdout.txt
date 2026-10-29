@@ -1,1 +1,0 @@
-{"stage": "ckpt_probe", "coupling": "none", "control": "force", "scale": 10000.0, "kin": "von_karman", "status": "completed", "checkpoint_emitted": true}

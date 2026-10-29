@@ -1,7 +1,0 @@
-{
-  "status": "APPROVED",
-  "total_seconds": 120,
-  "approval_evidence": "Human message 2026-10-06: I approve, responding to pending120-second Jacobian and150-second consumer requests; apply separately, no added scope",
-  "request": "Fresh common-origin full native BL5 Jacobian/repair/final verification; existing wheel and saved checkpoint; 20s final reserve,2GiB,affinity0,pools1,JIToff,one numerical job; no build/consumer/F03/body/main/release",
-  "runtime_launched": false
-}

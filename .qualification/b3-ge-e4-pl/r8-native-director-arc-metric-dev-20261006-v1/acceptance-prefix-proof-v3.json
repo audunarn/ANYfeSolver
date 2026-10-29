@@ -1,8 +1,0 @@
-{
-  "prefix_bytes": 295439,
-  "before_sha256": "e5fffe835b8adb77b65666cfb1b8daa306a8c2159e76d57d470b42f96d38dba9",
-  "preserved_prefix_sha256": "e5fffe835b8adb77b65666cfb1b8daa306a8c2159e76d57d470b42f96d38dba9",
-  "appended_bytes": 1685,
-  "repair": "LF-only new suffix after diff-check detected final CR; historical prefix untouched",
-  "numerical_seconds_used": 0
-}

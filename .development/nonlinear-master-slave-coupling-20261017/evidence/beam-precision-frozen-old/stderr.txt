@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Github\ANYsolver\.development\nonlinear-master-slave-coupling-20261017\diagnostics\beam_precision_probe.py", line 162, in <module>
-    main()
-    ~~~~^^
-  File "C:\Github\ANYsolver\.development\nonlinear-master-slave-coupling-20261017\diagnostics\beam_precision_probe.py", line 131, in main
-    dofs = model.mesh.dof_manager.get_element_dofs(element.node_ids)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AttributeError: 'DOFManager' object has no attribute 'get_element_dofs'. Did you mean: 'get_free_dofs'?

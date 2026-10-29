@@ -1,7 +1,0 @@
-{
-  "commit": "26640171a5da373e5afeb32c57a8d6df2aa8bd34",
-  "files": {
-    "src/anysolver/_stiffened_shell_ge_experimental.py": "c9477655cd4fb5a6339d8ea6bd2cc772dfc81a5dfe32b4e8fff7e5258df63d8b",
-    "tests/test_stiffened_shell_ge_mixed_reference_modal.py": "2d1f60f1c5941c518208eca77776eec415b3b253cfeb354dfdf1574dd6d4f34f"
-  }
-}

@@ -1,9 +1,0 @@
-============================= test session starts =============================
-platform win32 -- Python 3.13.9, pytest-9.0.1, pluggy-1.6.0 -- C:\Github\ANYsolver\.venv\Scripts\python.exe
-rootdir: C:\Github\ANYsolver
-configfile: pyproject.toml
-collecting ... collected 5 items / 4 deselected / 1 selected
-
-tests/test_nonlinear_beam_shell_slice3_precision.py::test_centered_beam_pullback_and_force_tangent_differentiate_same_state PASSED [100%]
-
-======================= 1 passed, 4 deselected in 1.66s =======================

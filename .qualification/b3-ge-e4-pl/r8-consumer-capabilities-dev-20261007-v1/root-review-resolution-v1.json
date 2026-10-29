@@ -1,9 +1,0 @@
-{
-  "status": "SUPPORTING_REVIEW_FINDING_RESOLVED",
-  "finding": "Stale unverified/unrun documentation",
-  "resolution": "Original author updated only consumer development documentation; root inspected diff",
-  "document_sha256": "ff0df9a0fd848c7c247354285bdc8fa86356f71199c28e6ff30ec07a3c6d4976",
-  "preparation_error": "Archive lookup initially used input-copy instead of actual input-copies; no numerical process launched; existing files preserved",
-  "no_repeated_campaign": true,
-  "different_family_acceptance": false
-}

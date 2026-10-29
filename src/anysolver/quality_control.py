@@ -31,6 +31,26 @@ from .mesh_gen import generate_simple_panel_mesh, generate_beam_mesh, PanelGeome
 from .results import FEResult, create_fe_result
 
 
+def _make_qc_serializable(obj: Any, recurse: Callable[[Any], Any]) -> Any:
+    """Recursively make object JSON serializable."""
+    if isinstance(obj, dict):
+        return {k: recurse(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [recurse(item) for item in obj]
+    elif isinstance(obj, tuple):
+        return list(recurse(item) for item in obj)  # Convert tuple to list
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, np.number):
+        return float(obj)
+    elif isinstance(obj, (bool, np.bool_)):
+        return bool(obj)  # Convert numpy bool to Python bool
+    elif isinstance(obj, (int, float, str)):
+        return obj
+    else:
+        return str(obj)
+
+
 @dataclass
 class QCConfig:
     """Configuration for quality control tests."""
@@ -84,22 +104,7 @@ class QCResult:
 
     def _make_serializable(self, obj: Any) -> Any:
         """Recursively make object JSON serializable."""
-        if isinstance(obj, dict):
-            return {k: self._make_serializable(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [self._make_serializable(item) for item in obj]
-        elif isinstance(obj, tuple):
-            return list(self._make_serializable(item) for item in obj)  # Convert tuple to list
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        elif isinstance(obj, np.number):
-            return float(obj)
-        elif isinstance(obj, (bool, np.bool_)):
-            return bool(obj)  # Convert numpy bool to Python bool
-        elif isinstance(obj, (int, float, str)):
-            return obj
-        else:
-            return str(obj)
+        return _make_qc_serializable(obj, self._make_serializable)
 
 
 @dataclass
@@ -146,22 +151,7 @@ class QCReport:
 
     def _make_serializable(self, obj: Any) -> Any:
         """Recursively make object JSON serializable."""
-        if isinstance(obj, dict):
-            return {k: self._make_serializable(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [self._make_serializable(item) for item in obj]
-        elif isinstance(obj, tuple):
-            return list(self._make_serializable(item) for item in obj)  # Convert tuple to list
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        elif isinstance(obj, np.number):
-            return float(obj)
-        elif isinstance(obj, (bool, np.bool_)):
-            return bool(obj)  # Convert numpy bool to Python bool
-        elif isinstance(obj, (int, float, str)):
-            return obj
-        else:
-            return str(obj)
+        return _make_qc_serializable(obj, self._make_serializable)
 
     def save(self, filename: str):
         """Save report to JSON file."""

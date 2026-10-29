@@ -1,5 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-distributing-my-dev-20261004-v1\recheck.py", line 6, in <module>
-    pools=threadpool_info();assert pools and all(p['num_threads']==1 for p in pools)
-                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError

@@ -1,9 +1,0 @@
-Processing c:\users\auduna~1\appdata\local\temp\r8-b2-consumer-mass-v2-installed\anyfem-build-source
-  Preparing metadata (pyproject.toml): started
-  Preparing metadata (pyproject.toml): finished with status 'done'
-Building wheels for collected packages: ANYfem
-  Building wheel for ANYfem (pyproject.toml): started
-  Building wheel for ANYfem (pyproject.toml): finished with status 'done'
-  Created wheel for ANYfem: filename=anyfem-0.4.1-py3-none-any.whl size=517645 sha256=ff143e5fece9dd4cec261aa69edbec03acc801d3d0bbfcb90cea7519d814f0c0
-  Stored in directory: C:\Users\AudunArnesenNyhus\AppData\Local\Temp\pip-ephem-wheel-cache-o0hw9xfz\wheels\58\05\c6\65b4b4450096349e98866d2868c8a168dff3c1bed182a66bc0
-Successfully built ANYfem

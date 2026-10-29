@@ -1,9 +1,0 @@
-Processing c:\users\auduna~1\appdata\local\temp\r8-q4-pullback-installed-v1\anyfem-build-source
-  Preparing metadata (pyproject.toml): started
-  Preparing metadata (pyproject.toml): finished with status 'done'
-Building wheels for collected packages: ANYfem
-  Building wheel for ANYfem (pyproject.toml): started
-  Building wheel for ANYfem (pyproject.toml): finished with status 'done'
-  Created wheel for ANYfem: filename=anyfem-0.4.1-py3-none-any.whl size=517116 sha256=12bb56472b5054138a8415a493d98774138a3a4dc8854f791e9753afeab957f0
-  Stored in directory: C:\Users\AudunArnesenNyhus\AppData\Local\Temp\pip-ephem-wheel-cache-_wq6fn00\wheels\d3\a4\8a\569f511a43c903869fe828effe2a2f2ed03f7fb167ecd8a1e8
-Successfully built ANYfem

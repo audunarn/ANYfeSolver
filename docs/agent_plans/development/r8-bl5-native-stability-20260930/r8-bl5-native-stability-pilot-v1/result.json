@@ -1,7 +1,0 @@
-{
-  "status": "COMPLETED_DEVELOPMENT_ONLY",
-  "predicates": {
-    "reference_error": true,
-    "inverse_residual": true,
-    "eigen_residual": true,
-    "gram_symmetry": 

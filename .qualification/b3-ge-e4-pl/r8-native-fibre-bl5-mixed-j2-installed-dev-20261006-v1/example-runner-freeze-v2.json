@@ -1,9 +1,0 @@
-{
-  "files": {
-    "example-entry-v2.py": "a7e5368636b838c93da3ec6ce0a6030fa5836decd97123db040667aa03895dc1",
-    "launch-example-v2.py": "b6e619075b48907b122ff873b53278f8457ebd838cb17e0a7d55ccd4a7e33589"
-  },
-  "supervisor_sha256": "ad9947c9268774a980041112004364d4daba6ce884fe339fab9f0d90b265d3ec",
-  "supervisor_function_sha256": "3ce31bbf4a9b92686aba826b38ae18d77c4df012e50a35c4dfb956fac69a6f6c",
-  "wmi_sha256": "a299a6caf7241cebb0081c3ed9e98f815c61feee3e4813c1fd32369bd3fe6f5e"
-}

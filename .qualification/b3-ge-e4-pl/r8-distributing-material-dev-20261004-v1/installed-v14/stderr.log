@@ -1,4 +1,0 @@
-ERROR: found no collectors for C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\tests\test_stiffened_shell_curved_material_checkpoint.py::test_restored_fixed_predecessor_residual_and_tangent
-
-ERROR: found no collectors for C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\tests\test_stiffened_shell_curved_material_checkpoint.py::test_predecessor_checkpoint_requires_matching_policy_and_material
-

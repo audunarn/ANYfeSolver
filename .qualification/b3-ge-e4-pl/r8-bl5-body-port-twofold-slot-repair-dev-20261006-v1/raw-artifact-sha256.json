@@ -1,8 +1,0 @@
-{
-  "authoritative-slot-source.json": "bd8261d5aab3c844e749ef5b6db1c9d4bf6d6ca1b8aa0e1f0fd3f3e3d2c70295",
-  "handoff.json": "fb5b0e5214029a39e5f6b850e26cd9b1239d535199067e7f9db5fbc65f2164e3",
-  "preservation.json": "01e670a1183106be16abf71d7f3ee5dfaf76b313bd7c4bde31516b89a71dfd20",
-  "source/docs/reference_cases/stiffened_shell_bl5_body_port_twofold_workflow.md": "3e72e9fb33b5f3bb669022591df040bda8258adb3a049a2085d372b9a6a74e12",
-  "source/scripts/r8_bl5_body_port_twofold_workflow.py": "a0dfea5ebf0a1ca93f43d028122e54d5aff2bfb0e7d24c99327bad6d0c15c3cb",
-  "source/tests/test_r8_bl5_body_port_twofold_workflow.py": "bb5c3d5d80b1e42a8c994200b7cd7efd42de2ac135ee5d500e8da699047749f4"
-}

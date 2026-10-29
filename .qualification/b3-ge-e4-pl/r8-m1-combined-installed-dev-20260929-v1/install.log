@@ -1,8 +1,0 @@
-Processing c:\github\anysolver\.perf2-worktrees\b3-ge-e4-pl-coupling\.qualification\b3-ge-e4-pl\r8-m1-combined-installed-dev-20260929-v1\solver-dist\anysolver-0.4.7-py3-none-any.whl
-Processing c:\github\anysolver\.perf2-worktrees\b3-ge-e4-pl-coupling\.qualification\b3-ge-e4-pl\r8-m1-combined-installed-dev-20260929-v1\consumer-dist\anyfem-0.4.1-py3-none-any.whl
-Installing collected packages: anysolver, anyfem
-
-Successfully installed anyfem-0.4.1 anysolver-0.4.7
-
-[notice] A new release of pip is available: 25.3 -> 26.2.1
-[notice] To update, run: C:\Github\ANYsolver\.perf2-worktrees\b3-ge-e4-pl-coupling\.venv\Scripts\python.exe -m pip install --upgrade pip

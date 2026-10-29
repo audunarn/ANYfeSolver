@@ -1,6 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\scripts\r8_bl5_projected_envelope_norm_dev.py", line 361, in <module>
-    result = register(case_from_id(args.fixture_case), args.output)
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\scripts\r8_bl5_projected_envelope_norm_dev.py", line 267, in register
-    raise ArithmeticError('preset independent shell reference budget exhausted')
-ArithmeticError: preset independent shell reference budget exhausted

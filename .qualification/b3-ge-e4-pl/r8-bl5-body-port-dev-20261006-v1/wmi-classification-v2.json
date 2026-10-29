@@ -1,8 +1,0 @@
-{
-  "scope": "Exact prior Python314 WMI support classification, numerical/unresolved ceiling remains1",
-  "path": "C:\\Python\\Python314\\DLLs\\_wmi.pyd",
-  "sha256": "a299a6caf7241cebb0081c3ed9e98f815c61feee3e4813c1fd32369bd3fe6f5e",
-  "primary_source": "https://raw.githubusercontent.com/python/cpython/3.14/PC/_wmimodule.cpp",
-  "source_symbols": "_query_thread; COM/WMI query",
-  "raw_total_support_counts": "All immutable sampled records retained"
-}

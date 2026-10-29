@@ -1,8 +1,0 @@
-{
-  "exit_code": 1,
-  "failure": null,
-  "elapsed_seconds": 25.7063363,
-  "sampled_peak_bytes": 168435712,
-  "timeout_seconds": 600,
-  "memory_limit_bytes": 1073741824
-}

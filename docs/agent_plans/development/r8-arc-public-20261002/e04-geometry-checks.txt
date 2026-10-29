@@ -1,4 +1,0 @@
-Development source check only.
-Command: Python314 run-root.py e04-geometry-v2 test_stiffened_shell_e04_geometry.py
-....                                                                     [100%]
-4 passed in 1.56s

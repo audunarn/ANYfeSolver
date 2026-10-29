@@ -1,5 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-native-fibre-bl5-dev-20261005-v1\installed-entry-v1.py", line 35, in <module>
-    assert code==0,'installed focused regressions failed'
-           ^^^^^^^
-AssertionError: installed focused regressions failed

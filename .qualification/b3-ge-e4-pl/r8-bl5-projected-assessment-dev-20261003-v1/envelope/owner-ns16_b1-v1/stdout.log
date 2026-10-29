@@ -1,1 +1,0 @@
-{"status": "COMPLETED_INSTALLED_DEVELOPMENT_ONLY", "fixture_case": "ns16_b1", "counts": {"shell_nodes": 85, "beam_nodes": 33, "physical_dofs": 708, "members": 16, "retained_cell_rotations": 96, "retained_resultants": 288, "retained_dofs": 384, "full_q": 1092, "multipliers": 40}}

@@ -1,9 +1,0 @@
-{
-  "status": "ok",
-  "load_factors": [
-    24.60872920125391
-  ],
-  "failure_reason": null,
-  "policy": "B2_PHYSICAL_REFERENCE_GREEN_POINT_BUCKLING_V1_DEV",
-  "production_qualified": false
-}

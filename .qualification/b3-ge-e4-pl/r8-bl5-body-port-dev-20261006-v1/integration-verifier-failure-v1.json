@@ -1,8 +1,0 @@
-{
-  "status": "FAILED_ROOT_INSPECTION",
-  "exit_code": 1,
-  "failed_assertion": "test_saved_identity_and_body_work prerequisite_function_sha256",
-  "cause": "Root hashed ast.dump while the author binding hashes ast.get_source_segment. AST equality had passed. This is a verifier serialization mismatch, not a scientific rerun or changed evidence.",
-  "repair": "Use the original source-segment hashing contract and retain AST equality as an additional independent comparison.",
-  "numerical_jobs": 0
-}

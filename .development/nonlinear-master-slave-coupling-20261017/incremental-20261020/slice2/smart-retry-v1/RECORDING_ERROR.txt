@@ -1,1 +1,0 @@
-Metadata-only first finalizer used preflight key threadpools instead of terminal key effective_pools. It failed before writing acceptance records; corrected using the actual terminal runtime schema. No numerical process or budget change.

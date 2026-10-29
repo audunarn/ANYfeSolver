@@ -1,4 +1,0 @@
-Supporting Read review nonlinear_external_scope_audit, not implementation owner or different-family acceptance.
-Exact SPRING2 reduced axial elasticity permitted; preserve actual offset nodes and no initial-force law. Reduced coordinates omit measured port/rotational support wrench.
-Require consecutive absolute targets/history, actual expanded CPS4 sigma_zz and uniform total/mechanical strain, initial plane-stress modulus, actual monotone positive PEEQ below.01, exact equation/SPC handling, complete output and correct rounding bounds. Root reactions versus external forces must not double count MPC output. Endpoint virtual work is not cumulative plastic energy.
-No numerical execution by reviewer.

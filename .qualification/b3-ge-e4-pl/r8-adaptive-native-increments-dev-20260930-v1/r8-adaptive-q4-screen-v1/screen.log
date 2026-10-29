@@ -1,1 +1,0 @@
-{"case": "q4", "status": "nonconverged", "failure": "adaptive increment cutback limit", "accepted_factors": [0.0625], "work": {"evaluations": 297, "linear_solves": 38, "rejected_trials": 225}}

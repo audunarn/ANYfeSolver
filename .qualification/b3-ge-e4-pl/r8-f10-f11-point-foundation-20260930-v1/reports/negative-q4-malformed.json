@@ -1,6 +1,0 @@
-{
-  "case": "q4-malformed",
-  "rejected": true,
-  "exception": "ValueError",
-  "message": "three or four shell vertices required"
-}

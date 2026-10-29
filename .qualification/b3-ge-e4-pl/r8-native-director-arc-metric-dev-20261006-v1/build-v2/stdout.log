@@ -1,9 +1,0 @@
-Processing c:\github\anysolver\.perf2-worktrees\stiffened-main-reconcile-20261001
-  Preparing metadata (pyproject.toml): started
-  Preparing metadata (pyproject.toml): finished with status 'done'
-Building wheels for collected packages: ANYsolver
-  Building wheel for ANYsolver (pyproject.toml): started
-  Building wheel for ANYsolver (pyproject.toml): finished with status 'done'
-  Created wheel for ANYsolver: filename=anysolver-0.4.7-py3-none-any.whl size=2288474 sha256=6464174eb675c4eafd72f01a8ac707bb44d39946c5a7919126e316bc148a63c7
-  Stored in directory: C:\Users\AudunArnesenNyhus\AppData\Local\Temp\pip-ephem-wheel-cache-tcbz9co3\wheels\e7\36\7c\a1f6915f0b33181e0bb9234006646488c3d18a7f5ad544fe7f
-Successfully built ANYsolver

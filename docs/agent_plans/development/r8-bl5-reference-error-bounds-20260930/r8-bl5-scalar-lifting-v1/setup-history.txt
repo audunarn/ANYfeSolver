@@ -1,1 +1,0 @@
-Initial exec process failed before launching commands: requested workdir did not exist. Recovered by creating TEMP fixture from existing worktree. No numerical process ran in failed attempt.

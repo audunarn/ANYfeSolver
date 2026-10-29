@@ -1,9 +1,0 @@
-{
-  "exit_code": 0,
-  "status": "passed",
-  "process_tree_peak_rss_bytes": 174460928,
-  "elapsed_seconds": 18.699146000028122,
-  "timeout_seconds": 600,
-  "memory_limit_bytes": 8589934592,
-  "case": "test_mixed_s3_staged_j2_history_restart_atomicity_and_plastic_rebase"
-}

@@ -1,1 +1,0 @@
-{"stage":"wheel payload hash verification","type":"KeyError","cause":"Windows path separator passed to ZIP member lookup for src\\anysolver\\activity.py","effect":"No handoff or manifest written; no solver or artifact modification","repair":"Normalize binding path to ZIP forward slash before lookup"}

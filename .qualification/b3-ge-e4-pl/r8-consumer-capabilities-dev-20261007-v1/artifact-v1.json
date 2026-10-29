@@ -1,9 +1,0 @@
-{
-  "candidate": "0acbef031b34133104ddf07312fcec163c840f03",
-  "wheel": "C:\\Github\\ANYsolver\\.perf2-worktrees\\stiffened-main-reconcile-20261001\\.qualification\\b3-ge-e4-pl\\r8-consumer-capabilities-dev-20261007-v1\\wheel-v1\\anysolver-0.4.7-py3-none-any.whl",
-  "wheel_sha256": "fa5507fe14cc09949743adb7d5ae340a2499d9b813d6b80a1b7d4ea414267e82",
-  "site": "C:\\Github\\ANYsolver\\.perf2-worktrees\\stiffened-main-reconcile-20261001\\.qualification\\b3-ge-e4-pl\\r8-consumer-capabilities-dev-20261007-v1\\site-v1",
-  "source_manifest_sha256": "ed5bc110b5b96e6aae4d1958e3620a120bc86701018ed4c1ce7c383e93440ff4",
-  "package_modules": 431,
-  "state": "BUILT_INSTALLED_NOT_VERIFIED"
-}

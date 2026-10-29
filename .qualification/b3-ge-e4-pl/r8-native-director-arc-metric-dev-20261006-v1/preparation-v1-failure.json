@@ -1,7 +1,0 @@
-{
-  "status": "PREPARATION_FAILED",
-  "cause": "Nonexistent examples/stiffened_shell_native_fibre_bl5_mixed_j2.py and nonterminating PowerShell copy/hash errors",
-  "python_launched": false,
-  "verification_seconds_used": 0,
-  "partial_v1_preserved": true
-}

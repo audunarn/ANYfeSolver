@@ -1,6 +1,0 @@
-{
-  "status": "FAILED_ROOT_INSPECTION",
-  "cause": "Manifest values are bytes/sha256 records; root initially compared digest to whole record.",
-  "evidence_mismatch_established": false,
-  "numerical_runs": 0
-}

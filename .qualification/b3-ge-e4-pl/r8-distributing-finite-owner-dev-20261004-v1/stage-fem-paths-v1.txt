@@ -1,5 +1,0 @@
-.gitattributes
-src/anyfem/solve/stiffened_shell.py
-tests/test_stiffened_shell_ge_reference_modal_consumer.py
-tests/test_stiffened_shell_ge_distributing_consumer.py
-docs/development/r8-ge-finite-distributing-compatibility-20261004.md

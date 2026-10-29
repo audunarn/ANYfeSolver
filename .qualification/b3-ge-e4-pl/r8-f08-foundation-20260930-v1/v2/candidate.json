@@ -1,6 +1,0 @@
-{
-  "source_commit": "a95f46e8c3ba23497c9c9f86572cf0e19d49ba0a",
-  "product_commit": "227d5ea833231eddf306080cf787ec77fd2fb1bb",
-  "contract_sha256": "4fc564a98d4c6fcbd64a8a073f9b4a951e4ccc7a4598525ed7ddc0b23626e70c",
-  "provenance_note": "Snapshot existed before launch; initial candidate metadata command failed git ownership, known committed identity recorded during execution. No fixture, runner, or snapshot changed."
-}

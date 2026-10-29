@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Users\AudunArnesenNyhus\AppData\Local\Temp\r8-bl5-projected-norm-v1\scalar.py", line 21, in <module>
-    from scripts.b3_e4_bl5_reference_actions_dev import integrated_p1
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\scripts\b3_e4_bl5_reference_actions_dev.py", line 22, in <module>
-    from scripts.b3_e4_bl5_coherent_aggregation_dev import model
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\scripts\b3_e4_bl5_coherent_aggregation_dev.py", line 16, in <module>
-    from test_stiffened_shell_l1_assembly_experimental import _bl5_joint_mesh_definition
-ModuleNotFoundError: No module named 'test_stiffened_shell_l1_assembly_experimental'

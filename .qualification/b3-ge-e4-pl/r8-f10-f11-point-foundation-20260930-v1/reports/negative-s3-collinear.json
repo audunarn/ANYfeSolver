@@ -1,6 +1,0 @@
-{
-  "case": "s3-collinear",
-  "rejected": true,
-  "exception": "ValueError",
-  "message": "finite noncollinear shell point support required"
-}

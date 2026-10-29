@@ -1,7 +1,0 @@
-{
-  "status": "FAILED_PREPARED_DECK_BYTE_BINDING",
-  "expected": "54d72909717c07a82bdd4bb70e87b5084a402e529e60ba1a4576b86d99c0b154",
-  "actual": "7da2c4efb6acbc1f4181643536cef3015f12936b18ff195cb826c2d670f935e9",
-  "cause": "Windows text output translated LF to CRLF; no external execution",
-  "file": "prepared-v1/released.inp"
-}

@@ -1,6 +1,0 @@
-{
-  "type": "TypeError",
-  "message": "Object of type int64 is not JSON serializable",
-  "observed": [],
-  "attempts": []
-}

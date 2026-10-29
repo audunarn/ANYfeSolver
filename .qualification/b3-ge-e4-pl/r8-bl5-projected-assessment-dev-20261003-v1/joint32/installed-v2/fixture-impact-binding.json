@@ -1,8 +1,0 @@
-{
-  "test_stiffened_shell_curved_reference_seam.py": "aa27a11ded5e18d3a0910de5752740cb15805c2421164a2123b1023df283dfcc",
-  "test_stiffened_shell_ge_experimental.py": "9562db7de7f68ade267c21731b81c1dc62dd3d4065a927bdd6c8bce6cefe85e9",
-  "test_stiffened_shell_ge_finite_experimental.py": "482e53fd2f16031037d50a40cca159b509be3c4ba45573fb3523ed939820323a",
-  "test_stiffened_shell_ge_physical_fibre_finite.py": "e27851d0b07ba9caaeac1256283bee82a8420c987ed16abe538b139417ae71e4",
-  "test_stiffened_shell_ge_physical_fibre_linear.py": "4979ef4a7f107cbe15d8cdadd163943172057e27cd7bba4ea2116da7f2977186",
-  "test_stiffened_shell_nodal_rigid_footprint.py": "154ea911ee995eb320232c6bd0a2d0899044e2028b2ac88ae0eda9a41bfe7b83"
-}

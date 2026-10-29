@@ -1,1 +1,0 @@
-Bundled runtime startup failed before child launch: ModuleNotFoundError: No module named psutil. Command: C:/Users/AudunArnesenNyhus/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe focused-v1.py. Existing successful source-v4 runtime is C:/Python/Python314/python.exe; retry uses that effective dependency runtime with unchanged selectors and limits.

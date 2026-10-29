@@ -1,9 +1,0 @@
-{
-  "stopped_owned_pid": 46576,
-  "owned_processes": [
-    46576,
-    17416
-  ],
-  "reason": "Repeated inspection-only work after explicit code-first continuation; no implementation or numerical jobs",
-  "preserved_log": "C:/ANYworkspaceWork/beam-shell-incremental-slice2-20261020/MISTRAL_IMPLEMENT.log"
-}

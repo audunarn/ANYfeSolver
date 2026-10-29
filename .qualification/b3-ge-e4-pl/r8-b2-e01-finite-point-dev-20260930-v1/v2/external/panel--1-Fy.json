@@ -1,9 +1,0 @@
-{
-  "case": "panel--1-Fy",
-  "status": "FAILED",
-  "component": 1,
-  "magnitude": 1000.0,
-  "panel_sign": -1,
-  "solver_code": -3,
-  "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\AudunArnesenNyhus\\AppData\\Local\\Temp\\r8-b2-e01-finite-point-v2\\b2_e01_opensees_finite_point.py\", line 464, in main\n    else: panel_case(ops, record, model, component, magnitude)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\AudunArnesenNyhus\\AppData\\Local\\Temp\\r8-b2-e01-finite-point-v2\\b2_e01_opensees_finite_point.py\", line 333, in panel_case\n    raise RuntimeError('external panel solve failed')\nRuntimeError: external panel solve failed\n"
-}

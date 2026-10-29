@@ -1,9 +1,0 @@
-OpenAI Read development review /root/q4_correction_review, source-only; no jobs or edits.
-Finding: initial helper eligibility sliced rows and iterated the outer Sequence, whereas
-original matmul uses integer indexing. Integer-only rows can raise and a reversed
-custom iterator can reorder output. Production call sites use generated lists.
-Correction: fast admission restricted to exact builtin list/tuple outer and rows;
-custom Sequences route to indexed generic matmul. Both counterexample regressions added.
-Final delta review: both findings closed; no remaining finding in this delta.
-Arithmetic order, ownership and work formulas otherwise appeared preserved.
-Not different-family scientific acceptance; numerical/performance claims from run data only.

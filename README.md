@@ -5,6 +5,10 @@ shell, stiffened-panel, and cylindrical-shell analysis. It is an engineering
 solver with an explicit qualification scope, not a general-purpose CAD,
 contact, or fracture platform.
 
+Start with the [documentation guide](docs/README.md) and
+[current development status](docs/STATUS.md) for maintained entry points,
+recent integrations, open limits and the historical evidence map.
+
 Install the released package with:
 
 ```powershell
@@ -116,6 +120,8 @@ and release gates.
 | Loads | Nodal force/moment, dead or current-area follower shell pressure, in-plane edge loads, acceleration/gravity, prescribed displacement, load combinations, proportional and staged nonlinear loads. Follower pressure includes its exact, generally nonsymmetric external-load tangent. |
 | Linear analysis | Static single- and multiple-RHS solves, reactions and MPC-force diagnostics, free-free rigid-body nullspace handling, sparse factorization reuse, and post-solve affine-constraint residual checks. |
 | Modal and mass | Consistent mass assembly, point masses, model mass/inertia properties, constrained and free-free vibration modes. |
+| Attached mass and free-body statics | [Concentrated rigid mass and inertia](docs/concentrated_mass.md), including offset coupling, and [linear inertia relief](docs/INERTIA_RELIEF.md) for the admitted connected free-free domain. |
+| Floating-body development | [Six-DOF frequency response and fixed-step transient wind-thrust feedback](docs/FLOATING_RESPONSE.md), with neutral numerical inputs, pressure-region loads and explicit small-rotation limits. Development evidence does not establish general marine qualification. |
 | Buckling | Linear eigenvalue buckling for beam axial force and shell Mindlin initial-stress resultants, including sparse shift-invert and repeated-mode diagnostics. A follower-load stiffness can be included when its constrained tangent is symmetric; a general nonsymmetric follower eigenproblem is outside scope. |
 | Nonlinear static | Incremental Newton solution, adaptive stepping, force or displacement control, dead or follower pressure, von Karman or opt-in corotational kinematics, rotated or consistent corotational tangent, layered shell J2 or orthotropic Hill-48 plasticity with safeguarded local solves and consistent tangents, beam fiber plasticity, stage-boundary commits, true preload/restart displacement control, and simplified element erosion. |
 | Continuation | Bounded Crisfield-style spherical arc-length tracing through a first limit point and a guarded descending branch, including current-area follower pressure and its load tangent. |
@@ -266,6 +272,8 @@ the generated production-scope artifacts before production use.
 
 ## Documentation map
 
+- [Documentation guide](docs/README.md): topic navigation and retained evidence locations.
+- [Current status](docs/STATUS.md): integrated source, dated verification and open follow-ups.
 - [`ARCHITECTURE.md`](docs/ARCHITECTURE.md): package boundaries, analysis flow, and
   invariants.
 - [`THEORY.md`](docs/THEORY.md): implemented formulations and validity limits.
@@ -273,13 +281,13 @@ the generated production-scope artifacts before production use.
 - [`NONLINEAR_PERFORMANCE.md`](docs/NONLINEAR_PERFORMANCE.md): nonlinear assembly,
   sparse backend, threading, and diagnostics.
 - [`QUALITY_CONTROL.md`](docs/QUALITY_CONTROL.md): verification commands, evidence
-  hierarchy, and current checked status.
+  hierarchy, and development/integration/release boundaries.
 - [`reference_cases/README.md`](docs/reference_cases/README.md):
   local CalculiX/PrePoMax reference-case layout.
 - [`MIGRATION.md`](MIGRATION.md): source provenance, inclusion boundary, and
   import changes.
 - [`extract_mat_mesh_io_performance_review.md`](reports/extract_mat_mesh_io_performance_review.md):
-  current extraction, assembly, nonlinear, MPC and buckling performance evidence.
+  dated extraction, assembly, nonlinear, MPC and buckling performance evidence.
 ## Basic verification
 
 Linear free-free accelerating-frame statics is available through

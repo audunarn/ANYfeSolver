@@ -1,6 +1,0 @@
-{
-  "micro_v1": "3FAILED/4PASS: two exact analytic-value test overclaims beyond unchanged1e-8; anticipated1e-200 failure contradicted by actual solved control. Executed4096digits, early80digitreview not executed.",
-  "micro_v2": "1FAILED/9PASS: Decimal unarynegation assertion at default28precision; algorithm/exactdyadiccore checks passed. Exact copy_negate test repair.",
-  "micro_v3": "1PASS affected support assertion only; unchanged nine prior passes reused by impact; no whole final file run.",
-  "preserved": "executed snapshots, stdout/stderr, failed results/resources retained; no specimen failures replayed"
-}

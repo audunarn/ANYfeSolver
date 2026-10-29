@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\scripts\r8_bl5_projected_mixed_system_dev.py", line 20, in <module>
-    from scripts.b3_e4_bl5_mechanical_kernel_dev import relative, norm2, lower_completion_difference
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\scripts\b3_e4_bl5_mechanical_kernel_dev.py", line 24, in <module>
-    from scripts.b3_e4_bl5_coherent_aggregation_dev import model, LOADS, physical_transfer
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\scripts\b3_e4_bl5_coherent_aggregation_dev.py", line 16, in <module>
-    from test_stiffened_shell_l1_assembly_experimental import _bl5_joint_mesh_definition
-ModuleNotFoundError: No module named 'test_stiffened_shell_l1_assembly_experimental'

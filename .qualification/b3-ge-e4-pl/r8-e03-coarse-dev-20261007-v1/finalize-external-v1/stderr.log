@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-e03-coarse-dev-20261007-v1\entry-v1.py", line 253, in <module>
-    result = screen.finish_screen(prepared, receipt=receipt, raw=raw)
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\scripts\r8_e03_coarse_screen.py", line 184, in finish_screen
-    result = parse_result(case, metadata, raw["frd"], raw["sta"], raw["stdout"], raw["stderr"], receipt)
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\scripts\r8_e03_curved_reference.py", line 409, in parse_result
-    raise ReferenceParseError("physical common-origin force/moment balance failed")
-scripts.r8_e02_rigid_tip_reference.ReferenceParseError: physical common-origin force/moment balance failed

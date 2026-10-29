@@ -1,2 +1,0 @@
-C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-native-mixed-j2-displacement-diagnosis-20261005-v1\linear-check-v1.py:41: SparseEfficiencyWarning: splu converted its input to CSC format
-  factor=splu(sparse.diags(row_scale)@border@sparse.diags(col_scale) if scaled else border)

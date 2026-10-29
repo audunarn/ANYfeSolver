@@ -1,1 +1,0 @@
-{"status": "PASSED_NATIVE_AUXILIARY_BETA_DEVELOPMENT_ONLY", "fixture_case": "ns16_b1", "beta": 0.8379450947754773, "safe_case_floor": 0.4066548912378026, "conditions": {"native": 57.3760720455005, "reference": 40.37483685773206}}

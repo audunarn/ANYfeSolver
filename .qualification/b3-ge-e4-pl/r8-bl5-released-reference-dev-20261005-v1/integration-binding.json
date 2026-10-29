@@ -1,9 +1,0 @@
-{
-  "source": {
-    "scripts/r8_bl5_released_director_reference.py": "7d3a388ba2ba900aa7e04170fc08057b6ead8d2d11d00d5f0c1de3cf5240bbee",
-    "tests/test_r8_bl5_released_director_reference.py": "30aba09f2f12cd6581f16a04fdf048503248fb0164623c23dcc5c44603800110",
-    "docs/reference_cases/stiffened_shell_bl5_released_reference.md": "f17ed745b6a3971ede30605641f93e24bec60ebb88c56092937017814aeb0aee"
-  },
-  "review": "integration-disposition.md",
-  "classification": "DEV tooling; scientific qualification incomplete"
-}

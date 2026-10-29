@@ -1,6 +1,0 @@
-{
-  "case": "q4-nonfinite_vertices",
-  "rejected": true,
-  "exception": "ValueError",
-  "message": "finite shell vertices with shape (4, 3) required"
-}

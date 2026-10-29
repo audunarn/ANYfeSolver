@@ -1,8 +1,0 @@
-{
-  "base_commit": "26640171a5da373e5afeb32c57a8d6df2aa8bd34",
-  "state": "implemented but numerically unverified; root source review pending",
-  "files": {
-    "src/anysolver/_stiffened_shell_ge_experimental.py": "708ca8ea633ac929d3382ff35765b68ae326a7cf2b9045bd8c5f901059c2df08",
-    "tests/test_stiffened_shell_ge_mixed_reference_modal.py": "1d84bd69a27f227c7bdb501ce26104c142299fe1b9fb8564704e632b91125b48"
-  }
-}

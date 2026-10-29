@@ -1,9 +1,0 @@
-{
-  "purpose": "Root-adopted same physical case retry after300s execution-bound timeout; no solver/control/observer change",
-  "authority": "analytical-refinement-extension-authority.json",
-  "script": ".development/nonlinear-master-slave-coupling-20261017/gate-closure-20261019/diagnostics/default_arc_refinement_observer.py",
-  "deadline_utc": "2026-10-19T18:15:52.7184878Z",
-  "attempts": {
-    "default-refinement-n64-e002-a30-bound600": 600
-  }
-}

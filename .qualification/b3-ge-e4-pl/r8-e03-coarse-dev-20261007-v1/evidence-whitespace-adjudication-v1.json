@@ -1,8 +1,0 @@
-{
-  "raw_source_diff_check_exit": 2,
-  "raw_log": "raw-source-whitespace-check-v1.log",
-  "owned_check": "PASS",
-  "exclusions": "Exactly3 independently hashed official reference source files; existing author whitespace preserved byte-for-byte",
-  "source_checksums": "All3unchanged",
-  "no_source_normalization": true
-}

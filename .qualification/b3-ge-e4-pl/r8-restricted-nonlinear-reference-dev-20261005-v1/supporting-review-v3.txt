@@ -1,4 +1,0 @@
-Supporting OpenAI Read reviewer nonlinear_external_scope_audit inspected actual v3 source/status/material/comparison results. Not different-family acceptance.
-Current v3 native/external/comparison script hashes agree; complete24native/40external layers per endpoint and8targets. No blocking work/material/history defect. Actual ANYmaterial imported from sibling source: installed solver evidence only.
-Reusable harness finding: completed-input checks do not require native/external source identities to match. Actual v3 identities checked separately, so evidence unaffected. Implementation owner repairing comparison identity enforcement and stale pending doc.
-Mandatory CalculiX comparison, roof capacity and aggregate qualification remain open. No new numerical jobs by reviewer.

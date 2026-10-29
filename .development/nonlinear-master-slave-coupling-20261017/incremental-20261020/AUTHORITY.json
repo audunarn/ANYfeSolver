@@ -1,8 +1,0 @@
-{
-  "baseline_head": "888d854ee65876a88b4de72b7e31b2f9a4b0be6a",
-  "historical_budget_sha256": "635d38e0e8421a04188608c00985bc69e7c7f583a2557807acb346424489bab9",
-  "old_reserve_untouched": true,
-  "review": "C:/ANYworkspaceWork/beam-shell-incremental-plan-review-20261020-v1/REVIEW.md",
-  "scope": "Only three approved beam-shell usability/restart/installed delivery slices. Director continuation and analytical qualification deferred. No push or release.",
-  "started_utc": "2026-10-20T09:22:50.016000+00:00"
-}

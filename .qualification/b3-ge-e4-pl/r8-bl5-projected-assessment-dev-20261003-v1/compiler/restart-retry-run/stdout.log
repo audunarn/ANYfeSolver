@@ -1,9 +1,0 @@
-============================= test session starts =============================
-platform win32 -- Python 3.14.2, pytest-9.0.3, pluggy-1.6.0 -- C:\Python\Python314\python.exe
-rootdir: C:\Users\AudunArnesenNyhus\AppData\Local\Temp\r8-bl5-projected-compiler-source-v1
-configfile: pytest.ini
-collecting ... collected 1 item
-
-::test_finite_density_checkpoint_identity_and_same_candidate_restart PASSED [100%]
-
-============================== 1 passed in 6.34s ==============================

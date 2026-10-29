@@ -1,1 +1,0 @@
-{"status": "POSITIVE_SAVED_MECHANICAL_KERNEL_DEVELOPMENT_ONLY", "fixture_case": "whole_half", "physical_order": 625, "kernel_error_upper": 8.277189640626467e-10, "physical_kernel_lower_bound": 6.306119294604964e-11, "elapsed_seconds": 1.7949320999905467}

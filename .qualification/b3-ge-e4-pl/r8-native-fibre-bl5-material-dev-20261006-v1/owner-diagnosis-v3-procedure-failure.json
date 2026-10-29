@@ -1,1 +1,0 @@
-{"type":"NameError","stage":"reuse stdlib reader definitions","reason":"missing __file__ in explicit exec namespace","effect":"No output JSON written; no solver/evaluation/numerical package import","repair":"Supply reader path as __file__ before compiling only its reader prefix"}

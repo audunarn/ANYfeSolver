@@ -1,5 +1,0 @@
-Independent OpenAI Read source review, parent paraphrase of terminal messages (originals in chat):
-- Initial mutable uppercase provenance registry violated immutable authority import validation. Moved into a closure and import passed.
-- Publicly reachable registrar could bind arbitrary bytes; record-class attributes could substitute numerical payload between checks. Replaced with opaque marker, closure-only computed binding and canonical bytes; weakref identity rejects forged equal keys. Added adversarial tests.
-- Final review: both vulnerabilities resolved; no further actionable source finding. Public/full evaluation, formulas, original input/cache and runtime/class/quadrature guards, state copying and checkpoint omission retained.
-Reviewer did not implement changes or run numerical jobs. Optional different-family workers remained unavailable and were not probed. This is development review, not independent scientific acceptance.

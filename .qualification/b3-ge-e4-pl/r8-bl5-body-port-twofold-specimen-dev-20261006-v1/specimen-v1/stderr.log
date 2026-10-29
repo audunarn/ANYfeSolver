@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-bl5-body-port-twofold-specimen-dev-20261006-v1\entry.py", line 31, in <module>
-    result=w.run(saved,prepared,ROOT/'results-v1');status=result['status']
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\scripts\r8_bl5_body_port_twofold_workflow.py", line 106, in run
-    shell=core.solve_body_twofold(owner._K[:ns,:ns].tocsr(),loads[:ns],owner._coordinate_scale[:ns],fixed=owner._fixed)
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\scripts\r8_bl5_body_port_twofold.py", line 147, in solve_body_twofold
-    raise ValueError('distinct physical fixed coordinates required')
-ValueError: distinct physical fixed coordinates required

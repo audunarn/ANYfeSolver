@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Remove 22,552 historical development/qualification files from the checkout
+  after verified external archival; retain regression inputs, authority records,
+  source, tests and tools. See `docs/DEVELOPMENT_ARCHIVE.md` for recovery.
+- Reconcile the documentation entry points and local development status after
+  the October 27–28 integrations. Retain dated logs and qualification records
+  with their original scope; see `docs/STATUS.md`.
+- Add linear inertia relief and prepared static-batch integration for the
+  admitted free-free beam/shell domain; see `docs/INERTIA_RELIEF.md`.
+- Add neutral-input floating-body frequency response, fixed-step transient
+  wind-thrust feedback and physical pressure-region loading. These remain
+  bounded development routes; see `docs/FLOATING_RESPONSE.md`.
+- Add concentrated rigid mass with centre-of-gravity offset and inertia,
+  including linear mass/gravity and inertia-relief integration; see
+  `docs/concentrated_mass.md`.
+
 - Qualified Q4 plastic shells evaluate layered plasticity at the hybrid assumed
   strain (`_q4_assumed_strain_plasticity`). The historical compatible-strain
   route with the constant qualified correction had an indefinite tangent once

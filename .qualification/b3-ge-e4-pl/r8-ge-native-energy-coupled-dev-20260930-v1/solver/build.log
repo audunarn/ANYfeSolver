@@ -1,9 +1,0 @@
-Processing c:\users\audunarnesennyhus\appdata\local\temp\r8-ge-native-energy-coupled-installed-v1\build-source
-  Preparing metadata (pyproject.toml): started
-  Preparing metadata (pyproject.toml): finished with status 'done'
-Building wheels for collected packages: ANYsolver
-  Building wheel for ANYsolver (pyproject.toml): started
-  Building wheel for ANYsolver (pyproject.toml): finished with status 'done'
-  Created wheel for ANYsolver: filename=anysolver-0.4.7-py3-none-any.whl size=2063271 sha256=b0f15d3ebc5b261f7baf620f7bcbf6866cd6a090b77760b503cfd20131f9dc87
-  Stored in directory: C:\Users\AudunArnesenNyhus\AppData\Local\Temp\pip-ephem-wheel-cache-2wxdhuxu\wheels\7e\de\43\01dcd88d6cfa344bb3917c657a08841578f3178618c8df0cd1
-Successfully built ANYsolver

@@ -1,8 +1,0 @@
-Next dependency: plastic-S3 displacement requires model-bound accepted/origin
-S3 blobs plus predecessor physical coordinates and anchors. First reuse the
-existing bounded codec through one distinct unanchored native displacement mode,
-with even nonempty blob pairs and compiled shapes. Freeze four previous framing
-samples before edits; require byte identity when option unused. This is a codec
-prerequisite only: no displacement admission, no material/physical acceptance.
-Next integrate same-predecessor restoration/replay with the existing owner.
-Scientific laws/tolerances/defaults/resources/legacy schemas unchanged.

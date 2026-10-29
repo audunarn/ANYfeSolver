@@ -1,6 +1,0 @@
-{
-  "case": "q4-zero_edge",
-  "rejected": true,
-  "exception": "ValueError",
-  "message": "nondegenerate shell reference plane required"
-}

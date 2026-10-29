@@ -1,1 +1,0 @@
-{"case": "s3", "status": "completed", "failure": null, "accepted_factors": [0.5, 1.0, 0.75, 0.5], "work": {"evaluations": 177, "linear_solves": 36, "rejected_trials": 102}}

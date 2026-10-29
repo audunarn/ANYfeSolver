@@ -1,6 +1,0 @@
-Supporting independent OpenAI Read review, 5 October 2026; not different-family acceptance.
-Reviewer nonlinear_external_scope_audit, not implementation owner.
-No blocking mechanics/material defect found in admitted axial subspace. Endpoint virtual work is admissible and distinct from accumulated energy. Inferred external history is explicitly not direct alpha oracle.
-Findings before run: recheck effective pools after solver/OpenSees initialization; bind imported native package and external binary paths/hashes; reject truncated or incomplete native layer inventory.
-Future mandatory CalculiX: T3D2 solid expansion requires actual axial control. Derived SPRING2 k=EA/ell is a possible exact restricted axial-work representation, not general GE qualification. Omitted rotational support wrench cannot be described as externally printed moment agreement.
-No numerical checks run by reviewer.

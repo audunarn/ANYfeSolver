@@ -1,9 +1,0 @@
-Processing c:\users\audunarnesennyhus\appdata\local\temp\r8-ge-point-native-project-installed-v1\anyfem-source
-  Preparing metadata (pyproject.toml): started
-  Preparing metadata (pyproject.toml): finished with status 'done'
-Building wheels for collected packages: ANYfem
-  Building wheel for ANYfem (pyproject.toml): started
-  Building wheel for ANYfem (pyproject.toml): finished with status 'done'
-  Created wheel for ANYfem: filename=anyfem-0.4.1-py3-none-any.whl size=522943 sha256=0b6c51afc71266ef67168fafbbd53be126e64bdab4e750e724a4ad7dde8ee937
-  Stored in directory: C:\Users\AudunArnesenNyhus\AppData\Local\Temp\pip-ephem-wheel-cache-cr7ghd91\wheels\76\72\88\246cd8c1c6204288c1f867c7fc9e59e6e406d46666ab97c87b
-Successfully built ANYfem

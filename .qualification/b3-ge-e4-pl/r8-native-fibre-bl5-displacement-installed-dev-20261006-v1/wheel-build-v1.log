@@ -1,9 +1,0 @@
-Processing c:\github\anysolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-native-fibre-bl5-displacement-installed-dev-20261006-v1\wheel-source-v1
-  Preparing metadata (pyproject.toml): started
-  Preparing metadata (pyproject.toml): finished with status 'done'
-Building wheels for collected packages: ANYsolver
-  Building wheel for ANYsolver (pyproject.toml): started
-  Building wheel for ANYsolver (pyproject.toml): finished with status 'done'
-  Created wheel for ANYsolver: filename=anysolver-0.4.7-py3-none-any.whl size=2265878 sha256=02f3506ce28cfed4029b6c8895d99d14571253a4be2f11bfd23101187d32d425
-  Stored in directory: c:\users\audunarnesennyhus\appdata\local\pip\cache\wheels\0b\41\d8\ede0d4dbc24185b6a3ba41faa04bd2be28117e745cff1a94ae
-Successfully built ANYsolver

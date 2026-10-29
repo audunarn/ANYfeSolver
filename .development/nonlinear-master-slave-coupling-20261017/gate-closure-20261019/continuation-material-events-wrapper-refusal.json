@@ -1,9 +1,0 @@
-{
-  "status": "prelaunch_refusal",
-  "solver_process_started": false,
-  "charged_seconds": 0,
-  "command_kind": "observed pytest wrapper",
-  "requested_timeout_seconds": 600,
-  "actual_error": "harness.py: error: timeout must be positive and at most 120s for diagnostic execution",
-  "resolution": "Used unchanged portable regression runner with600 bound; no limit bypass or retry of solver occurred."
-}

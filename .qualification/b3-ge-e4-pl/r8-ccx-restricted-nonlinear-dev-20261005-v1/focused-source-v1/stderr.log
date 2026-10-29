@@ -1,9 +1,0 @@
-Exception ignored in atexit callback <function cleanup_numbered_dir at 0x000001CF319D0B40>:
-Traceback (most recent call last):
-  File "C:\Python\Python314\Lib\site-packages\_pytest\pathlib.py", line 374, in cleanup_numbered_dir
-    cleanup_dead_symlinks(root)
-  File "C:\Python\Python314\Lib\site-packages\_pytest\pathlib.py", line 360, in cleanup_dead_symlinks
-    left_dir.unlink()
-  File "C:\Python\Python314\Lib\pathlib\__init__.py", line 1042, in unlink
-    os.unlink(self)
-PermissionError: [WinError 5] Access is denied: 'C:\\Users\\AudunArnesenNyhus\\AppData\\Local\\Temp\\pytest-of-AudunArnesenNyhus\\pytest-current'

@@ -1,7 +1,0 @@
-{
-  "attempt": "fresh-python312-install",
-  "acceptance": "not accepted as isolated installation",
-  "cause": "Inherited source PYTHONPATH let pip satisfy ANYsolver-results from checkout metadata rather than the fresh venv",
-  "repair": "Use -I for creation/pip and a new venv-v2; all artifacts and venv-v1 retained",
-  "changes": "Installer invocation only, built wheels/sdist/source unchanged"
-}

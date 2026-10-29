@@ -1,6 +1,0 @@
-{
-  "case": "s3-nonfinite_station",
-  "rejected": true,
-  "exception": "ValueError",
-  "message": "normalized B2 station in [0,1] required"
-}

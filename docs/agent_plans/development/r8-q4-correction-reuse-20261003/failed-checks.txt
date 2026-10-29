@@ -1,7 +1,0 @@
-Preserved failed development checks/driver diagnostics:
-- Source collection failed before registry closure fix (ku99uh8l).
-- Two material mutation fixtures used nonexistent E/youngs_modulus attributes (lmdp69tz/bvqbrlqa), repaired to canonical elastic_modulus. Relevant rerun passed.
-- First paired parent missed timing- prefix after completed baseline leg; preserved paired-run-v1.py and runner-parent-fix.json. Same numerical child prefix hash proven before reusing completed baseline. No repeat of its numerical solve.
-- Derived pstats rendering rejected WindowsPath. Empty first output and failure note retained; str(path) repaired report without repeating profiles.
-- An active-note read used wrong Windows default encoding and failed before writing. UTF-8 repaired; no numerical effect.
-Source campaigns retained selection/runtime/resource JSON; full source pytest console is in chat, not claimed as separately retained raw log. Installed runs retain full stdout/stderr/JUnit/runtime. Review vulnerabilities were static findings; no exploit execution is claimed.

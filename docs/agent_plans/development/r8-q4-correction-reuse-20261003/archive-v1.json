@@ -1,7 +1,0 @@
-{
-  "archive": "raw-evidence-v1.zip",
-  "sha256": "a6e65f093efc638d44b44cc31538199ee32dbfd424f2282e34e3e2b3e35056c2",
-  "bytes": 3788023,
-  "files": 260,
-  "selection": "Explicit current-run whitelist; no protected history, environment dumps or installed-site catalogs."
-}

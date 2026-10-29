@@ -1,3 +1,0 @@
-.                                                                        [100%]
-1 passed in 1.24s
-{"scope": "Saved active Q4/S3 mixed prefix installed replay/recovery only; full history FAILED", "test_sha256": "455fa16cc28fbc432e197013bcd68726e928421411fdf45b47cbd8334f4e3c12", "source_parent": "189ebb84", "pytest_exit_code": 0, "status": "PREFIX_VERIFIED_FULL_HISTORY_OPEN", "case_project_roundtrip": true, "exact_restore": true, "actual_q4_s3_flow": true, "production_qualified": false, "equilibrium": 5.614213390776507e-10, "gap": 2.929209485189713e-21}

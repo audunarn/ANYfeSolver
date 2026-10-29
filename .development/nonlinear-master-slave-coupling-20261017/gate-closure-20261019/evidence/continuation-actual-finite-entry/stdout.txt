@@ -1,1 +1,0 @@
-{"diagnostic_only": true, "original_target_acceptance": false, "control_radius": 1e-08, "span": 4e-08, "diagnostic_target": -0.16666670666666675, "outcome": "actual_post_entry_corrector_not_completed", "status": "diverged", "reason": "line_search_no_improvement", "global_solves": 26, "caller_inputs_unchanged": true, "elapsed": 8.92622080000001}

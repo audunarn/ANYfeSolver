@@ -1,3 +1,0 @@
-...........................                                              [100%]
-27 passed in 147.48s (0:02:27)
-{"scope": "Installed native adaptive displacement development; not qualification", "source_parent": "4fecd1ea", "pytest_exit_code": 0, "status": "PASSED_DEVELOPMENT_NOT_QUALIFIED", "case_project_roundtrip": true, "adaptive_prefix_restore": true, "exact_continuation": true, "actual_s3_flow": true, "equilibrium": 5.021378924973452e-11, "gap": 1.0587911840678753e-22}

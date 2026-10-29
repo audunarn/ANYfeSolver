@@ -1,7 +1,0 @@
-{
-  "action": "combined adapter repair and second specimen launch",
-  "outcome": "REJECTED_NO_COMMAND_EXECUTED",
-  "reason": "Second specimen numerical job after first body RHS entered solver conflicts with explicit no-rerun restriction",
-  "actual": "v1 core rejected numpy.int64 fixed indices at line147 before factorization/linear solve; no second job executed",
-  "decision": "Root instructed no further numerical launch; awaiting explicit user decision outside this assignment"
-}

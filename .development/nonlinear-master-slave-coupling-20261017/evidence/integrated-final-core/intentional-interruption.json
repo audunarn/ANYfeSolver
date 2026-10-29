@@ -1,9 +1,0 @@
-{
-  "utc": "2026-10-19T05:45:08.3301133Z",
-  "classification": "intentional interruption of owned superseded regression invocation",
-  "harness_pid": 56804,
-  "child_pid": 62268,
-  "command": "C:\\Github\\ANYsolver\\.venv\\Scripts\\python.exe scripts/run_portable_ci.py --development tests/test_corotational_work_conjugate.py tests/test_nonlinear_beam_shell_coupling.py tests/test_nonlinear_beam_shell_slice3.py tests/test_nonlinear_beam_shell_slice3_batch.py tests/test_nonlinear_beam_shell_slice3_precision.py --workers 1 --jit off --timeout-seconds 600 --memory-limit-mib 2048",
-  "reason": "Concrete beam return-map force/tangent defect was found after source capture; preserve partial evidence and precise harness wall accounting, repair before final exact partitioned rerun",
-  "no_terminal_counts_inferred": true
-}

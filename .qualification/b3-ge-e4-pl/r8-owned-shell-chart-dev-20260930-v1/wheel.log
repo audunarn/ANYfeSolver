@@ -1,9 +1,0 @@
-Processing c:\users\auduna~1\appdata\local\temp\r8-owned-rebase-installed-v1\build-source
-  Preparing metadata (pyproject.toml): started
-  Preparing metadata (pyproject.toml): finished with status 'done'
-Building wheels for collected packages: ANYsolver
-  Building wheel for ANYsolver (pyproject.toml): started
-  Building wheel for ANYsolver (pyproject.toml): finished with status 'done'
-  Created wheel for ANYsolver: filename=anysolver-0.4.7-py3-none-any.whl size=2055373 sha256=1e537c193efe19f252dc3b8ea6906f6d47d2c3898cef12c6190ba0c11b45f942
-  Stored in directory: C:\Users\AudunArnesenNyhus\AppData\Local\Temp\pip-ephem-wheel-cache-5g3fnakx\wheels\2c\e8\56\2cb70da755f1430967385e91eb8caf60edb392b4c05448beb4
-Successfully built ANYsolver

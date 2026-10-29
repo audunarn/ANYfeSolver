@@ -1,8 +1,0 @@
-{
-  "phase": "standard-library terminal metadata verification",
-  "exit_code": 1,
-  "failure": "KeyError: src/anysolver/_stiffened_shell_ge_experimental.py",
-  "cause": "artifact source dictionary uses different path separators",
-  "numerical_calls": 0,
-  "preserved_script": "finalize-before-path-key-repair.py"
-}

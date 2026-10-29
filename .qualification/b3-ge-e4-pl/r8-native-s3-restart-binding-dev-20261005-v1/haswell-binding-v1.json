@@ -1,8 +1,0 @@
-{
-  "runner_sha256": "213695710eb016cec0013eab5a468440f7dd35709dd334ed42b43e6c9b8675eb",
-  "entry_sha256": "1b642ce1899d33c5f309ab1e2ffe58376639213cf092f3b527a552abf806ce1e",
-  "supervisor_sha256": "ad9947c9268774a980041112004364d4daba6ce884fe339fab9f0d90b265d3ec",
-  "source_binding_sha256": "98ee2a4404f3a463e988bc6a75ce4c29ff75f09bc98fee59bca056446c68904d",
-  "unforced_reference_sha256": "324e39055daf1189a670285b2912ec5164449d5a157e3351d884a417311901da",
-  "scope": "One fixed-coordinate Haswell CPU-dispatch discriminator; no replay or changes"
-}

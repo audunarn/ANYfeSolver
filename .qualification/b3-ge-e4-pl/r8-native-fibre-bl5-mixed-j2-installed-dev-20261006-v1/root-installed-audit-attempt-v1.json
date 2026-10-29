@@ -1,6 +1,0 @@
-{
-  "status": "root metadata audit failed; no numerical job",
-  "exit_code": 1,
-  "error": "Root assumed preexisting checkout bytes equal Git object bytes; first src/anysolver/__init__.py assertion failed",
-  "preservation": "original audit-v1.py kept; V2 allows only explicitly proven UTF-8 CRLF-to-LF checkout equivalence; actual source/stage/wheel/site hashes stay exact"
-}

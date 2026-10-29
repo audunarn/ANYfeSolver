@@ -1,9 +1,0 @@
-{"exit_code": 1, "status": "failed", "elapsed_seconds": 112.86622999998508, "process_tree_peak_rss_bytes": 726130688, "timeout_seconds": 600, "memory_limit_bytes": 8589934592}
-  File "C:\Users\AudunArnesenNyhus\AppData\Local\Temp\r8-bl5-native-stability-whole8-v2\nx64-ny16-half1024\run_case.py", line 98, in evaluate
-    beam_lo, beam_hi, info = beam_bracket(force, moments, length=1., ell=.4,
-                             ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        arm=arm_b, width=.1, subdivisions=subdivision)
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\AudunArnesenNyhus\AppData\Local\Temp\r8-bl5-native-stability-whole8-v2\nx64-ny16-half1024\scripts\b3_e4_bl5_reference_accuracy_dev.py", line 84, in beam_bracket
-    raise ArithmeticError(f'auxiliary inverse action failed: {residual_history}')
-ArithmeticError: auxiliary inverse action failed: [{'evaluation': 'sparse_matmul', 'iteration': 0, 'max_relative_residual': 3.538807192197266e-10}, {'evaluation': 'fma_fsum', 'iteration': 0, 'max_relative_residual': 2.8770383900775523e-10, 'sparse_matmul_relative_residual': 3.538807192197266e-10}, {'evaluation': 'fma_fsum', 'iteration': 1, 'max_relative_residual': 2.4917144179243544e-10, 'sparse_matmul_relative_residual': 3.4688638638113706e-10}, {'evaluation': 'fma_fsum', 'iteration': 2, 'max_relative_residual': 2.4917144179243544e-10, 'sparse_matmul_relative_residual': 3.4688638638113706e-10}, {'evaluation': 'fma_fsum', 'iteration': 3, 'max_relative_residual': 2.4917144179243544e-10, 'sparse_matmul_relative_residual': 3.4688638638113706e-10}]

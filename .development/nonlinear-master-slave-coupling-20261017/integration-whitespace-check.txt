@@ -1,4 +1,0 @@
-src/anysolver/nonlinear_static.py:4440: trailing whitespace.
-+                                            corotational_tangent=( 
-src/anysolver/nonlinear_static.py:4447: trailing whitespace.
-+                                        context=( 

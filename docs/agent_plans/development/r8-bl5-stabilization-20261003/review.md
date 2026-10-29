@@ -1,3 +1,0 @@
-# Independent development scrutiny
-OpenAI Read reviewer /root/q4_correction_review checked the mathematical differentiation, congruence scaling, native variable retention, compensated solve, frame/sign conventions and physical moment reconstruction. No actionable scientific defect in the completed result. This is not different-family formal acceptance.
-Reviewer found missing baseline role-wise parity in the first script. Independently inspected V2 states matched all physical/retained/multiplier roles; root separately reproduced it and derivative support-reaction balance in postchecks-v1.json. Current source adds role and solved-multiplier station checks. The completed campaign was not repeated merely to populate those fields.

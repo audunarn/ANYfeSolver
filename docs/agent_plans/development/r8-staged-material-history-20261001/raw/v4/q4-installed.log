@@ -1,3 +1,0 @@
-.                                                                        [100%]
-1 passed in 81.51s (0:01:21)
-{"pytest_exit": 0, "onsite_imports": 210, "case": "test_q4_staged_fibre_history_restart_atomicity_and_plastic_rebase"}

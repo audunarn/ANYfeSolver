@@ -1,1 +1,0 @@
-{"kind": "ROOT_METADATA_AUDIT_FAILED_V1", "error": "KeyError: shells", "cause": "Raw family artifacts wrap history payload; schema assumption corrected by direct key inspection.", "numerical_execution": false, "source_or_evidence_modified": false}

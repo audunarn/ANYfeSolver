@@ -1,9 +1,0 @@
-..                                                                       [100%]
-============================== warnings summary ===============================
-tests/test_stiffened_shell_distributing_native_tangent.py::test_yielded_actual_update_global_tangent[fibre-j2]
-tests/test_stiffened_shell_distributing_native_tangent.py::test_yielded_actual_update_global_tangent[mixed-native-j2]
-  tests\test_stiffened_shell_distributing_native_tangent.py:12: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
-    @pytest.mark.parametrize("mixed", (False, True), ids=("fibre-j2", "mixed-native-j2"))
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-2 passed, 2 warnings in 18.44s

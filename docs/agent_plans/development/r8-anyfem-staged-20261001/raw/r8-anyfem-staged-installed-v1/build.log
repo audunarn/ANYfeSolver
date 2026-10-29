@@ -1,7 +1,0 @@
-Processing c:\users\auduna~1\appdata\local\temp\r8-anyfem-staged-installed-v1\build-source
-  Preparing metadata (pyproject.toml): started
-  Preparing metadata (pyproject.toml): finished with status 'done'
-Building wheels for collected packages: ANYfem
-  WARNING: Building wheel for ANYfem failed: [WinError 5] Access is denied: 'c:\\users\\audunarnesennyhus\\appdata\\local\\pip\\cache\\wheels\\fc'
-Failed to build ANYfem
-ERROR: Failed to build one or more wheels

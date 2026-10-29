@@ -1,3 +1,0 @@
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-distributing-material-dev-20261004-v1\probe-diagnosis-v8.py", line 34
-    owner.solve(actions(),(1.01,),max_iterations=24,max_backtracks=16)
-SyntaxError: expected 'except' or 'finally' block

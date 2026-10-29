@@ -1,0 +1,19 @@
+{
+  "schema": "anysolver.development_archive_receipt.v1",
+  "date": "2026-10-29",
+  "baseline": "4bd22baddad4aa415df18e3d486292aabd2de087",
+  "tracked_files_removed": 22552,
+  "inventoried_ignored_files_relocated": 18738,
+  "ignored_inventory_is_lower_bound": true,
+  "retained_files_hash_verified": 2244,
+  "unexpected_tracked_deletions": 0,
+  "remaining_existing_baseline_tracked_files": 13260,
+  "archive": "C:/ANYworkspaceWork/anysolver-cleanup-20261029/removal/development-history-4bd22badd-20261029.zip",
+  "archive_sha256": "12d27b99b695d00ded00680d0ee433a7283477b0846c7c2ee6a49d959077721d",
+  "archive_bytes": 670018306,
+  "original_archived_bytes": 1455874326,
+  "archive_manifest_sha256": "8228e103358bb7a26865a5afc58b1b334b1eafe900693714d904a839759699a7",
+  "local_evidence_directory": "C:/ANYworkspaceWork/anysolver-cleanup-20261029/removal/local-evidence",
+  "local_relocation_method": "same-volume directory move; original directory identities preserved; 37 required inputs copied back with matching SHA-256",
+  "detailed_evidence": "C:/ANYworkspaceWork/anysolver-cleanup-20261029/removal"
+}

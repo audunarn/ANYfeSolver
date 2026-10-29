@@ -1,9 +1,0 @@
-Processing c:\users\audunarnesennyhus\appdata\local\temp\r8-ge-point-native-project-installed-v1\anysolver-source
-  Preparing metadata (pyproject.toml): started
-  Preparing metadata (pyproject.toml): finished with status 'done'
-Building wheels for collected packages: ANYsolver
-  Building wheel for ANYsolver (pyproject.toml): started
-  Building wheel for ANYsolver (pyproject.toml): finished with status 'done'
-  Created wheel for ANYsolver: filename=anysolver-0.4.7-py3-none-any.whl size=2074934 sha256=615596739690168a5ecc7f02ac3a20a078cda5490e79604a50440a61a7d2f597
-  Stored in directory: C:\Users\AudunArnesenNyhus\AppData\Local\Temp\pip-ephem-wheel-cache-cjrwa6eq\wheels\df\0b\75\0f01eaf8fb54caa901f3c4efae168f250820ac7adb952230fc
-Successfully built ANYsolver

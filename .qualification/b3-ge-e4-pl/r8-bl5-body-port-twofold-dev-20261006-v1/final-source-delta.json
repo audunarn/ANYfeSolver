@@ -1,8 +1,0 @@
-{
-  "before_executed_sha256": "bf7ad83792e00a1bcca2b13863a2377e81f5cc218210a1443f188c5d78d82228",
-  "after_sha256": "d13911a8017ec24ace7936203c54a18bdc81b4dc5c834a1fa1be89fda05678cb",
-  "delta": "correct module description; d>0/dg>0 fail-closed reversible-congruence guard",
-  "authority": "root adopted guard; no additional numerical checks authorized",
-  "verification": "standard-library compile/AST syntax only",
-  "numeric_delta_executed": false
-}

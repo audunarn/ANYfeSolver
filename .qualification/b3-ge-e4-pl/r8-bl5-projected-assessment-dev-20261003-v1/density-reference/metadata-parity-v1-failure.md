@@ -1,1 +1,0 @@
-Initial root AST audit refused with ValueError: row assembly changed. Inspection identifies changed aggregate_rows docstring; no numerical execution or mechanical conclusion. V2 compares executable prefix and all unchanged return fields explicitly.

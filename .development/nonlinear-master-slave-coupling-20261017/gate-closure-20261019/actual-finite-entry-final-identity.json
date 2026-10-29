@@ -1,9 +1,0 @@
-{
-  "protected_mismatches": [],
-  "candidate": "63f057b8538cfbe4f42c0939b81ab66dc80bd1d3b02e5c046ad4dc6217762184",
-  "check_type": "Static identity verification, no numerical run",
-  "head": "b0202d335990a1fd1a647b7876ebde001aabe979",
-  "checked_input_count": 810,
-  "input_mismatches": [],
-  "active_numerical_lock": false
-}

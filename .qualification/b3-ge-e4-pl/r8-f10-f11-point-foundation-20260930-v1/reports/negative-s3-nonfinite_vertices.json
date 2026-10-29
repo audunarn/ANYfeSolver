@@ -1,6 +1,0 @@
-{
-  "case": "s3-nonfinite_vertices",
-  "rejected": true,
-  "exception": "ValueError",
-  "message": "finite shell vertices with shape (3, 3) required"
-}

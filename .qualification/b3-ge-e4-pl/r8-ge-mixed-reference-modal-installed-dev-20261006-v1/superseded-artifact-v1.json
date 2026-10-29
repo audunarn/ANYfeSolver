@@ -1,8 +1,0 @@
-{
-  "state": "SUPERSEDED_UNEXECUTED",
-  "commit": "26640171a5da373e5afeb32c57a8d6df2aa8bd34",
-  "wheel": "C:\\Github\\ANYsolver\\.perf2-worktrees\\stiffened-main-reconcile-20261001\\.qualification\\b3-ge-e4-pl\\r8-ge-mixed-reference-modal-installed-dev-20261006-v1\\wheel-v1\\anysolver-0.4.7-py3-none-any.whl",
-  "wheel_sha256": "5639b79bda929f5b3dd86dbecfdd831fa7fc5900efa9d2e2077e1378c9adf3e6",
-  "numerical_tests_executed": 0,
-  "reason": "Generic modal-only public capabilities used legacy descriptor for new mixed-free boundary, reporting false ineligibility despite valid new operation. Root found consumer metadata defect; two source/test files repaired prospectively. Original stage/wheel/install/build logs retained. No installed-v1 numerical job was granted or launched."
-}

@@ -1,1 +1,0 @@
-{"candidate_identity": "63f057b8538cfbe4f42c0939b81ab66dc80bd1d3b02e5c046ad4dc6217762184", "path": "C:\\Github\\ANYsolver\\.development\\nonlinear-master-slave-coupling-20261017\\gate-closure-20261019\\candidate-identities\\event-final-frozen-candidate", "source_inputs_hashed": 810, "original_slice12_tests_unchanged": false}

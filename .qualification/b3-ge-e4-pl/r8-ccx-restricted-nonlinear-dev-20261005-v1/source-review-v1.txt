@@ -1,3 +1,0 @@
-Supporting OpenAI Read reviewer nonlinear_external_scope_audit, not implementation owner or different-family acceptance.
-Two final source findings: comparator must use component-specific Syy print bounds (unloading exponent can exceed Sxx); shell-observables must check actual original-node Uz=0, not infer it solely from CPS4 admission. Owner repairing with regressions.
-Otherwise restricted deck, axial work, uninterrupted history, output inventory and failure/precision classifications consistent with contract. No numerics by reviewer.

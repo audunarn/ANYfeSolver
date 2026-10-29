@@ -1,9 +1,0 @@
-...                                                                      [100%]
-============================== warnings summary ===============================
-tests/test_stiffened_shell_ge_mixed_reference_modal.py::test_independent_dense_qz_on_actual_full_mixed_pencil[s3-point]
-tests/test_stiffened_shell_ge_mixed_reference_modal.py::test_independent_dense_qz_on_actual_full_mixed_pencil[mixed-bl5]
-  C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\tests\test_stiffened_shell_ge_mixed_reference_modal.py:77: RuntimeWarning: invalid value encountered in multiply
-    values*=beta
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-3 passed, 73 deselected, 2 warnings in 1.80s

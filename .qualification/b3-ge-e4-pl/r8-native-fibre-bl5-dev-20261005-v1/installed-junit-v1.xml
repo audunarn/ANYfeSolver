@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="1" failures="0" skipped="0" tests="1" time="0.622" timestamp="2026-10-05T22:21:41.753089+02:00" hostname="WORK_STABEIST1"><testcase classname="" name="tests.test_stiffened_shell_native_fibre_bl5" time="0.000"><error message="collection failure">ImportError while importing test module 'C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\tests\test_stiffened_shell_native_fibre_bl5.py'.
-Hint: make sure your test modules/packages have valid Python names.
-Traceback:
-C:\Python\Python314\Lib\importlib\__init__.py:88: in import_module
-    return _bootstrap._gcd_import(name[level:], package, level)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-tests\test_stiffened_shell_native_fibre_bl5.py:11: in &lt;module&gt;
-    from examples.stiffened_shell_native_fibre_bl5 import definition, workflow
-E   ModuleNotFoundError: No module named 'examples'</error></testcase></testsuite></testsuites>

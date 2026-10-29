@@ -1,6 +1,0 @@
-{
-  "case": "affine-dimension",
-  "rejected": true,
-  "exception": "ValueError",
-  "message": "finite sparse Q4/B2 affine plan required"
-}

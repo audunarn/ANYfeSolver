@@ -1,9 +1,0 @@
-{
-  "exit_code": 1,
-  "status": "failed",
-  "process_tree_peak_rss_bytes": 175120384,
-  "elapsed_seconds": 65.90986220000195,
-  "timeout_seconds": 600,
-  "memory_limit_bytes": 8589934592,
-  "case": "test_q4_staged_fibre_history_restart_atomicity_and_plastic_rebase"
-}

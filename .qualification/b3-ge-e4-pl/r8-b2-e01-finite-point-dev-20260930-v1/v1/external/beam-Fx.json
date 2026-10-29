@@ -1,8 +1,0 @@
-{
-  "case": "beam-Fx",
-  "status": "FAILED",
-  "component": 0,
-  "magnitude": 1000.0,
-  "panel_sign": null,
-  "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\AudunArnesenNyhus\\AppData\\Local\\Temp\\r8-b2-e01-finite-point-v1\\b2_e01_opensees_finite_point.py\", line 463, in main\n    if model is None: beam_control(ops, record, component, magnitude)\n                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\AudunArnesenNyhus\\AppData\\Local\\Temp\\r8-b2-e01-finite-point-v1\\b2_e01_opensees_finite_point.py\", line 238, in beam_control\n    ops.fix(1, 1, 1, 1, 1, 1)\nopensees.OpenSeesError: See stderr output\n"
-}

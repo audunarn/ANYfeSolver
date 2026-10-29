@@ -1,5 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\.qualification\b3-ge-e4-pl\r8-point-zero-reference-dev-20261004-v1\probe-baseline-v1.py", line 17, in <module>
-    assert test.read_bytes() == subprocess.check_output(['git','show','cab437fb:tests/'+test.name],cwd=repo)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError

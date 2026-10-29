@@ -1,1 +1,0 @@
-{"scope": "Native mixed adaptive integration history, not parity with failed fixed routes", "source_parent": "4fecd1ea", "limits": {"max_cutbacks": 6, "max_attempts": 24}, "max_iterations": 20, "max_backtracks": 12, "nominal_target": 0.00013732958778814568, "status": "COMPLETED_DEVELOPMENT_NOT_QUALIFIED", "exact_prefix_restore": true, "accepted": 2, "attempts": 3}

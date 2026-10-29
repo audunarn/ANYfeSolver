@@ -1,8 +1,0 @@
-{
-  "solver_product_commit": "7adee4f511fb173a5fbaef8e30938e7dbd0ba076",
-  "consumer_tests_commit": "268001efc9102b46ffeb6ea776472a26205b4152",
-  "consumer_runtime_commit": "a615c4b299e603264f67d292c8a4415168b1b9c6",
-  "consumer_wheel_reused_from": "../r8-ge-fibre-linear-dev-20260930-v1/solver/wheels/anyfem-0.4.1-py3-none-any.whl",
-  "development_only": true,
-  "qualification_gates_closed": []
-}

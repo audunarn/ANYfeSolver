@@ -1,5 +1,0 @@
-V4 prospective metric correction: unchanged product9057067d and wheel0c456666.
-Retain V1 status helper failure, V2 historicalQ4 moment failure and V3 strict component-relative Q4 successor failure/S3 pass.
-Select full algorithmicQ4 separately from historical default. Physical successor parity uses existing1e-9 dimensionless fixed2m, input1000N/50N and length*force moment scales, not observed candidate magnitudes.
-Native retained18 layout is force6/moment12; point/support6 force3/moment3. PreviousF06 alternating-p6 retained normalization is not blindly reused; its raw data requires scoped correction/adjudication.
-Applied staged loads must be exactly identical; material predecessor/recovery equality stays exact and all typed successor energy/history guards unchanged. No scientific qualification criterion, constitutive/load definition, Newton policy or threshold is changed. Independent saved-state analysis predicts agreement but does not make failed Q4 V3 a pass; execute complete V4 histories.

@@ -1,9 +1,0 @@
-{
-  "status": "PENDING",
-  "approval_evidence": null,
-  "total_seconds": 150,
-  "reserve_seconds": 60,
-  "mode_cap_seconds": 30,
-  "scope": "E03 focused source and installed controls only; compatible repairs; no physical solves, CCX, F03, body retry, sibling edits, main, push or release",
-  "runtime": "CPU0, one numerical thread, JIT off, 2GiB, one job; same verified wheel only if all431 package bindings match"
-}

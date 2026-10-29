@@ -1,7 +1,0 @@
-{
-  "type": "ReferenceParseError",
-  "reason": "physical common-origin force/moment balance failed",
-  "prior_attempt": "external-v1",
-  "raw_preserved_at": "C:\\Github\\ANYsolver\\.perf2-worktrees\\stiffened-main-reconcile-20261001\\.qualification\\b3-ge-e4-pl\\r8-e03-coarse-dev-20261007-v1\\external-v1",
-  "production_qualified": false
-}

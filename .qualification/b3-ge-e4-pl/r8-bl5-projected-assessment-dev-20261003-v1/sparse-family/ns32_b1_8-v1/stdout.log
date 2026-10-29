@@ -1,1 +1,0 @@
-{"status": "POSITIVE_ENVELOPE_MECHANICAL_KERNEL_DEVELOPMENT_ONLY", "fixture_case": "ns32_b1_8", "physical_order": 1801, "kernel_order": 1781, "kernel_error_upper": 8.838932809684741e-10, "physical_kernel_lower_bound": 2.953092086521945e-11, "elapsed_seconds": 2.1187466999981552}

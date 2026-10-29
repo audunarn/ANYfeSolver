@@ -1,8 +1,0 @@
-{
-  "authorized_process_wall_seconds": 600.0,
-  "used_seconds": 1.8893756000325084,
-  "remaining_seconds": 598.1106243999675,
-  "verification_reserve_seconds": 60.0,
-  "attempt_timeout_seconds": 538.1106243999675,
-  "prior_failed_preflight": "tests-v1"
-}

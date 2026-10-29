@@ -1,1 +1,0 @@
-{"status": "COMPLETED_INSTALLED_DEVELOPMENT_ONLY", "operator_parity": {"K": 0.0, "C": 3.557299587832636e-18}, "factorization_count": 1, "predicates": {"operator_parity": true, "solve_parity": true, "equilibrium": true, "weak_gap": true, "one_factorization": true, "one_accurate_correction_per_case": true}}

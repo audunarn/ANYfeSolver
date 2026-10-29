@@ -1,2 +1,0 @@
-git diff --check -- src/anysolver/corotational.py src/anysolver/nonlinear_static.py src/anysolver/nonlinear_performance.py src/anysolver/elements.py src/anysolver/mesh_gen.py
-exit1: nonlinear_static.py:4257 and4264 trailing whitespace. No code change made after freezing tested product.

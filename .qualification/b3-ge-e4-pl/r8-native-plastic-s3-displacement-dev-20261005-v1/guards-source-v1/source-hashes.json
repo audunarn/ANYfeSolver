@@ -1,5 +1,0 @@
-{
-  "tests\\test_stiffened_shell_displacement_s3_checkpoint_binary.py": "256451d9297ce584867951900cd03848dbb1381009a658d0d8aaa63503f5e30c",
-  "src\\anysolver\\_stiffened_shell_ge_checkpoint_binary.py": "ca0a9837c27dae190db855b0acb4e41bc5c2c1f43cea216ae64310c8156699f7",
-  "src\\anysolver\\_stiffened_shell_ge_finite_experimental.py": "0c0afa94956acd59581f315cd77d84e931cd9404b30f8b63e23b5c4b87e13563"
-}

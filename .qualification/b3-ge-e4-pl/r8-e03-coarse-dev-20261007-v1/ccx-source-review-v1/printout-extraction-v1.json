@@ -1,9 +1,0 @@
-{
-  "operation": "EXACT_ONE_ADDITIONAL_REFERENCE_FILE_ONLY",
-  "archive_sha256": "9c88385c10fb04f5dc6c4e98027a51bebdd8aee3920e05190d6c1dd08357d6e7",
-  "path": "C:\\Github\\ANYsolver\\.perf2-worktrees\\stiffened-main-reconcile-20261001\\.qualification\\b3-ge-e4-pl\\r8-e03-coarse-dev-20261007-v1\\ccx-source-review-v1\\CalculiX\\ccx_2.23\\src\\printout.f",
-  "sha256": "ae2b60b4e086846e2833a1d723c37645c0ff6701d2e28dc7e3163d0a4d136f32",
-  "bytes": 25182,
-  "wall_seconds": 0.1535315,
-  "source_execution": false
-}

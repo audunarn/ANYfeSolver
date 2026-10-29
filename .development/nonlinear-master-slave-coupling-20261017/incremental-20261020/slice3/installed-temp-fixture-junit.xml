@@ -1,1 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="0.019" timestamp="2026-10-20T12:00:53.025871+02:00" hostname="WORK_STABEIST1"><testcase classname="tests.test_beam_shell_workflow" name="test_cli_stdout_json_exit_status_and_output_file" time="0.006" /></testsuite></testsuites>

@@ -1,5 +1,0 @@
-{
-  "test_sha256": "bfd2687e40e564bf96cf77d533670593ec5382adcd3d7abf2fd00c0249de7a44",
-  "unchanged_product_binding_sha256": "24a5a62ed269c74fc02876f0ca4014b43ea7ad117a97cb3eab4741a80ff6ffbb",
-  "scope": "Review-driven failure and ownership coverage; same v1 product and wheel"
-}

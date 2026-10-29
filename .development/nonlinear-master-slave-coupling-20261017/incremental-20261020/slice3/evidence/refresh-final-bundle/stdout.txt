@@ -1,1 +1,0 @@
-{"bundle": "C:\\ANYworkspaceWork\\beam-shell-incremental-delivery-20261020\\build-6fb907a1c-v2\\ANYsolver-beam-shell-0.4.7+beam.shell.candidate.20261020.s3-6fb907a1c-verified.zip", "sha256": "6b953f7cd99106de1fcfb966022cc219050244191dbcee2dab2a6f25e961aea6", "passed": 77}

@@ -1,3 +1,0 @@
-.                                                                        [100%]
-1 passed in 94.47s (0:01:34)
-{"pytest_exit": 0, "onsite_imports": 210, "case": "test_q4_staged_simultaneous_generalized_j2_restart_atomicity_and_plastic_rebase"}

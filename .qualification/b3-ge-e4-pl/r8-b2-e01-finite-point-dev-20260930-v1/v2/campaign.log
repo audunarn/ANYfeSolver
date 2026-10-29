@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Users\AudunArnesenNyhus\AppData\Local\Temp\r8-b2-e01-finite-point-v2\run_campaign.py", line 25, in <module>
-    run([manifest['external_python'],'-u','b2_e01_opensees_finite_point.py','--output-dir',str(root/'external')],external,'external.log')
-    ~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\AudunArnesenNyhus\AppData\Local\Temp\r8-b2-e01-finite-point-v2\run_campaign.py", line 19, in run
-    if code:raise RuntimeError(f'{log} exited{code}; preserve diagnostic output')
-            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-RuntimeError: external.log exited1; preserve diagnostic output

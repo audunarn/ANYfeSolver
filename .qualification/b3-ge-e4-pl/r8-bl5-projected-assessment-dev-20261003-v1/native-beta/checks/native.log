@@ -1,9 +1,0 @@
-Traceback (most recent call last):
-  File "<frozen runpy>", line 198, in _run_module_as_main
-  File "<frozen runpy>", line 88, in _run_code
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\scripts\r8_bl5_projected_native_beta_dev.py", line 403, in <module>
-    result = assess(envelope.case_from_id(args.case), args.root, args.registration, args.wheel, args.site, args.output)
-  File "C:\Github\ANYsolver\.perf2-worktrees\stiffened-main-reconcile-20261001\scripts\r8_bl5_projected_native_beta_dev.py", line 294, in assess
-    require(data['line']['basis'] == 'discontinuous_p1_cell_average' and data['line']['multiplier_span'] == case.span and
-            ~~~~^^^^^^^^
-KeyError: 'line'

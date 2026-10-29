@@ -1,9 +1,0 @@
-============================= test session starts =============================
-platform win32 -- Python 3.13.9, pytest-9.0.1, pluggy-1.6.0 -- C:\Github\ANYsolver\.venv\Scripts\python.exe
-rootdir: C:\Github\ANYsolver
-configfile: pyproject.toml
-collecting ... collected 1 item
-
-tests/test_nonlinear_beam_shell_coupling.py::test_cantilever_stiffened_shell_finite_rotation_solve_and_wrench_balance[displacement-eccentric] PASSED [100%]
-
-============================== 1 passed in 6.53s ==============================

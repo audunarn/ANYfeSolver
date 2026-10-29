@@ -1,9 +1,0 @@
-{
-  "exit_code": 1,
-  "status": "failed",
-  "process_tree_peak_rss_bytes": 171819008,
-  "elapsed_seconds": 25.56863679998787,
-  "timeout_seconds": 600,
-  "memory_limit_bytes": 8589934592,
-  "case": "test_q4_staged_simultaneous_generalized_j2_restart_atomicity_and_plastic_rebase"
-}

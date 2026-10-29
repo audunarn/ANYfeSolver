@@ -1,9 +1,0 @@
-{
-  "stage": "sandbox postprocessing read",
-  "status": "failed",
-  "exception": "PermissionError",
-  "path": "installed-host-v1/anysolver/__init__.py",
-  "pytest_tests_run": 0,
-  "numerical_run_affected": false,
-  "repair": "authorized HOST read of same immutable bytes; no ACL mutation or rebuild"
-}

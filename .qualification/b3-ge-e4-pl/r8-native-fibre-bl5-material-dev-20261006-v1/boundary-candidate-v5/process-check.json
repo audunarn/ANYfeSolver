@@ -1,9 +1,0 @@
-{
-  "checked_utc": "2026-10-06T01:00:07.1606882Z",
-  "matching_python_processes": 0,
-  "processes": [],
-  "criterion": "Python command line contains boundary-candidate-v5",
-  "owned_exec_session_42384": "terminal exit1 cohort-v1",
-  "latest_helpers_v3": "terminal exit0",
-  "remaining_owned_job_handles": 0
-}

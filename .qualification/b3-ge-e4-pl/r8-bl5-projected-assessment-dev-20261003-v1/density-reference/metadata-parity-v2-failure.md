@@ -1,1 +1,0 @@
-Second root audit passed executable row/command/recovery parity, then refused the current producer SHA. The original owner is bound to retained envelope/sources-v3 source92acf885, not the later compatibility-guard revision f79fa9f9. No numerical result was invalidated; V3 checks the actual frozen source instead.
