@@ -523,7 +523,9 @@ def _cached_gauss_to_node_extrapolation(
         return None
     P_gauss = _polynomial_basis(gauss_points, num_gauss)
     P_nodes = _polynomial_basis(node_natural, num_gauss)
-    coefficients, *_ = np.linalg.lstsq(P_gauss, np.eye(num_gauss), rcond=None)
+    coefficients, _, rank, _ = np.linalg.lstsq(P_gauss, np.eye(num_gauss), rcond=None)
+    if rank != P_gauss.shape[1]:
+        raise ValueError("stress stations do not span the recovery polynomial basis")
     operator = P_nodes @ coefficients
     operator.setflags(write=False)
     return operator
@@ -542,6 +544,67 @@ def _gauss_to_node_extrapolation(element: Any) -> Optional[np.ndarray]:
     )
 
 
+def _operator_for_returned_rows(
+    element: Any,
+    stresses: Mapping[str, Any],
+    keys: Any,
+) -> np.ndarray:
+    """Return the node-extrapolation operator for the rows actually returned.
+
+    Formulations that report ``natural_point_coordinates`` (e.g. the qualified
+    planar Q4, whose default rows follow its stiffness-station order rather
+    than ``element.gauss_points``) define the physical location of each row.
+    The operator is then built from those coordinates.  Without that field the
+    rows are taken to follow ``element.gauss_points`` (legacy contract).
+    Inconsistent row counts or coordinates are refused, never reinterpreted.
+    """
+
+    row_counts = {np.asarray(stresses[key], dtype=float).reshape(-1).shape[0] for key in keys}
+    if len(row_counts) != 1:
+        raise ValueError(
+            f"element {getattr(element, 'element_id', '?')} returned stress fields "
+            f"with inconsistent row counts {sorted(row_counts)}"
+        )
+    rows = row_counts.pop()
+    declared = stresses.get("natural_point_coordinates")
+    if declared is None:
+        operator = _gauss_to_node_extrapolation(element)
+        if operator is None or operator.shape[1] != rows:
+            raise ValueError(
+                f"element {getattr(element, 'element_id', '?')} returned {rows} stress rows "
+                "that do not match its integration-point layout"
+            )
+        return operator
+    points = np.asarray(declared, dtype=float)
+    if points.ndim != 2 or points.shape != (rows, 2) or not np.all(np.isfinite(points)):
+        raise ValueError(
+            f"element {getattr(element, 'element_id', '?')} natural_point_coordinates "
+            f"shape {points.shape} is inconsistent with {rows} stress rows"
+        )
+    if np.unique(np.round(points, 12), axis=0).shape[0] != rows:
+        raise ValueError(
+            f"element {getattr(element, 'element_id', '?')} natural_point_coordinates "
+            "contain duplicate stations"
+        )
+    if _qualified_s3_barycentric_extrapolation(element) is not None:
+        # The S3 operator also carries quadrature weights tied to its own rule.
+        native = _gauss_to_node_extrapolation(element)
+        if not np.array_equal(points, np.asarray(element.gauss_points, dtype=float)):
+            raise ValueError(
+                "qualified S3 natural_point_coordinates differ from its recovery stations"
+            )
+        return native
+    operator = _cached_gauss_to_node_extrapolation(
+        int(getattr(element, "num_nodes", 0)),
+        tuple(float(value) for value in points.reshape(-1)),
+    )
+    if operator is None:
+        raise ValueError(
+            f"element {getattr(element, 'element_id', '?')} has no nodal recovery operator"
+        )
+    return operator
+
+
 def _von_mises_surface(components: Dict[str, float], suffix: str) -> float:
     sxx = components[f"global_xx_{suffix}"]
     syy = components[f"global_yy_{suffix}"]
@@ -555,6 +618,47 @@ def _von_mises_surface(components: Dict[str, float], suffix: str) -> float:
             + 3.0 * (sxy**2 + syz**2 + sxz**2)
         )
     )
+
+
+def _global_displacement_vector(model: "FEModel", displacements: Any) -> np.ndarray:
+    """Validate the model-level (global) displacement vector.
+
+    ``Element._get_element_displacements`` treats any vector whose length equals
+    the element DOF count as already element-local.  A one-element model's
+    global vector has exactly that length, so model-level callers must gather
+    explicitly instead of relying on the length heuristic.
+    """
+
+    u = np.asarray(displacements, dtype=float)
+    if u.ndim != 1:
+        raise ValueError(
+            f"global displacement vector must be one-dimensional; got shape {u.shape}"
+        )
+    if not np.all(np.isfinite(u)):
+        raise ValueError("global displacement vector must be finite")
+    expected = model.mesh.dof_manager.total_dofs
+    if u.size != expected:
+        raise ValueError(f"global displacement vector has length {u.size}; the model has {expected} DOFs")
+    return u
+
+
+def _gather_element_displacements(
+    model: "FEModel", element: Any, global_u: np.ndarray
+) -> np.ndarray:
+    """Gather global displacements into the element's own DOF (connectivity) order."""
+
+    mapping = np.asarray(element.get_dof_mapping(model.mesh), dtype=np.intp)
+    if mapping.size != element.total_dofs:
+        raise ValueError(
+            f"element {getattr(element, 'element_id', '?')} maps {mapping.size} "
+            f"global DOFs but has {element.total_dofs} element DOFs"
+        )
+    if mapping.size and (int(mapping.min()) < 0 or int(mapping.max()) >= global_u.size):
+        raise IndexError(
+            f"element {getattr(element, 'element_id', '?')} requires global DOF "
+            f"outside a displacement vector of length {global_u.size}"
+        )
+    return global_u[mapping]
 
 
 def recover_nodal_stresses(
@@ -593,6 +697,7 @@ def recover_nodal_stresses(
         context="recover_nodal_stresses",
         element_ids=selected_ids,
     )
+    global_u = _global_displacement_vector(model, displacements)
     node_sums: Dict[int, Dict[str, float]] = {}
     node_counts: Dict[int, int] = {}
     element_nodal: Dict[int, Dict[str, np.ndarray]] = {}
@@ -602,15 +707,16 @@ def recover_nodal_stresses(
             continue
         if not isinstance(element, ShellElement):
             continue
-        operator = _gauss_to_node_extrapolation(element)
-        if operator is None:
+        if _gauss_to_node_extrapolation(element) is None:
             skipped.append(int(element_id))
             continue
         material = model.get_material(element.material_name)
-        stresses = element.compute_stresses(model.mesh, displacements, material, return_global=True)
+        element_u = _gather_element_displacements(model, element, global_u)
+        stresses = element.compute_stresses(model.mesh, element_u, material, return_global=True)
         if any(key not in stresses for key in keys):
             skipped.append(int(element_id))
             continue
+        operator = _operator_for_returned_rows(element, stresses, keys)
         nodal_values = {key: operator @ np.asarray(stresses[key], dtype=float).reshape(-1) for key in keys}
         element_nodal[int(element_id)] = nodal_values
         for local_index, node_id in enumerate(element.node_ids):
