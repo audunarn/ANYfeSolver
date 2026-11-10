@@ -19,7 +19,7 @@ anysolid_backend = pytest.importorskip("anysolid.backend")
 from anysolid.mesh import SolidMesh  # noqa: E402
 
 from anysolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement  # noqa: E402
-from anysolver.elements import ShellElement, create_shell_element  # noqa: E402
+from anysolver.elements import create_shell_element  # noqa: E402
 from anysolver.fe_core import FEModel  # noqa: E402
 from anysolver import BoundaryCondition  # noqa: E402
 from anysolver.solid_submodel import (  # noqa: E402
@@ -458,7 +458,7 @@ def test_source_refusals():
     legacy.add_material("steel", E, NU, density=7850.0)
     for node, xyz in enumerate([(0, 0, 0), (1, 0, 0), (0, 1, 0)], start=1):
         legacy.add_node(node, *xyz)
-    legacy.add_element(1, ShellElement(1, [1, 2, 3], "steel", thickness=T))
+    legacy.add_element(1, create_shell_element(1, [1, 2, 3], "steel", thickness=T, formulation="legacy-s3"))
     assert code_of(lambda: evaluate_shell_displacement(
         legacy, np.zeros(18), [(1, (0.2, 0.2))], (0.2, 0.2, 0.0))) == "SOURCE_ELEMENT_NOT_ADMITTED"
 
