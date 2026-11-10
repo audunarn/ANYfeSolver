@@ -403,6 +403,7 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
         "ebbe0e3b500a3f0cfcc62059c3dac4b0ac178b6c",
         "b6f7cf466865b1c4c34b8e5511ace97d00290f6c",
         "32f3bb65e3843d6fd7af6c4fdf76ce472a7f6555",
+        "06f3276d9207376316502aca651c3455db984104",
     }
     assert set(re.findall(r"\b[0-9a-f]{40}\b", publish)) == {
         "11d5960a326750d5838078e36cf38b85af677262",
@@ -434,8 +435,20 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
 
     assert action_sequence(job_block(ci, "license")) == [checkout_ref, setup_ref]
     assert action_sequence(job_block(ci, "resolver")) == [checkout_ref, setup_ref]
+    pytest_block = job_block(ci, "pytest")
+    assert action_sequence(pytest_block) == [checkout_ref] * 5 + [setup_ref, checkout_ref]
+    solid_condition = "        if: matrix.shard-index == 0 && matrix.subshard-index == 0\n"
+    assert pytest_block.count(solid_condition) == 2
+    solid_checkout = (
+        f"      - uses: {checkout_ref}\n" + solid_condition +
+        "        with:\n"
+        "          repository: audunarn/ANYsolid\n"
+        "          ref: 06f3276d9207376316502aca651c3455db984104\n"
+        "          path: .ecosystem/ANYsolid\n"
+        "          persist-credentials: false\n"
+    )
+    assert pytest_block.count(solid_checkout) == 1
     for name in (
-        "pytest",
         "anymesher-compatibility",
         "anyfileio-compatibility",
         "wheel",
@@ -549,7 +562,6 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
         block = job_block(ci, name)
         assert checkout_pattern.findall(block) == current_checkouts
         assert block.count(checkout_ref) == 5
-    pytest_block = job_block(ci, "pytest")
     numba_block = job_block(ci, "numba")
     numba_test_install = 'python -m pip install -e ".[dev,numba]"'
     assert pytest_block.count(numba_test_install) == 1
