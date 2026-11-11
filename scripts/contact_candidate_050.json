@@ -1,0 +1,215 @@
+{
+  "status": "SLICE2_S7_PACKAGING_ONLY_SUCCESSOR_NUMERICAL_FIELDS_EQUAL_PREDECESSOR",
+  "note": "Packaging-only successor of scripts/contact_candidate_slice2.json (frozen, unchanged). Only the candidate identity (ANYfeSolver / ANYfeSolver-results names, 0.5.0 base, results 2.2.0, 20261111 candidate version) differs; every numerical pin, selector, comparison, scale, cap and installed/private/production boundary is the predecessor's value. No numerical run was made for this successor and no authority, qualification or measurement of the predecessor is renewed or transferred: historical sampled results remain those of the predecessor candidate 0.4.7+contact.candidate.20261020.s7.",
+  "predecessor": {
+    "config": "scripts/contact_candidate_slice2.json",
+    "candidate_version": "0.4.7+contact.candidate.20261020.s7",
+    "authority_renewed": false,
+    "numerical_run_made": false
+  },
+  "candidate_version": "0.5.0+contact.candidate.20261111.s7",
+  "repo_version": "0.5.0",
+  "private_versions": {
+    "ANYfeSolver": "0.5.0+contact.candidate.20261111.s7",
+    "anyfesolver-results": "2.2.0",
+    "ANYmaterial": "0.2.0",
+    "ANYgeometry": "0.4.3",
+    "ANYmesher": "0.5.0",
+    "ANYfileio": "0.3.2"
+  },
+  "wheel_files": {
+    "ANYfeSolver": "anyfesolver-0.5.0+contact.candidate.20261111.s7-py3-none-any.whl",
+    "anyfesolver-results": "anyfesolver_results-2.2.0-py3-none-any.whl",
+    "ANYmaterial": "anymaterial-0.2.0-py3-none-any.whl",
+    "ANYgeometry": "anygeometry-0.4.3-py3-none-any.whl",
+    "ANYmesher": "anymesher-0.5.0-py3-none-any.whl",
+    "ANYfileio": "anyfileio-0.3.2-py3-none-any.whl"
+  },
+  "sibling_dirs": {
+    "ANYmaterial": "ANYmaterial",
+    "ANYgeometry": "ANYgeometry",
+    "ANYmesher": "ANYmesh",
+    "ANYfileio": "ANYfileIO"
+  },
+  "sibling_refs": {
+    "ANYmaterial": "d8a233ef4c5e38d25dbba0eb20e6cfa8d44ec5a2",
+    "ANYgeometry": "91846898b03fa02b029abde82508eddb981efdc0",
+    "ANYmesher": "2ccef378c3efb4ba3a9957b9ab896ac8fc454b9d",
+    "ANYfileio": "db73950018e1c87dab0ca618c25c965030ba08ce"
+  },
+  "numerical_pins": [
+    "numpy==2.5.4",
+    "scipy==1.18.1",
+    "threadpoolctl==3.7.0",
+    "numba==0.68.0",
+    "shapely==2.2.0",
+    "pytest>=8",
+    "psutil>=5.9"
+  ],
+  "numerical_pins_note": "numpy/scipy/threadpoolctl/numba are the versions from docs/contact-candidate-20261019/requirements-tested.txt (that historical file stays immutable). shapely==2.2.0 is pinned prospectively for the new cold runtime from the observed baseline CI install in ci-positive-binding-shard.log (successful 2026-10-19 job, shapely-2.2.0 wheel); the historical numerical environment never imported Shapely, so no historical Shapely testing is claimed. pytest/psutil are ordinary check tooling.",
+  "base_selectors": [
+    "tests/test_general_contact_beam_pair.py::test_pair_force_control_and_split_restart_match_full_path",
+    "tests/test_general_contact_beam_pair.py::test_parallel_pair_has_analytic_line_work_balanced_wrench_and_tangent",
+    "tests/test_general_contact_beam_plane.py::test_b2_line_contact_runs_through_displacement_solver_and_checkpoint",
+    "tests/test_general_contact_beam_plane.py::test_b2_line_potential_force_tangent_and_gap_certificate",
+    "tests/test_general_contact_beam_plane.py::test_b3_deformed_curve_runs_through_static_solver",
+    "tests/test_general_contact_s3_friction_physical_path.py::test_canonical_material_work_and_whole_path",
+    "tests/test_general_contact_s3_friction_static.py::test_real_static_stick_slip_reversal_opening_and_split_restart",
+    "tests/test_general_contact_s3_plane.py::test_s3_plane_static_reaction_and_gap_use_physical_reference_offset",
+    "tests/test_general_contact_static_results_archive.py::test_actual_static_producer_consumer",
+    "tests/test_general_contact_static_results_archive.py::test_exact_detached_and_refusal",
+    "tests/test_general_contact_static_results_archive.py::test_independent_preservation_oracle",
+    "tests/test_general_contact_triangulated_rigid.py::test_complete_penalty_work_and_diagonal",
+    "tests/test_general_contact_triangulated_rigid.py::test_ordinary_force_and_path_restart",
+    "tests/test_general_contact_s3_friction_static.py::test_friction_invalid_candidate_and_cancel_restore_context",
+    "tests/test_general_contact_s3_friction_static.py::test_precancelled_entry_skips_assembly_predictor_and_keeps_context",
+    "tests/test_general_contact_s3_friction_cli.py::test_completed_direct_checkpoint_and_legacy_invocation_match",
+    "tests/test_general_contact_s3_friction_cli.py::test_noncompleted_writes_truthful_json_and_exits_nonzero",
+    "tests/test_general_contact_s3_friction_cli.py::test_path_collisions_refused_before_solving",
+    "tests/test_general_contact_s3_friction_cli.py::test_cancelled_and_refused_input_write_no_output",
+    "tests/test_general_contact_s3_friction_cli.py::test_hardlinked_existing_paths_refused_before_solving",
+    "tests/test_general_contact_s3_friction_cli.py::test_replacement_failure_after_temp_preserves_old_bytes",
+    "tests/test_general_contact_s3_friction_cli.py::test_checkpoint_write_failure_reports_published_output",
+    "tests/test_general_contact_s3_q4_static_dev.py::test_zero_predictor_tiny_positive_controlled_null_and_injection_refusals",
+    "tests/test_general_contact_s3_friction_static.py::test_uncancelled_legacy_friction_reports_zero_reaction_predictor",
+    "tests/test_general_contact_s3_friction_physical_path.py::test_uncancelled_sliding_friction_reports_zero_reaction_predictor",
+    "tests/test_general_contact_monolithic_ordinary_displacement.py::test_ordinary_displacement_rejects_unphysical_force_scale"
+  ],
+  "additional_selector_batches": {
+    "curved-skins": [
+      "tests/test_general_contact_curved_shell_skin.py::test_actual_model_inventory_and_zero_pose_reference",
+      "tests/test_general_contact_curved_shell_skin.py::test_gravity_preloaded_panel_skin_recovery",
+      "tests/test_general_contact_curved_shell_skin.py::test_shared_node_work_accumulation",
+      "tests/test_general_contact_curved_shell_skin.py::test_shared_sphere_corner_distinctness",
+      "tests/test_general_contact_curved_shell_skin.py::test_rigid_translation_of_each_body",
+      "tests/test_general_contact_curved_shell_skin.py::test_rigid_rotation_virtual_work_of_each_body",
+      "tests/test_general_contact_curved_shell_skin.py::test_local_deformation_probe_of_each_body",
+      "tests/test_general_contact_curved_shell_skin.py::test_fixed_spatial_force_pullback_derivative",
+      "tests/test_general_contact_curved_shell_skin.py::test_physical_offsets_and_authoritative_dofs",
+      "tests/test_general_contact_curved_shell_skin.py::test_refusals_and_nonmutation",
+      "tests/test_general_contact_curved_shell_skin.py::test_wrong_map_pose_and_shape_refusals",
+      "tests/test_general_contact_curved_shell_skin.py::test_bound_identity_refuses_thickness_and_director_changes",
+      "tests/test_general_contact_curved_shell_skin.py::test_face_interpolation_and_normals"
+    ],
+    "elastic-initial-state": [
+      "tests/test_elastic_sphere_stiffened_panel.py::test_fixed_sphere_case_data_topology",
+      "tests/test_elastic_sphere_stiffened_panel.py::test_initial_state_document_metadata",
+      "tests/test_elastic_sphere_stiffened_panel.py::test_exported_mesh_matches_model_geometry",
+      "tests/test_elastic_sphere_stiffened_panel.py::test_sphere_masses_match_faceted_reference",
+      "tests/test_elastic_sphere_stiffened_panel.py::test_panel_masses_match_declared_target",
+      "tests/test_elastic_sphere_stiffened_panel.py::test_panel_gravity_solve_completed",
+      "tests/test_elastic_sphere_stiffened_panel.py::test_global_equilibrium_balance_within_tolerances",
+      "tests/test_elastic_sphere_stiffened_panel.py::test_sphere_pose_and_placement",
+      "tests/test_elastic_sphere_stiffened_panel.py::test_impact_request_is_refused"
+    ]
+  },
+  "friction_stages": [
+    "full",
+    "active-prefix",
+    "prefix",
+    "active-resume",
+    "resume",
+    "rollback"
+  ],
+  "friction_lifecycle_node": "tests/test_general_contact_s3_friction_physical_path.py::test_public_installed_lifecycle_and_restart",
+  "friction_rollback_node": "tests/test_general_contact_s3_friction_physical_path.py::test_public_trial_exception_and_inflight_cancellation",
+  "orientation_stages": [
+    "full-plus"
+  ],
+  "orientation_node": "tests/test_general_contact_s3_physical_orientation.py::test_installed_s3_physical_orientation_stage",
+  "bundle_examples": [
+    "general_contact_automatic_s3_pair",
+    "general_contact_round_beam_pair",
+    "general_contact_round_beam_plane",
+    "general_contact_s3_friction_physical_path",
+    "general_contact_s3_physical_orientation",
+    "general_contact_s3_plane",
+    "general_contact_static_results_archive",
+    "general_contact_triangulated_rigid",
+    "elastic_sphere_stiffened_panel",
+    "elastic_sphere_stiffened_panel_mesh",
+    "elastic_sphere_panel_contact_skins"
+  ],
+  "bundle_examples_note": "Exactly the previously delivered public examples plus the elastic sphere stiffened-panel initial-state example, its fixed case-data module and the development-only curved contact-skins geometry example, plus the examples package marker; no experimental examples enter the bundle",
+  "example_commands": {
+    "normal": [
+      "examples.general_contact_s3_physical_orientation"
+    ],
+    "friction": [
+      "examples.general_contact_s3_friction_physical_path",
+      "--output",
+      "examples/friction.json"
+    ],
+    "archive": [
+      "examples.general_contact_static_results_archive"
+    ],
+    "restart-partial": [
+      "examples.general_contact_s3_friction_physical_path",
+      "--through-step",
+      "3",
+      "--output",
+      "examples/restart-partial.json",
+      "--checkpoint-output",
+      "examples/restart-checkpoint.json"
+    ],
+    "restart": [
+      "examples.general_contact_s3_friction_physical_path",
+      "--through-step",
+      "7",
+      "--restart",
+      "examples/restart-checkpoint.json",
+      "--output",
+      "examples/restart.json"
+    ],
+    "contact-skins": [
+      "examples.elastic_sphere_panel_contact_skins",
+      "--output",
+      "examples/contact-skins.json"
+    ]
+  },
+  "timeouts": {
+    "case_seconds": 120,
+    "host_numerical_seconds": 600,
+    "rss_limit_mib": 953
+  },
+  "cross_host_bound": "maxabs(delta) <= 1e-9*maxabs(reference) + 1e-12*scale per declared quantity; exact non-numeric fields",
+  "cross_host_files": {
+    "friction_full": "friction/full.json",
+    "orientation_full": "orientation/full-plus.json",
+    "example_friction": "examples/friction.json"
+  },
+  "cross_host_quantities": [
+    ["friction_full", "displacements", "displacement_m", 1.0],
+    ["friction_full", "info.force_displacement_history[*].reaction_generalized[0]", "force_N", 0.02],
+    ["friction_full", "info.force_displacement_history[*].reaction_generalized[1]", "force_N", 0.02],
+    ["friction_full", "info.force_displacement_history[*].friction.dissipation_increment_j", "energy_J", 0.02],
+    ["friction_full", "poses[*].complete_contact_wrench.force", "dimensionless", 1.0],
+    ["friction_full", "poses[*].complete_contact_wrench.moment", "dimensionless", 1.0],
+    ["friction_full", "poses[*].coupled_equilibrium_normalized", "dimensionless", 1.0],
+    ["orientation_full", "target_node9_uz_m", "displacement_m", 1.0],
+    ["orientation_full", "upper_actuator_ux_m", "displacement_m", 1.0],
+    ["orientation_full", "phase_wrench_errors[*].force", "dimensionless", 1.0],
+    ["orientation_full", "phase_wrench_errors[*].moment", "dimensionless", 1.0],
+    ["orientation_full", "all_free_equilibrium_normalized_error", "dimensionless", 1.0],
+    ["example_friction", "phases[*].reaction_generalized[0]", "force_N", 0.02],
+    ["example_friction", "phases[*].friction.dissipation_increment_j", "energy_J", 0.02]
+  ],
+  "cross_host_exact": [
+    ["friction_full", "status"],
+    ["friction_full", "snapshot_inventory"],
+    ["friction_full", "verified"],
+    ["friction_full", "info.force_displacement_history[*].friction.branch"],
+    ["orientation_full", "status"],
+    ["orientation_full", "stage"],
+    ["orientation_full", "identity"],
+    ["orientation_full", "selections"],
+    ["orientation_full", "settings"],
+    ["orientation_full", "criteria"],
+    ["orientation_full", "physical_inputs"],
+    ["orientation_full", "verified"],
+    ["orientation_full", "opening_verified"],
+    ["example_friction", "status"],
+    ["example_friction", "physical_scope"]
+  ],
+  "scale_provenance": "CASE_FREEZE.json W3_W4_W5_W6_W10 group (displacement_m 1, force_N 0.02, length_m 1, energy_J 0.02); dimensionless normalized diagnostics use scale 1"
+}

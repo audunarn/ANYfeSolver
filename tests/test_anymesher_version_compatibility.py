@@ -31,7 +31,7 @@ def _assert_expected_anymesher_requirement(requirement: str) -> None:
 
 
 def _installed_anymesher_requirements() -> list[str]:
-    requirements = metadata.requires("ANYsolver") or []
+    requirements = metadata.requires("ANYfeSolver") or []
     return [
         requirement
         for requirement in requirements
@@ -83,7 +83,7 @@ def _assert_probe_identities(
     modules: dict[str, ModuleType], *, metadata_mode: str
 ) -> None:
     expected_variables = {
-        "ANYsolver": "EXPECTED_ANYSOLVER_VERSION",
+        "ANYfeSolver": "EXPECTED_ANYSOLVER_VERSION",
         "ANYmaterial": "EXPECTED_ANYMATERIAL_VERSION",
         "ANYgeometry": "EXPECTED_ANYGEOMETRY_VERSION",
         "ANYmesher": "EXPECTED_ANYMESHER_VERSION",
@@ -122,16 +122,16 @@ def _metadata_requirement(metadata_mode: str) -> str:
 def probe_anymesher_public_contract(
     *, metadata_mode: str = "source"
 ) -> dict[str, Any]:
-    """Exercise the exact neutral-meshing surface consumed by ANYsolver."""
+    """Exercise the exact neutral-meshing surface consumed by ANYfeSolver."""
 
     import anyfileio
     import anygeometry
     import anymaterial
     import anymesher
-    import anysolver
+    import anyfesolver
 
     modules = {
-        "ANYsolver": anysolver,
+        "ANYfeSolver": anyfesolver,
         "ANYmaterial": anymaterial,
         "ANYgeometry": anygeometry,
         "ANYmesher": anymesher,
@@ -149,7 +149,7 @@ def probe_anymesher_public_contract(
         "verify_mesh_quality",
     )
     assert all(hasattr(anymesher, name) for name in required_names)
-    assert anysolver.StiffenerCrossSection is anymesher.StiffenerCrossSection
+    assert anyfesolver.StiffenerCrossSection is anymesher.StiffenerCrossSection
 
     panel = anymesher.StiffenedPanel(
         length=2.4,
@@ -197,8 +197,8 @@ def probe_anymesher_public_contract(
         "anyfileio_origin": str(Path(anyfileio.__file__).resolve()),
         "anymaterial_version": anymaterial.__version__,
         "anymaterial_origin": str(Path(anymaterial.__file__).resolve()),
-        "anysolver_version": anysolver.__version__,
-        "anysolver_origin": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_version": anyfesolver.__version__,
+        "anyfesolver_origin": str(Path(anyfesolver.__file__).resolve()),
         "requirement": requirement,
         "metadata_mode": metadata_mode,
         "node_count": len(mesh.nodes),
@@ -225,7 +225,7 @@ def test_installed_requirement_accepts_canonicalized_specifier_order() -> None:
     _assert_expected_anymesher_requirement("ANYmesher<0.6,>=0.4")
 
 
-def test_anymesher_public_contract_used_by_anysolver() -> None:
+def test_anymesher_public_contract_used_by_anyfesolver() -> None:
     result = probe_anymesher_public_contract()
     assert result["node_count"] > 0
     assert result["quality_element_count"] > 0

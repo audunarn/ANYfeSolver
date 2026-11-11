@@ -8,26 +8,32 @@ on:
       - scripts/build_static_contact_candidate.py
       - scripts/check_static_contact_candidate.py
       - scripts/contact_candidate_slice2.json
+      - scripts/contact_candidate_050.json
       - tests/test_static_contact_candidate_tools.py
       - docs/GENERAL_CONTACT_STATIC_CANDIDATE.md
-      - src/anysolver/**
+      - src/anyfesolver/**
       - packages/results/pyproject.toml
+      - packages/results/src/**
       - pyproject.toml
-      - examples/**
       - tests/test_general_contact_*.py
+      - tests/test_elastic_sphere_*.py
+      - examples/**
   pull_request:
     paths:
       - .github/workflows/contact-candidate.yml
       - scripts/build_static_contact_candidate.py
       - scripts/check_static_contact_candidate.py
       - scripts/contact_candidate_slice2.json
+      - scripts/contact_candidate_050.json
       - tests/test_static_contact_candidate_tools.py
       - docs/GENERAL_CONTACT_STATIC_CANDIDATE.md
-      - src/anysolver/**
+      - src/anyfesolver/**
       - packages/results/pyproject.toml
+      - packages/results/src/**
       - pyproject.toml
-      - examples/**
       - tests/test_general_contact_*.py
+      - tests/test_elastic_sphere_*.py
+      - examples/**
   workflow_dispatch:
 
 env:

@@ -18,7 +18,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG_PATH = ROOT / "scripts" / "contact_candidate_slice2.json"
+# Packaging-only 0.5.0 successor; the frozen predecessor
+# scripts/contact_candidate_slice2.json is retained unchanged.
+CONFIG_PATH = ROOT / "scripts" / "contact_candidate_050.json"
 IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc", "*.egg-info")
 SOLVER_TOP_FILES = ("pyproject.toml", "README.md", "LICENSE", "COPYRIGHT",
                     "THIRD_PARTY_NOTICES.md")
@@ -51,7 +53,7 @@ def build_wheel(project_dir: Path, wheelhouse: Path) -> str:
 def stage_solver(checkout: Path, stage: Path, candidate_version: str) -> dict:
     """Stage a copy of the solver sources with only the version string changed."""
     (stage / "src").mkdir(parents=True)
-    shutil.copytree(checkout / "src" / "anysolver", stage / "src" / "anysolver",
+    shutil.copytree(checkout / "src" / "anyfesolver", stage / "src" / "anyfesolver",
                     ignore=IGNORE)
     for name in SOLVER_TOP_FILES:
         shutil.copy2(checkout / name, stage / name)
@@ -63,7 +65,7 @@ def stage_solver(checkout: Path, stage: Path, candidate_version: str) -> dict:
     (stage / "pyproject.toml").write_text(
         pyproject.replace(old, f'version = "{candidate_version}"'), encoding="utf-8")
     files = {}
-    for path in sorted((stage / "src" / "anysolver").rglob("*")):
+    for path in sorted((stage / "src" / "anyfesolver").rglob("*")):
         if path.is_file() and "__pycache__" not in path.parts:
             files[str(path.relative_to(stage))] = sha256_file(path)
     for name in SOLVER_TOP_FILES:
@@ -75,7 +77,7 @@ def stage_solver(checkout: Path, stage: Path, candidate_version: str) -> dict:
 
 def write_guide(bundle: Path, config: dict) -> None:
     version = config["candidate_version"]
-    bundle.joinpath("README.md").write_text(f"""# ANYsolver static-contact candidate
+    bundle.joinpath("README.md").write_text(f"""# ANYfeSolver static-contact candidate
 
 Private candidate wheels for the supported static-contact workflows.
 Version: `{version}` (stage version change only; solver sources identical to
@@ -89,7 +91,7 @@ then activate it (`.venv\\Scripts\\Activate.ps1` on Windows PowerShell or
 
 ```
 python -m pip install --no-cache-dir -r requirements-tested.txt
-python -m pip install --no-cache-dir --no-index --find-links wheelhouse "ANYsolver[general-contact]=={version}" anysolver-results==2.1.1 ANYmaterial==0.2.0 "ANYgeometry[planar]==0.4.3" ANYmesher==0.5.0 ANYfileio==0.3.2
+python -m pip install --no-cache-dir --no-index --find-links wheelhouse "ANYfeSolver[general-contact]=={version}" anyfesolver-results==2.2.0 ANYmaterial==0.2.0 "ANYgeometry[planar]==0.4.3" ANYmesher==0.5.0 ANYfileio==0.3.2
 python -m pip check
 ```
 
@@ -189,7 +191,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--reuse-wheelhouse", type=Path,
                         help="existing wheelhouse with byte-identical private wheels")
     parser.add_argument("--results-root", type=Path, default=None,
-                        help="anysolver-results project root (default: checkout/packages/results)")
+                        help="anyfesolver-results project root (default: checkout/packages/results)")
     parser.add_argument("--sibling-root", type=Path, default=None,
                         help="directory holding pinned sibling checkouts (default: checkout/.ecosystem)")
     args = parser.parse_args(argv)
@@ -203,10 +205,10 @@ def main(argv: list[str] | None = None) -> int:
     results_root = (args.results_root or checkout / "packages" / "results").resolve()
     sibling_root = (args.sibling_root or checkout / ".ecosystem").resolve()
     wheels = []
-    for package in ("anysolver-results", "ANYmaterial", "ANYgeometry",
+    for package in ("anyfesolver-results", "ANYmaterial", "ANYgeometry",
                     "ANYmesher", "ANYfileio"):
         expected = config["wheel_files"][package]
-        source = (results_root if package == "anysolver-results"
+        source = (results_root if package == "anyfesolver-results"
                   else sibling_root / config["sibling_dirs"][package])
         reuse = args.reuse_wheelhouse / expected if args.reuse_wheelhouse else None
         if reuse and reuse.is_file():
@@ -223,13 +225,13 @@ def main(argv: list[str] | None = None) -> int:
                            sha256=sha256_file(wheelhouse / expected), origin=origin))
     import tempfile
     with tempfile.TemporaryDirectory(prefix="candidate-s2-stage-") as tmp:
-        stage = Path(tmp) / "ANYsolver"
+        stage = Path(tmp) / "ANYfeSolver"
         identity = stage_solver(checkout, stage, config["candidate_version"])
         built = build_wheel(stage, wheelhouse)
-        expected = config["wheel_files"]["ANYsolver"]
+        expected = config["wheel_files"]["ANYfeSolver"]
         if built != expected:
-            raise SystemExit(f"ANYsolver: built {built}, expected {expected}")
-        wheels.append(dict(package="ANYsolver", file=expected,
+            raise SystemExit(f"ANYfeSolver: built {built}, expected {expected}")
+        wheels.append(dict(package="ANYfeSolver", file=expected,
                            sha256=sha256_file(wheelhouse / expected),
                            origin="built:current-checkout-staged"))
     delivered_examples = copy_delivered_examples(checkout, bundle, config)

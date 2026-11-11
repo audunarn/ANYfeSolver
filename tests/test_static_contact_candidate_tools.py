@@ -17,15 +17,24 @@ from scripts import build_static_contact_candidate as build
 from scripts import check_static_contact_candidate as check
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG = json.loads((ROOT / "scripts" / "contact_candidate_slice2.json")
-                    .read_text(encoding="utf-8"))
+CONFIG_FILE = ROOT / "scripts" / "contact_candidate_050.json"
+CONFIG = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
+
+
+def test_tools_load_the_050_successor_config() -> None:
+    assert build.CONFIG_PATH == CONFIG_FILE
+    assert check.CONFIG_PATH == CONFIG_FILE
 
 
 def test_config_recipe_is_complete_and_matches_the_checkout() -> None:
-    assert CONFIG["candidate_version"] == "0.4.7+contact.candidate.20261020.s7"
-    assert CONFIG["private_versions"]["ANYsolver"] == CONFIG["candidate_version"]
-    assert CONFIG["wheel_files"]["ANYsolver"] == (
-        "anysolver-" + CONFIG["candidate_version"] + "-py3-none-any.whl")
+    assert CONFIG["candidate_version"] == "0.5.0+contact.candidate.20261111.s7"
+    assert CONFIG["repo_version"] == "0.5.0"
+    assert CONFIG["private_versions"]["anyfesolver-results"] == "2.2.0"
+    assert CONFIG["wheel_files"]["anyfesolver-results"] == (
+        "anyfesolver_results-2.2.0-py3-none-any.whl")
+    assert CONFIG["private_versions"]["ANYfeSolver"] == CONFIG["candidate_version"]
+    assert CONFIG["wheel_files"]["ANYfeSolver"] == (
+        "anyfesolver-" + CONFIG["candidate_version"] + "-py3-none-any.whl")
     assert len(CONFIG["base_selectors"]) == 26
     assert "elastic_sphere_panel_contact_skins" in CONFIG["bundle_examples"]
     assert CONFIG["example_commands"]["contact-skins"] == [
@@ -68,6 +77,39 @@ def test_config_recipe_is_complete_and_matches_the_checkout() -> None:
         assert CONFIG["private_versions"][package] in filename
 
 
+IDENTITY_KEYS = {"status", "note", "predecessor", "candidate_version",
+                 "repo_version", "private_versions", "wheel_files"}
+PREDECESSOR_FILE = ROOT / "scripts" / "contact_candidate_slice2.json"
+
+
+def test_successor_numerical_fields_equal_the_frozen_predecessor() -> None:
+    predecessor = json.loads(PREDECESSOR_FILE.read_text(encoding="utf-8"))
+    # The predecessor keeps every historical identity and scope.
+    assert predecessor["candidate_version"] == "0.4.7+contact.candidate.20261020.s7"
+    assert predecessor["repo_version"] == "0.4.7"
+    assert predecessor["private_versions"]["anysolver-results"] == "2.1.1"
+    assert CONFIG["predecessor"]["config"] == "scripts/contact_candidate_slice2.json"
+    assert CONFIG["predecessor"]["candidate_version"] == predecessor["candidate_version"]
+    assert CONFIG["predecessor"]["authority_renewed"] is False
+    assert CONFIG["predecessor"]["numerical_run_made"] is False
+    # Same key set; every non-identity field (pins, selectors, batches, stages,
+    # nodes, examples, caps, cross-host files/quantities/exact/bound, scales,
+    # sibling dirs and refs) is exactly equal.
+    assert set(CONFIG) - {"predecessor"} == set(predecessor)
+    for key in sorted(set(predecessor) - IDENTITY_KEYS):
+        assert CONFIG[key] == predecessor[key], key
+    # Identity differs exactly where intended.
+    assert CONFIG["candidate_version"] != predecessor["candidate_version"]
+    assert CONFIG["timeouts"] == dict(case_seconds=120,
+                                      host_numerical_seconds=600,
+                                      rss_limit_mib=953)
+    # Third-party private wheels keep the predecessor's versions and files.
+    for package in ("ANYmaterial", "ANYgeometry", "ANYmesher", "ANYfileio"):
+        assert CONFIG["private_versions"][package] == \
+            predecessor["private_versions"][package]
+        assert CONFIG["wheel_files"][package] == predecessor["wheel_files"][package]
+
+
 def test_solver_staging_changes_only_the_version_string(tmp_path: Path) -> None:
     stage = tmp_path / "stage"
     identity = build.stage_solver(ROOT, stage, CONFIG["candidate_version"])
@@ -79,7 +121,7 @@ def test_solver_staging_changes_only_the_version_string(tmp_path: Path) -> None:
     assert identity["repo_version_unchanged"] and identity["version_change_only"]
     assert identity["staged_file_count"] > 100
     assert len(identity["staged_source_digest"]) == 64
-    assert (stage / "src" / "anysolver" / "general_contact").is_dir()
+    assert (stage / "src" / "anyfesolver" / "general_contact").is_dir()
     assert not list(stage.rglob("__pycache__"))
 
 
@@ -224,8 +266,7 @@ def fake_bundle(tmp_path: Path) -> Path:
     manifest = dict(status="BUILT",
                    wheels=sorted(wheels, key=lambda w: w["package"]),
                    config_sha256=hashlib.sha256(
-                       (ROOT / "scripts" / "contact_candidate_slice2.json")
-                       .read_bytes()).hexdigest())
+                       CONFIG_FILE.read_bytes()).hexdigest())
     (bundle / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     return bundle
 
@@ -233,9 +274,10 @@ def fake_bundle(tmp_path: Path) -> Path:
 def test_verify_manifest_rejects_corrupted_or_incomplete_bundles(tmp_path: Path) -> None:
     bundle = fake_bundle(tmp_path)
     assert check.verify_manifest(bundle, CONFIG)["status"] == "BUILT"
-    (bundle / "wheelhouse" / CONFIG["wheel_files"]["ANYsolver"]).write_bytes(b"corrupt")
+    (bundle / "wheelhouse" / CONFIG["wheel_files"]["ANYfeSolver"]).write_bytes(b"corrupt")
     with pytest.raises(SystemExit, match="digest mismatch"):
         check.verify_manifest(bundle, CONFIG)
+    bundle = fake_bundle(tmp_path / "missing-wheel")
     (bundle / "wheelhouse" / CONFIG["wheel_files"]["ANYmesher"]).unlink()
     with pytest.raises(SystemExit, match="manifest wheel missing"):
         check.verify_manifest(bundle, CONFIG)

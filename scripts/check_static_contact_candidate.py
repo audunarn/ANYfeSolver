@@ -36,7 +36,9 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG_PATH = ROOT / "scripts" / "contact_candidate_slice2.json"
+# Packaging-only 0.5.0 successor; the frozen predecessor
+# scripts/contact_candidate_slice2.json is retained unchanged.
+CONFIG_PATH = ROOT / "scripts" / "contact_candidate_050.json"
 THREAD_ENV = {
     "OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "MKL_NUM_THREADS": "1",
     "NUMEXPR_NUM_THREADS": "1", "VECLIB_MAXIMUM_THREADS": "1", "NUMBA_NUM_THREADS": "1",
@@ -44,9 +46,9 @@ THREAD_ENV = {
     "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
     "ANYMESHER_DISABLE_NATIVE": "1", "ANYMESHER_REQUIRE_NATIVE": "0",
 }
-PRIVATE_PACKAGES = ("ANYsolver", "anysolver-results", "ANYmaterial",
+PRIVATE_PACKAGES = ("ANYfeSolver", "anyfesolver-results", "ANYmaterial",
                     "ANYgeometry", "ANYmesher", "ANYfileio")
-PRIVATE_MODULES = ("anysolver", "anysolver_results", "anymaterial",
+PRIVATE_MODULES = ("anyfesolver", "anyfesolver_results", "anymaterial",
                    "anygeometry", "anymesher", "anyfileio")
 EXAMPLE_MODULES = ("general_contact_s3_physical_orientation",
                    "general_contact_s3_friction_physical_path",
@@ -104,18 +106,18 @@ def verify_worker_origins(job: dict) -> None:
 
     Must run before pytest loads ``tests/conftest.py``: the conftest inserts
     the checkout root at ``sys.path[0]``, which would otherwise redirect
-    ``anysolver`` and the delivered ``examples`` imports to the checkout.
+    ``anyfesolver`` and the delivered ``examples`` imports to the checkout.
     Preloading caches the installed/bundle modules in ``sys.modules`` and the
     explicit origin checks refuse any redirected or non-candidate origin.
     """
     root = Path(job["root"])
     checkout = Path(job["checkout"]).resolve()
     bundle_examples = (Path(job["bundle"]) / "examples").resolve()
-    solver = Path(__import__("anysolver").__file__).resolve()
+    solver = Path(__import__("anyfesolver").__file__).resolve()
     if not solver.is_relative_to(root):
-        raise SystemExit(f"anysolver origin outside install root: {solver}")
+        raise SystemExit(f"anyfesolver origin outside install root: {solver}")
     if checkout in solver.parents:
-        raise SystemExit(f"anysolver origin inside checkout: {solver}")
+        raise SystemExit(f"anyfesolver origin inside checkout: {solver}")
     import examples
     bundle_on_path = any(Path(p).resolve() == bundle_examples
                          for p in getattr(examples, "__path__", []))

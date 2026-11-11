@@ -8,8 +8,8 @@ import subprocess
 
 import pytest
 
-from anysolver import __version__, b3_ge
-from anysolver.elements import QuadraticBeamElement, create_element
+from anyfesolver import __version__, b3_ge
+from anyfesolver.elements import QuadraticBeamElement, create_element
 from scripts import verify_release_047 as gate
 
 
@@ -17,7 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_release_identity_and_g7_boundary_are_exact() -> None:
-    assert __version__ == gate.VERSION == "0.4.7"
+    assert gate.VERSION == "0.4.7"
+    assert __version__ == "0.5.0"
     records = gate._validate_g7()
     assert set(records) == {"confirmation", "contract", "review", "status"}
     evidence = gate._validate_performance_evidence()
@@ -43,7 +44,9 @@ def test_release_archive_contains_only_current_user_documents() -> None:
         for line in manifest
         if line.startswith("include docs/")
     }
-    assert included_docs == gate.RELEASE_DOCS | {"docs/NATIVE_SOURCE_AUTHORITY.md"}
+    assert included_docs == gate.RELEASE_DOCS | {
+        "docs/NATIVE_SOURCE_AUTHORITY.md", "docs/releases/ANYfeSolver_0.5.0.md"
+    }
     assert {
         "prune docs",
         "prune reports",
@@ -69,13 +72,13 @@ def test_strict_json_rejects_malformed_evidence(tmp_path: Path, payload: str, me
 
 def test_publish_workflow_uses_bounded_gate_before_upload() -> None:
     workflow = (ROOT / ".github/workflows/publish.yml").read_text(encoding="utf-8")
-    command = "python scripts/verify_release_047.py"
-    upload = "name: python-package-distributions"
+    command = "python scripts/verify_release_050.py"
+    upload = "name: release-050-distributions"
     assert workflow.count(command) == 1
     assert workflow.index(command) < workflow.index(upload)
-    assert "--wheel dist/anysolver-0.4.7-py3-none-any.whl" in workflow
-    assert "--sdist dist/anysolver-0.4.7.tar.gz" in workflow
-    assert "--expected-commit ${{ github.sha }}" in workflow
+    assert "--solver-wheel dist/solver/anyfesolver-${SOLVER_VERSION}-py3-none-any.whl" in workflow
+    assert "--solver-sdist dist/solver/anyfesolver-${SOLVER_VERSION}.tar.gz" in workflow
+    assert '--expected-commit "$EXPECTED_SHA"' in workflow
 
 
 def test_full_ci_can_be_dispatched_for_a_release_branch() -> None:
