@@ -7,10 +7,10 @@ from types import ModuleType
 
 import pytest
 
-from anysolver import (ContactRequestIdentity, ContactRequestIdentityError,
+from anyfesolver import (ContactRequestIdentity, ContactRequestIdentityError,
     identify_general_contact_request, verify_general_contact_request,
     ContactPathControl, ContactPathProgram)
-from anysolver.nonlinear_restart import canonical_checkpoint_json_bytes
+from anyfesolver.nonlinear_restart import canonical_checkpoint_json_bytes
 from test_general_contact_q4_s3_patch_static import _case
 
 
@@ -28,7 +28,7 @@ def test_fresh_owner_model_identity_is_deterministic_and_never_admits():
     record = first.to_dict()
     assert record["purpose"] == "request_identity_only"
     assert not record["admitted_for_application"]
-    actual = Path(sys.modules["anysolver"].__file__).read_bytes()
+    actual = Path(sys.modules["anyfesolver"].__file__).read_bytes()
     import hashlib
     assert record["request"]["solver_package_files"]["__init__.py"] == hashlib.sha256(actual).hexdigest()
     record["request"]["settings"]["pair_motion"] = "forged"
@@ -59,7 +59,7 @@ def test_recomputed_identity_rejects_changed_inputs(change):
 
 
 def test_mixed_loaded_package_source_is_rejected(monkeypatch, tmp_path):
-    module = ModuleType("anysolver.foreign_fixture")
+    module = ModuleType("anyfesolver.foreign_fixture")
     module.__file__ = str(tmp_path/"foreign.py")
     monkeypatch.setitem(sys.modules, module.__name__, module)
     with pytest.raises(ContactRequestIdentityError) as caught:
@@ -69,7 +69,7 @@ def test_mixed_loaded_package_source_is_rejected(monkeypatch, tmp_path):
 
 @pytest.mark.parametrize("change", ["name", "force"])
 def test_dead_load_identity_retains_name_and_actual_force(change):
-    from anysolver import LoadCase
+    from anyfesolver import LoadCase
     model, definition, settings, _ = _request()
     load = LoadCase("named load")
     load.add_nodal_load(1, forces=(0., 0., -.1))

@@ -2,7 +2,7 @@
 from dataclasses import replace
 import json
 import numpy as np
-from anysolver import b3_ge, stiffened_shell as ss
+from anyfesolver import b3_ge, stiffened_shell as ss
 from examples.stiffened_shell_native_fibre_bl5 import definition as native_definition
 
 

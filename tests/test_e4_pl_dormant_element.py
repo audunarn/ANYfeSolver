@@ -9,13 +9,13 @@ import sys
 import numpy as np
 import pytest
 
-import anysolver.e4_pl_element as q4_element_module
-from anysolver.e4_pl_element import FORMULATION_ID, QualifiedE4PLShellElement, equation7_frame
-from anysolver.elements import ShellElement, create_element
-from anysolver.fe_core import FEMesh, Material
-from anysolver.material_curves import DNVC208MaterialCurve
-from anysolver.materials import Hill48Yield, OrthotropicMaterial
-from anysolver.shell_sections import GeneralizedShellSection
+import anyfesolver.e4_pl_element as q4_element_module
+from anyfesolver.e4_pl_element import FORMULATION_ID, QualifiedE4PLShellElement, equation7_frame
+from anyfesolver.elements import ShellElement, create_element
+from anyfesolver.fe_core import FEMesh, Material
+from anyfesolver.material_curves import DNVC208MaterialCurve
+from anyfesolver.materials import Hill48Yield, OrthotropicMaterial
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -660,7 +660,7 @@ def test_orthotropic_elastic_and_plastic_state_paths_keep_qualified_tangent() ->
     # Owner decision 2026-10-23: plastic qualified Q4 outside the assumed-strain
     # route scope is refused (the compatible-strain plastic route with the
     # qualified correction is unstable once layers yield).
-    from anysolver._q4_assumed_strain_plasticity import UnsupportedQ4PlasticRouteError
+    from anyfesolver._q4_assumed_strain_plasticity import UnsupportedQ4PlasticRouteError
     with pytest.raises(UnsupportedQ4PlasticRouteError, match="orthotropic/Hill48"):
         candidate.compute_nonlinear_response(
             mesh, material, displacement, num_layers=3, tangent=True

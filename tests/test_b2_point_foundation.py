@@ -11,9 +11,9 @@ from scipy import linalg, sparse
 from scipy.spatial.transform import Rotation
 from scipy.sparse.linalg import splu
 
-from anysolver._b2_f10_f11_point_attachment import compile_reference_point
-from anysolver._b2_physical_flexibility_linear import LinearSection
-from anysolver._stiffened_shell_b2_q4_panel_experimental import _scaled_point_kkt
+from anyfesolver._b2_f10_f11_point_attachment import compile_reference_point
+from anyfesolver._b2_physical_flexibility_linear import LinearSection
+from anyfesolver._stiffened_shell_b2_q4_panel_experimental import _scaled_point_kkt
 from test_b2_f10_f11_point_attachment import specimen, VERTICES
 from test_b2_f10_f11_s3_point_attachment import _specimen, TRIANGLE
 from test_b2_physical_linear_trace import _bvp_pose
@@ -285,7 +285,7 @@ def test_nonplanar_q4_support_rejected():
 
 @pytest.mark.parametrize("defect", ("dimension","nonfinite_t","nonfinite_u0","dependent_rows"))
 def test_invalid_affine_point_input(defect):
-    from anysolver._stiffened_shell_b2_q4_point_experimental import create_experimental_b2_q4_point_analysis
+    from anyfesolver._stiffened_shell_b2_q4_point_experimental import create_experimental_b2_q4_point_analysis
     member,vertices,_,_=base("q4",False)
     t=sparse.eye(36,format="csr")[:,:12];u0=np.zeros(36)
     if defect=="dimension":t=t[:35]

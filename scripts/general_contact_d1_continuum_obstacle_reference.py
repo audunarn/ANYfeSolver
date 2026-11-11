@@ -1,6 +1,6 @@
 """Independent finite-volume continuum obstacle discriminator for D1.
 
-This development tool does not import ANYsolver. Fixed shell rotations reduce
+This development tool does not import ANYfeSolver. Fixed shell rotations reduce
 the guided strip's transverse continuum work to shear energy. Cell-centred
 finite volumes and a primal active set solve that scalar variational
 inequality. The full-width obstacle has an exact one-dimensional solution;

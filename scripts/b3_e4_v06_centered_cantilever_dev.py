@@ -13,12 +13,12 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver import b3_ge
-from anysolver._stiffened_shell_ge_experimental import (
+from anyfesolver import b3_ge
+from anyfesolver._stiffened_shell_ge_experimental import (
     PROFILE, FixedCoordinate, LinearDefinition, NodalAction, PointConnection,
     ShellPanel,
 )
-from anysolver.stiffened_shell import create_analysis
+from anyfesolver.stiffened_shell import create_analysis
 
 
 E = 210e9

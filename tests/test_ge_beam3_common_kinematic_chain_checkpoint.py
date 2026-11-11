@@ -88,16 +88,16 @@ def test_same_author_decimal_audit_has_no_production_or_numerical_library_import
 
 
 def test_split_reuses_preserved_derivative_and_section_building_blocks():
-    tree=ast.parse((ROOT/'src/anysolver/_ge_beam3_shared_kinematic_split.py').read_text())
+    tree=ast.parse((ROOT/'src/anyfesolver/_ge_beam3_shared_kinematic_split.py').read_text())
     imports={n.module for n in ast.walk(tree) if isinstance(n,ast.ImportFrom)}
-    assert imports=={'anysolver._ge_beam3_mixed_ad','anysolver._ge_beam3_p5.compensated',
-        'anysolver._ge_beam3_centered_mixed','anysolver._ge_beam3_p5.algebra'}
+    assert imports=={'anyfesolver._ge_beam3_mixed_ad','anyfesolver._ge_beam3_p5.compensated',
+        'anyfesolver._ge_beam3_centered_mixed','anyfesolver._ge_beam3_p5.algebra'}
     assert not any(isinstance(n,ast.ClassDef) for n in ast.walk(tree))
 
 
 def test_private_result_types_retain_signs_and_reject_qualification_upgrade():
-    from anysolver._native_factor_chain_modes import FactorChainModes
-    from anysolver._ge_beam3_factor_chain_modes import SignedLoadedModes
+    from anyfesolver._native_factor_chain_modes import FactorChainModes
+    from anyfesolver._ge_beam3_factor_chain_modes import SignedLoadedModes
     for cls in (FactorChainModes,SignedLoadedModes):
         assert cls.__dataclass_fields__['negative_eigenvalues_retained'].default is True
         assert cls.__dataclass_fields__['production_qualified'].default is False

@@ -5,9 +5,9 @@ from pathlib import Path
 import runpy
 import numpy as np
 import pytest
-from anysolver.general_contact.s3_pressure_hermite_bounds import s3_pressure_hermite_bounds
-from anysolver.general_contact.normal_s3_skin_path import prepare_normal_s3_skin_path
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_pressure_hermite_bounds import s3_pressure_hermite_bounds
+from anyfesolver.general_contact.normal_s3_skin_path import prepare_normal_s3_skin_path
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 
 SOURCE=np.array([[0.,0.,0.],[1.,0.,0.],[0.,1.,0.]])
 LARGE=np.array([[-2.,-2.,0.],[5.,-2.,0.],[-2.,5.,0.]])

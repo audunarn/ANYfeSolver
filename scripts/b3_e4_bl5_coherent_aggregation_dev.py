@@ -9,10 +9,10 @@ from pathlib import Path
 import argparse, hashlib, json, math, time
 import numpy as np
 import numba
-import anysolver
+import anyfesolver
 from threadpoolctl import threadpool_info
-from anysolver import stiffened_shell
-from anysolver._ge_beam3_retained_generalized_state import Mechanical
+from anyfesolver import stiffened_shell
+from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
 from test_stiffened_shell_l1_assembly_experimental import _bl5_joint_mesh_definition
 
 LOADS={"fy":(0.,100.,0.,0.,0.,0.),"mx":(0.,0.,0.,10.,0.,0.),"mz":(0.,0.,0.,0.,0.,10.)}
@@ -113,7 +113,7 @@ def analyze(output, refine_from=None):
     assert pools and all(p['num_threads']==1 for p in pools) and numba.config.DISABLE_JIT
     result={'classification':'development only; no physical inf-sup or F03 acceptance',
         'source_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-        'imported_anysolver':anysolver.__file__,'threads':pools,'jit_disabled':True,
+        'imported_anyfesolver':anyfesolver.__file__,'threads':pools,'jit_disabled':True,
         'decision':'Check coherent support representability/work and transfer sensitivity before extending ratio/refinement envelope',
         'outcomes':'Work/map failure: repair. Nonfinite/singular actual KKT: investigate physical mode. Valid but different transfer: assess convergence under common fixed regions, no basis tuning.',
         'loads':LOADS,'cases':[],'operator_constructions':0}

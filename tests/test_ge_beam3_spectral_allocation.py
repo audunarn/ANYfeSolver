@@ -1,8 +1,8 @@
 """Explicit private dense budgets, not relaxed mechanical acceptance."""
 import numpy as np
 import pytest
-from anysolver import _native_exact_shift_inertia as exact
-from anysolver import _ge_beam3_controlled_fibre_modes as native
+from anyfesolver import _native_exact_shift_inertia as exact
+from anyfesolver import _ge_beam3_controlled_fibre_modes as native
 
 
 def test_exact_96_coordinate_inertia_and_unchanged_default():
@@ -30,7 +30,7 @@ def test_unregistered_native_budget_rejects_before_replay(bad,monkeypatch):
 
 
 def test_chain_propagates_explicit_budget_before_numerics(monkeypatch):
-    from anysolver import _native_exact_shift_chain_modes as chain
+    from anyfesolver import _native_exact_shift_chain_modes as chain
     def forbidden(*args): raise AssertionError('numerics after invalid allocation')
     monkeypatch.setattr(chain,'_owned',forbidden)
     with pytest.raises(ValueError,match='dimension limit'):
@@ -38,7 +38,7 @@ def test_chain_propagates_explicit_budget_before_numerics(monkeypatch):
 
 
 def test_budget_reaches_exact_fallback(monkeypatch):
-    from anysolver import _native_exact_shift_chain_modes as chain
+    from anyfesolver import _native_exact_shift_chain_modes as chain
     def unresolved(*args): raise ValueError('unresolved shifted sign')
     monkeypatch.setattr(chain,'floating_inertia',unresolved)
     h=np.diag(np.arange(69,dtype=float)-35.25); m=np.zeros_like(h)

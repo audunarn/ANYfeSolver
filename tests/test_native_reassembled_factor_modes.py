@@ -3,8 +3,8 @@ from fractions import Fraction
 import numpy as np
 import pytest
 from scipy import linalg
-from anysolver.control import CancellationToken, SolveCancelled
-import anysolver._native_reassembled_factor_modes as kernel
+from anyfesolver.control import CancellationToken, SolveCancelled
+import anyfesolver._native_reassembled_factor_modes as kernel
 
 
 def solve(f,g,b,free,algebraic,**kw):

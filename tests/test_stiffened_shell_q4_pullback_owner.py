@@ -5,8 +5,8 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import stiffened_shell
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_stiffened_shell_ge_experimental import _panel
 from test_stiffened_shell_ge_finite_experimental import _actions, _q4_shell_j2_panel
 from test_stiffened_shell_ge_owned_rebase import _compare_physical
@@ -21,7 +21,7 @@ def _definition(plastic=False, mixed=False):
 
 
 def test_selected_q4_reference_map_and_checkpoint_identity(monkeypatch):
-    from anysolver import _stiffened_shell_ge_experimental as implementation
+    from anyfesolver import _stiffened_shell_ge_experimental as implementation
     definition = _definition()
     evaluations = []
     original = implementation.q4_algorithmic_response

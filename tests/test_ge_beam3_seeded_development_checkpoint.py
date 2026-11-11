@@ -68,17 +68,17 @@ def test_extent_adds_private_successors_without_modifying_historical_sources():
     rows=[line.split('\t') for line in result.stdout.splitlines()]
     assert all(kind=='A' for kind,_ in rows)
     assert {path for _,path in rows}=={r['path'] for r in p['sources']}|EXTRA
-    assert all(path.startswith(('src/anysolver/_ge_beam3_','src/anysolver/_native_signed_'))
+    assert all(path.startswith(('src/anyfesolver/_ge_beam3_','src/anyfesolver/_native_signed_'))
         for _,path in rows if path.startswith('src/'))
 
 
 def test_seeded_package_is_only_namespace_identity_and_seed_successor():
-    prefix='src/anysolver/'
+    prefix='src/anyfesolver/'
     for name in ('__init__','codec','core','element','state','work'):
         old=(ROOT/(prefix+'_ge_beam3_p5_loads/'+name+'.py')).read_text()
         expected=old.replace('_ge_beam3_p5_loads','_ge_beam3_p5_seeded').replace('_V4','_V5')
         if name=='core':
-            expected=expected.replace("SCHEMA='",'from anysolver._ge_beam3_authoritative_cell_seed import cell_initial_rotations, POLICY as SEED_POLICY\n\nSCHEMA=\'')
+            expected=expected.replace("SCHEMA='",'from anyfesolver._ge_beam3_authoritative_cell_seed import cell_initial_rotations, POLICY as SEED_POLICY\n\nSCHEMA=\'')
             expected=expected.replace('coordinate_policy=POLICY, element=',
                 'coordinate_policy=POLICY, initial_rotation_policy=SEED_POLICY, element=')
             expected=expected.replace('return model.solve(positions, operators@self.reference.nodal_triads,\n',

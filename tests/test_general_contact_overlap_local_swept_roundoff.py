@@ -7,10 +7,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver.general_contact.q4_overlap_local_bound import (
+from anyfesolver.general_contact.q4_overlap_local_bound import (
     _normal_controls_interval, overlap_local_swept_lower,
 )
-from anysolver.general_contact.s3_patch_static import (
+from anyfesolver.general_contact.s3_patch_static import (
     GeneralS3PatchManager, _affine_midpoint_with_error,
 )
 from scripts.general_contact_d1_interior_press_dev import build_interior_press

@@ -3,20 +3,20 @@ import json
 import numpy as np
 import pytest
 
-from anysolver.control import SolveCancelled
-from anysolver.matrix_assembly import AssemblyError
-from anysolver.element_capabilities import ElementCapabilityError
-from anysolver.e4_pl_enriched import EnrichedProfileError
-from anysolver.general_contact.enriched_overlap import QuadraturePolicy, EnrichedGeometryError
-from anysolver.general_contact.enriched_multitarget import MultiTargetSystem
-from anysolver.general_contact._enriched_multitarget_trial import AcceptedTrial
-from anysolver.general_contact.enriched_static import MixedCriteria, IterationControl
+from anyfesolver.control import SolveCancelled
+from anyfesolver.matrix_assembly import AssemblyError
+from anyfesolver.element_capabilities import ElementCapabilityError
+from anyfesolver.e4_pl_enriched import EnrichedProfileError
+from anyfesolver.general_contact.enriched_overlap import QuadraturePolicy, EnrichedGeometryError
+from anyfesolver.general_contact.enriched_multitarget import MultiTargetSystem
+from anyfesolver.general_contact._enriched_multitarget_trial import AcceptedTrial
+from anyfesolver.general_contact.enriched_static import MixedCriteria, IterationControl
 
 
 def fixture():
     # Real protected nonlinear assembly, all explicit B4 modes, real public S3.
-    from anysolver import FEModel,BoundaryCondition,create_shell_element
-    from anysolver.general_contact.enriched_nonlinear import NonlinearEnrichedSystem,PairDefinition
+    from anyfesolver import FEModel,BoundaryCondition,create_shell_element
+    from anyfesolver.general_contact.enriched_nonlinear import NonlinearEnrichedSystem,PairDefinition
     model=FEModel('multitarget_reuse_real_elastic')
     model.add_material('elastic',1e5,.3,density=1.)
     source=((-0.5,-0.5,0.),(.5,-.5,0.),(.5,.5,0.),(-.5,.5,0.))
@@ -46,8 +46,8 @@ CONTROL = IterationControl(18, 8)
 
 
 def test_bounded_value_graph_matches_scalar_jet_and_exception_fallback():
-    from anysolver._ge_beam3_mixed_ad import Jet2 as Full, sqrt as full_sqrt
-    from anysolver.general_contact._enriched_multitarget_empty import Jet2 as Bound, sqrt
+    from anyfesolver._ge_beam3_mixed_ad import Jet2 as Full, sqrt as full_sqrt
+    from anyfesolver.general_contact._enriched_multitarget_empty import Jet2 as Bound, sqrt
     for value in (.125, 1., 3.5):
         gradient = np.linspace(-.3, .4, 37)
         hessian = np.outer(gradient, gradient)
@@ -62,8 +62,8 @@ def test_bounded_value_graph_matches_scalar_jet_and_exception_fallback():
 
 
 def test_empty_full37_values_signatures_guards_and_nonempty_fallback(record_property):
-    from anysolver.general_contact._enriched_multitarget_empty import empty_preflight
-    from anysolver.general_contact.enriched_multitarget_moments import (
+    from anyfesolver.general_contact._enriched_multitarget_empty import empty_preflight
+    from anyfesolver.general_contact.enriched_multitarget_moments import (
         selected_batch_moments, _selected_batch_moments_full)
     ref = np.array(((-.5,-.5,0.),(.5,-.5,0.),(.5,.5,0.),(-.5,.5,0.)))
     target = np.array(((3.,3.,-.2),(3.,4.,-.2),(4.,3.,-.2)))
@@ -107,7 +107,7 @@ def test_actual_trial_reuse_matches_recomputed_equations(monkeypatch,record_prop
 
 
 def test_actual_interiteration_cancel_mutation_nested_and_cache_refusals(monkeypatch,record_property):
-    from anysolver.general_contact.runtime import _ACTIVE_CONTACT
+    from anyfesolver.general_contact.runtime import _ACTIVE_CONTACT
     original = AcceptedTrial.consume
     reached = {}
     for mode in ('cancel','model','nested'):

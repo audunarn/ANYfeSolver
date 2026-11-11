@@ -1,10 +1,10 @@
 """Elastic moving beam/deformable-skin impact, explicit development profile."""
 import numpy as np
-from anysolver import BoundaryCondition, ContactDefinition, ContactSurface, ContactInteraction, ContactSolverSettings, create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.elements import BeamElement, QuadraticBeamElement
-from anysolver.dynamics import TransientConfig
-from anysolver.general_contact.transient import solve_transient_contact, ContactTransientSolverControls
+from anyfesolver import BoundaryCondition, ContactDefinition, ContactSurface, ContactInteraction, ContactSolverSettings, create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.general_contact.transient import solve_transient_contact, ContactTransientSolverControls
 
 
 def build(*,quadratic=False,unequal=False,line_stiffness=1.e5,flexural=False):

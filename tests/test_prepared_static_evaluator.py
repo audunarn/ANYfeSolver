@@ -6,7 +6,7 @@ import gc
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     AnalysisSession,
     BoundaryCondition,
     CancellationToken,
@@ -22,10 +22,10 @@ from anysolver import (
     prepare_static_evaluator,
     solve_linear,
 )
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
-from anysolver.recovery import ResourcePolicyError, recover_stress_result
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.recovery import ResourcePolicyError, recover_stress_result
 
 
 def _bar(supported: bool = True):
@@ -209,7 +209,7 @@ def test_compiled_stress_recovery_matches_live_oracle():
         # through a second evaluator call with the displacement injected via
         # the affine structure: recovery of u is baseline + A @ u, verified
         # directly against the oracle here.
-        from anysolver.prepared_static_recovery import apply_compiled_recovery
+        from anyfesolver.prepared_static_recovery import apply_compiled_recovery
         compilation = evaluator.diagnostics()
         assert compilation["snapshot"]["recovery_compiled_elements"] == 2
         snapshot = evaluator._snapshot
@@ -265,7 +265,7 @@ def test_foreign_load_case_and_family_restrictions_are_refused():
 
 
 def test_unadmitted_stress_family_is_refused_at_preparation():
-    from anysolver.materials import Hill48Yield
+    from anyfesolver.materials import Hill48Yield
 
     model = _shell_model()
     model.add_material("hill", 210.0e9, 0.3, density=100.0)

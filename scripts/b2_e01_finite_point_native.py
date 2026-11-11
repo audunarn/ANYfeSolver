@@ -17,7 +17,7 @@ import numpy as np
 from scipy import sparse
 import numba
 import threadpoolctl
-from anysolver import stiffened_shell
+from anyfesolver import stiffened_shell
 import b2_e01_opensees_finite_point as reference
 
 

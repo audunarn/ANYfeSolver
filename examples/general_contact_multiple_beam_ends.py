@@ -1,8 +1,8 @@
 """Development-only guided B3 pressed outward against two physical-end obstacles."""
-from anysolver import (BoundaryCondition,ContactDefinition,ContactInteraction,ContactSolverSettings,
+from anyfesolver import (BoundaryCondition,ContactDefinition,ContactInteraction,ContactSolverSettings,
     ContactSurface,RigidContactBody,RigidCappedCylinder,LoadCase,solve_static_nonlinear)
-from anysolver.fe_core import FEModel
-from anysolver.elements import QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import QuadraticBeamElement
 
 
 def run(right_obstacle='sphere'):

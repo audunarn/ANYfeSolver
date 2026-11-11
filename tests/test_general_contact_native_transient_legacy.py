@@ -1,8 +1,8 @@
 """Prospective changed-shared-service compatibility checks; UNEXECUTED."""
 import json
 import pytest
-from anysolver._ge_beam3_p5_seeded.core import sha
-from anysolver.ge_beam3_native_connected_dynamics import create_analysis, SELECTOR
+from anyfesolver._ge_beam3_p5_seeded.core import sha
+from anyfesolver.ge_beam3_native_connected_dynamics import create_analysis, SELECTOR
 from examples.native_connected_dynamic_dev import build
 from examples.general_contact_native_pair_impact_dev import definitions
 

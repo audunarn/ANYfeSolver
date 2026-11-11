@@ -6,10 +6,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver.boundary import BoundaryCondition, FixedSupport
-from anysolver.buckling import solve_eigenvalue_buckling
-from anysolver.dynamics import TransientConfig, solve_transient_newmark
-from anysolver.e4_pl_s3_v2d_element import (
+from anyfesolver.boundary import BoundaryCondition, FixedSupport
+from anyfesolver.buckling import solve_eigenvalue_buckling
+from anyfesolver.dynamics import TransientConfig, solve_transient_newmark
+from anyfesolver.e4_pl_s3_v2d_element import (
     DYNAMIC_ALGEBRAIC_MASS_WITNESS,
     DYNAMIC_ALGEBRAIC_POLICY_ID,
     FORMULATION_ID,
@@ -19,15 +19,15 @@ from anysolver.e4_pl_s3_v2d_element import (
     NativeParityCapabilityError,
     NativeParityE4PLS3V2DShellElement,
 )
-from anysolver.elements import (
+from anyfesolver.elements import (
     DEFAULT_Q4_FORMULATION,
     DEFAULT_S3_FORMULATION,
     create_shell_element,
     shell_element_from_dict,
 )
-from anysolver.fe_core import FEModel, FEMesh, Material
-from anysolver.modal import solve_free_vibration
-from anysolver.recovery import recover_stress_result
+from anyfesolver.fe_core import FEModel, FEMesh, Material
+from anyfesolver.modal import solve_free_vibration
+from anyfesolver.recovery import recover_stress_result
 
 
 ROOT = Path(__file__).resolve().parents[1]

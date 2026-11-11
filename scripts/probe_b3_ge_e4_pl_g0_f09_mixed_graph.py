@@ -18,9 +18,9 @@ import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import splu
 
-# The private module is self-contained. Avoid importing the whole ANYsolver
+# The private module is self-contained. Avoid importing the whole ANYfeSolver
 # package merely to run a local conditioning diagnostic.
-_module_path = (Path(__file__).resolve().parents[1] / "src" / "anysolver"
+_module_path = (Path(__file__).resolve().parents[1] / "src" / "anyfesolver"
                 / "_b2_physical_flexibility_linear.py")
 _spec = importlib.util.spec_from_file_location("_f09_mixed_graph_local_operator",
                                                 _module_path)

@@ -10,8 +10,8 @@ from dataclasses import replace
 import hashlib,json,time
 from pathlib import Path
 import numpy as np
-import anysolver
-from anysolver import ContactPathControl,ContactPathProgram,solve_static_nonlinear,validate_general_contact
+import anyfesolver
+from anyfesolver import ContactPathControl,ContactPathProgram,solve_static_nonlinear,validate_general_contact
 from scripts.general_contact_d1_interior_press_dev import build_saved_cycle,verify_saved_cycle,validate_restart_poses
 from scripts.general_contact_d1_mixed_mesh_jet2_schur_press import _json_default
 
@@ -101,7 +101,7 @@ def run(output,fixture,restart=None,max_path_fraction=1.):
     payload={key:saved[key] for key in ('source_q4_faces','target_s3_faces','force_n','reference_slope','source_columns','source_rows','target_columns','target_rows','target_young_multiplier','target_y0_m','source_reference_downshift_m','source_support','source_y_profile','offline_structural_reference_y16','load_shape','four_phase','steps_per_segment','slide_distance_m','slide_intervals','slide_body','target_reference_full_left_clamp','target_left_edge_motion','shared_edge_tie','q4_gap_certificate')}
     new_poses=[np.asarray(s.displacements).tolist() for s in result.snapshots]
     payload.update(candidate='current_d1_registered_weighted_displacement_development',control_provenance='current physical-bump work map; documented endpoint/NCP scale; historical control/preflight source unavailable',
-        anysolver_module=str(Path(anysolver.__file__).resolve()),fixture_sha256=hashlib.sha256(fixture.read_bytes()).hexdigest(),
+        anyfesolver_module=str(Path(anyfesolver.__file__).resolve()),fixture_sha256=hashlib.sha256(fixture.read_bytes()).hexdigest(),
         endpoint_m=ENDPOINT_M,ncp_scale_n=NCP_SCALE_N,control_terms=program.controls[-1].terms,
         external_nodal_load_count=len(program.nodal_forces),status=result.status,failure_reason=result.failure_reason,
         accepted_steps=len(result.steps),elapsed_seconds=time.perf_counter()-started,displacements=result.displacements.tolist(),

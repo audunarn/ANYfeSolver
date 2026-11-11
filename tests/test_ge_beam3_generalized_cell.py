@@ -4,11 +4,11 @@ from dataclasses import replace
 import json
 import numpy as np
 import pytest
-from anysolver._ge_beam3_generalized_cell import GeneralizedCellConjugate
-from anysolver._ge_beam3_retained_generalized import RetainedGeneralizedOperator
-from anysolver._ge_beam3_fibre_section import canonical
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._ge_beam3_p5.compensated_coordinates import split_sum
+from anyfesolver._ge_beam3_generalized_cell import GeneralizedCellConjugate
+from anyfesolver._ge_beam3_retained_generalized import RetainedGeneralizedOperator
+from anyfesolver._ge_beam3_fibre_section import canonical
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._ge_beam3_p5.compensated_coordinates import split_sum
 from docs.reference_cases.ge_beam3_generalized_cell_audit import audit
 from test_ge_beam3_generalized_ellipsoid_section import section
 from test_ge_beam3_fibre_cell import stations
@@ -76,7 +76,7 @@ def test_cancellation_and_authority_fail_closed(monkeypatch,tmp_path):
     with pytest.raises(ValueError):cell.response([0.]*18,replace(origin,cell_identity='0'*64))
     changed=deepcopy(data);changed[0]['weight']=0.
     with pytest.raises(ValueError):GeneralizedCellConjugate(law,changed)
-    import anysolver._ge_beam3_generalized_cell as module
+    import anyfesolver._ge_beam3_generalized_cell as module
     ticks=[]
     def clock():ticks.append(1);return 61.*len(ticks)
     monkeypatch.setattr(module,'monotonic',clock)
@@ -89,7 +89,7 @@ def test_cancellation_and_authority_fail_closed(monkeypatch,tmp_path):
 def test_retained_variations_and_objectivity(kind,tmp_path):
     ref=make_curved(100.)[0].mesh.elements[1].core.reference
     if kind=='straight':
-        from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+        from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
         ref=CenteredCurvedBeam3ReferenceGeometry(np.array([[0.,0.,0.],[.5,0.,0.],[1.,0.,0.]]),np.array([np.eye(3)]*3))
     probe=RetainedGeneralizedOperator(ref,section(),order=4);state=args(probe)
     origin=probe.cell.response((state[-1]*.5).tolist())['history'];saved=canonical(origin)
@@ -139,7 +139,7 @@ def test_cell_proper_spatial_reexpression(tmp_path):
 def test_reference_condensation_rigid_nulls_and_positive_complement(kind,tmp_path):
     ref=make_curved(100.)[0].mesh.elements[1].core.reference
     if kind=='straight':
-        from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+        from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
         ref=CenteredCurvedBeam3ReferenceGeometry(np.array([[0.,0.,0.],[.5,0.,0.],[1.,0.,0.]]),np.array([np.eye(3)]*3))
     probe=RetainedGeneralizedOperator(ref,section(),order=4)
     result=probe.evaluate(ref.coordinates,np.zeros((3,3)),ref.nodal_triads,np.array([np.eye(3)]*2),np.zeros(18))

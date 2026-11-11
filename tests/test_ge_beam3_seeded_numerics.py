@@ -4,11 +4,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 from scipy.linalg import eigvalsh
-from anysolver._native_signed_kinetic_factor_modes import solve_signed_kinetic_factor_modes as solve
-from anysolver._ge_beam3_lifted_kinetic_factor import current_lifted_kinetic_factor
-from anysolver._ge_beam3_p5_centered.mass import current_rest_mass
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._ge_beam3_conservative_backtrack import acceptance
+from anyfesolver._native_signed_kinetic_factor_modes import solve_signed_kinetic_factor_modes as solve
+from anyfesolver._ge_beam3_lifted_kinetic_factor import current_lifted_kinetic_factor
+from anyfesolver._ge_beam3_p5_centered.mass import current_rest_mass
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._ge_beam3_conservative_backtrack import acceptance
 from test_ge_beam3_curved_contrast_probe import make_curved
 
 
@@ -16,7 +16,7 @@ def test_backtrack_is_exact_extraction_of_preserved_research_function():
     root=Path(__file__).parents[1]
     nodes=[]
     for path in ['docs/reference_cases/ge_beam3_curved_p5_energy_seed_probe.py',
-                 'src/anysolver/_ge_beam3_conservative_backtrack.py']:
+                 'src/anyfesolver/_ge_beam3_conservative_backtrack.py']:
         tree=ast.parse((root/path).read_text())
         nodes.append(ast.dump(next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='acceptance')))
     assert nodes[0]==nodes[1]

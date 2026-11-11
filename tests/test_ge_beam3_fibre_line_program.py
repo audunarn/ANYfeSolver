@@ -4,16 +4,16 @@ import json
 import numpy as np
 import pytest
 
-from anysolver.fe_core import FEModel
-from anysolver.boundary import BoundaryCondition
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
-from anysolver._ge_beam3_retained_fibre_element import NativeRetainedFibreElement
-from anysolver._ge_beam3_seeded_load_program import ForceProgram
-from anysolver._ge_beam3_fibre_line_work import ReferenceLineForces, evaluate
-from anysolver import _ge_beam3_fibre_line_program as native
-from anysolver._ge_beam3_retained_fibre_state import Context as OriginalContext
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._ge_beam3_p5_seeded.core import canonical, sha
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import BoundaryCondition
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+from anyfesolver._ge_beam3_retained_fibre_element import NativeRetainedFibreElement
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram
+from anyfesolver._ge_beam3_fibre_line_work import ReferenceLineForces, evaluate
+from anyfesolver import _ge_beam3_fibre_line_program as native
+from anyfesolver._ge_beam3_retained_fibre_state import Context as OriginalContext
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
 from docs.reference_cases import ge_beam3_centered_line_load_oracle as oracle
 from test_ge_beam3_spatial_nodal_moments import model as straight_model
 
@@ -56,7 +56,7 @@ def test_load_work_matches_separate_rational_geometry_and_closed_derivatives(cur
     cells = np.array([rotation([.4,-.2,.3]), rotation([-.1,.35,.2])])
     f = np.array([.03,-.02,.01])*scale
     # Exactly represent the supplied nodal displacement, including low parts.
-    from anysolver._ge_beam3_p5_coordinates.positions import from_total
+    from anyfesolver._ge_beam3_p5_coordinates.positions import from_total
     total = np.zeros((3,6)); total[:,:3] = displacement
     high, low = from_total(ref.coordinates, total.ravel(), ref.coordinates+displacement)
     a = evaluate(ref, high, low, cells, f, order=4)
@@ -128,7 +128,7 @@ def test_physical_plasticity_restart_unload_and_replay(accepted,tmp_path):
 
 
 def test_cancellation_before_commit_preserves_accepted_history(accepted):
-    from anysolver.control import CancellationToken
+    from anyfesolver.control import CancellationToken
     p,f,_ = accepted
     paused = native.solve_force_program(model(plastic=True),p,line_forces=f,stop_after=1)
     token = CancellationToken()
@@ -184,7 +184,7 @@ def test_failed_step_has_no_trial_history_publication():
 
 
 def test_exact_large_translation_and_connectivity_reversal_preserve_line_work():
-    from anysolver._ge_beam3_p5_coordinates.positions import from_total
+    from anyfesolver._ge_beam3_p5_coordinates.positions import from_total
     displacement=np.array([[.03125,.0625,-.125],[.0625,.03125,.0625],[-.125,.0625,.03125]])
     total=np.zeros((3,6)); total[:,:3]=displacement
     cells=np.array([rotation([.4,-.2,.3]),rotation([-.1,.35,.2])])

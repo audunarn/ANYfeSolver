@@ -389,8 +389,8 @@ def test_scope_and_production_boundary_remain_private_and_fail_closed() -> None:
         "PROVISIONAL_GO_GE_BEAM3_MIXED_STRAIGHT_STATIC_CORE"
     )
     for route in (
-        "src/anysolver/__init__.py",
-        "src/anysolver/elements.py",
+        "src/anyfesolver/__init__.py",
+        "src/anyfesolver/elements.py",
     ):
         text = _accepted_route_text(route)
         assert "GeometricallyExactBeam3D3NElement" not in text

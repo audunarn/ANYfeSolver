@@ -51,7 +51,7 @@ def test_checker_imports_no_production_or_runner() -> None:
             imports.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module:
             imports.append(node.module)
-    assert not any(name == "anysolver" or name.startswith("anysolver.") for name in imports)
+    assert not any(name == "anyfesolver" or name.startswith("anyfesolver.") for name in imports)
     assert not any("v5m_parity" in name for name in imports)
 
 
@@ -71,16 +71,16 @@ def test_bounds_terminal_precedence_and_exact_worker_set_are_frozen() -> None:
 def test_staged_build_artifact_purge_is_scoped(tmp_path: Path) -> None:
     runner = _load("_v5m_runner_purge_test", RUNNER)
     source = tmp_path / "source"
-    retained = source / "src" / "anysolver" / "module.py"
+    retained = source / "src" / "anyfesolver" / "module.py"
     retained.parent.mkdir(parents=True)
     retained.write_text("retained\n", encoding="ascii")
     (source / "build" / "lib").mkdir(parents=True)
     (source / "build" / "lib" / "stale.py").write_text("stale\n", encoding="ascii")
-    (source / "src" / "ANYsolver.egg-info").mkdir()
+    (source / "src" / "ANYfeSolver.egg-info").mkdir()
     outside = tmp_path / "outside.txt"
     outside.write_text("preserved\n", encoding="ascii")
     removed = runner._purge_staged_build_artifacts(source)
-    assert removed == ("build", "src/ANYsolver.egg-info")
+    assert removed == ("build", "src/ANYfeSolver.egg-info")
     assert retained.read_text(encoding="ascii") == "retained\n"
     assert outside.read_text(encoding="ascii") == "preserved\n"
 

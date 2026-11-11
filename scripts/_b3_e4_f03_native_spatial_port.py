@@ -13,8 +13,8 @@ import math
 
 import numpy as np
 
-from anysolver._ge_beam3_retained_generalized_state import Context, Mechanical
-from anysolver._ge_beam3_p5.compensated_coordinates import split_sum
+from anyfesolver._ge_beam3_retained_generalized_state import Context, Mechanical
+from anyfesolver._ge_beam3_p5.compensated_coordinates import split_sum
 
 
 def _skew(vector: np.ndarray) -> np.ndarray:

@@ -3,12 +3,12 @@ from dataclasses import replace
 from math import fsum
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken,SolveCancelled
-from anysolver._stiffened_shell_displacement_checkpoint import (
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken,SolveCancelled
+from anyfesolver._stiffened_shell_displacement_checkpoint import (
     decode_snapshot,encode_snapshot,identities)
-from anysolver._stiffened_shell_beam_history import arrays
-from anysolver._stiffened_shell_q4_algorithmic_pullback import HISTORICAL_POLICY
+from anyfesolver._stiffened_shell_beam_history import arrays
+from anyfesolver._stiffened_shell_q4_algorithmic_pullback import HISTORICAL_POLICY
 from test_stiffened_shell_ge_experimental import _panel
 from test_stiffened_shell_ge_physical_fibre_finite import _yielding_definition
 
@@ -88,7 +88,7 @@ def test_native_fixed_displacement_cancel_restore_reload(request,monkeypatch,tmp
     with pytest.raises(SolveCancelled):
         control.solve(DIRECTION,(targets[1],),**kw,cancellation_token=cancelled)
     assert control.checkpoint()==saved
-    import anysolver._stiffened_shell_displacement_corrector as corrector
+    import anyfesolver._stiffened_shell_displacement_corrector as corrector
     with monkeypatch.context() as patch:
         patch.setattr(corrector,'bordered_correction',lambda matrix,*args:(np.zeros(matrix.shape[0]),0.))
         with pytest.raises(ss.DisplacementCorrectorFailure):
@@ -111,7 +111,7 @@ def test_native_fixed_displacement_cancel_restore_reload(request,monkeypatch,tmp
             untouched.restore(bad)
         assert untouched._generation==0 and untouched._finite_driver is None
         assert fresh.checkpoint()==saved
-    from anysolver._stiffened_shell_displacement_control import publish
+    from anyfesolver._stiffened_shell_displacement_control import publish
     with pytest.raises(ValueError,match='stale displacement publication'):
         publish(control,saved,expected_driver=control._finite_driver,
                 expected_generation=control._generation+1)

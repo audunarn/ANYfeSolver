@@ -12,8 +12,8 @@ from pathlib import Path
 
 import numpy as np
 from scipy.spatial.transform import Rotation
-from anysolver import b3_ge, stiffened_shell as ss
-from anysolver.control import SolveCancelled
+from anyfesolver import b3_ge, stiffened_shell as ss
+from anyfesolver.control import SolveCancelled
 
 
 @dataclass(frozen=True)

@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import subprocess
 
-import anysolver
+import anyfesolver
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -96,7 +96,7 @@ def test_v6c_capability_boundary_and_defaults_are_exact() -> None:
         "distributed_couple",
         "solver_integrated_hot_restart",
     }
-    element_source = _authority_source("src/anysolver/e4_pl_s3_v2d_element.py")
+    element_source = _authority_source("src/anyfesolver/e4_pl_s3_v2d_element.py")
     assert all(f'"{name}"' in element_source for name in required)
     assert set(contract["prohibited_scope"]) == {
         "qualified_s3_v1_physical_mechanics",
@@ -113,7 +113,7 @@ def test_v6c_capability_boundary_and_defaults_are_exact() -> None:
     # V6W activation intentionally changed the live S3 default to V2D.
     defaults = {
         target.id: node.value.value
-        for node in ast.parse(_authority_source("src/anysolver/elements.py")).body
+        for node in ast.parse(_authority_source("src/anyfesolver/elements.py")).body
         if isinstance(node, ast.Assign) and isinstance(node.value, ast.Constant)
         for target in node.targets
         if isinstance(target, ast.Name) and target.id in {
@@ -127,7 +127,7 @@ def test_v6c_capability_boundary_and_defaults_are_exact() -> None:
 
 def test_v6c_implementation_is_native_and_restart_route_is_exactly_scoped() -> None:
     element_source = _authority_source(
-        "src/anysolver/e4_pl_s3_v2d_element.py"
+        "src/anyfesolver/e4_pl_s3_v2d_element.py"
     )
     tree = ast.parse(element_source)
     imports: set[str] = set()
@@ -143,12 +143,12 @@ def test_v6c_implementation_is_native_and_restart_route_is_exactly_scoped() -> N
     assert "seal_solver_integrated_nonlinear_state" in element_source
 
     nonlinear_source = _authority_source(
-        "src/anysolver/nonlinear_static.py"
+        "src/anyfesolver/nonlinear_static.py"
     )
     assert nonlinear_source.count("CANDIDATE_E4_PL_S3_V2D_NATIVE_PARITY_V1") == 2
     assert "seal_solver_integrated_nonlinear_state" in nonlinear_source
     boundary_source = _authority_source(
-        "src/anysolver/boundary.py"
+        "src/anyfesolver/boundary.py"
     )
     assert boundary_source.count("compute_native_current_pressure_load") == 1
     assert boundary_source.count("compute_native_current_pressure_tangent") == 1

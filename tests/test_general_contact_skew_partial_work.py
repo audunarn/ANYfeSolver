@@ -3,12 +3,12 @@
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     ContactDefinition, ContactInteraction, ContactSolverSettings,
     ContactSurface, create_shell_element,
 )
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 
 
 _TARGET = ((.2, -.1), (.92, 0.), (.86, 1.15), (.15, .95))

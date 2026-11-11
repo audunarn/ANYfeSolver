@@ -12,14 +12,14 @@ from typing import Any, Dict
 
 import numpy as np
 
-import anysolver as fs
-from anysolver.assembly import build_constraint_transformation
-from anysolver.boundary import BoundaryCondition
-from anysolver.elements import create_element
-from anysolver.fe_core import FEModel
-from anysolver.matrix_assembly import assemble_stiffness_matrix
-from anysolver.nonlinear_performance_bootstrap import get_nonlinear_assembly_plan
-from anysolver.nonlinear_reduced_assembly import (
+import anyfesolver as fs
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.boundary import BoundaryCondition
+from anyfesolver.elements import create_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.nonlinear_performance_bootstrap import get_nonlinear_assembly_plan
+from anyfesolver.nonlinear_reduced_assembly import (
     assemble_reduced_system,
     build_reduced_assembly_plan,
 )

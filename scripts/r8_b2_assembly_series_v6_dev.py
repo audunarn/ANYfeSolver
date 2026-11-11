@@ -132,11 +132,11 @@ def installed_samples(attempt,plan,size,ordinals,*,smoke=False):
     require((smoke is True and size==3 and ordinals==[]) or (smoke is False and len(ordinals)>0 and all(type(n) is int and 1<=n<=5 for n in ordinals) and len(set(ordinals))==len(ordinals)),'smoke or warm sample ordinals')
     site=Path(plan['package_site']).resolve()
     sys.path[:]=[str(site)]+[x for x in sys.path if not Path(x or '.').resolve().is_relative_to(ROOT/'src')
-        and not Path(x or '.').resolve().is_relative_to(Path('C:/Github/ANYsolver/src'))]
+        and not Path(x or '.').resolve().is_relative_to(Path('C:/Github/ANYfeSolver/src'))]
     # Imports and persistence are outside all measured owner constructions.
     import numpy as np
-    from anysolver import stiffened_shell as api
-    from anysolver._stiffened_shell_b2_assembly_diagnostics import capture_assembly
+    from anyfesolver import stiffened_shell as api
+    from anyfesolver._stiffened_shell_b2_assembly_diagnostics import capture_assembly
     from anyfem.solve.stiffened_shell_b2 import ExperimentalB2PhysicalRigidFootprintPanel,SCHEMA_PHYSICAL_FOOTPRINT_SPARSE_V2,save_case,load_case
     from anyfem.model.project import Project
     from anyfem.model.records import AnalysisDefinition
@@ -402,7 +402,7 @@ def public_caller_contract(plan,runner_source=None):
     This is static admission, not caller execution or a replacement for smoke.
     """
     with ZipFile(plan['solver_wheel']) as z:
-        solver=ast.parse(z.read('anysolver/_stiffened_shell_b2_q4_panel_experimental.py').decode())
+        solver=ast.parse(z.read('anyfesolver/_stiffened_shell_b2_q4_panel_experimental.py').decode())
     with ZipFile(plan['consumer_wheel']) as z:
         consumer=ast.parse(z.read('anyfem/solve/stiffened_shell_b2.py').decode())
         project_io=ast.parse(z.read('anyfem/io/project_file.py').decode())
@@ -454,19 +454,19 @@ def ready():
     require(sha(PREVIOUS/'SERIES_LEDGER.json')==a['predecessor_failed_ledger']['sha256'],'closed predecessor ledger identity')
     require(a['predecessor_failed_ledger']['remainder_discarded'] is True and a['predecessor_failed_ledger']['large_owners_executed']==0,'predecessor not reusable allowance')
     (OUT/'PREPARED.json').write_bytes((BASE/'PREPARED.json').read_bytes())
-    maker=Path('C:/Github/ANYsolver/.venv/Lib/site-packages/pip/_internal/operations/install/wheel.py');tree=ast.parse(maker.read_text())
+    maker=Path('C:/Github/ANYfeSolver/.venv/Lib/site-packages/pip/_internal/operations/install/wheel.py');tree=ast.parse(maker.read_text())
     cls=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='PipScriptMaker')
     value=next(n.value for n in cls.body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='script_template' for t in n.targets))
     require(isinstance(value,ast.Call) and len(value.args)==1 and isinstance(value.args[0],ast.Constant) and type(value.args[0].value) is str,'literal PipScriptMaker template')
     p['launcher_provenance']=dict(interpreter=json.loads((BASE/'attempt-install-01/runtime-before.json').read_text())['executable'],
         template=textwrap.dedent(value.args[0].value),template_source_path=str(maker),template_source_sha256=sha(maker),
-        resources={kind:dict(path=str(Path('C:/Github/ANYsolver/.venv/Lib/site-packages/pip/_vendor/distlib')/(kind+'.exe')),
-        sha256=sha(Path('C:/Github/ANYsolver/.venv/Lib/site-packages/pip/_vendor/distlib')/(kind+'.exe'))) for kind in ('t64','w64')})
+        resources={kind:dict(path=str(Path('C:/Github/ANYfeSolver/.venv/Lib/site-packages/pip/_vendor/distlib')/(kind+'.exe')),
+        sha256=sha(Path('C:/Github/ANYfeSolver/.venv/Lib/site-packages/pip/_vendor/distlib')/(kind+'.exe'))) for kind in ('t64','w64')})
     interpreter=p['launcher_provenance']['interpreter'];require(interpreter.endswith('python.exe'),'recorded console executable')
     gui_path=interpreter[:-len('python.exe')]+'pythonw.exe';require(Path(gui_path).is_file(),'actual GUI sibling file missing')
     p['launcher_provenance']['gui_executable']=dict(path=gui_path,sha256=sha(gui_path))
     require(p['launcher_provenance']['gui_executable']==a['gui_interpreter'],'root GUI sibling binding')
-    alternate=Path('C:/Github/ANYsolver/.venv/Lib/site-packages/pip/_vendor/distlib/scripts.py')
+    alternate=Path('C:/Github/ANYfeSolver/.venv/Lib/site-packages/pip/_vendor/distlib/scripts.py')
     p['launcher_provenance']['alternate_source']=dict(path=str(alternate),sha256=sha(alternate))
     p['historical_v5']=dict(original_grant_sha256=sha(PREVIOUS/'ROOT_DEVELOPMENT_AUTHORITY.json'),
         preparation_selection_sha256=sha(PREVIOUS/'SELECTED_PATHS.json'),execution_selection_sha256=sha(PREVIOUS/'EXECUTION_SELECTED_PATHS.json'),

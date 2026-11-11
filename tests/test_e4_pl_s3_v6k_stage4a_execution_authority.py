@@ -155,7 +155,7 @@ def test_v6k_program_is_standard_library_only_and_nonactivating() -> None:
         "__future__", "argparse", "copy", "hashlib", "importlib", "pathlib",
         "stat", "sys", "types", "typing",
     }
-    elements = ast.parse((ROOT / "src/anysolver/elements.py").read_text(encoding="utf-8"))
+    elements = ast.parse((ROOT / "src/anyfesolver/elements.py").read_text(encoding="utf-8"))
     defaults: dict[str, str] = {}
     for node in elements.body:
         if not isinstance(node, (ast.Assign, ast.AnnAssign)):

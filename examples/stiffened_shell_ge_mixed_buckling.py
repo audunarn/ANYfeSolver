@@ -7,7 +7,7 @@ import json
 def definition(shell='mixed', beams='mixed'):
     """Small eccentric panel; fibre branches are intentionally elastic interior."""
     import numpy as np
-    from anysolver import b3_ge, stiffened_shell as ss
+    from anyfesolver import b3_ge, stiffened_shell as ss
     if shell not in ('q4', 's3', 'mixed') or beams not in ('generalized', 'fibre', 'mixed'):
         raise ValueError('q4/s3/mixed shells and generalized/fibre/mixed beams required')
     e, nu = 210e9, .3
@@ -41,7 +41,7 @@ def definition(shell='mixed', beams='mixed'):
 
 
 def workflow(shell='mixed', beams='mixed', count=2):
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
     owner = ss.create_analysis(definition=definition(shell, beams))
     try:
         accepted = owner.solve((ss.NodalAction('beam',105,(-1000.,0.,100.,0.,0.,0.)),),

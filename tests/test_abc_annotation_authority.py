@@ -19,20 +19,20 @@ from abc import ABC
 import inspect,json,sys
 observer_first = sys.argv[3] == "1"
 if observer_first: assert inspect.get_annotations(ABC) == {}
-import anysolver
+import anyfesolver
 from pathlib import Path
 import os
-from anysolver.current_state_tangent import require_exact_qualified_component_lifecycle_api as guard
-from anysolver.element_capabilities import ElementCapabilityError
+from anyfesolver.current_state_tangent import require_exact_qualified_component_lifecycle_api as guard
+from anyfesolver.element_capabilities import ElementCapabilityError
 
 family = sys.argv[1]
 record_path = Path(sys.argv[2])
-entry = {"family":family,"solver":anysolver.__file__,"observer_first":observer_first}
+entry = {"family":family,"solver":anyfesolver.__file__,"observer_first":observer_first}
 record_path.write_text(json.dumps(entry))
-assert Path(anysolver.__file__).is_relative_to(Path(os.environ["ANYSOLVER_DEVELOPMENT_SOURCE"]))
-owner = anysolver.QualifiedE4PLShellElement if family == "q4" else anysolver.QualifiedE4PLS3ShellElement
+assert Path(anyfesolver.__file__).is_relative_to(Path(os.environ["ANYSOLVER_DEVELOPMENT_SOURCE"]))
+owner = anyfesolver.QualifiedE4PLShellElement if family == "q4" else anyfesolver.QualifiedE4PLS3ShellElement
 points = ((0.,0.,0.),(1.,0.,0.),(1.,1.,0.),(0.,1.,0.)) if family == "q4" else ((0.,0.,0.),(1.,0.,0.),(0.,1.,0.))
-model = anysolver.FEModel("cold-abc-"+family)
+model = anyfesolver.FEModel("cold-abc-"+family)
 model.add_material("elastic",1e5,.3)
 for node,point in enumerate(points,1): model.add_node(node,*point)
 model.add_element(1,owner(1,tuple(range(1,len(points)+1)),"elastic",thickness=.05,reference_normal=(0.,0.,1.)))
@@ -69,7 +69,7 @@ entry.update(observation=observed,refused=refused,callback_calls=len(invoked))
 record_path.write_text(json.dumps(entry))
 print(json.dumps(entry))
 '''
-    expected = Path(os.environ.get("ANYSOLVER_DEVELOPMENT_SOURCE", Path(__file__).parents[1]/"src/anysolver"))
+    expected = Path(os.environ.get("ANYSOLVER_DEVELOPMENT_SOURCE", Path(__file__).parents[1]/"src/anyfesolver"))
     environment = os.environ.copy()
     environment["ANYSOLVER_DEVELOPMENT_SOURCE"] = str(expected)
     environment["PYTHONPATH"] = str(expected.parent)+os.pathsep+environment.get("PYTHONPATH", "")
@@ -86,21 +86,21 @@ print(json.dumps(entry))
 
 @pytest.mark.parametrize("attribute", ["__annotate__", "__annotate_func__"])
 def test_preimport_annotation_callback_is_rejected_without_invocation(attribute, tmp_path):
-    expected = Path(os.environ.get("ANYSOLVER_DEVELOPMENT_SOURCE", Path(__file__).parents[1]/"src/anysolver"))
+    expected = Path(os.environ.get("ANYSOLVER_DEVELOPMENT_SOURCE", Path(__file__).parents[1]/"src/anyfesolver"))
     environment = os.environ.copy()
     environment["PYTHONPATH"] = str(expected.parent)+os.pathsep+environment.get("PYTHONPATH", "")
     code = r'''
 from abc import ABC
 import importlib.util,json,sys
 from pathlib import Path
-assert Path(importlib.util.find_spec("anysolver").origin).is_relative_to(Path(sys.argv[2]))
+assert Path(importlib.util.find_spec("anyfesolver").origin).is_relative_to(Path(sys.argv[2]))
 calls = []
 def forbidden(*args,**kwargs):
     calls.append(True)
     raise AssertionError("preimport annotation callback executed")
 setattr(ABC,sys.argv[1],forbidden)
 try:
-    import anysolver
+    import anyfesolver
 except RuntimeError as exc:
     assert "ABC annotation callback is incompatible" in str(exc),str(exc)
 else:

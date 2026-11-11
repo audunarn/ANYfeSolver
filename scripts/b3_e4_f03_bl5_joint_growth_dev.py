@@ -7,9 +7,9 @@ import json
 from pathlib import Path
 import subprocess
 
-import anysolver
-from anysolver import stiffened_shell
-from anysolver._ge_beam3_retained_generalized_state import Mechanical
+import anyfesolver
+from anyfesolver import stiffened_shell
+from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
 import numpy as np
 from threadpoolctl import threadpool_info, threadpool_limits
 
@@ -131,7 +131,7 @@ def analyze():
     return {"status": "BL5_JOINT_GROWTH_DEVELOPMENT_ONLY",
             "source_git": subprocess.check_output(
                 ("git", "rev-parse", "HEAD"), text=True).strip(),
-            "imported_anysolver": str(Path(anysolver.__file__).resolve()),
+            "imported_anyfesolver": str(Path(anyfesolver.__file__).resolve()),
             "threadpools": threadpool_info(),
             "geometry_m": {"length": 1., "width": .2,
                            "shell_thickness": .035,

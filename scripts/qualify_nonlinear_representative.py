@@ -48,13 +48,13 @@ def _json_digest(value: Any) -> str:
 def _build_case(spec: Mapping[str, Any], method: str):
     import numpy as np
 
-    from anysolver.boundary import BoundaryCondition, FixedSupport, LoadCase
-    from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-    from anysolver.elements import BeamElement, create_shell_element
-    from anysolver.fe_core import FEModel
-    from anysolver.material_curves import LinearHardeningCurve
-    from anysolver.mesh_gen import generate_simple_panel_mesh
-    from anysolver.nonlinear_static import NonlinearLoadProgram, NonlinearLoadStage
+    from anyfesolver.boundary import BoundaryCondition, FixedSupport, LoadCase
+    from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+    from anyfesolver.elements import BeamElement, create_shell_element
+    from anyfesolver.fe_core import FEModel
+    from anyfesolver.material_curves import LinearHardeningCurve
+    from anyfesolver.mesh_gen import generate_simple_panel_mesh
+    from anyfesolver.nonlinear_static import NonlinearLoadProgram, NonlinearLoadStage
 
     builder = str(spec["builder"])
     options: dict[str, Any] = {
@@ -468,9 +468,9 @@ def _worker_sample(site: Path, spec: Mapping[str, Any], method: str) -> dict[str
     import importlib.metadata
     import numpy as np
 
-    import anysolver
-    from anysolver import nonlinear_static
-    from anysolver.nonlinear_performance_bootstrap import nonlinear_performance_status
+    import anyfesolver
+    from anyfesolver import nonlinear_static
+    from anyfesolver.nonlinear_performance_bootstrap import nonlinear_performance_status
 
     nonlinear_static._ensure_nonlinear_acceleration()
     original_assemble = nonlinear_static._assemble_nonlinear_system
@@ -590,8 +590,8 @@ def _worker_sample(site: Path, spec: Mapping[str, Any], method: str) -> dict[str
         "physical_sha256": _json_digest(observables),
         "dispatch": nonlinear_performance_status(),
         "identity": {
-            "anysolver_version": importlib.metadata.version("anysolver"),
-            "anysolver_module": str(Path(anysolver.__file__).resolve()),
+            "anyfesolver_version": importlib.metadata.version("anyfesolver"),
+            "anyfesolver_module": str(Path(anyfesolver.__file__).resolve()),
             "numpy_version": np.__version__,
             "python": platform.python_version(),
             "platform": platform.platform(),
@@ -785,7 +785,7 @@ def _run_bounded_worker(
             "worker_peak_tree_rss_bytes": peak_rss,
             "stderr_log": str(log_path.resolve()),
         }
-    imported_module = Path(sample.get("identity", {}).get("anysolver_module", ""))
+    imported_module = Path(sample.get("identity", {}).get("anyfesolver_module", ""))
     try:
         imported_module.resolve().relative_to(site.resolve())
     except (ValueError, OSError):
@@ -1076,10 +1076,10 @@ def _run_installed_regressions(
     identity_test.parent.mkdir(parents=True, exist_ok=True)
     identity_test.write_text(
         "from pathlib import Path\n"
-        "def test_anysolver_imports_from_frozen_site():\n"
-        "    import anysolver\n"
+        "def test_anyfesolver_imports_from_frozen_site():\n"
+        "    import anyfesolver\n"
         f"    expected = Path({expected_site!r}).resolve()\n"
-        "    imported = Path(anysolver.__file__).resolve()\n"
+        "    imported = Path(anyfesolver.__file__).resolve()\n"
         "    assert imported.is_relative_to(expected), (imported, expected)\n",
         encoding="utf-8",
     )
@@ -1423,7 +1423,7 @@ def _coordinator(args: argparse.Namespace) -> int:
     convergence_repeats = int(manifest["execution"]["convergence_repeats"])
     log_dir = args.log_dir.resolve()
     result: dict[str, Any] = {
-        "schema": "anysolver.nonlinear_static.representative_evidence",
+        "schema": "anyfesolver.nonlinear_static.representative_evidence",
         "version": 1,
         "started_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "identity": {

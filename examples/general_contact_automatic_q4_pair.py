@@ -1,6 +1,6 @@
 """Automatic Q4/Q4 press, 20mm actuator slide, open and recontact."""
-from anysolver import BoundaryCondition,FEModel,create_shell_element,solve_static_nonlinear
-from anysolver.general_contact import (ContactSurface,ContactSolverSettings,
+from anyfesolver import BoundaryCondition,FEModel,create_shell_element,solve_static_nonlinear
+from anyfesolver.general_contact import (ContactSurface,ContactSolverSettings,
     AutomaticContactParticipant,AutomaticContactDefaults,AutomaticContactDomain,
     resolve_automatic_contact_domain,verify_automatic_contact_resolution)
 
@@ -23,7 +23,7 @@ def build(*,lifecycle=True,path_predictor='control_projection_dev',sliding=True)
     press, then separates and recontacts at that lateral position. It requires
     the explicit development predictor; other source ux remain unknowns.
     """
-    from anysolver import ContactPathControl,ContactPathProgram
+    from anyfesolver import ContactPathControl,ContactPathProgram
     if sliding and path_predictor!='control_projection_dev':
         raise ValueError('sliding example requires explicit control_projection_dev')
     model=FEModel('declared-automatic-refined-projected-q4-q4')

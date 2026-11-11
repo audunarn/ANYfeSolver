@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.triangle_pair_energy import MovingS3PairPenalty
+from anyfesolver.general_contact.triangle_pair_energy import MovingS3PairPenalty
 
 
 _SOURCE = np.array(((0.4, 0.2, 0.02), (0.9, 0.2, 0.02),

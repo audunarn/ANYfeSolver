@@ -10,8 +10,8 @@ from typing import Any, Dict, Iterable
 
 import numpy as np
 
-import anysolver as fs
-from anysolver.contact import _verification_contact_panel
+import anyfesolver as fs
+from anyfesolver.contact import _verification_contact_panel
 
 
 def _float_list(value: str) -> tuple[float, ...]:

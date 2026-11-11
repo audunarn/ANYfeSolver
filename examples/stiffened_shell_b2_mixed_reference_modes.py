@@ -9,7 +9,7 @@ from dataclasses import asdict, replace
 import json
 
 import numpy as np
-from anysolver import stiffened_shell as api
+from anyfesolver import stiffened_shell as api
 from stiffened_shell_b2_mixed_panel import definition as static_definition
 
 

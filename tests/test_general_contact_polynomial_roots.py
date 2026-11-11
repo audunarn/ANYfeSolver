@@ -7,7 +7,7 @@ import math
 import numpy as np
 import pytest
 
-from anysolver.general_contact.polynomial_roots import near_real_roots
+from anyfesolver.general_contact.polynomial_roots import near_real_roots
 
 
 def _decimal_real_root(coefficients, initial):
@@ -120,7 +120,7 @@ def test_small_nonzero_real_part_of_admitted_conjugates():
 
 
 def test_algebraic_cutoff_equality_and_nonreal_common_factor():
-    from anysolver.general_contact.polynomial_roots import _algebraic_sign, _isolate
+    from anyfesolver.general_contact.polynomial_roots import _algebraic_sign, _isolate
     # p=(x-1)(x^2+1), q=(x-1)(3x+1) share the sole real root exactly.
     root = _isolate((-1, 1, -1, 1))[0]
     assert _algebraic_sign(root, (Fraction(-1), Fraction(-2), Fraction(3))) == 0
@@ -136,7 +136,7 @@ def test_exact_imaginary_threshold_and_rejected_complex_pair():
 
 
 def test_captured_cross_host_coefficients_and_projection(monkeypatch):
-    from anysolver.general_contact.beam_curve_pair import closest_on_b3
+    from anyfesolver.general_contact.beam_curve_pair import closest_on_b3
     coefficients = [float.fromhex(x) for x in (
         '0x1.f204e4472b959p-1', '-0x1.0000000000000p+0',
         '-0x1.c43308c4b6156p-25', '-0x1.a3debef364c7ep-15')]

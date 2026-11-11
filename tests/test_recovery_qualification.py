@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     FEModel,
     LegacyQ4DeprecationWarning,
     LegacyShellElement,
@@ -18,7 +18,7 @@ from anysolver import (
     recover_shell_patch_stresses,
     recover_stress_result,
 )
-from anysolver.corotational import rotation_matrix_from_vector
+from anyfesolver.corotational import rotation_matrix_from_vector
 
 
 _SURFACE_COMPONENTS = ("xx", "yy", "zz", "xy", "yz", "xz")

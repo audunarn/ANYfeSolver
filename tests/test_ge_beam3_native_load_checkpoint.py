@@ -34,7 +34,7 @@ def test_load_development_record_binds_extent_and_does_not_authorize_public_rout
 @pytest.mark.parametrize('mode',['preserved_framework','new_source','research_import'])
 def test_native_load_source_mutations_do_not_keep_the_binding(monkeypatch,mode):
     original = binding.source
-    target = ('src/anysolver/nonlinear_state.py' if mode == 'preserved_framework' else binding.TARGET+'/state.py')
+    target = ('src/anyfesolver/nonlinear_state.py' if mode == 'preserved_framework' else binding.TARGET+'/state.py')
     def altered(path):
         value = original(path)
         if path == target: value += b'\nimport docs\n' if mode == 'research_import' else b'\n# mutation\n'
@@ -51,6 +51,6 @@ def test_strict_parser_and_duplicate_nonfinite_guards_are_preserved_exactly(name
     def function(path):
         tree = ast.parse(binding.source(path))
         return next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name == name)
-    original = function('src/anysolver/_ge_beam3_p5_centered/codec.py')
-    successor = function('src/anysolver/_ge_beam3_p5_loads/codec.py')
+    original = function('src/anyfesolver/_ge_beam3_p5_centered/codec.py')
+    successor = function('src/anyfesolver/_ge_beam3_p5_loads/codec.py')
     assert ast.dump(original) == ast.dump(successor)

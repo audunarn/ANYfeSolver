@@ -114,7 +114,7 @@ def inverse_projected(points, corners, beta, normal, frame):
 
 def _raw_identity(model):
     """Read-only model identity, independent of a contact definition's cache."""
-    from anysolver.nonlinear_restart import model_configuration_fingerprint
+    from anyfesolver.nonlinear_restart import model_configuration_fingerprint
     return model_configuration_fingerprint(model)
 
 
@@ -204,7 +204,7 @@ class ContactOracle:
 
     def check_cancel(self):
         if self.cancel():
-            from anysolver.control import SolveCancelled
+            from anyfesolver.control import SolveCancelled
             raise SolveCancelled('independent reference cancelled')
 
     def vertices(self, pose):

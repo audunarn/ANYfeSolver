@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver.general_contact.q4_overlap_local_bound import (
+from anyfesolver.general_contact.q4_overlap_local_bound import (
     q4_s3_whole_pair_swept_lower,overlap_local_swept_lower,q4_s3_swept_chart_admissible,
     _normal_controls_interval)
 
@@ -116,7 +116,7 @@ def test_large_coordinate_cancellation_encloses_exact_transverse_gap():
 
 
 def test_public_lifecycle_precancel_is_atomic():
-    from anysolver import CancellationToken,SolveCancelled
+    from anyfesolver import CancellationToken,SolveCancelled
     from examples.general_contact_automatic_domain import build_projected_shell_pair,solve_shell_pair
     model,domain,settings,resolution,path=build_projected_shell_pair(lifecycle=True)
     before=repr(model)
@@ -145,7 +145,7 @@ def test_individual_polarity_does_not_certify_mutual_chart():
 def test_endpoint_skin_map_error_encloses_exact_sparse_arithmetic():
     from fractions import Fraction as F
     from examples.general_contact_automatic_domain import build_projected_shell_pair
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     model,_,settings,resolution,_=build_projected_shell_pair(lifecycle=True)
     manager=GeneralS3PatchManager(model,resolution.definition,settings)
     matrix=manager.map.tocsr();reference=np.concatenate(manager.reference).reshape(-1)
@@ -167,7 +167,7 @@ def test_independent_affine_plane_oracle_discriminates_actual_proposals():
     # faces: equal z at all corners for both endpoints. Each target triangle
     # is P1 and physically affine in time. No midpoint sampling proves safety.
     from examples.general_contact_automatic_domain import build_projected_shell_pair
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     model,_,settings,resolution,_=build_projected_shell_pair(lifecycle=True)
     manager=GeneralS3PatchManager(model,resolution.definition,settings)
     outcomes=[]
@@ -192,7 +192,7 @@ def test_independent_affine_plane_oracle_discriminates_actual_proposals():
 @pytest.mark.skipif(os.environ.get('AUTOMATIC_SWEPT_CAPTURE')!='1',reason='bounded old-candidate diagnosis')
 def test_capture_unchanged_automatic_lifecycle(monkeypatch):
     from examples.general_contact_automatic_domain import build_projected_shell_pair,solve_shell_pair
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     model,domain,settings,resolution,path=build_projected_shell_pair(lifecycle=True)
     trace=[]
     original=GeneralS3PatchManager._swept_admissible
@@ -219,7 +219,7 @@ def test_capture_unchanged_automatic_lifecycle(monkeypatch):
 
 @pytest.mark.parametrize('row_scales', [(1.,1.), (2.**-400,2.**400)])
 def test_control_projection_retains_independent_nullspace(row_scales):
-    from anysolver.general_contact.static_path import _control_projection_seed
+    from anyfesolver.general_contact.static_path import _control_projection_seed
     # Independently prescribed sums; differences and fifth coordinate are free.
     rows=np.array(((1.,1.,0.,0.,0.),(0.,0.,1.,-1.,0.)))
     start=np.array((2.,-3.,5.,7.,11.))
@@ -233,10 +233,10 @@ def test_control_projection_retains_independent_nullspace(row_scales):
 
 def test_predictor_validation_and_ignored_route_refusal():
     from dataclasses import replace
-    from anysolver import ContactSolverSettings,solve_static_nonlinear
-    from anysolver.general_contact.core import validate_general_contact
+    from anyfesolver import ContactSolverSettings,solve_static_nonlinear
+    from anyfesolver.general_contact.core import validate_general_contact
     from examples.general_contact_automatic_domain import build_projected_shell_pair
-    from anysolver.general_contact.static_path import _control_projection_seed
+    from anyfesolver.general_contact.static_path import _control_projection_seed
     with pytest.raises(ValueError,match='unsupported path_predictor'):
         ContactSolverSettings(path_predictor='silent')
     with pytest.raises(ValueError,match='ill-conditioned'):
@@ -254,7 +254,7 @@ def test_predictor_validation_and_ignored_route_refusal():
 
 def test_predictor_default_keeps_historical_automatic_identity():
     from examples.general_contact_automatic_domain import build_projected_shell_pair
-    from anysolver.general_contact.automatic_domain import _settings_contract
+    from anyfesolver.general_contact.automatic_domain import _settings_contract
     _,_,settings,resolution,_=build_projected_shell_pair(lifecycle=True)
     assert 'path_predictor' not in _settings_contract(settings)
     baseline_path=os.environ.get('AUTOMATIC_PREDICTOR_BASELINE')
@@ -265,9 +265,9 @@ def test_predictor_default_keeps_historical_automatic_identity():
 
 def test_predictor_public_precancel_and_invalid_seed_are_atomic(monkeypatch):
     from dataclasses import replace
-    from anysolver import CancellationToken,SolveCancelled
+    from anyfesolver import CancellationToken,SolveCancelled
     from examples.general_contact_automatic_domain import build_projected_shell_pair,solve_shell_pair
-    from anysolver.general_contact import static_path
+    from anyfesolver.general_contact import static_path
     model,domain,settings,resolution,path=build_projected_shell_pair(lifecycle=True,
         path_predictor='control_projection_dev')
     before=repr(model)
@@ -287,8 +287,8 @@ def test_predictor_public_precancel_and_invalid_seed_are_atomic(monkeypatch):
 
 def test_predictor_refuses_unexercised_profile_and_friction():
     from dataclasses import replace
-    from anysolver.general_contact.core import validate_general_contact
-    from anysolver.general_contact.static_path import solve_static_contact_path
+    from anyfesolver.general_contact.core import validate_general_contact
+    from anyfesolver.general_contact.static_path import solve_static_contact_path
     from examples.general_contact_automatic_domain import build_projected_shell_pair
     model,_,settings,resolution,path=build_projected_shell_pair(lifecycle=True,
         path_predictor='control_projection_dev')

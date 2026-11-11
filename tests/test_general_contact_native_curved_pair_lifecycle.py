@@ -11,11 +11,11 @@ from math import isfinite
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_p5_seeded.codec import _load
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.control import CancellationToken
+from anyfesolver._ge_beam3_p5_seeded.codec import _load
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken
 from test_general_contact_native_fibre_s3 import _independent_material_history
-from anysolver.general_contact.native_replay_diagnostics import replay_difference_message
+from anyfesolver.general_contact.native_replay_diagnostics import replay_difference_message
 
 ROOT=Path(__file__).parents[1]
 EVIDENCE=Path(os.environ.get('CONTACT_NATIVE_CURVED_LIFECYCLE_EVIDENCE',

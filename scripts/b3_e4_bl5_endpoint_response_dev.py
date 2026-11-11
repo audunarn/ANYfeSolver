@@ -13,7 +13,7 @@ import sys
 import traceback
 import zipfile
 
-REPO = Path("C:/Github/ANYsolver/.perf2-worktrees/stiffened-main-reconcile-20261001")
+REPO = Path("C:/Github/ANYfeSolver/.perf2-worktrees/stiffened-main-reconcile-20261001")
 WHEEL_SHA = "d99c59ac0464613b15461dcd23c0b8fe158a67fe3b27192a886b6daf6aa981ea"
 LOADS = {"fy": (0., 100., 0., 0., 0., 0.), "mx": (0., 0., 0., 10., 0., 0.),
          "mz": (0., 0., 0., 0., 0., 10.)}
@@ -40,13 +40,13 @@ def write(path, value):
 
 def installed_identity(site, manifest):
     expected = json.loads(manifest.read_text())
-    source = {p.relative_to(REPO).as_posix() for p in (REPO/"src/anysolver").rglob("*.py")}
-    installed = {"src/"+p.relative_to(site).as_posix() for p in (site/"anysolver").rglob("*.py")}
+    source = {p.relative_to(REPO).as_posix() for p in (REPO/"src/anyfesolver").rglob("*.py")}
+    installed = {"src/"+p.relative_to(site).as_posix() for p in (site/"anyfesolver").rglob("*.py")}
     require(len(expected) == 391 and source == installed == set(expected), "exact 391-module sets required")
     wheels = list((manifest.parent/"wheels").glob("*.whl"))
     require(len(wheels) == 1 and sha(wheels[0]) == WHEEL_SHA, "pinned wheel required")
     with zipfile.ZipFile(wheels[0]) as wheel:
-        names = {n for n in wheel.namelist() if n.startswith("anysolver/") and n.endswith(".py")}
+        names = {n for n in wheel.namelist() if n.startswith("anyfesolver/") and n.endswith(".py")}
         require(names == {n.removeprefix("src/") for n in expected}, "wheel module set differs")
         for name, digest in expected.items():
             key = name.removeprefix("src/")
@@ -69,7 +69,7 @@ def settings():
 
 def imports(site):
     loaded = {n: str(Path(m.__file__).resolve()) for n, m in sys.modules.copy().items()
-              if n.split(".")[0] == "anysolver" and getattr(m, "__file__", None)}
+              if n.split(".")[0] == "anyfesolver" and getattr(m, "__file__", None)}
     require(loaded and all(Path(p).is_relative_to(site) for p in loaded.values()), "source product import forbidden")
     return loaded
 
@@ -82,14 +82,14 @@ def run(args):
                "ny": args.nx//4, "halfcells": 16*args.nx, "whole_element_ratio": "8:1", "cases": {}}
     owner = None
     try:
-        require(not any(n.split(".")[0] == "anysolver" for n in sys.modules), "fresh process required")
+        require(not any(n.split(".")[0] == "anyfesolver" for n in sys.modules), "fresh process required")
         site, manifest, fixtures = (p.resolve(strict=True) for p in (args.site, args.manifest, args.fixtures))
         paths = (fixtures/"scripts", fixtures/"tests") if (fixtures/"scripts").is_dir() else (fixtures,)
         sys.path[:0] = [str(site)]+[str(p) for p in paths]
         import numpy as np
         import numba
         from threadpoolctl import threadpool_info
-        from anysolver import stiffened_shell as api
+        from anyfesolver import stiffened_shell as api
         import b3_e4_bl5_coherent_aggregation_dev as coherent
         import b3_e4_bl5_matched_mz_native_dev as matched
         import b3_e4_bl5_matched_p0_native_refinement_dev as inventory

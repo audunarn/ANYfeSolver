@@ -2,13 +2,13 @@
 from dataclasses import replace
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from examples.stiffened_shell_native_fibre_bl5 import definition,workflow
 from test_stiffened_shell_native_fibre_bl5 import (
  ACTIONS,test_public_recovery_fresh_restart_continue_and_spectrum as _public,
  test_full42_and_direct_bl5_scalar_curvature_oracle as _oracle,
  test_public_refusals_atomic_corruption_cancel_mutation as _refusals)
-from anysolver import _stiffened_shell_ge_point_buckling as buckling
+from anyfesolver import _stiffened_shell_ge_point_buckling as buckling
 
 
 @pytest.fixture(scope='module',params=(('s3','biaxial','fibre','p0'),

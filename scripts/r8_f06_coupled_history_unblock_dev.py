@@ -12,7 +12,7 @@ INPUT=BASE/'mixed-adaptive-v1/attempt-installed-resume1/terminal.bin'
 INPUT_SHA='970e0360f22ed348ca2eaa7eee0d2d168d6d686d0a91a750f3ccd31794865f91'
 
 def bindings():
- paths=[ROOT/'src/anysolver'/n for n in (*infra.PRODUCTS,'_stiffened_shell_q4_algorithmic_pullback.py',
+ paths=[ROOT/'src/anyfesolver'/n for n in (*infra.PRODUCTS,'_stiffened_shell_q4_algorithmic_pullback.py',
   '_stiffened_shell_algorithmic_pullback.py','_stiffened_shell_increment_control.py','_ge_beam3_generalized_static_boundary.py')]
  paths += [ROOT/'scripts'/n for n in ('r8_f06_coupled_resume_dev.py','r8_f06_cyclic_material_dev.py',
   'r8_f06_native_material_breadth_dev.py','r8_f06_fibre_log_domain_dev.py','r8_f06_log_domain_check_dev.py')]

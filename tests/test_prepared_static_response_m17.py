@@ -2,7 +2,7 @@
 import json
 import numpy as np
 import pytest
-from anysolver import (PatternCase, prepare_static_response_evaluator, RecoveryConfig,
+from anyfesolver import (PatternCase, prepare_static_response_evaluator, RecoveryConfig,
     PreparedStaticError, PreparedStaticCapabilityError)
 from test_prepared_static_evaluator import _bar, _case, _shell_model, _shell_case
 import prepared_static_response_m16_assessment as assessment
@@ -77,8 +77,8 @@ def test_callback_failure_does_not_publish_vectorized_envelope():
 
 
 def test_vectorized_token_never_runs_in_owned_scope(monkeypatch):
-    import anysolver.prepared_static_response as response_module
-    import anysolver.prepared_static_recovery as recovery_module
+    import anyfesolver.prepared_static_response as response_module
+    import anyfesolver.prepared_static_recovery as recovery_module
     observed = []
     class HostileToken:
         def raise_if_cancelled(self, where):
@@ -92,7 +92,7 @@ def test_vectorized_token_never_runs_in_owned_scope(monkeypatch):
 
 
 def test_nonaffine_vectorized_probe_refused(monkeypatch):
-    import anysolver.prepared_static_vectorized as vector_module
+    import anyfesolver.prepared_static_vectorized as vector_module
     monkeypatch.setattr(vector_module, '_recover_owned_local',
                         lambda recipe, local: {'axial_stress': np.full(2, float(np.sum(local)) ** 2), 'label': 'beam'})
     with pytest.raises(PreparedStaticCapabilityError, match='not affine'):

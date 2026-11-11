@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from scipy import linalg
 
-from anysolver import (
+from anyfesolver import (
     AnalysisSession,
     BoundaryCondition,
     FEModel,
@@ -13,14 +13,14 @@ from anysolver import (
     QualifiedE4PLShellElement,
     solve_free_vibration,
 )
-from anysolver.algebraic_dynamics import (
+from anyfesolver.algebraic_dynamics import (
     DESCRIPTOR_MODAL_POLICY_ID,
     DESCRIPTOR_RAYLEIGH_REFINEMENT_POLICY_ID,
     solve_descriptor_spectrum,
 )
-from anysolver.assembly import build_constraint_transformation
-from anysolver.matrix_assembly import assemble_mass_matrix, assemble_stiffness_matrix
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.matrix_assembly import assemble_mass_matrix, assemble_stiffness_matrix
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 def _supported_model(*, inclined: bool = False) -> FEModel:

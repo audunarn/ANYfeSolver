@@ -46,6 +46,6 @@ def test_v5i_r1_diagnosis_is_narrow_and_nonactivating() -> None:
     assert review["findings"] == {"P0": [], "P1": []}
     assert review["conclusions"]["mechanics_change_authorized"] is False
     assert status["activation_authorized"] is False
-    source = (ROOT / "src/anysolver/elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src/anyfesolver/elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source

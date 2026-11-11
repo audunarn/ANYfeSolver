@@ -3,10 +3,10 @@ from hashlib import sha256
 import json
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_retained_translation_control as control
-from anysolver._ge_beam3_p5_seeded.core import canonical, sha
-from anysolver._ge_beam3_native_generalized_program import model_identity
-from anysolver.control import CancellationToken
+from anyfesolver import _ge_beam3_retained_translation_control as control
+from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
+from anyfesolver._ge_beam3_native_generalized_program import model_identity
+from anyfesolver.control import CancellationToken
 from docs.reference_cases.ge_beam3_controlled_history_cases import (
     CASES, make, pose, transformed_positions, position_error, axial_reference)
 from docs.reference_cases.ge_beam3_generalized_ellipsoid_oracle import response as independent

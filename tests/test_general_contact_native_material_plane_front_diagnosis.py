@@ -5,8 +5,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 from numpy.polynomial.legendre import leggauss
-from anysolver._ge_beam3_mixed_ad import Jet2
-from anysolver.general_contact.native_surface_normal import _material_cell_normal_data
+from anyfesolver._ge_beam3_mixed_ad import Jet2
+from anyfesolver.general_contact.native_surface_normal import _material_cell_normal_data
 from test_general_contact_native_material_plane import _analysis
 
 

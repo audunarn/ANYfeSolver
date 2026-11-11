@@ -88,7 +88,7 @@ def test_complete238_work_inventory_and_live_mutation_cancellation(monkeypatch):
     with pytest.raises(ReferenceRefused, match='mutated'):
         oracle.evaluate(oracle.base_pose)
     oracle.model.mesh.nodes[1].z = 0.
-    from anysolver.control import SolveCancelled
+    from anyfesolver.control import SolveCancelled
     oracle.cancel = lambda: True
     with pytest.raises(SolveCancelled):
         oracle.evaluate(oracle.base_pose)

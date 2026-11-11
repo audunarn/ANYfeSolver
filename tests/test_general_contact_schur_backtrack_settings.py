@@ -4,8 +4,8 @@ from dataclasses import replace
 
 import pytest
 
-from anysolver import ContactSolverSettings
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver import ContactSolverSettings
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 from scripts.general_contact_d1_free_target_press_probe import build_free_target_case
 
 

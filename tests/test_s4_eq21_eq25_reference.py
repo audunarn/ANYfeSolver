@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 from numpy.typing import NDArray
 
-from anysolver.shell_formulations.mitc4_plus_d_reference import (
+from anyfesolver.shell_formulations.mitc4_plus_d_reference import (
     _assumed_mitc4_plus_membrane_2017_eq27_reference,
     _assumed_mitc4_plus_membrane_2025_eq25,
     _drill_membrane_operator,
@@ -20,15 +20,15 @@ from anysolver.shell_formulations.mitc4_plus_d_reference import (
     generalized_strain_operators,
     local_strain_operator,
 )
-from anysolver.shell_formulations.mitc4_plus_d_scalar import (
+from anyfesolver.shell_formulations.mitc4_plus_d_scalar import (
     consistent_mass,
     generalized_strain_at,
     isotropic_plane_stress_constitutive,
     linear_stiffness,
     strain_at,
 )
-from anysolver.shell_formulations.protocol import Q4ReferenceData
-from anysolver.shell_formulations.q4_common import deterministic_signature
+from anyfesolver.shell_formulations.protocol import Q4ReferenceData
+from anyfesolver.shell_formulations.q4_common import deterministic_signature
 
 
 FloatArray = NDArray[np.float64]
@@ -526,8 +526,8 @@ def test_invalid_mapping_fails_closed_and_sources_have_no_geometry_dependency() 
     directors = _directors(coordinates)
     with pytest.raises(ValueError, match="reverse|positive"):
         build_reference_data(coordinates[[0, 3, 2, 1]], directors, 0.2)
-    import anysolver.shell_formulations.mitc4_plus_d_reference as reference_module
-    import anysolver.shell_formulations.mitc4_plus_d_scalar as scalar_module
+    import anyfesolver.shell_formulations.mitc4_plus_d_reference as reference_module
+    import anyfesolver.shell_formulations.mitc4_plus_d_scalar as scalar_module
     for module in (reference_module, scalar_module):
         source = inspect.getsource(module).lower()
         assert "import anygeometry" not in source

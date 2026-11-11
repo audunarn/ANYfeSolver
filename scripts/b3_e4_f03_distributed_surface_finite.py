@@ -14,9 +14,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from anysolver import _ge_beam3_mixed_ad as ad
-from anysolver._ge_beam3_mixed_ad import rotation_exponential
-from anysolver.corotational import rotation_matrix_from_vector
+from anyfesolver import _ge_beam3_mixed_ad as ad
+from anyfesolver._ge_beam3_mixed_ad import rotation_exponential
+from anyfesolver.corotational import rotation_matrix_from_vector
 from scripts._b3_e4_f03_native_spatial_port import NativeHalfCellSpatialPort
 from scripts.b3_e4_f03_local_footprint_work import (
     bond_x_segments, distributed_surface_patch_trace, skew,

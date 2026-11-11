@@ -17,8 +17,8 @@ OUT=ROOT/'docs/agent_plans/development/r8-b2-coo-scratch-cleanup-20261010'
 ENV={k:'1' for k in ('OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','NUMEXPR_NUM_THREADS',
  'VECLIB_MAXIMUM_THREADS','BLIS_NUM_THREADS','NUMBA_NUM_THREADS','NUMBA_DISABLE_JIT')};ENV['PYTHONOPTIMIZE']='0'
 TESTS=['tests/test_r8_b2_coo_scratch_cleanup_dev.py','tests/test_r8_b2_assembly_metrics_dev.py','tests/test_stiffened_shell_b2_physical_footprint_batch.py','tests/test_r8_b2_assembly_series_dev.py']
-OWNED=['src/anysolver/_stiffened_shell_b2_q4_panel_experimental.py',
- 'src/anysolver/_stiffened_shell_b2_assembly_diagnostics.py','tests/test_r8_b2_coo_scratch_cleanup_dev.py',
+OWNED=['src/anyfesolver/_stiffened_shell_b2_q4_panel_experimental.py',
+ 'src/anyfesolver/_stiffened_shell_b2_assembly_diagnostics.py','tests/test_r8_b2_coo_scratch_cleanup_dev.py',
  'scripts/r8_b2_coo_scratch_cleanup_dev.py']
 
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
@@ -49,7 +49,7 @@ def freeze():
  inputs=OWNED+TESTS[1:]+['scripts/r8_b2_assembly_series_dev.py','examples/stiffened_shell_b2_physical_rigid_footprint.py','pyproject.toml',
   'scripts/_b3_e4_f03_local_scientific_supervisor.py','scripts/_b3_e4_f03_local_scientific_cases.py']
  p=dict(source={n:sha(ROOT/n) for n in inputs},all_solver_source={p.relative_to(ROOT/'src').as_posix():sha(p)
-  for p in (ROOT/'src/anysolver').rglob('*.py')},tests=TESTS,scope='SMALL_DEVELOPMENT_ONLY',caps=dict(objects=2000000,edges=8000000,buffers=500000,depth=40))
+  for p in (ROOT/'src/anyfesolver').rglob('*.py')},tests=TESTS,scope='SMALL_DEVELOPMENT_ONLY',caps=dict(objects=2000000,edges=8000000,buffers=500000,depth=40))
  OUT.mkdir(parents=True,exist_ok=True)
  if (OUT/'PREPARED.json').exists():
   version=OUT/'preparations';version.mkdir(exist_ok=True);old=OUT/'PREPARED.json'
@@ -69,7 +69,7 @@ def runtime(p,installed=False,scientific=False):
   base=(OUT/'package/site' if installed else ROOT/'src').resolve()
   expected=p['package'] if installed else p['all_solver_source']
   for n,m in tuple(sys.modules.items()):
-   if n.split('.')[0]=='anysolver' and getattr(m,'__file__',None):
+   if n.split('.')[0]=='anyfesolver' and getattr(m,'__file__',None):
     path=Path(m.__file__).resolve();require(path.is_relative_to(base),'wrong solver import '+n)
     rel=path.relative_to(base).as_posix();require(rel in expected and sha(path)==expected[rel],'import hash '+n)
     r['imports'][n]=dict(path=str(path),sha256=sha(path))
@@ -104,7 +104,7 @@ def child(phase,attempt):
    result=dict(status='PASS_INSTALL',package_files=len(a['package']),reinstalled=(attempt/'install-command.json').exists())
   else:
    installed=phase=='installed';base=OUT/'package/site' if installed else ROOT/'src'
-   sys.path[:]=[str(base),str(ROOT)]+[x for x in sys.path if Path(x or '.').resolve() not in (ROOT/'src',Path('C:/Github/ANYsolver/src'))]
+   sys.path[:]=[str(base),str(ROOT)]+[x for x in sys.path if Path(x or '.').resolve() not in (ROOT/'src',Path('C:/Github/ANYfeSolver/src'))]
    import numpy,scipy,numba,pytest
    save(attempt/'runtime-before.json',runtime(p,installed,True))
    class Counts:

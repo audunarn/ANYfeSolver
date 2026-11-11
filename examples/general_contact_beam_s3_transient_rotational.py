@@ -1,8 +1,8 @@
 """Numerical descriptor impact with actual affine eccentric target rotations."""
 import numpy as np
-from anysolver import BoundaryCondition
-from anysolver.dynamics import TransientConfig
-from anysolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
+from anyfesolver import BoundaryCondition
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
 from examples.general_contact_beam_s3_transient import build as base_build
 
 

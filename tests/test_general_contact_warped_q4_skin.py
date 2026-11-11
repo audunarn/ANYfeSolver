@@ -3,9 +3,9 @@
 import numpy as np
 import pytest
 
-from anysolver import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.warped_q4_skin import WarpedQ4Skin
+from anyfesolver import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.warped_q4_skin import WarpedQ4Skin
 
 
 _WARPED = np.array(((0.0, 0.0, 0.0),

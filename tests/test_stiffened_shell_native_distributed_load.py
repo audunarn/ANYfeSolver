@@ -4,12 +4,12 @@ from dataclasses import FrozenInstanceError
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_fibre_line_work import evaluate as ad_work
-from anysolver._ge_beam3_p5.algebra import rotation, skew
-from anysolver._ge_beam3_retained_fibre import RetainedFibreOperator
-from anysolver._ge_beam3_retained_generalized import RetainedGeneralizedOperator
-from anysolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
-from anysolver._stiffened_shell_native_distributed_load import compile_native_distributed
+from anyfesolver._ge_beam3_fibre_line_work import evaluate as ad_work
+from anyfesolver._ge_beam3_p5.algebra import rotation, skew
+from anyfesolver._ge_beam3_retained_fibre import RetainedFibreOperator
+from anyfesolver._ge_beam3_retained_generalized import RetainedGeneralizedOperator
+from anyfesolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
+from anyfesolver._stiffened_shell_native_distributed_load import compile_native_distributed
 from test_ge_beam3_fibre_section import section as fibre_section
 from test_stiffened_shell_native_gravity import reference, state
 
@@ -58,7 +58,7 @@ def test_reusable_density_rejects_invalid_inputs(bad):
 
 
 def test_reusable_density_preserves_resolution_failures():
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
     op = operator()
     ref = Reference(op.reference.coordinates*1e-3, op.reference.nodal_triads)
     small = RetainedGeneralizedOperator(ref, op.section, order=4)
@@ -85,9 +85,9 @@ def test_same_rule_ad_force_and_existing_cell_couple(kind, order, curved):
     actual = kernel.evaluate(x, low, u)
     expected = ad_work(op.reference, x, low, u, force, order=order)
     if kind == 'fibre':
-        from anysolver._ge_beam3_fibre_distributed_couples import cell_couple_load
+        from anyfesolver._ge_beam3_fibre_distributed_couples import cell_couple_load
     else:
-        from anysolver._ge_beam3_generalized_static_boundary import cell_couple_load
+        from anyfesolver._ge_beam3_generalized_static_boundary import cell_couple_load
     applied = cell_couple_load(op, couple)
     np.testing.assert_allclose(actual.external_force, expected.gradient+applied, rtol=4e-14, atol=1e-14)
     spatial = expected.hessian.copy()
@@ -195,7 +195,7 @@ def test_rejects_wrong_operator_nonfinite_complex_and_unrepresentable_values():
         kernel.evaluate(np.full((3, 3), np.nan), low, u)
     with pytest.raises(ValueError):
         kernel.evaluate(x, low, np.zeros((2, 3, 3)))
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
     small_ref = Reference(op.reference.coordinates*1e-3, op.reference.nodal_triads)
     small_op = RetainedGeneralizedOperator(small_ref, op.section, order=4)
     # Short reference shape measures cannot represent this nonzero force.

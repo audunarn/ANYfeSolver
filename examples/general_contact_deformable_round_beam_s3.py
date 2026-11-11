@@ -4,10 +4,10 @@ Run with PYTHONPATH=src. Not an independently accepted/installed capability.
 All dimensions SI; the explicit finite line penalty is not hard contact.
 """
 import json
-from anysolver import (BoundaryCondition, ContactDefinition, ContactSurface, ContactInteraction,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactSurface, ContactInteraction,
                        ContactSolverSettings, LoadCase, create_shell_element, solve_static_nonlinear)
-from anysolver.fe_core import FEModel
-from anysolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement
 
 def fixture():
     model=FEModel('deformable_line_skin_dev')

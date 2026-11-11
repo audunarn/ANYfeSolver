@@ -1,11 +1,11 @@
 import numpy as np
 import pytest
 
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.buckling import solve_eigenvalue_buckling
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
-from anysolver.nonlinear import solve_nonlinear_load_stepping
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.buckling import solve_eigenvalue_buckling
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.nonlinear import solve_nonlinear_load_stepping
 
 
 def _beam_column_model(num_elements=8):

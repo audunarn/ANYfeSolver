@@ -5,10 +5,10 @@ from pathlib import Path
 from types import SimpleNamespace
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_native_generalized_factor_modal as factor
-from anysolver._native_relative_factor_chain_modes import solve_relative_factor_chain_modes
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_p5.algebra import rotation
+from anyfesolver import _ge_beam3_native_generalized_factor_modal as factor
+from anyfesolver._native_relative_factor_chain_modes import solve_relative_factor_chain_modes
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5.algebra import rotation
 from test_ge_beam3_schur_line_program import save
 from test_ge_beam3_generalized_slenderness_diagnostic import make as slender
 from test_ge_beam3_native_generalized_modal import make

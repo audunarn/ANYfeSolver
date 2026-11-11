@@ -7,7 +7,7 @@ import copy
 import numpy as np
 import pytest
 
-from anysolver._native_rotation_state import (
+from anyfesolver._native_rotation_state import (
     AcceptedConfigurationMismatchError,
     NativeRotationStateStore,
     NativeRotationTransactionError,
@@ -17,14 +17,14 @@ from anysolver._native_rotation_state import (
     rotation_exponential,
     validate_proper_rotation_matrices,
 )
-from anysolver.fe_core import FEModel
-from anysolver.elements import ShellElement
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from anysolver.e4_pl_s3_state import (
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import ShellElement
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+from anyfesolver.e4_pl_s3_state import (
     reconstruct_director_triad,
     seal_committed_s3_state,
 )
-from anysolver.nonlinear_state import (
+from anyfesolver.nonlinear_state import (
     NonlinearStateStore,
     StateMaterializationPolicy,
     begin_state_evaluation,

@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from docs.reference_cases.ge_beam3_relative_svd_probe import jacobi_svd, beam_comparison
-from anysolver._ge_beam3_p5_loads.core import canonical
+from anyfesolver._ge_beam3_p5_loads.core import canonical
 
 
 @pytest.mark.parametrize('amplitude', [1., 1e8, 1e16])

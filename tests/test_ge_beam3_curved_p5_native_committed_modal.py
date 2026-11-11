@@ -6,11 +6,11 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver.fe_core import FEModel
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver.nonlinear_static import solve_static_nonlinear
-from anysolver._native_stationary_spectrum import solve_stationary_spectrum
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver.nonlinear_static import solve_static_nonlinear
+from anyfesolver._native_stationary_spectrum import solve_stationary_spectrum
 from docs.reference_cases.ge_beam3_curved_p5_native_driver_probe import DriverP5Element
 from docs.reference_cases.ge_beam3_curved_p5_native_material_probe import canonical, seal
 from docs.reference_cases.ge_beam3_curved_p5_native_committed_modal_probe import prepare, solve_elastic_modes, _operator

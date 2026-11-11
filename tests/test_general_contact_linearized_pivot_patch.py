@@ -4,8 +4,8 @@ import numpy as np
 from scipy import sparse
 from scipy.optimize import root
 
-from anysolver.general_contact import linearized_pivot
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact import linearized_pivot
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 from test_general_contact_q4_s3_refined_patch import _two_q4_two_s3
 
 

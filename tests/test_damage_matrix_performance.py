@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import numpy as np
 
-from anysolver.contact import (
+from anyfesolver.contact import (
     _assemble_damaged_linear_matrices,
     _assemble_damaged_linear_matrices_with_gate,
     _linear_element_matrix_terms,
 )
-from anysolver.damage_matrix_performance import (
+from anyfesolver.damage_matrix_performance import (
     DAMAGE_MATRIX_PLAN_BREAK_EVEN_FUTURE_UPDATES,
     DamageMatrixPlan,
     DamageMatrixPlanGate,
@@ -17,8 +17,8 @@ from anysolver.damage_matrix_performance import (
     estimate_damage_matrix_combined_retained_bytes,
     estimate_damage_matrix_plan_retained_bytes,
 )
-from anysolver.elements import create_element
-from anysolver.fe_core import FEModel
+from anyfesolver.elements import create_element
+from anyfesolver.fe_core import FEModel
 
 
 def _panel(nx: int = 2, ny: int = 2) -> FEModel:

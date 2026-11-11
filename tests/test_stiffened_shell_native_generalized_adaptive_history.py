@@ -4,8 +4,8 @@ from pathlib import Path
 from math import fsum
 import numpy as np
 import pytest
-from anysolver import b3_ge,stiffened_shell as ss
-from anysolver.control import CancellationToken,SolveCancelled
+from anyfesolver import b3_ge,stiffened_shell as ss
+from anyfesolver.control import CancellationToken,SolveCancelled
 from test_stiffened_shell_native_point_displacement import model,owner,native_state,compare,OPTIONS,CONTROL,DIRECTION
 
 

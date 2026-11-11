@@ -4,9 +4,9 @@ from dataclasses import FrozenInstanceError
 import numpy as np
 import pytest
 
-from anysolver import prepared_static_q4 as staged
-from anysolver.prepared_static_loads import PreparedStaticCapabilityError
-from anysolver.prepared_static_recovery import (
+from anyfesolver import prepared_static_q4 as staged
+from anyfesolver.prepared_static_loads import PreparedStaticCapabilityError
+from anyfesolver.prepared_static_recovery import (
     _AFFINITY_RELATIVE_TOLERANCE, _capture_owned_local_recovery,
     _recover_owned_local, owned_recovery_scope, trusted_capture_scope,
 )
@@ -18,8 +18,8 @@ from test_prepared_static_q4 import _q4_model, _equal
 def test_original_planar_coordinate_policy_parity_and_source_deletion(coordinate_type, revision, eligible, trusted):
     import gc
     import weakref
-    from anysolver.fe_core import FEModel
-    from anysolver.e4_pl_element import QualifiedE4PLShellElement
+    from anyfesolver.fe_core import FEModel
+    from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
     model = FEModel('original-coordinate-policy')
     model.add_material('steel', 210e9, .3, density=7800.)
     for number, point in enumerate(((0., 0., 0.), (2.4, .2, 0.), (2.1, 1.7, 0.), (-.1, 1., 0.)), 1):
@@ -37,9 +37,9 @@ def test_original_planar_coordinate_policy_parity_and_source_deletion(coordinate
     for displacement in displacements:
         displacement[0::6] += .3
     expected = [element.compute_stresses(model.mesh, displacement, material, return_global=False) for displacement in displacements]
-    from anysolver import RecoveryConfig, prepare_static_evaluator
-    from anysolver.prepared_static_loads import PreparedStaticError
-    from anysolver.matrix_assembly import AssemblyError
+    from anyfesolver import RecoveryConfig, prepare_static_evaluator
+    from anyfesolver.prepared_static_loads import PreparedStaticError
+    from anyfesolver.matrix_assembly import AssemblyError
     config = RecoveryConfig(include_displacements=False, include_stresses=True, include_reactions=False)
     public_owner = None
     if type(revision) is not int:

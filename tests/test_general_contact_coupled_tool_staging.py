@@ -4,10 +4,10 @@ import json, os, time
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver import (LoadCase, NonlinearLoadProgram, NonlinearLoadStage,
+from anyfesolver import (LoadCase, NonlinearLoadProgram, NonlinearLoadStage,
     solve_static_nonlinear, validate_general_contact)
-from anysolver.general_contact.beam_hemisphere_coupled_tool import CoupledHemisphereToolManager, PROFILE
-from anysolver.general_contact.beam_hemisphere_cylinder import (
+from anyfesolver.general_contact.beam_hemisphere_coupled_tool import CoupledHemisphereToolManager, PROFILE
+from anyfesolver.general_contact.beam_hemisphere_cylinder import (
     HemisphereCylinderManager, PROFILE as FIXED_PROFILE)
 from test_general_contact_hemisphere_cylinder_motion import fixture, reference
 from test_general_contact_hemisphere_cylinder_static import _line_reference
@@ -209,7 +209,7 @@ def test_open_active_restart_and_incompatible_algorithm(factor):
 
 @pytest.mark.parametrize('cancel', (False, True))
 def test_seed_interruption_replays_fresh(cancel, monkeypatch):
-    from anysolver import CancellationToken, SolveCancelled
+    from anyfesolver import CancellationToken, SolveCancelled
     model, definition, settings, load = coupled_fixture()
     common = dict(contact=definition, contact_settings=settings, num_steps=4,
                   max_iterations=20, tolerance=1e-10)
@@ -292,7 +292,7 @@ def test_balanced_complete_route_comparison(quadratic):
 
 
 def test_iteration_callback_exception_restores_committed_tool_pose():
-    from anysolver.general_contact.runtime import active_contact_manager
+    from anyfesolver.general_contact.runtime import active_contact_manager
     model, definition, settings, load = coupled_fixture()
     last = [0.]; captured = []
     def progress(event):
@@ -310,7 +310,7 @@ def test_iteration_callback_exception_restores_committed_tool_pose():
 
 @pytest.mark.parametrize('nonfinite', (False,True))
 def test_failed_seed_linear_system_cannot_commit(nonfinite, monkeypatch):
-    import anysolver.nonlinear_static as driver
+    import anyfesolver.nonlinear_static as driver
     from types import SimpleNamespace
     model, definition, settings, load = coupled_fixture()
     origin = CoupledHemisphereToolManager.coupled_load_seed_active_origin

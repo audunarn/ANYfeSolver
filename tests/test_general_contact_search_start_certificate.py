@@ -4,8 +4,8 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 from scipy import sparse
-from anysolver.general_contact.core import ContactSolverSettings
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.core import ContactSolverSettings
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 
 
 def manager():

@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from anysolver._native_rotation_state import NativeRotationStateStore, NativeRotationStateError
-from anysolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
+from anyfesolver._native_rotation_state import NativeRotationStateStore, NativeRotationStateError
+from anyfesolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
 from docs.reference_cases import ge_beam3_curved_p5_native_chart_probe as probe
 from docs.reference_cases.ge_beam3_curved_p5_algebra_probe import rotation
 from docs.reference_cases.ge_beam3_curved_p5_implicit_dynamics_probe import left_jacobian

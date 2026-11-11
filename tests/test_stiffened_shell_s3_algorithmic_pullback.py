@@ -4,13 +4,13 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_variational_shell import deformation, response as elastic_response
-from anysolver._stiffened_shell_s3_algorithmic_pullback import (
+from anyfesolver._ge_beam3_variational_shell import deformation, response as elastic_response
+from anyfesolver._stiffened_shell_s3_algorithmic_pullback import (
     local_coordinates, response,
 )
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.material_curves import DNVC208MaterialCurve
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.material_curves import DNVC208MaterialCurve
 
 
 def _fixture():

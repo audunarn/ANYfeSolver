@@ -2,13 +2,13 @@
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 import pytest
-from anysolver import _native_modal_capacity as capacity
-from anysolver import _native_large_factor_chain as large
-from anysolver._dyadic_bilinear import _capture,_multiply,_transpose,_rounded
-from anysolver._dyadic_factor_chain import reassemble_chain_exact_binary64 as chain
-from anysolver._native_paired_factor_chain_modes import solve_paired_factor_chain_modes as old,apply_mode_map
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.control import CancellationToken,SolveCancelled
+from anyfesolver import _native_modal_capacity as capacity
+from anyfesolver import _native_large_factor_chain as large
+from anyfesolver._dyadic_bilinear import _capture,_multiply,_transpose,_rounded
+from anyfesolver._dyadic_factor_chain import reassemble_chain_exact_binary64 as chain
+from anyfesolver._native_paired_factor_chain_modes import solve_paired_factor_chain_modes as old,apply_mode_map
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken,SolveCancelled
 
 
 @pytest.mark.parametrize('seed',(1,23,44))

@@ -3,13 +3,13 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-import anysolver as fs
-from anysolver.boundary import BoundaryCondition
-from anysolver.contact import _verification_contact_panel
-from anysolver.elements import create_element
-from anysolver.fe_core import FEModel
-from anysolver.impact_performance import ImpactTangentReuseController
-from anysolver.material_curves import DNVC208MaterialCurve
+import anyfesolver as fs
+from anyfesolver.boundary import BoundaryCondition
+from anyfesolver.contact import _verification_contact_panel
+from anyfesolver.elements import create_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.impact_performance import ImpactTangentReuseController
+from anyfesolver.material_curves import DNVC208MaterialCurve
 
 
 class _DummyHandle:

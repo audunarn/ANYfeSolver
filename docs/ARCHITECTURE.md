@@ -1,6 +1,6 @@
 # FE solver architecture
 
-This document describes the current `anysolver` package architecture. See
+This document describes the current `anyfesolver` package architecture. See
 [`README.md`](../README.md) for the capability index and production limits, and
 [`THEORY.md`](THEORY.md) for the formulations.
 
@@ -115,7 +115,7 @@ into each shell frame. A `GeneralizedBeamSectionContract` supplies a local 6x6
 section stiffness from generalized strains
 `[eps_x,gamma_xy,gamma_xz,kappa_x,kappa_y,kappa_z]` to resultants
 `[N,V_y,V_z,T,M_y,M_z]`. These solver-owned section protocols are structural,
-so material objects need no ANYsolver base class. Optional shell mass/rotary inertia per
+so material objects need no ANYfeSolver base class. Optional shell mass/rotary inertia per
 area and beam 6x6 mass per length override legacy mass; omitted values retain
 the attached material/geometry mass path.
 
@@ -169,7 +169,7 @@ The nonlinear paths are intentionally distinct:
   pressure contributes both external force and its generally nonsymmetric
   tangent.
 - `solve_static_arc_length()` follows a bounded equilibrium path and is called
-  from `anysolver.arc_length`; the same follower-pressure residual/tangent is
+  from `anyfesolver.arc_length`; the same follower-pressure residual/tangent is
   available in continuation.
 - `solve_transient_sphere_impact()` chooses the linear structural path unless
   `NonlinearTransientConfig(enabled=True)` is supplied.
@@ -295,7 +295,7 @@ generated-geometry names `GeneratedGeometryFEMConfig`,
 `AnyStructureFEM*` names are compatibility aliases, not the preferred
 solver-owned vocabulary.
 
-`anysolver.runtime` defines an explicit `__all__` and typed
+`anyfesolver.runtime` defines an explicit `__all__` and typed
 `NormalizedGeometry`, `GeneratedGeometry`, `StatusCallback`, and
 `RuntimeAnalysisSelection` contracts. Downstream applications own state
 extraction, option mapping, UI, and plotting; they pass normalized data into
@@ -319,7 +319,7 @@ thickness rules from diverging between integration paths.
 | `external_references.py` | Reproducible CalculiX decks plus optional isolated execution, executable/version/hash provenance, ASCII FRD/DAT parsing, tolerance-controlled comparisons, and JSON/Markdown evidence. |
 | `jit_compiler.py`, `vectorized_stiffness.py`, `vectorized_nonlinear.py`, `nonlinear_performance*.py` | Optional Numba kernels, persistent nonlinear plans, direct reduced assembly, and runtime activation/fallback. |
 
-Optional nonlinear acceleration is lazy. Importing `anysolver` does not install
+Optional nonlinear acceleration is lazy. Importing `anyfesolver` does not install
 the nonlinear performance patches or import the PyPardiso implementation.
 `solve_static_nonlinear()` performs the one-time acceleration check immediately
 before the first nonlinear solve, after honoring

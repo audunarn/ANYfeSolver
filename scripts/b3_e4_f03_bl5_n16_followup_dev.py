@@ -12,8 +12,8 @@ import json
 from pathlib import Path
 import subprocess
 
-import anysolver
-from anysolver import stiffened_shell
+import anyfesolver
+from anyfesolver import stiffened_shell
 from threadpoolctl import threadpool_info, threadpool_limits
 
 from b3_e4_f03_bl5_joint_growth_dev import _case
@@ -30,7 +30,7 @@ def main(output: Path) -> None:
         "source_git": subprocess.check_output(
             ("git", "rev-parse", "HEAD"), text=True).strip(),
         "runner_sha256": sha256(Path(__file__).read_bytes()).hexdigest(),
-        "imported_anysolver": str(Path(anysolver.__file__).resolve()),
+        "imported_anyfesolver": str(Path(anyfesolver.__file__).resolve()),
         "geometry_m": {"length": 1., "width": .2,
                        "shell_thickness": .035,
                        "beam_axis_height": .0675},

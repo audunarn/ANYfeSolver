@@ -37,12 +37,12 @@ def main():
     if not 1 <= args.cases <= len(positions(args.history)):
         parser.error('cases must fit the selected frozen history')
     driver_start = time.perf_counter()
-    import anysolver
+    import anyfesolver
     import psutil
     from threadpoolctl import threadpool_info
-    from anysolver import AnalysisSession, RecoveryConfig, ResourceConfig, StaticCase
-    from anysolver.linalg import backend_operation_counts
-    from anysolver.static_envelopes import EnvelopeReducer
+    from anyfesolver import AnalysisSession, RecoveryConfig, ResourceConfig, StaticCase
+    from anyfesolver.linalg import backend_operation_counts
+    from anyfesolver.static_envelopes import EnvelopeReducer
     indices = [positions(args.history)[i] for i in np.linspace(
         0, len(positions(args.history))-1, args.cases, dtype=int)]
     built = None
@@ -74,7 +74,7 @@ def main():
     else:
         model, groups, balancing = mixed_free_model(2 if args.family == 'multiple' else 1)
         if args.family == 'independent':
-            from anysolver import FixedSupport, LoadCase
+            from anyfesolver import FixedSupport, LoadCase
             model.add_boundary_condition(FixedSupport('prepared benchmark support', groups[0][0][:1]))
             def records(selected):
                 for position in selected:
@@ -117,7 +117,7 @@ def main():
                 owner = prepare_linear_static_evaluator(built=built, output_dofs=dofs,
                     recovery_config=recovery, resource_config=resources, **preparation_options)
             else:
-                from anysolver import prepare_static_evaluator
+                from anyfesolver import prepare_static_evaluator
                 owner = prepare_static_evaluator(model, output_dofs=dofs,
                     recovery_config=recovery, resource_config=resources, **preparation_options)
         else:
@@ -132,7 +132,7 @@ def main():
                     batch_size=args.block_size, output_dofs=dofs, recovery_config=recovery,
                     resource_config=resources, session=owner)
             else:
-                from anysolver import iter_linear_batches
+                from anyfesolver import iter_linear_batches
                 stream = iter_linear_batches(model, records(selected), batch_size=args.block_size,
                     output_dofs=dofs, recovery_config=recovery, resource_config=resources, session=owner)
             try:
@@ -196,7 +196,7 @@ def main():
         warmup_seconds = time.perf_counter()-warmed
     result = evaluate(indices)
     memory = psutil.Process().memory_info()
-    from anysolver.jit_compiler import JIT_ENABLED, JIT_DISABLED_REASON
+    from anyfesolver.jit_compiler import JIT_ENABLED, JIT_DISABLED_REASON
     import numba
     result.update(route=args.route, family=args.family, history=args.history, positions=indices,
         selected_nodes=selected_nodes, selected_elements=selected_elements, output_dofs=dofs.tolist(),
@@ -204,7 +204,7 @@ def main():
         fixture_seconds=fixture_seconds, warmup_seconds=warmup_seconds,
         peak_working_set_bytes=getattr(memory, 'peak_wset', memory.rss),
         memory_scope='process peak includes fixture and optional warmup; comparison sink retains selected values',
-        runtime=dict(python=sys.executable, solver=anysolver.__file__, application=application,
+        runtime=dict(python=sys.executable, solver=anyfesolver.__file__, application=application,
                      jit_enabled=JIT_ENABLED, jit_disabled_reason=JIT_DISABLED_REASON,
                      numba_disable_jit=numba.config.DISABLE_JIT, numba_threads=numba.get_num_threads(),
                      threadpools=threadpool_info()), driver_seconds=time.perf_counter()-driver_start)

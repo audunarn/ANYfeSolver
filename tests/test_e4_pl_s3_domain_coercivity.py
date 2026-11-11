@@ -426,7 +426,7 @@ def test_certifier_is_independently_authored_and_research_only() -> None:
         if isinstance(node, ast.ImportFrom) and node.module is not None
     )
     assert not any(
-        name.startswith(("anysolver", "e4_pl_s3_", "sympy", "scipy", "numpy"))
+        name.startswith(("anyfesolver", "e4_pl_s3_", "sympy", "scipy", "numpy"))
         for name in imports
     )
     source = CERTIFIER_PATH.read_text(encoding="utf-8")

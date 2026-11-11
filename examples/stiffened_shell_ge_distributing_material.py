@@ -8,7 +8,7 @@ from dataclasses import replace
 import json
 import numpy as np
 from anymaterial import DNVC208MaterialCurve
-from anysolver import b3_ge, stiffened_shell as ss
+from anyfesolver import b3_ge, stiffened_shell as ss
 from stiffened_shell_ge_distributing_finite import definition as elastic_definition
 
 

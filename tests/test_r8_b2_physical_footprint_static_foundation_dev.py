@@ -5,7 +5,7 @@ import json,os
 import numpy as np
 import pytest
 from scipy import sparse,linalg
-from anysolver import stiffened_shell as api
+from anyfesolver import stiffened_shell as api
 from examples.stiffened_shell_b2_physical_rigid_footprint import definition
 
 pytestmark=pytest.mark.skipif('B2_FOUNDATION_OUTPUT' not in os.environ or 'B2_FOUNDATION_SUPERVISED' not in os.environ,

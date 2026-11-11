@@ -24,8 +24,8 @@ from test_general_contact_admission_globalization_driver_small_patch import (
     _enabled,
     _solve,
 )
-from anysolver.general_contact import s3_patch_static, static_path
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact import s3_patch_static, static_path
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 
 
 def _hook_targets():

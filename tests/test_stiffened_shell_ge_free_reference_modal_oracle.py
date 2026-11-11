@@ -9,7 +9,7 @@ from math import fsum
 import numpy as np
 import pytest
 from scipy import linalg
-from anysolver import stiffened_shell as api
+from anyfesolver import stiffened_shell as api
 from test_stiffened_shell_ge_reference_modal_oracle import (
     _definition, _independent_mass, _cross, PARTICLES, WEIGHTS)
 

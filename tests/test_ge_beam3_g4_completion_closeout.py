@@ -65,8 +65,8 @@ def test_external_cycles_when_archive_is_available():
         pytest.skip("external qualification archive is host-local")
     science = []
     paths = {
-        "formal_cycle_1": archive / "formal-cycle-1" / "anysolver-beam-qualification-fnb1q3e6",
-        "formal_cycle_2": archive / "formal-cycle-2" / "anysolver-beam-qualification-s6d9p_57"}
+        "formal_cycle_1": archive / "formal-cycle-1" / "anyfesolver-beam-qualification-fnb1q3e6",
+        "formal_cycle_2": archive / "formal-cycle-2" / "anyfesolver-beam-qualification-s6d9p_57"}
     for key, directory in paths.items():
         raw = (directory / "scientific.json").read_bytes(); science.append(raw)
         expected = value["archive"][key]
@@ -84,5 +84,5 @@ def test_closeout_has_no_mechanics_or_process_imports():
     modules = {node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)}
     modules.update(alias.name for node in ast.walk(tree) if isinstance(node, ast.Import)
                    for alias in node.names)
-    assert not any(name == "anysolver" or name.startswith("anysolver.") for name in modules)
+    assert not any(name == "anyfesolver" or name.startswith("anyfesolver.") for name in modules)
     assert "subprocess" not in modules and "numpy" not in modules

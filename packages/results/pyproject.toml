@@ -1,11 +1,11 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "anysolver-results"
-version = "2.1.1"
-description = "NumPy-only offline runtime for ANYsolver recovery capsules"
+name = "ANYfeSolver-results"
+version = "2.2.0"
+description = "NumPy-only offline runtime for ANYfeSolver recovery capsules"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MPL-2.0"
@@ -24,12 +24,13 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/audunarn/ANYsolver"
-Repository = "https://github.com/audunarn/ANYsolver"
+Homepage = "https://github.com/audunarn/ANYfeSolver"
+Repository = "https://github.com/audunarn/ANYfeSolver"
+Issues = "https://github.com/audunarn/ANYfeSolver/issues"
 
 [tool.setuptools]
-package-dir = { "" = "../../src" }
+package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
-where = ["../../src"]
-include = ["anysolver_results*"]
+where = ["src"]
+include = ["anyfesolver_results", "anyfesolver_results.*"]

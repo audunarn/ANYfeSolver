@@ -18,7 +18,7 @@ def prepare():
     changes={};records=[]
     for name in ('_stiffened_shell_displacement_corrector.py','_stiffened_shell_displacement_control.py',
                  '_stiffened_shell_displacement_adaptive.py','_stiffened_shell_ge_experimental.py','stiffened_shell.py'):
-        path=ROOT/'src/anysolver'/name;original=path.read_text();source=original
+        path=ROOT/'src/anyfesolver'/name;original=path.read_text();source=original
         if name.endswith('corrector.py'):
             helper='''
 PAIRED_FIXED_WORK_QUADRATIC_V1="PAIRED_FIXED_WORK_QUADRATIC_V1"
@@ -150,7 +150,7 @@ def _quadratic_merit_amount(old,trial,gradient,amount):
         records.append(dict(product=str(path),product_sha256=sha256(path.read_bytes()).hexdigest(),
                             candidate=str(target),candidate_sha256=sha256(target.read_bytes()).hexdigest()))
     patch=''.join(''.join(difflib.unified_diff(old.splitlines(True),new.splitlines(True),
-                       fromfile='a/src/anysolver/'+name,tofile='b/src/anysolver/'+name))
+                       fromfile='a/src/anyfesolver/'+name,tofile='b/src/anyfesolver/'+name))
                   for name,(old,new) in changes.items())
     for name in ('CONNECTED_CANDIDATE.patch','CANDIDATE_SOURCE_BINDINGS.json'):
         path=DOC/name

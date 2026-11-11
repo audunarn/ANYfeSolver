@@ -5,12 +5,12 @@ verification is recorded separately. Three uniform physical modes use actual
 beam/shell mass, without contact-supplied inertia or hidden constraints.
 """
 import numpy as np
-from anysolver import (BoundaryCondition, ContactDefinition, ContactSurface,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactSurface,
                        ContactInteraction, ContactSolverSettings, create_shell_element)
-from anysolver.fe_core import FEModel
-from anysolver.elements import BeamElement, QuadraticBeamElement
-from anysolver.dynamics import TransientConfig
-from anysolver.general_contact.transient import (solve_transient_contact,
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.general_contact.transient import (solve_transient_contact,
                                                 ContactTransientSolverControls)
 
 

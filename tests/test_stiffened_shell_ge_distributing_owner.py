@@ -10,11 +10,11 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import stiffened_shell as api
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_ge_checkpoint_binary import MAGIC, CHART_MAGIC, S3_MAGIC, encode
-from anysolver._stiffened_shell_ge_experimental import CHECKPOINT, FINITE_CHECKPOINT
-from anysolver._stiffened_shell_ge_distributing_reference import bind_reference
+from anyfesolver import stiffened_shell as api
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import MAGIC, CHART_MAGIC, S3_MAGIC, encode
+from anyfesolver._stiffened_shell_ge_experimental import CHECKPOINT, FINITE_CHECKPOINT
+from anyfesolver._stiffened_shell_ge_distributing_reference import bind_reference
 from test_stiffened_shell_ge_distributing_reference import (
     _definition, _selection, _load, _solve, _relative, _multi_definition, _multi_selection,
 )
@@ -193,9 +193,9 @@ def test_legacy_empty_field_identity_capabilities_and_checkpoint_parity(prepared
 
 
 def test_owner_methods_and_common_load_spectral_admission_reject_before_work(prepared):
-    from anysolver._stiffened_shell_ge_reference_modal import _admit
-    from anysolver._stiffened_shell_ge_body_load import admits_owner as admits_body
-    from anysolver._stiffened_shell_ge_distributed_load import admits_owner as admits_distributed
+    from anyfesolver._stiffened_shell_ge_reference_modal import _admit
+    from anyfesolver._stiffened_shell_ge_body_load import admits_owner as admits_body
+    from anyfesolver._stiffened_shell_ge_distributed_load import admits_owner as admits_distributed
     owner = prepared["mixed"]  # Point presence must not reopen unverified wrappers.
     before = owner.checkpoint()
     for call in (lambda: owner.solve(_actions()),

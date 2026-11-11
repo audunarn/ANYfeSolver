@@ -24,8 +24,8 @@ import json
 # editable install first.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "src"))
 
-from anysolver.quality_control import run_quality_control, run_quick_qc, run_full_qc, QCConfig
-from anysolver.test_cases import run_all_demo_test_cases, TestCaseRunner
+from anyfesolver.quality_control import run_quality_control, run_quick_qc, run_full_qc, QCConfig
+from anyfesolver.test_cases import run_all_demo_test_cases, TestCaseRunner
 
 
 def parse_args():

@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import splu
-from anysolver._stiffened_shell_ge_experimental import _linear_equilibrium, _scaled_constraint_gap
+from anyfesolver._stiffened_shell_ge_experimental import _linear_equilibrium, _scaled_constraint_gap
 from scripts import r8_bl5_released_director_reference as original
 from scripts import r8_bl5_matched_native_reference as matched
 

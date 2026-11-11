@@ -1,7 +1,7 @@
 """Independent barycentric/thickness kinetic work for the declared S3 field."""
 import numpy as np
 import pytest
-from anysolver._stiffened_shell_physical_s3_mass import physical_mass
+from anyfesolver._stiffened_shell_physical_s3_mass import physical_mass
 
 
 def test_barycentric_thickness_kinetic_work_and_exact_normal_spin():

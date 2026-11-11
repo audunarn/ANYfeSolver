@@ -1,7 +1,7 @@
 """Selected finite recovery must be detached, ordered and replay-free."""
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from test_stiffened_shell_bl5_coupled_material import coupled
 from test_stiffened_shell_bl5_material import make
 from test_stiffened_shell_bl5_finite import _action
@@ -56,7 +56,7 @@ def test_cached_ordered_recovery_after_displacement_restart(request, monkeypatch
     resumed = make(request, coupled()); resumed.restore(snapshot)
     def forbidden(*args, **kwargs):
         raise AssertionError("selected recovery must not evaluate mechanics")
-    from anysolver._ge_beam3_generalized_cell import GeneralizedCellConjugate
+    from anyfesolver._ge_beam3_generalized_cell import GeneralizedCellConjugate
     monkeypatch.setattr(GeneralizedCellConjugate,"response",forbidden)
     for current in (owner, resumed):
         monkeypatch.setattr(current._finite_driver, "_assemble", forbidden)

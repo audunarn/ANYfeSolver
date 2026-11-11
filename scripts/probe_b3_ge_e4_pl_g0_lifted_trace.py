@@ -11,7 +11,7 @@ from scipy.spatial.transform import Rotation
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tests"))
 
-from anysolver._ge_beam3_fibre_line_work import evaluate as native_work
+from anyfesolver._ge_beam3_fibre_line_work import evaluate as native_work
 from test_ge_beam3_generalized_slenderness_diagnostic import make
 
 

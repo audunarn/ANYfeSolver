@@ -13,15 +13,15 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import solve_static_nonlinear
-from anysolver.control import SolveCancelled
-from anysolver.general_contact import static_path
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.semismooth_path import (
+from anyfesolver import solve_static_nonlinear
+from anyfesolver.control import SolveCancelled
+from anyfesolver.general_contact import static_path
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.semismooth_path import (
     SemismoothStep,
     solve_increment,
 )
-from anysolver.nonlinear_restart import (
+from anyfesolver.nonlinear_restart import (
     _CHECKPOINT_HASH_KEY,
     _checkpoint_without_hash,
     _sha256,

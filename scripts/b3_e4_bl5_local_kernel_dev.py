@@ -16,16 +16,16 @@ import json
 from pathlib import Path
 import time
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 from scipy import linalg
 from threadpoolctl import threadpool_info
 
-from anysolver import stiffened_shell
-from anysolver._stiffened_shell_ge_experimental import _shell_reference
-from anysolver._ge_beam3_generalized_static_boundary import spatial_jacobian
-from anysolver.corotational import corotational_element_response
+from anyfesolver import stiffened_shell
+from anyfesolver._stiffened_shell_ge_experimental import _shell_reference
+from anyfesolver._ge_beam3_generalized_static_boundary import spatial_jacobian
+from anyfesolver.corotational import corotational_element_response
 from scripts.b3_e4_bl5_coherent_aggregation_dev import model
 
 
@@ -478,7 +478,7 @@ if __name__ == "__main__":
     paths = [Path(__file__), Path(inspect.getsourcefile(model)), Path(inspect.getsourcefile(_shell_reference)),
              Path(inspect.getsourcefile(spatial_jacobian)), Path(inspect.getsourcefile(corotational_element_response))]
     result.update(source_sha256={str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths},
-                  imported_anysolver=anysolver.__file__, threads=pools, jit_disabled=True)
+                  imported_anyfesolver=anyfesolver.__file__, threads=pools, jit_disabled=True)
     args.output.write_text(json.dumps(result, indent=2, allow_nan=False))
     print(json.dumps({"status": result["status"], "local_checks": len(result["local_checks"]),
                       "family_cases": len(result["cases"]), "elapsed_seconds": result["elapsed_seconds"]}))

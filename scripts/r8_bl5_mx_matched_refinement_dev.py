@@ -14,14 +14,14 @@ import math
 from pathlib import Path
 import time
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 import psutil
 from scipy import sparse
 from threadpoolctl import threadpool_info
 
-from anysolver import b3_ge, stiffened_shell as ss
+from anyfesolver import b3_ge, stiffened_shell as ss
 from scripts import r8_bl5_matched_native_reference as saved_native
 from scripts import r8_bl5_mx_coupled_body_refinement_dev as coupled
 from scripts import r8_bl5_mx_coupled_shell_refinement_dev as shell_ref
@@ -196,7 +196,7 @@ def main() -> None:
             psutil.Process().cpu_affinity() != [0] or numba.config.DISABLE_JIT != 1 or
             numba.get_num_threads() != 1 or not pools or
             any(p["num_threads"] != 1 for p in pools) or
-            Path(anysolver.__file__).resolve().parent != ROOT/"src"/"anysolver"):
+            Path(anyfesolver.__file__).resolve().parent != ROOT/"src"/"anyfesolver"):
         raise ValueError("saved input or effective source/runtime changed")
     args.output_dir.mkdir(parents=True)
     for level in SHELL_LEVELS:
@@ -237,7 +237,7 @@ def main() -> None:
                                         "numba_disable_jit": int(numba.config.DISABLE_JIT),
                                         "numba_threads": int(numba.get_num_threads()),
                                         "threadpools": pools,
-                                        "anysolver_import": str(Path(anysolver.__file__).resolve())},
+                                        "anyfesolver_import": str(Path(anyfesolver.__file__).resolve())},
                   "level_wall_seconds": time.perf_counter()-started}
         name = "x".join(map(str, level))+".json"
         (args.output_dir/name).write_text(json.dumps(record, indent=2, allow_nan=False)+"\n",

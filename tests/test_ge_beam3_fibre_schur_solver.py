@@ -3,10 +3,10 @@ from hashlib import sha256
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver._ge_beam3_fibre_schur_solver import ResultantSchurSolver
-from anysolver import _ge_beam3_fibre_line_program as control
-from anysolver._ge_beam3_seeded_load_program import ForceProgram
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_fibre_schur_solver import ResultantSchurSolver
+from anyfesolver import _ge_beam3_fibre_line_program as control
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_fibre_line_program import model,line
 from test_ge_beam3_line_fibre_modes import case,ROOT,read
 

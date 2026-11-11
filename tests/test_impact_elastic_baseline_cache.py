@@ -3,8 +3,8 @@ import sys
 from contextlib import contextmanager
 import numpy as np
 import pytest
-from anysolver import e4_pl_element as q4, vectorized_nonlinear as batch
-from anysolver.control import SolveCancelled
+from anyfesolver import e4_pl_element as q4, vectorized_nonlinear as batch
+from anyfesolver.control import SolveCancelled
 from test_general_contact_c5_elastic_increment import case, pose
 
 @contextmanager

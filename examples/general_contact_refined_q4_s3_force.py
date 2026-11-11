@@ -4,13 +4,13 @@ import json
 
 import numpy as np
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, LoadCase,
     NonlinearConvergenceSettings, create_shell_element,
     solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.fe_core import FEModel
+from anyfesolver.fe_core import FEModel
 
 
 GAP_BUDGET_M = 5.0e-5

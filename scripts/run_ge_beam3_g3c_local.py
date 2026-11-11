@@ -83,7 +83,7 @@ def main():
     if not(sys.flags.isolated and sys.flags.no_site and sys.dont_write_bytecode):
         raise ValueError('launch with -I -S -B')
     authority()
-    out=Path(tempfile.mkdtemp(prefix='anysolver-g3c-local-development-'))
+    out=Path(tempfile.mkdtemp(prefix='anyfesolver-g3c-local-development-'))
     print('DIAGNOSTICS '+str(out),flush=True)
     write(out/'lease.json',dict(kind='LOCAL_DEVELOPMENT_NOT_QUALIFICATION',inputs=inputs()))
     lease_hash=sha256((out/'lease.json').read_bytes()).hexdigest()

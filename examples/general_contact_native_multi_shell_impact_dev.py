@@ -3,14 +3,14 @@ import argparse
 from hashlib import sha256
 import json
 import numpy as np
-from anysolver import create_shell_element, TransientConfig
-from anysolver.fe_core import FEModel
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-from anysolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
-from anysolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver.general_contact.native_transient_multi_shell import SELECTOR
-from anysolver.general_contact import (NativeContactBody,S3ContactBody,
+from anyfesolver import create_shell_element, TransientConfig
+from anyfesolver.fe_core import FEModel
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+from anyfesolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
+from anyfesolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver.general_contact.native_transient_multi_shell import SELECTOR
+from anyfesolver.general_contact import (NativeContactBody,S3ContactBody,
     NativeTransientS3ContactPair,create_native_transient_multi_shell_analysis,solve_native_transient_multi_shell)
 
 

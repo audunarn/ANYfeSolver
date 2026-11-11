@@ -3,11 +3,11 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver.general_contact.friction_point import initial_friction_point
-from anysolver.general_contact.native_retained_station import NativeRetainedRoundStation
-from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialPointFriction
-from anysolver.general_contact.native_surface_contributor import NativeS3MaterialContributor
-from anysolver.general_contact.s3_friction_point import S3SkinMaterialPoint
+from anyfesolver.general_contact.friction_point import initial_friction_point
+from anyfesolver.general_contact.native_retained_station import NativeRetainedRoundStation
+from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialPointFriction
+from anyfesolver.general_contact.native_surface_contributor import NativeS3MaterialContributor
+from anyfesolver.general_contact.s3_friction_point import S3SkinMaterialPoint
 from test_general_contact_native_retained_s3_static import _analysis
 
 

@@ -7,10 +7,10 @@ from typing import Any
 import numpy as np
 import pytest
 
-import anysolver.e4_pl_s3_element as s3_module
-import anysolver.nonlinear_performance as nonlinear_performance
-import anysolver.nonlinear_static as nonlinear_static
-from anysolver import (
+import anyfesolver.e4_pl_s3_element as s3_module
+import anyfesolver.nonlinear_performance as nonlinear_performance
+import anyfesolver.nonlinear_static as nonlinear_static
+from anyfesolver import (
     FEModel,
     QualifiedE4PLS3ShellElement,
     QualifiedE4PLShellElement,
@@ -18,16 +18,16 @@ from anysolver import (
     solve_free_vibration,
     solve_static_nonlinear,
 )
-from anysolver.boundary import BoundaryCondition, FixedSupport, LoadCase
-from anysolver.e4_pl_s3_state import canonical_json_bytes, seal_committed_s3_state
-from anysolver.element_capabilities import ElementCapabilityError
-from anysolver.fracture import FractureConfig
-from anysolver.nonlinear_restart import (
+from anyfesolver.boundary import BoundaryCondition, FixedSupport, LoadCase
+from anyfesolver.e4_pl_s3_state import canonical_json_bytes, seal_committed_s3_state
+from anyfesolver.element_capabilities import ElementCapabilityError
+from anyfesolver.fracture import FractureConfig
+from anyfesolver.nonlinear_restart import (
     NonlinearCheckpointError,
     canonical_checkpoint_json_bytes,
     create_nonlinear_checkpoint,
 )
-from anysolver.nonlinear_static import ShellInitialField
+from anyfesolver.nonlinear_static import ShellInitialField
 
 
 def _pure_s3_model() -> tuple[FEModel, LoadCase, int]:

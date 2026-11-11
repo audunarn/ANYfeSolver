@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     CoupledBeamShellElement,
     FEModel,

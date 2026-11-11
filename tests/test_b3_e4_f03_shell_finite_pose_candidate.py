@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_pose_joint import _exp_terms
+from anyfesolver._ge_beam3_pose_joint import _exp_terms
 
 from scripts._b3_e4_f03_shell_finite_pose_candidate import (
     directional_pose, directional_pose_from_e4_total, pose,

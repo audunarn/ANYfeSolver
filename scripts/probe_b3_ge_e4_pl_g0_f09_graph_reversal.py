@@ -19,23 +19,23 @@ from scipy.sparse.linalg import splu
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SRC = ROOT / "src" / "anysolver"
+SRC = ROOT / "src" / "anyfesolver"
 if __name__ != "__main__":
-    import anysolver
-if "anysolver" not in sys.modules:
-    package = types.ModuleType("anysolver")
+    import anyfesolver
+if "anyfesolver" not in sys.modules:
+    package = types.ModuleType("anyfesolver")
     package.__path__ = [str(SRC)]
-    sys.modules["anysolver"] = package
+    sys.modules["anyfesolver"] = package
 for name in ("_b2_physical_flexibility_linear", "_b2_physical_linear_definition"):
-    qualified = f"anysolver.{name}"
+    qualified = f"anyfesolver.{name}"
     if qualified not in sys.modules:
         spec = importlib.util.spec_from_file_location(qualified, SRC / f"{name}.py")
         module = importlib.util.module_from_spec(spec)
         sys.modules[qualified] = module
         spec.loader.exec_module(module)
 
-from anysolver._b2_physical_flexibility_linear import LinearSection
-from anysolver._b2_physical_linear_definition import PhysicalB2Member
+from anyfesolver._b2_physical_flexibility_linear import LinearSection
+from anyfesolver._b2_physical_linear_definition import PhysicalB2Member
 
 
 POINTS = ((0., 0., 0.), (2., 0., 0.), (2., 1.5, 0.))

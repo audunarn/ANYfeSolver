@@ -16,8 +16,8 @@ import numpy as np
 from scipy.sparse.linalg import lsqr, spsolve
 
 from scripts.b3_e4_e01_native_point_refinement_screen import E, NU, definition
-from anysolver.stiffened_shell import create_analysis
-from anysolver._stiffened_shell_ge_experimental import NodalAction
+from anyfesolver.stiffened_shell import create_analysis
+from anyfesolver._stiffened_shell_ge_experimental import NodalAction
 
 
 LENGTH_M = 2.0

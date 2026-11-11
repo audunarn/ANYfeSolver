@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from anysolver import _compensated_contractions as fast
+from anyfesolver import _compensated_contractions as fast
 
 @pytest.fixture(autouse=True, params=["native", "numpy"])
 def backend(request, monkeypatch):
@@ -186,7 +186,7 @@ def test_weighted_sum_first_failure_type_matches_scalar_policy():
 def test_prepared_q4_authority_covers_native_kernels(backend):
     if backend != "native":
         pytest.skip("the authority guard deliberately refuses a flipped backend flag")
-    from anysolver import prepared_static_q4 as q
+    from anyfesolver import prepared_static_q4 as q
     assert {row[0] for row in q._NATIVE_KERNEL_FACTS} >= {"contract_product", "contract_sum", "contract_weighted"}
     q.require_q4_kernel_authority()
     kernels = fast._native

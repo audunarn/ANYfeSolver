@@ -1,10 +1,10 @@
 """Tilted-facet and point-pose foundation; public curved admission stays closed."""
 import numpy as np
 from scipy.spatial.transform import Rotation
-from anysolver.fe_core import FEModel
-from anysolver.elements import create_shell_element
-from anysolver._stiffened_shell_q4_algorithmic_pullback import response,local_coordinates
-from anysolver._ge_beam3_pose_joint import RigidPoseJoint
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import create_shell_element
+from anyfesolver._stiffened_shell_q4_algorithmic_pullback import response,local_coordinates
+from anyfesolver._ge_beam3_pose_joint import RigidPoseJoint
 from docs.reference_cases.stiffened_shell_e04_roof import build
 import pytest
 
@@ -73,7 +73,7 @@ def test_curved_point_reference_pose_is_incremental_not_facet_normal():
 
 def test_curved_policy_rejects_physical_fibres():
     from dataclasses import replace
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
     from test_stiffened_shell_ge_physical_fibre_linear import _definition
     definition = replace(_definition(),
         q4_pullback_policy=ss.Q4_ALGORITHMIC_PULLBACK_V1,
@@ -84,7 +84,7 @@ def test_curved_policy_rejects_physical_fibres():
 
 def curved_panel():
     from dataclasses import replace
-    from anysolver import b3_ge,stiffened_shell as ss
+    from anyfesolver import b3_ge,stiffened_shell as ss
     from test_stiffened_shell_ge_experimental import _panel
     base=_panel();xyz=np.array(base.shell.coordinates_m,copy=True)
     xyz[:,2]+=.02*xyz[:,0]**2
@@ -104,7 +104,7 @@ def curved_panel():
 @pytest.mark.parametrize('curved',(False,True))
 def test_explicit_curved_point_owner_reference_finite_restart(request,force,curved,tmp_path):
     from dataclasses import replace
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
     definition=curved_panel()
     if not curved:
         from test_stiffened_shell_ge_experimental import _panel
@@ -121,7 +121,7 @@ def test_explicit_curved_point_owner_reference_finite_restart(request,force,curv
     action=(ss.NodalAction('beam',105,(0.,0.,-force,0.,0.,0.)),)
     result=linear.solve_linear(action)
     assert result.free_equilibrium_ratio<=1e-8
-    from anysolver._stiffened_shell_increment_control import FiniteIncrementFailure
+    from anyfesolver._stiffened_shell_increment_control import FiniteIncrementFailure
     from dataclasses import asdict
     try:a=owner.solve(action,(.1,.2))
     except FiniteIncrementFailure as error:
@@ -145,7 +145,7 @@ def test_explicit_curved_point_owner_reference_finite_restart(request,force,curv
         raw_linear['load'][3]=1.
         with pytest.raises(ValueError,match='translational load'):
             make().restore(json.dumps(raw_linear).encode())
-        from anysolver._stiffened_shell_ge_body_load import MAGIC
+        from anyfesolver._stiffened_shell_ge_body_load import MAGIC
         with pytest.raises(ValueError,match='external load checkpoints'):make().restore(MAGIC+b'invalid')
         assert not owner.capabilities['body_acceleration']
         assert not owner.capabilities['shell_pressure_loads']

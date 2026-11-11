@@ -12,14 +12,14 @@ from scipy.integrate import quad
 from scipy.optimize import brentq
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_retained_nodal_loading import NodalDeadForces,Program
-from anysolver.general_contact.native_material_plane import NativeRoundMaterialPlane,PROFILE
-from anysolver.general_contact.native_retained_static import NativeRetainedRoundPlaneAnalysis
-from anysolver.general_contact.native_surface_normal import StraightNormalIntegrationSettings
-from anysolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_retained_nodal_loading import NodalDeadForces,Program
+from anyfesolver.general_contact.native_material_plane import NativeRoundMaterialPlane,PROFILE
+from anyfesolver.general_contact.native_retained_static import NativeRetainedRoundPlaneAnalysis
+from anyfesolver.general_contact.native_surface_normal import StraightNormalIntegrationSettings
+from anyfesolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
 from test_general_contact_native_retained_station import _reference
 from test_ge_beam3_native_generalized_modal import make
 
@@ -137,7 +137,7 @@ def test_material_patch_moves_at_fixed_external_nodes_and_rejects_wrong_geometry
 
 
 def test_shared_s3_normal_route_preserves_both_body_work_and_tangent():
-    from anysolver.general_contact.native_surface_normal import integrate_straight_normal
+    from anyfesolver.general_contact.native_surface_normal import integrate_straight_normal
     from test_general_contact_native_surface_s3_friction import _case,_moved
     _,pair,pose,_=_case();kernel=_kernel()
     plane=kernel.evaluate(pose.positions,pose.position_low,pose.cell_rotations)
@@ -220,7 +220,7 @@ def test_swept_material_radius_detects_hidden_rotational_gap_pulse():
 def test_unresolved_angular_grazing_fails_before_quadrature(monkeypatch):
     from fractions import Fraction
     from math import hypot
-    import anysolver.general_contact.native_material_plane as module
+    import anyfesolver.general_contact.native_material_plane as module
     owner=_analysis();kernel=NativeRoundMaterialPlane(owner.contact.rule,
         plane_origin_m=(0.,0.,-.05),plane_normal=(0.,0.,1.),
         normal_stiffness_Pa_per_m=1e7,integration_settings=_settings())
@@ -246,7 +246,7 @@ def test_explicit_area_penalty_sensitivity_reduces_independent_gap():
     for stiffness in (1e6,1e7):
         owner=_analysis(normal_stiffness=stiffness);run=owner.solve()
         if run.status!='completed' and os.environ.get('CONTACT_MATERIAL_PENALTY_RECORD'):
-            from anysolver._ge_beam3_p5_seeded.core import canonical
+            from anyfesolver._ge_beam3_p5_seeded.core import canonical
             Path(os.environ['CONTACT_MATERIAL_PENALTY_RECORD']).write_bytes(canonical(dict(
                 scope='failed declared penalty sensitivity; no acceptance',prior_rows=rows,
                 status=run.status,failure=run.failure,normal_stiffness_Pa_per_m=stiffness,
@@ -264,7 +264,7 @@ def test_explicit_area_penalty_sensitivity_reduces_independent_gap():
 
 
 def test_common_rigid_transform_preserves_material_surface_work():
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
     original=_kernel();positions=original.reference.coordinates.copy();positions[:,2]-=.02
     rotations=np.tile(np.eye(3),(2,1,1));rotations[0]=Rotation.from_rotvec((.02,-.03,.01)).as_matrix()
     value=original.evaluate(positions,np.zeros((3,3)),rotations)
@@ -285,7 +285,7 @@ def test_common_rigid_transform_preserves_material_surface_work():
 
 @pytest.mark.parametrize('cancel',(False,True))
 def test_precommit_exception_and_cancellation_preserve_accepted_material_origin(cancel):
-    from anysolver.control import CancellationToken
+    from anyfesolver.control import CancellationToken
     first=_analysis().solve(stop_after=1);assert first.status=='paused',first.failure
     owner=_analysis();record=owner._record;token=CancellationToken()
     def failing(target,*args):

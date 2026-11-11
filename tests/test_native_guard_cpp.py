@@ -4,12 +4,12 @@ import importlib
 import sys
 import types
 import pytest
-from anysolver import boundary,static_batch,prepared_static_loads as loads
-from anysolver import _native_authority_dag as dag,_native_guard_dispatch as dispatch
+from anyfesolver import boundary,static_batch,prepared_static_loads as loads
+from anyfesolver import _native_authority_dag as dag,_native_guard_dispatch as dispatch
 
 @pytest.fixture
 def native():
-    return pytest.importorskip('anysolver._native_guard')
+    return pytest.importorskip('anyfesolver._native_guard')
 
 def plan(native,cls,functions=()):
     classes={cls:static_batch._class_state(cls)}
@@ -32,7 +32,7 @@ def test_actual_all_original_facts(native):
     after=native.statistics()
     assert after['class_facts']-before['class_facts']==18
     assert after['helper_facts']-before['helper_facts']==len(loads._NATIVE_HELPER_FACTS)
-    assert len(loads._NATIVE_HELPER_FACTS)-1==1274
+    assert len(loads._NATIVE_HELPER_FACTS)-1==1304
 
 @pytest.mark.parametrize('mutation',['code','defaults','keywords','closure','empty','method','property','mro'])
 def test_mutable_metadata_literal_differential(native,mutation):
@@ -78,6 +78,28 @@ def test_kwdefault_helper_order_is_not_class_order(native):
     function.__kwdefaults__={'b':2,'a':1}
     assert literal(classes,helpers)
     assert native.compare(value,classes,helpers) is True
+
+def test_class_inventory_uses_member_names_without_comparing_values(native):
+    class Member:
+        def __eq__(self,other):pytest.fail('member equality invoked')
+        def __lt__(self,other):pytest.fail('member ordering invoked')
+    class A:
+        zeta=Member()
+        alpha=Member()
+    value,classes,helpers=plan(native,A)
+    alpha=A.alpha
+    zeta=A.zeta
+    del A.zeta
+    A.zeta=zeta
+    assert native.compare(value,classes,helpers) is True
+    A.alpha=Member()
+    assert native.compare(value,classes,helpers) is False
+    A.alpha=alpha
+    A.extra=Member()
+    assert native.compare(value,classes,helpers) is False
+    del A.extra
+    del A.zeta
+    assert native.compare(value,classes,helpers) is False
 
 def test_cycle_path_and_no_cache_across_guards(native):
     def factory():
@@ -172,7 +194,7 @@ def test_dispatch_absent_builtin_shadow_refuses_without_body(native,monkeypatch)
 @pytest.mark.parametrize('owner',['modules','native'])
 def test_unknown_colliding_mapping_key_does_not_execute_equality(native,owner):
     calls=[]
-    name='anysolver._native_guard' if owner=='modules' else 'compare'
+    name='anyfesolver._native_guard' if owner=='modules' else 'compare'
     class Key:
         def __hash__(self):return hash(name)
         def __eq__(self,other):calls.append('eq');return False
@@ -187,7 +209,7 @@ def test_owned_generation_current_classification_exact_int(native):
     def factory():
         accepted_generation=1
         def require():return accepted_generation
-        require.__module__='anysolver._qualified_authority_epoch'
+        require.__module__='anyfesolver._qualified_authority_epoch'
         require.__qualname__='_AuthorityEpochManager.bind.<locals>.require'
         return require
     function=factory()

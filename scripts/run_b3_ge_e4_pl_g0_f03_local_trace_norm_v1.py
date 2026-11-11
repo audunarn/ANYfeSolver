@@ -113,12 +113,12 @@ def main():
         raise ValueError('freeze and commit all integration worktree inputs before execution')
     imported=subprocess.check_output(
         [sys.executable,'-c','import sys;sys.path.insert(0,"src");'
-         'import anysolver;print(anysolver.__file__)'],
+         'import anyfesolver;print(anyfesolver.__file__)'],
         cwd=PARENT.parent,text=True).strip()
     args.root.mkdir(parents=True,exist_ok=False)
     manifest={'purpose':'MESH_LOCAL_DG_TRACE_DIAGNOSTIC_NOT_F03_ACCEPTANCE',
               'revision':revision,'source_sha256':source_hashes,
-              'anysolver_import':imported,'cases':CASES,
+              'anyfesolver_import':imported,'cases':CASES,
               'memory_limit_bytes':MAX_RSS,'case_wall_seconds':MAX_CASE_SECONDS,
               'total_wall_seconds':MAX_TOTAL_SECONDS,
               'rss_sampling_seconds':.5,'blas_threads':1,

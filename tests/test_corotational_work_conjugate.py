@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver.corotational import (
+from anyfesolver.corotational import (
     _CorotationalReference,
     _corotational_cache,
     _corotational_deformation_state,
@@ -17,8 +17,8 @@ from anysolver.corotational import (
     rotation_vector_from_matrix,
     spatial_force_and_moment_resultants,
 )
-from anysolver.elements import BeamElement, create_shell_element
-from anysolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement, create_shell_element
+from anyfesolver.fe_core import FEModel
 
 
 def _make_beam_model() -> tuple[FEModel, int, BeamElement]:

@@ -55,7 +55,7 @@ def test_validator_is_standard_library_only() -> None:
             imports.update(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module:
             imports.add(node.module)
-    assert not imports.intersection({"numpy", "sympy", "scipy", "anysolver", "anymesh", "anymesher"})
+    assert not imports.intersection({"numpy", "sympy", "scipy", "anyfesolver", "anymesh", "anymesher"})
 
 
 def test_preregistration_authorizes_only_bounded_screen() -> None:
@@ -66,7 +66,7 @@ def test_preregistration_authorizes_only_bounded_screen() -> None:
 
 
 def test_production_boundary_remains_static() -> None:
-    source = (ROOT / "src" / "anysolver" / "elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src" / "anyfesolver" / "elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source
     assert not any(path.is_file() for path in (ROOT / "src").rglob("*v4c*"))

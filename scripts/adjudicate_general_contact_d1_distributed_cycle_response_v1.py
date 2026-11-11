@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 import anymaterial
-import anysolver
+import anyfesolver
 import numpy as np
 import scipy
 
@@ -58,8 +58,8 @@ def main(verdict_path: Path) -> None:
     check("python_version", sys.version.split()[0] == environment["python"])
     check("numpy_version", np.__version__ == environment["numpy"])
     check("scipy_version", scipy.__version__ == environment["scipy"])
-    check("solver_import", Path(anysolver.__file__).resolve()
-          == Path(environment["anysolver_source_root"]) / "anysolver/__init__.py")
+    check("solver_import", Path(anyfesolver.__file__).resolve()
+          == Path(environment["anyfesolver_source_root"]) / "anyfesolver/__init__.py")
     check("material_import", Path(anymaterial.__file__).resolve()
           == Path(environment["anymaterial_source_root"]) / "anymaterial/__init__.py")
 
@@ -111,8 +111,8 @@ def main(verdict_path: Path) -> None:
           and evidence["supported_pressure_mode_cap"] == 50
           and evidence["has_checkpoint"] is True)
     check("runtime_solver_import", Path(
-        evidence["runtime_identity"]["anysolver_module"]
-    ).resolve() == Path(anysolver.__file__).resolve())
+        evidence["runtime_identity"]["anyfesolver_module"]
+    ).resolve() == Path(anyfesolver.__file__).resolve())
 
     verdict = {
         "case_id": registration["case_id"],

@@ -2,8 +2,8 @@
 import numpy as np
 import pytest
 
-from anysolver._stiffened_shell_l1_assembly_experimental import compile_supported_shell_work
-from anysolver._stiffened_shell_l1_supported_work_experimental import SupportedShellWorkMap
+from anyfesolver._stiffened_shell_l1_assembly_experimental import compile_supported_shell_work
+from anyfesolver._stiffened_shell_l1_supported_work_experimental import SupportedShellWorkMap
 
 
 def test_effective_bounded_numerical_runtime():

@@ -1,8 +1,8 @@
 """Experimental displacement workflow, including accepted-prefix persistence."""
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken,SolveCancelled
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken,SolveCancelled
 from test_stiffened_shell_bl5_coupled_material import coupled
 from test_stiffened_shell_bl5_material import make
 from test_stiffened_shell_bl5_finite import _action
@@ -43,7 +43,7 @@ def test_public_displacement_cancel_restart_and_atomic_publication(request,monke
     restored=make(request,coupled());restored.restore(saved)
     assert restored.checkpoint()==saved
     np.testing.assert_array_equal(restored.recover().shell_displacement,prefix.shell_displacement)
-    import anysolver._stiffened_shell_displacement_control as module
+    import anyfesolver._stiffened_shell_displacement_control as module
     def broken(*args,**kwargs):raise RuntimeError("injected prepublication failure")
     with monkeypatch.context() as patch:
         patch.setattr(module,"prepare",broken)
@@ -54,7 +54,7 @@ def test_public_displacement_cancel_restart_and_atomic_publication(request,monke
         owner.solve(_action(50.),(1.,))
     with pytest.raises(ValueError,match="match restart"):
         owner.solve(_action(51.),(targets[1],),**kw)
-    import anysolver._stiffened_shell_displacement_corrector as corrector
+    import anyfesolver._stiffened_shell_displacement_corrector as corrector
     def no_step(matrix,*args):return np.zeros(matrix.shape[0]),0.
     with monkeypatch.context() as patch:
         patch.setattr(corrector,"bordered_correction",no_step)

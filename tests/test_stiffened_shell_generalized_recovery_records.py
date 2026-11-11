@@ -4,10 +4,10 @@ import json
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_generalized_cell import GeneralizedCellConjugate
-from anysolver._ge_beam3_fibre_section import canonical
-from anysolver._ge_beam3_retained_generalized import RetainedGeneralizedOperator
-from anysolver._stiffened_shell_generalized_recovery import build
+from anyfesolver._ge_beam3_generalized_cell import GeneralizedCellConjugate
+from anyfesolver._ge_beam3_fibre_section import canonical
+from anyfesolver._ge_beam3_retained_generalized import RetainedGeneralizedOperator
+from anyfesolver._stiffened_shell_generalized_recovery import build
 from test_stiffened_shell_bl5_material import model
 
 

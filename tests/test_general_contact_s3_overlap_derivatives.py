@@ -3,9 +3,9 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.overlap import PlanarFace, planar_projected_overlap
-from anysolver.general_contact.triangle_mortar_energy import MovingS3PrimalMortarPenalty
-from anysolver.general_contact.s3_overlap_derivatives import (
+from anyfesolver.general_contact.overlap import PlanarFace, planar_projected_overlap
+from anyfesolver.general_contact.triangle_mortar_energy import MovingS3PrimalMortarPenalty
+from anyfesolver.general_contact.s3_overlap_derivatives import (
     UnsupportedOverlapBranch,
     s3_overlap_derivatives,
 )

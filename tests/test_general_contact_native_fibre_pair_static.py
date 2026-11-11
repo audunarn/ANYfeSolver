@@ -4,9 +4,9 @@ from hashlib import sha256
 import json,os,runpy
 import numpy as np
 import pytest
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.control import CancellationToken
-from anysolver.general_contact.native_retained_pair_static import FIBRE_WHOLE_PROFILE
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken
+from anyfesolver.general_contact.native_retained_pair_static import FIBRE_WHOLE_PROFILE
 from test_general_contact_native_fibre_s3 import _independent_material_history
 
 
@@ -43,7 +43,7 @@ def test_fibre_pair_family_binding_and_empty_restart():
 
 
 def test_gap_step_control_affine_event_and_restart_binding():
-    from anysolver.general_contact.native_retained_pair_static import _gap_limited_fraction
+    from anyfesolver.general_contact.native_retained_pair_static import _gap_limited_fraction
     # Exact scalar affine gap is independent of native search/force kernels.
     tolerance=5e-5;g0=.001;alpha=.5;gtrial=g0-.00556805556*alpha
     fraction=_gap_limited_fraction(alpha,g0,gtrial,tolerance)
@@ -66,7 +66,7 @@ def test_gap_step_control_affine_event_and_restart_binding():
 
 @pytest.mark.parametrize('gap_step_control',(False,True))
 def test_gap_geometry_query_observes_cancellation_before_consumption(monkeypatch,gap_step_control):
-    from anysolver.control import SolveCancelled
+    from anyfesolver.control import SolveCancelled
     owner=_owner(gap_step_control=gap_step_control);token=CancellationToken()
     before=canonical(owner.initial.histories);raw=owner._checkpoint(())
     def cancel_inside_geometry(*args,**kwargs):
@@ -120,7 +120,7 @@ def test_saved_active_pair_gap_query_matches_mechanical_result():
     reason='explicit saved candidate global chord certificate discriminator')
 def test_saved_active_pair_global_chord_gap_certificate():
     import time
-    from anysolver.general_contact.beam_curve_pair import _source_interval_target_gap_lower
+    from anyfesolver.general_contact.beam_curve_pair import _source_interval_target_gap_lower
     raw=Path(os.environ['CONTACT_PAIR_SAVED_TRIAL']).read_bytes()
     owner=_owner(line_stiffness=4000.,gap_step_control=True)
     state=owner.context.make(json.loads(raw))

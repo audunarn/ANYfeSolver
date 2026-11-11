@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     ContributionPolicy,
     CoupledBeamShellElement,
@@ -22,15 +22,15 @@ from anysolver import (
     solve_linear,
     solve_transient_newmark,
 )
-from anysolver.contact import (
+from anyfesolver.contact import (
     RigidSphereImpact,
     SphereContactConfig,
     assemble_sphere_contact_load_vector,
 )
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.material_curves import DNVC208MaterialCurve
-from anysolver.nonlinear_static import ShellInitialField, solve_static_nonlinear
-from anysolver.vectorized_nonlinear import shell_nonlinear_batch_eligible
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.material_curves import DNVC208MaterialCurve
+from anyfesolver.nonlinear_static import ShellInitialField, solve_static_nonlinear
+from anyfesolver.vectorized_nonlinear import shell_nonlinear_batch_eligible
 
 
 def _candidate_model(*, constrained: bool = False) -> tuple[FEModel, QualifiedE4PLShellElement]:

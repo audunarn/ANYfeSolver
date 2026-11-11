@@ -2,9 +2,9 @@
 from math import fsum
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken,SolveCancelled
-from anysolver._stiffened_shell_displacement_checkpoint import decode_snapshot,encode_snapshot
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken,SolveCancelled
+from anyfesolver._stiffened_shell_displacement_checkpoint import decode_snapshot,encode_snapshot
 from examples.stiffened_shell_coupled_plastic_history import definition,OPTIONS
 from test_stiffened_shell_native_point_displacement import owner,compare,native_state
 
@@ -55,7 +55,7 @@ def test_coupled_native_displacement_material_prefix_restart(request,monkeypatch
         bad=encode_snapshot(analysis,arrays=changed,**metadata)
         with pytest.raises(ValueError):untouched.restore(bad)
         assert untouched._generation==0 and untouched._finite_driver is None
-    import anysolver._stiffened_shell_displacement_corrector as corrector
+    import anyfesolver._stiffened_shell_displacement_corrector as corrector
     with monkeypatch.context() as patch:
         patch.setattr(corrector,'bordered_correction',lambda matrix,*args:(np.zeros(matrix.shape[0]),0.))
         with pytest.raises(ss.DisplacementCorrectorFailure):

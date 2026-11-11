@@ -4,13 +4,13 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_coupled_beam_subdomain import CoupledBeamSubdomain
-from anysolver._ge_beam3_shell_joint_trial import ShellBeamTrialAssembly
-from anysolver._ge_beam3_shell_joint_state import CoupledShellBeamAnalysis
-from anysolver._ge_beam3_retained_generalized_state import Context, Program
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_coupled_beam_subdomain import CoupledBeamSubdomain
+from anyfesolver._ge_beam3_shell_joint_trial import ShellBeamTrialAssembly
+from anyfesolver._ge_beam3_shell_joint_state import CoupledShellBeamAnalysis
+from anyfesolver._ge_beam3_retained_generalized_state import Context, Program
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_native_generalized_modal import make
 
 

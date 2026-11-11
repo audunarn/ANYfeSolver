@@ -293,9 +293,9 @@ def test_full_model_inputs_and_hashes_are_deterministic(
 def test_factories_are_real_qualified_classes_and_s3_remains_opt_in(
     built_cases: list[Any],
 ) -> None:
-    from anysolver.e4_pl_element import QualifiedE4PLShellElement
-    from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-    from anysolver.elements import (
+    from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+    from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+    from anyfesolver.elements import (
         DEFAULT_Q4_FORMULATION,
         DEFAULT_S3_FORMULATION,
         ShellElement,

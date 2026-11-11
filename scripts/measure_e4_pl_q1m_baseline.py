@@ -14,8 +14,8 @@ from typing import Any, Callable
 
 import numpy as np
 
-from anysolver import FEModel, QualifiedE4PLShellElement, assemble_stiffness_matrix
-from anysolver.elements import create_element
+from anyfesolver import FEModel, QualifiedE4PLShellElement, assemble_stiffness_matrix
+from anyfesolver.elements import create_element
 
 
 SCHEMA = "anysolver.s4.e4-pl-q1m-performance-observation-v1"

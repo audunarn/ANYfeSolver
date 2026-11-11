@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from anysolver import _compensated_contractions as fast
+from anyfesolver import _compensated_contractions as fast
 from test_compensated_contractions_vectorized import (
     dot as scalar_dot, reference_product, reference_sum_arrays, reference_weighted_sum)
 

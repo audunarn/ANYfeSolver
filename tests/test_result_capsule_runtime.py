@@ -1,13 +1,13 @@
-"""Focused development tests for the NumPy-only anysolver-results runtime."""
+"""Focused development tests for the NumPy-only anyfesolver-results runtime."""
 import numpy as np
 import pytest
 
-import anysolver_results
-from anysolver_results import (CapsuleError, CapsuleValidationError, DerivationError,
+import anyfesolver_results
+from anyfesolver_results import (CapsuleError, CapsuleValidationError, DerivationError,
                                PreparedResponse, ReconstructionError, derive_field,
                                prepare_response, reconstruct_prepared_response,
                                reconstruct_response, validate_capsule)
-from anysolver_results.capsule import COMPLETED_STATUSES
+from anyfesolver_results.capsule import COMPLETED_STATUSES
 
 
 def _responses():
@@ -16,8 +16,8 @@ def _responses():
 
 
 def test_runtime_identity():
-    assert anysolver_results.RUNTIME_ID == 'anysolver-results/2'
-    assert anysolver_results.SUPPORTED_RUNTIME_IDS == ('anysolver-results/1','anysolver-results/2')
+    assert anyfesolver_results.RUNTIME_ID == 'anysolver-results/2'
+    assert anyfesolver_results.SUPPORTED_RUNTIME_IDS == ('anysolver-results/1','anysolver-results/2')
 
 
 def test_reconstruct_adds_baseline_once():
@@ -132,7 +132,7 @@ def test_principal_stress_scalar_ranks_and_surface_parameter():
 
 
 def test_registry_is_closed_and_hill_is_not_a_claim():
-    assert 'hill_utilization' not in anysolver_results.OPERATIONS
+    assert 'hill_utilization' not in anyfesolver_results.OPERATIONS
     with pytest.raises(DerivationError):
         derive_field({'operation': 'hill_utilization', 'inputs': {}}, {})
     with pytest.raises(DerivationError):
@@ -161,7 +161,7 @@ def _minimal_capsule():
         'runtime': 'anysolver-results/1',
         'model_identity': 'model-a',
         'mesh_identity': 'mesh-a',
-        'solver_identity': {'solver': 'ANYsolver'},
+        'solver_identity': {'solver': 'ANYfeSolver'},
         'geometry': {'positions': np.zeros((0, 3))},
         'patterns': ('p',),
         'coefficients': np.array([[1.5], [-2.0]], dtype=np.float64),
@@ -217,7 +217,7 @@ def test_validate_refuses_admission_counterexamples():
         validate_capsule(capsule)
     # NaN is not plain JSON data anywhere in the identity or provenance.
     with pytest.raises(CapsuleValidationError):
-        validate_capsule(broken(solver_identity={'solver': 'ANYsolver', 'value': float('nan')}))
+        validate_capsule(broken(solver_identity={'solver': 'ANYfeSolver', 'value': float('nan')}))
     # NaN coefficient tables and NaN response bases are refused.
     with pytest.raises(CapsuleValidationError):
         capsule = _minimal_capsule()
@@ -321,13 +321,13 @@ def test_validate_refuses_broken_capsules():
 def test_runtime_has_no_solver_or_scipy_dependency():
     import pathlib
     import re
-    package = pathlib.Path(anysolver_results.__file__).parent
+    package = pathlib.Path(anyfesolver_results.__file__).parent
     for source in package.glob('*.py'):
         for line in source.read_text(encoding='utf-8').splitlines():
             stripped = line.strip()
             if re.match(r'(import|from)\s+', stripped):
                 assert 'scipy' not in stripped, (source.name, line)
-                assert 'anysolver.' not in stripped and 'anysolver ' not in stripped.replace('anysolver_results', ''), (source.name, line)
+                assert 'anyfesolver.' not in stripped and 'anyfesolver ' not in stripped.replace('anyfesolver_results', ''), (source.name, line)
                 assert 'ANYfem' not in stripped and 'ANYpost' not in stripped, (source.name, line)
 
 

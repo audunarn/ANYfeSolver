@@ -112,7 +112,7 @@ def test_modified_current_protected_file_blocks_boundary(monkeypatch) -> None:
     monkeypatch.setattr(
         runner,
         "_working_tree_blob",
-        lambda path: "0" * 40 if path == "src/anysolver/elements.py" else real_blob(path),
+        lambda path: "0" * 40 if path == "src/anyfesolver/elements.py" else real_blob(path),
     )
     monkeypatch.setattr(
         runner,
@@ -132,7 +132,7 @@ def test_modified_current_protected_file_blocks_boundary(monkeypatch) -> None:
 
     assert record["terminal"] == "BLOCKED_GE_BEAM3_MIXED_BASELINE_OR_AUTHORITY"
     assert record["current_boundary_checks"]["all_protected_current_blobs_equal_base"] is False
-    assert record["current_protected_blob_checks"]["src/anysolver/elements.py"] is False
+    assert record["current_protected_blob_checks"]["src/anyfesolver/elements.py"] is False
 
 
 def _mutated_record(
@@ -335,7 +335,7 @@ def test_runner_import_boundary_is_authority_only() -> None:
             imports.add(node.module.split(".")[0])
             imported_modules.add(node.module)
 
-    assert imports.isdisjoint({"anysolver", "numpy", "scipy", "sympy", "mpmath"})
+    assert imports.isdisjoint({"anyfesolver", "numpy", "scipy", "sympy", "mpmath"})
     assert "ge_beam3_mixed_element" not in imported_modules
     assert "ge_beam3_mixed_finite_producer" not in imported_modules
     assert "ge_beam3_mixed_finite_checker" not in imported_modules

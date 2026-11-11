@@ -46,6 +46,6 @@ def test_v5l_preserves_nonactivation_boundary() -> None:
     _raw, result = _canonical(RESULT)
     assert result["activation_authorized"] is False
     assert result["production_boundary"] == {"default_q4_formulation":"e4-pl","default_s3_formulation":"legacy-s3","q4_mechanics_unchanged":True}
-    source = (ROOT / "src/anysolver/elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src/anyfesolver/elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source

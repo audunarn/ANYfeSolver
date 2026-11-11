@@ -7,7 +7,7 @@ import json
 import numpy as np
 
 import probe_b3_ge_e4_pl_g0_local_sparse_seam as v1
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 
 
 original_check = v1.check

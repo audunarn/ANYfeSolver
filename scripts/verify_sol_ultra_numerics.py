@@ -9,10 +9,10 @@ for tolerance-based qualification.
 Typical use from two clean worktrees::
 
     python scripts/verify_sol_ultra_numerics.py capture \
-        --solver-root ../ANYsolver-baseline \
+        --solver-root ../ANYfeSolver-baseline \
         --label baseline --suite full --output baseline.json
     python scripts/verify_sol_ultra_numerics.py capture \
-        --solver-root ../ANYsolver-candidate \
+        --solver-root ../ANYfeSolver-candidate \
         --label candidate --suite full --output candidate.json
     python scripts/verify_sol_ultra_numerics.py compare \
         --baseline baseline.json --candidate candidate.json
@@ -167,13 +167,13 @@ def configure_solver_root(path: Path | str) -> None:
     global ROOT, SRC
     target = Path(path).resolve()
     source = target / "src"
-    if not (source / "anysolver").is_dir():
-        raise ValueError(f"solver root {target} has no src/anysolver package")
+    if not (source / "anyfesolver").is_dir():
+        raise ValueError(f"solver root {target} has no src/anyfesolver package")
     if any(
-        name == "anysolver" or name.startswith("anysolver.")
+        name == "anyfesolver" or name.startswith("anyfesolver.")
         for name in sys.modules
     ):
-        raise RuntimeError("configure_solver_root must run before importing anysolver")
+        raise RuntimeError("configure_solver_root must run before importing anyfesolver")
     previous = str(SRC)
     sys.path[:] = [entry for entry in sys.path if entry != previous]
     ROOT = target
@@ -425,12 +425,12 @@ def _topology(model: Any) -> dict[str, int]:
 
 
 def _case_global_matrices() -> dict[str, Any]:
-    from anysolver.matrix_assembly import (
+    from anyfesolver.matrix_assembly import (
         assemble_geometric_stiffness_matrix,
         assemble_mass_matrix,
         assemble_stiffness_matrix,
     )
-    from anysolver.mesh_gen import generate_simple_panel_mesh
+    from anyfesolver.mesh_gen import generate_simple_panel_mesh
 
     model = generate_simple_panel_mesh(
         1.2,
@@ -478,9 +478,9 @@ def _case_global_matrices() -> dict[str, Any]:
 
 
 def _case_linear_static() -> dict[str, Any]:
-    from anysolver.assembly import solve_linear
-    from anysolver.boundary import LoadCase
-    from anysolver.mesh_gen import generate_simple_panel_mesh
+    from anyfesolver.assembly import solve_linear
+    from anyfesolver.boundary import LoadCase
+    from anyfesolver.mesh_gen import generate_simple_panel_mesh
 
     model = generate_simple_panel_mesh(
         1.0,
@@ -513,9 +513,9 @@ def _case_linear_static() -> dict[str, Any]:
 
 
 def _axial_modal_model() -> Any:
-    from anysolver.boundary import BoundaryCondition, FixedSupport
-    from anysolver.elements import BeamElement
-    from anysolver.fe_core import FEModel
+    from anyfesolver.boundary import BoundaryCondition, FixedSupport
+    from anyfesolver.elements import BeamElement
+    from anyfesolver.fe_core import FEModel
 
     model = FEModel("verification_axial_modal")
     model.add_material("steel", elastic_modulus=100.0, poisson_ratio=0.3, density=2.0)
@@ -542,7 +542,7 @@ def _axial_modal_model() -> Any:
 
 
 def _case_modal() -> dict[str, Any]:
-    from anysolver.modal import solve_free_vibration
+    from anyfesolver.modal import solve_free_vibration
 
     model = _axial_modal_model()
     result = solve_free_vibration(model, num_modes=1)
@@ -569,9 +569,9 @@ def _case_modal() -> dict[str, Any]:
 
 
 def _beam_column_model(num_elements: int = 4) -> Any:
-    from anysolver.boundary import BoundaryCondition
-    from anysolver.elements import BeamElement
-    from anysolver.fe_core import FEModel
+    from anyfesolver.boundary import BoundaryCondition
+    from anyfesolver.elements import BeamElement
+    from anyfesolver.fe_core import FEModel
 
     length = 4.0
     model = FEModel("verification_beam_column")
@@ -599,7 +599,7 @@ def _beam_column_model(num_elements: int = 4) -> Any:
 
 
 def _case_buckling() -> dict[str, Any]:
-    from anysolver.buckling import solve_eigenvalue_buckling
+    from anyfesolver.buckling import solve_eigenvalue_buckling
 
     model = _beam_column_model()
     states = {
@@ -632,11 +632,11 @@ def _case_buckling() -> dict[str, Any]:
 
 
 def _case_nonlinear_internal() -> dict[str, Any]:
-    from anysolver import nonlinear_performance, nonlinear_static
-    from anysolver.nonlinear_performance_bootstrap import (
+    from anyfesolver import nonlinear_performance, nonlinear_static
+    from anyfesolver.nonlinear_performance_bootstrap import (
         nonlinear_assembly_diagnostics,
     )
-    from anysolver.mesh_gen import generate_simple_panel_mesh
+    from anyfesolver.mesh_gen import generate_simple_panel_mesh
 
     model = generate_simple_panel_mesh(
         1.2,
@@ -702,7 +702,7 @@ def _case_nonlinear_internal() -> dict[str, Any]:
         )
     else:
         observations["scalar_oracle_unavailable"] = (
-            "anysolver.nonlinear_performance._ORIGINAL_ASSEMBLER is None"
+            "anyfesolver.nonlinear_performance._ORIGINAL_ASSEMBLER is None"
         )
     observations["campaign_diagnostics"] = _campaign_diagnostics(
         nonlinear_assembly_diagnostics(model)
@@ -738,7 +738,7 @@ def _orthotropic_elastic_matrix() -> np.ndarray:
 
 
 def _hill_model() -> Any:
-    from anysolver.materials import Hill48Yield
+    from anyfesolver.materials import Hill48Yield
 
     return Hill48Yield(
         X=300.0e6,
@@ -751,7 +751,7 @@ def _hill_model() -> Any:
 
 
 def _case_hill48_material() -> dict[str, Any]:
-    from anysolver.plasticity import (
+    from anyfesolver.plasticity import (
         hill48_plane_stress_equivalent_stress,
         hill48_plane_stress_numerical_tangent,
         hill48_plane_stress_return_map,
@@ -836,11 +836,11 @@ def _case_hill48_material() -> dict[str, Any]:
 
 
 def _orthotropic_hill_shell_model() -> Any:
-    from anysolver.boundary import BoundaryCondition
-    from anysolver.elements import create_element
-    from anysolver.fe_core import FEModel
-    from anysolver.material_curves import DNVC208MaterialCurve
-    from anysolver.materials import Hill48Yield
+    from anyfesolver.boundary import BoundaryCondition
+    from anyfesolver.elements import create_element
+    from anyfesolver.fe_core import FEModel
+    from anyfesolver.material_curves import DNVC208MaterialCurve
+    from anyfesolver.materials import Hill48Yield
 
     model = FEModel("verification_orthotropic_hill_shell")
     strength = 100.0e6
@@ -918,11 +918,11 @@ def _diagnostic_int(mapping: Mapping[str, Any], names: Iterable[str]) -> int | N
 
 
 def _case_hill48_shell_path() -> dict[str, Any]:
-    from anysolver import nonlinear_static
-    from anysolver.boundary import LoadCase
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
-    from anysolver.nonlinear_static import solve_static_nonlinear
-    from anysolver.recovery import recover_stress_result
+    from anyfesolver import nonlinear_static
+    from anyfesolver.boundary import LoadCase
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.nonlinear_static import solve_static_nonlinear
+    from anyfesolver.recovery import recover_stress_result
 
     model = _orthotropic_hill_shell_model()
     nonlinear_static._ensure_nonlinear_acceleration()
@@ -1013,9 +1013,9 @@ def _case_hill48_shell_path() -> dict[str, Any]:
 
 
 def _generalized_shell_model() -> tuple[Any, Any]:
-    from anysolver.elements import create_element
-    from anysolver.fe_core import FEModel
-    from anysolver.shell_sections import GeneralizedShellSection
+    from anyfesolver.elements import create_element
+    from anyfesolver.fe_core import FEModel
+    from anyfesolver.shell_sections import GeneralizedShellSection
 
     model = FEModel("verification_generalized_shell")
     model.add_material("dummy", 70.0e9, 0.25, density=2700.0)
@@ -1058,7 +1058,7 @@ def _generalized_shell_model() -> tuple[Any, Any]:
 
 
 def _case_generalized_shell() -> dict[str, Any]:
-    from anysolver.recovery import recover_stress_result
+    from anyfesolver.recovery import recover_stress_result
 
     model, element = _generalized_shell_model()
     material = model.get_material("dummy")
@@ -1119,7 +1119,7 @@ def _case_generalized_shell() -> dict[str, Any]:
 
 
 def _rigid_rotation_field(model: Any, angle_degrees: float, axis: Sequence[float]) -> np.ndarray:
-    from anysolver.corotational import rotation_matrix_from_vector
+    from anyfesolver.corotational import rotation_matrix_from_vector
 
     direction = np.asarray(axis, dtype=float)
     direction /= np.linalg.norm(direction)
@@ -1134,8 +1134,8 @@ def _rigid_rotation_field(model: Any, angle_degrees: float, axis: Sequence[float
 
 
 def _corotational_models() -> list[tuple[str, Any, Any]]:
-    from anysolver.elements import BeamElement, create_element
-    from anysolver.fe_core import FEModel
+    from anyfesolver.elements import BeamElement, create_element
+    from anyfesolver.fe_core import FEModel
 
     shell_model = FEModel("verification_corotational_shell")
     shell_model.add_material("steel", 210.0e9, 0.0, density=7850.0)
@@ -1164,9 +1164,9 @@ def _corotational_models() -> list[tuple[str, Any, Any]]:
 
 
 def _case_corotational() -> dict[str, Any]:
-    from anysolver.corotational import corotational_element_response
-    from anysolver import nonlinear_static
-    from anysolver.nonlinear_performance_bootstrap import nonlinear_assembly_diagnostics
+    from anyfesolver.corotational import corotational_element_response
+    from anyfesolver import nonlinear_static
+    from anyfesolver.nonlinear_performance_bootstrap import nonlinear_assembly_diagnostics
 
     metrics: dict[str, dict[str, Any]] = {}
     observations: dict[str, Any] = {}
@@ -1244,10 +1244,10 @@ def _case_corotational() -> dict[str, Any]:
 
 
 def _case_arc_length() -> dict[str, Any]:
-    from anysolver.arc_length import ArcLengthControl, solve_static_arc_length
-    from anysolver.boundary import BoundaryCondition, LoadCase
-    from anysolver.elements import Element
-    from anysolver.fe_core import FEModel
+    from anyfesolver.arc_length import ArcLengthControl, solve_static_arc_length
+    from anyfesolver.boundary import BoundaryCondition, LoadCase
+    from anyfesolver.elements import Element
+    from anyfesolver.fe_core import FEModel
 
     class SofteningSpringElement(Element):
         def __init__(self, element_id: int, node_id: int) -> None:
@@ -1348,9 +1348,9 @@ def _case_arc_length() -> dict[str, Any]:
 
 
 def _contact_panel() -> Any:
-    from anysolver.boundary import BoundaryCondition
-    from anysolver.elements import create_element
-    from anysolver.fe_core import FEModel
+    from anyfesolver.boundary import BoundaryCondition
+    from anyfesolver.elements import create_element
+    from anyfesolver.fe_core import FEModel
 
     model = FEModel("verification_contact_panel")
     model.add_material("soft", 1.0e5, 0.3, density=20.0)
@@ -1377,9 +1377,9 @@ def _contact_panel() -> Any:
 def _yielding_contact_panel(*, divisions: int = 4) -> Any:
     """Small clamped panel with enough spatial freedom to yield under impact."""
 
-    from anysolver.boundary import BoundaryCondition
-    from anysolver.elements import create_element
-    from anysolver.fe_core import FEModel
+    from anyfesolver.boundary import BoundaryCondition
+    from anyfesolver.elements import create_element
+    from anyfesolver.fe_core import FEModel
 
     model = FEModel("verification_yielding_contact_panel")
     model.add_material("soft", 1.0e5, 0.3, density=20.0)
@@ -1426,7 +1426,7 @@ def _yielding_contact_panel(*, divisions: int = 4) -> Any:
 
 
 def _case_contact_load() -> dict[str, Any]:
-    from anysolver.contact import (
+    from anyfesolver.contact import (
         RigidSphereImpact,
         SphereContactConfig,
         assemble_sphere_contact_load_vector,
@@ -1682,15 +1682,15 @@ def _append_plastic_impact_metrics(
 
 
 def _case_nonlinear_impact() -> dict[str, Any]:
-    from anysolver.contact import (
+    from anyfesolver.contact import (
         NonlinearTransientConfig,
         PlasticImpactDamageConfig,
         RigidSphereImpact,
         SphereContactConfig,
         solve_transient_sphere_impact,
     )
-    from anysolver.dynamics import TransientConfig
-    from anysolver.material_curves import DNVC208MaterialCurve
+    from anyfesolver.dynamics import TransientConfig
+    from anyfesolver.material_curves import DNVC208MaterialCurve
 
     model = _yielding_contact_panel()
     model.materials["soft"].hardening_curve = DNVC208MaterialCurve(
@@ -1828,13 +1828,13 @@ def _case_nonlinear_impact() -> dict[str, Any]:
 def _case_nonlinear_impact_direct_reduced() -> dict[str, Any]:
     """Elastic impact sized to activate candidate direct-reduced assembly."""
 
-    from anysolver.contact import (
+    from anyfesolver.contact import (
         NonlinearTransientConfig,
         RigidSphereImpact,
         SphereContactConfig,
         solve_transient_sphere_impact,
     )
-    from anysolver.dynamics import TransientConfig
+    from anyfesolver.dynamics import TransientConfig
 
     model = _contact_panel()
     result = solve_transient_sphere_impact(
@@ -2703,10 +2703,10 @@ def render_markdown(report: Mapping[str, Any]) -> str:
             "",
             "```powershell",
             "$env:PYPARDISO_MKL_RT = '<path-to-mkl_rt.dll>'",
-            "$harness = 'C:\\Github\\ANYsolver-verification\\scripts\\verify_sol_ultra_numerics.py'",
-            "C:\\Github\\ANYsolver\\.venv\\Scripts\\python.exe $harness capture --solver-root C:\\Github\\ANYsolver-baseline --label baseline --suite full --output baseline.json",
-            "C:\\Github\\ANYsolver\\.venv\\Scripts\\python.exe $harness capture --solver-root C:\\Github\\ANYsolver-candidate --label candidate --suite full --output candidate.json",
-            "C:\\Github\\ANYsolver\\.venv\\Scripts\\python.exe $harness compare --baseline baseline.json --candidate candidate.json",
+            "$harness = 'C:\\Github\\ANYfeSolver-verification\\scripts\\verify_sol_ultra_numerics.py'",
+            "C:\\Github\\ANYfeSolver\\.venv\\Scripts\\python.exe $harness capture --solver-root C:\\Github\\ANYfeSolver-baseline --label baseline --suite full --output baseline.json",
+            "C:\\Github\\ANYfeSolver\\.venv\\Scripts\\python.exe $harness capture --solver-root C:\\Github\\ANYfeSolver-candidate --label candidate --suite full --output candidate.json",
+            "C:\\Github\\ANYfeSolver\\.venv\\Scripts\\python.exe $harness compare --baseline baseline.json --candidate candidate.json",
             "```",
             "",
         ]
@@ -2778,7 +2778,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--solver-root",
         type=Path,
         default=None,
-        help="exact ANYsolver checkout to import and record (defaults to the harness checkout)",
+        help="exact ANYfeSolver checkout to import and record (defaults to the harness checkout)",
     )
     capture.add_argument("--suite", choices=tuple(SUITE_LEVEL), default="full")
     capture.add_argument(

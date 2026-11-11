@@ -13,9 +13,9 @@ import json
 from pathlib import Path
 import subprocess
 
-import anysolver
-from anysolver import stiffened_shell
-from anysolver._ge_beam3_retained_generalized_state import Mechanical
+import anyfesolver
+from anyfesolver import stiffened_shell
+from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
 import numpy as np
 from scipy import sparse
 from threadpoolctl import threadpool_info, threadpool_limits
@@ -64,8 +64,8 @@ def _continuous_p1(owner) -> sparse.csr_matrix:
 def main(external_path: Path, prior_path: Path, output: Path):
     if output.exists():
         raise FileExistsError("preserve prior P1 evidence")
-    expected = (ROOT / "src" / "anysolver" / "__init__.py").resolve()
-    if Path(anysolver.__file__).resolve() != expected:
+    expected = (ROOT / "src" / "anyfesolver" / "__init__.py").resolve()
+    if Path(anyfesolver.__file__).resolve() != expected:
         raise RuntimeError("P1 diagnostic imported another checkout")
     external_bytes, prior_bytes = external_path.read_bytes(), prior_path.read_bytes()
     external, prior = json.loads(external_bytes), json.loads(prior_bytes)
@@ -85,7 +85,7 @@ def main(external_path: Path, prior_path: Path, output: Path):
             "b3_e4_f03_bl5_native_nodal_comparator_dev.py").read_bytes()).hexdigest(),
         "external_sha256": sha256(external_bytes).hexdigest(),
         "prior_sha256": sha256(prior_bytes).hexdigest(),
-        "imported_anysolver": str(expected), "cases": [],
+        "imported_anyfesolver": str(expected), "cases": [],
         "limitations": ("One 16-interval five-channel P1 space only. "
                         "Reference-linear work/transfer, without the registered "
                         "seven ratios, growing-space stability, locking, "

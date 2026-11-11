@@ -7,10 +7,10 @@ import argparse
 import json
 from dataclasses import asdict, replace
 import numpy as np
-from anysolver.dynamics import TransientConfig
-from anysolver.ge_beam3_native import (define_beam, SELECTOR as DEFINITION_SELECTOR,
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.ge_beam3_native import (define_beam, SELECTOR as DEFINITION_SELECTOR,
     EllipsoidalGeneralizedSection, LinePattern, DistributedPattern)
-from anysolver.ge_beam3_native_dynamics import create_analysis, SELECTOR, solve_transient
+from anyfesolver.ge_beam3_native_dynamics import create_analysis, SELECTOR, solve_transient
 from examples.native_manufactured_loading_reference import LoadingInputs, endpoint, interval, scales
 
 

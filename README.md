@@ -1,6 +1,6 @@
-# ANYsolver finite-element solver
+# ANYfeSolver finite-element solver
 
-`anysolver` is a headless structural FE solver for beam,
+`anyfesolver` is a headless structural FE solver for beam,
 shell, stiffened-panel, and cylindrical-shell analysis. It is an engineering
 solver with an explicit qualification scope, not a general-purpose CAD,
 contact, or fracture platform.
@@ -12,7 +12,7 @@ recent integrations, open limits and the historical evidence map.
 Install the released package with:
 
 ```powershell
-python -m pip install ANYsolver
+python -m pip install ANYfeSolver
 ```
 
 For coordinated local development across sibling repositories, install the
@@ -22,46 +22,37 @@ checkouts first:
 python -m pip install -e C:\Github\ANYmaterial
 python -m pip install -e C:\Github\ANYmesh
 python -m pip install -e C:\Github\ANYfileIO
-python -m pip install C:\Github\ANYsolver\packages\results
-python -m pip install -e C:\Github\ANYsolver
+python -m pip install C:\Github\ANYfeSolver\packages\results
+python -m pip install -e C:\Github\ANYfeSolver
 ```
 
-### Release order for the 0.4 line
+### Installation and migration
 
-ANYsolver 0.4 depends on compatible extracted packages. Publish them to the
-same target index in this order:
+`ANYfeSolver` 0.5 uses the independent `ANYfeSolver-results` 2.2 runtime, `ANYmaterial` 0.2, `ANYmesher` 0.4–0.5 and `ANYfileio` 0.3.2 or later in the 0.3 line. Install the results distribution alone for NumPy-only offline recovery. The [migration guide](MIGRATION.md) covers renamed Python imports and upgrades from `ANYsolver`.
 
-1. `ANYmaterial` and `ANYmesher` (either order).
-2. `ANYfileio`, which depends on both.
-3. `ANYsolver` 0.4.x, which depends on all three.
+For the marine-excitation or marine-morison extra, install the corresponding ecosystem sibling checkout before requesting the extra:
 
-Apply that order separately to TestPyPI and PyPI. The compatible sibling
-releases are available on PyPI. The publish workflow checks the selected
-target index and refuses to build or upload ANYsolver unless
-`ANYmaterial>=0.1,<0.2`, `ANYmesher>=0.1,<0.4`, and
-`ANYfileio>=0.1,<0.3` can already be resolved there. CI also uses pinned sibling
-source checkouts to exercise the exact compatibility graph.
+```powershell
+python -m pip install -e C:\Github\ANYhydro
+python -m pip install 'ANYfeSolver[marine-excitation]'
 
-ANYsolver uses the neutral mesh, panel-generation, quality, and section APIs
-available in ANYmesher 0.1 and retains compatibility through the additive 0.3
-line. The strict `<0.4` cap prevents an unqualified major contract change.
-The endpoint compatibility job exercises pinned 0.1.0 and 0.2.1 installed
-wheels on Windows AMD64 CPython 3.13; that focused job is not a wider platform
-or interpreter qualification claim.
+python -m pip install -e C:\Github\ANYloads
+python -m pip install 'ANYfeSolver[marine-morison]'
+```
 
 Core analyses and the solver-owned generated-geometry workflow are available
-directly from `anysolver`; the lightweight normalized flat-panel and cylinder
-facade is exposed through `anysolver.runtime`:
+directly from `anyfesolver`; the lightweight normalized flat-panel and cylinder
+facade is exposed through `anyfesolver.runtime`:
 
 ```python
-from anysolver import (
+from anyfesolver import (
     FEModel,
     GeneratedGeometryFEMConfig,
     LoadCase,
     run_generated_geometry_fem,
     solve_linear,
 )
-from anysolver.runtime import (
+from anyfesolver.runtime import (
     LightweightFEMConfig,
     resolve_runtime_analysis,
     run_production_fem,
@@ -113,7 +104,7 @@ and release gates.
 | Area | Implemented functionality |
 | --- | --- |
 | Model | Six DOFs per node; SI units; materials, density, nodal mass, shell/beam topology, supports, and MPC constraints. `audit_constraints()` reports equation provenance, feasibility, structural rank, dependency depth, and independent DOFs before assembly. |
-| Materials | Constitutive objects, elastic reductions, Hill-48 yield data, and DNV curves come from `ANYmaterial`; ANYsolver owns their use in element integration and nonlinear solution. Orthotropic shells support material direction/angle and Hill-48 plasticity; orthotropic beams use local material axes and an explicit section torsional rigidity. |
+| Materials | Constitutive objects, elastic reductions, Hill-48 yield data, and DNV curves come from `ANYmaterial`; ANYfeSolver owns their use in element integration and nonlinear solution. Orthotropic shells support material direction/angle and Hill-48 plasticity; orthotropic beams use local material axes and an explicit section torsional rigidity. |
 | Shells | 3- and 6-node triangles; 4-node MITC-style and 8-node Mindlin-Reissner quadrilaterals; isotropic, rotated orthotropic, or pre-integrated generalized `A/B/D/As` section stiffness. Generalized sections retain membrane-bending coupling and recover exact strains/resultants without inventing ply stresses. |
 | Beams | 2-node and straight-sided 3-node Timoshenko beams with axial, biaxial bending, direction-dependent shear, torsion, consistent/lumped mass options, geometric stiffness, optional fiber-section plasticity, or a fully coupled local 6x6 generalized section law. |
 | Coupling | Coincident or eccentric beam-shell MPCs, with explicit `rotating_eccentricity` selection; see [connection options and limits](docs/BEAM_SHELL_CONNECTION.md). |
@@ -131,7 +122,7 @@ and release gates.
 | Imperfections | Stress-free eigenmode, member-bow, plate-wave, flange-twist, explicit, and composite imperfection fields. |
 | Initial fields | Element-local shell membrane/bending stress or membrane/curvature prestrain, arbitrary configured beam-fiber stress/prestrain distributions, zero-external-load equilibration, admissibility checks, and provenance kept separate from geometric imperfections. |
 | Workflows | Normalized generated geometry to static/prestress/buckling; traceable static-to-buckling-to-imperfect nonlinear-capacity workflow. |
-| Interchange | `ANYfileio` owns SESAM/CalculiX parsing, validation, neutral semantics, and guarded writing. ANYsolver retains only neutral-record-to-`FEModel` adapters and the legacy compatibility imports introduced for the 0.2 line. |
+| Interchange | `ANYfileio` owns SESAM/CalculiX parsing, validation, neutral semantics, and guarded writing. ANYfeSolver retains only neutral-record-to-`FEModel` adapters and the legacy compatibility imports introduced for the 0.2 line. |
 | Results | Result provenance; unified elastic or committed shell-layer/beam-fiber stress recovery; Gauss-point membrane-force and bending-moment resultants for generated-geometry prestress; guarded Zienkiewicz-Zhu-style patch recovery for qualified shell neighborhoods; selected recovery; reaction filtering; validation diagnostics; deterministic baselines; benchmarks; and generated qualification reports. |
 | External verification | Reproducible CalculiX model flattening, opt-in isolated execution, solver provenance, and tolerance-controlled analytical comparison, using `ANYfileio` for deck writing and FRD/DAT parsing. Deck-only reports remain explicitly `not_executed` and make no numerical-agreement claim. |
 
@@ -165,7 +156,7 @@ Applications that expect a large qualified-Q4 nonlinear analysis can move the
 first-use JIT cost out of the interactive solve path with an explicit warm-up:
 
 ```python
-from anysolver import warm_fe_solver_kernels
+from anyfesolver import warm_fe_solver_kernels
 
 warm_fe_solver_kernels(include_nonlinear_static=True)
 ```

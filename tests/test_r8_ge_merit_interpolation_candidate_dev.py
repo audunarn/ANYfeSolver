@@ -6,12 +6,12 @@ from types import SimpleNamespace as NS
 import numpy as np
 import pytest
 from scipy.sparse import eye,diags
-from anysolver import _stiffened_shell_displacement_corrector as corrector
-from anysolver import _stiffened_shell_displacement_control as fixed
-from anysolver import _stiffened_shell_displacement_adaptive as adaptive
-from anysolver import _stiffened_shell_affine_endpoint as endpoint
-from anysolver import stiffened_shell as ss
-from anysolver._stiffened_shell_ge_checkpoint_binary import COMPENSATED_MAGIC
+from anyfesolver import _stiffened_shell_displacement_corrector as corrector
+from anyfesolver import _stiffened_shell_displacement_control as fixed
+from anyfesolver import _stiffened_shell_displacement_adaptive as adaptive
+from anyfesolver import _stiffened_shell_affine_endpoint as endpoint
+from anyfesolver import stiffened_shell as ss
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import COMPENSATED_MAGIC
 
 POLICY='PAIRED_FIXED_WORK_QUADRATIC_V1'
 SEED=COMPENSATED_MAGIC+b'injected original seed'
@@ -72,7 +72,7 @@ def test_source_corrector_actual_acceptance_full_first_and_default(monkeypatch):
     assert caught.value.detail.evaluations==10
 
 def test_source_domain_fallback_and_exception_propagation(monkeypatch):
-    from anysolver._stiffened_shell_ge_finite_experimental import _RotationStepTooLarge
+    from anyfesolver._stiffened_shell_ge_finite_experimental import _RotationStepTooLarge
     owner,driver,amounts=fixture(monkeypatch);original=driver._advance
     def domain(s,d,t):
         if t==1.:
@@ -89,7 +89,7 @@ def test_source_domain_fallback_and_exception_propagation(monkeypatch):
         assert owner._generation==9 and not amounts
 
 def test_source_cancellation_and_stale_corrector(monkeypatch):
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.control import CancellationToken,SolveCancelled
     owner,driver,amounts=fixture(monkeypatch)
     token=CancellationToken();token.cancel('prepared cancellation')
     with pytest.raises(SolveCancelled):run(driver,POLICY,cancellation_token=token)
@@ -121,8 +121,8 @@ def test_source_fixed_caller_forwards_selected_only_and_refuses(monkeypatch):
     legacy=replace(control,merit_globalization=None)
     with pytest.raises(Reached):fixed.solve(owner,(),(-1.,),legacy,max_iterations=20,max_backtracks=8)
     assert 'merit_globalization' not in calls[-1]
-    from anysolver._stiffened_shell_ge_experimental import ExperimentalGEAnalysis
-    from anysolver._stiffened_shell_f06_increment_arithmetic import POLICY as ARITHMETIC
+    from anyfesolver._stiffened_shell_ge_experimental import ExperimentalGEAnalysis
+    from anyfesolver._stiffened_shell_f06_increment_arithmetic import POLICY as ARITHMETIC
     owner._beam_parts=((NS(operator=NS(arithmetic_policy=ARITHMETIC)),None,None),)
     owner._require_open=lambda:None;owner._require_stateful_scope=lambda:None
     owner._require_distributing_reference_only=lambda *a:None
@@ -164,7 +164,7 @@ def test_source_pending_restart_policy_refusal(monkeypatch):
     assert owner._displacement_adaptive is before and owner._generation==9 and not amounts
 
 def test_source_public_restore_selected_dispatch(monkeypatch):
-    from anysolver._stiffened_shell_ge_experimental import ExperimentalGEAnalysis
+    from anyfesolver._stiffened_shell_ge_experimental import ExperimentalGEAnalysis
     owner,driver,amounts=fixture(monkeypatch)
     owner._require_open=lambda:None;owner._require_stateful_scope=lambda:None;owner._unsupported_modes=()
     raw=adaptive.encode(owner._identity,context(owner,POLICY),SEED,paired=True)
@@ -175,7 +175,7 @@ def test_source_public_restore_selected_dispatch(monkeypatch):
     assert calls[0][0]==(owner,raw) and owner._finite_driver is None
     monkeypatch.undo()
     owner,driver,amounts=fixture(monkeypatch)
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.control import CancellationToken,SolveCancelled
     from dataclasses import dataclass
     @dataclass(frozen=True)
     class Result:

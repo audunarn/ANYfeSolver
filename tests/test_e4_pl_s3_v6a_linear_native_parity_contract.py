@@ -49,11 +49,11 @@ def test_v6a_contract_binds_exact_implementation_files() -> None:
         ).stdout
         digest = hashlib.sha256(payload).hexdigest().upper()
         checkout_hash_incident = {
-            "src/anysolver/__init__.py": (
+            "src/anyfesolver/__init__.py": (
                 28467,
                 "4BD041459EF7889C77AEE0DC614CD74FB4135239231DFD948F91BDBEE3A6F410",
             ),
-            "src/anysolver/elements.py": (
+            "src/anyfesolver/elements.py": (
                 243788,
                 "B105A62B32D0EB4855E538491FE6B46194F8E43A069591CCEB46D86B157B9053",
             ),
@@ -94,7 +94,7 @@ def test_v6a_contract_is_implementation_only_and_preserves_defaults() -> None:
 
 
 def test_v2d_module_does_not_import_rejected_v1_or_q4_mechanics() -> None:
-    module = ROOT / "src/anysolver/e4_pl_s3_v2d_element.py"
+    module = ROOT / "src/anyfesolver/e4_pl_s3_v2d_element.py"
     tree = ast.parse(module.read_text(encoding="utf-8"))
     imports: set[str] = set()
     for node in ast.walk(tree):
@@ -103,7 +103,7 @@ def test_v2d_module_does_not_import_rejected_v1_or_q4_mechanics() -> None:
         elif isinstance(node, ast.ImportFrom) and node.module:
             imports.add(node.module)
     assert "e4_pl_s3_element" not in imports
-    assert "anysolver.e4_pl_s3_element" not in imports
+    assert "anyfesolver.e4_pl_s3_element" not in imports
     source = module.read_text(encoding="utf-8")
     assert "QualifiedE4PLS3ShellElement" not in source
     assert not any(

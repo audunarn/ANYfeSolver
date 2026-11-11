@@ -6,12 +6,12 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver import solve_static_nonlinear
-from anysolver.control import CancellationToken
-from anysolver.element_capabilities import ElementCapabilityError
-from anysolver.general_contact import linearized_pivot
-from anysolver.general_contact.core import contact_scope
-from anysolver.general_contact.supported_schur import SupportedSchurProposal
+from anyfesolver import solve_static_nonlinear
+from anyfesolver.control import CancellationToken
+from anyfesolver.element_capabilities import ElementCapabilityError
+from anyfesolver.general_contact import linearized_pivot
+from anyfesolver.general_contact.core import contact_scope
+from anyfesolver.general_contact.supported_schur import SupportedSchurProposal
 from scripts.general_contact_d1_finite_area_load import build_case
 
 

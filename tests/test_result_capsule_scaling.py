@@ -8,9 +8,9 @@ retained after the sink has consumed it.
 import numpy as np
 import pytest
 
-from anysolver import (PatternCase, RecoveryCapsuleError, RecoveryConfig,
+from anyfesolver import (PatternCase, RecoveryCapsuleError, RecoveryConfig,
                        prepare_static_response_evaluator)
-from anysolver.result_capsule import _CapsuleExport, _Layout
+from anyfesolver.result_capsule import _CapsuleExport, _Layout
 from test_prepared_static_evaluator import _shell_case, _shell_model
 
 

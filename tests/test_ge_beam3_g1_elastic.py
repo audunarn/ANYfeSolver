@@ -1,10 +1,10 @@
 """G1a material/complementary checks; independent station KKT reconstruction."""
 import numpy as np
 import pytest
-from anysolver._ge_beam3_g1_elastic import ElasticSection
-from anysolver._ge_beam3_g1_operator import ElasticOperator, schur, local_solve
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
-from anysolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._ge_beam3_g1_elastic import ElasticSection
+from anyfesolver._ge_beam3_g1_operator import ElasticOperator, schur, local_solve
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+from anyfesolver._ge_beam3_p5.algebra import rotation
 
 
 def section(dense=False):
@@ -132,6 +132,6 @@ def test_isotropic_adapter_boolean_and_overflow_rejection():
 
 
 def test_unhealthy_factorization_is_not_warning_only():
-    from anysolver._ge_beam3_g1_elastic import solve
+    from anyfesolver._ge_beam3_g1_elastic import solve
     with pytest.raises(np.linalg.LinAlgError):
         solve(np.diag([1., 1e-30]), np.ones(2))

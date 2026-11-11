@@ -3,14 +3,14 @@
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, DisplacementControl, LoadCase,
     RigidContactBody, create_shell_element, solve_static_nonlinear,
     validate_general_contact,
 )
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.sphere import (
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.sphere import (
     _GapCertificateLimitError, _SphereShellManager,
 )
 

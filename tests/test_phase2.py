@@ -2,10 +2,10 @@ import numpy as np
 import pytest
 from scipy.sparse.linalg import spsolve
 
-from anysolver.fe_core import FEModel
-from anysolver.elements import BeamElement, create_shell_element
-from anysolver.boundary import FixedSupport, LoadCase, BoundaryCondition
-from anysolver.assembly import build_constraint_transformation, solve_linear
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement, create_shell_element
+from anyfesolver.boundary import FixedSupport, LoadCase, BoundaryCondition
+from anyfesolver.assembly import build_constraint_transformation, solve_linear
 
 
 def test_multilevel_mpc_cantilever():
@@ -180,7 +180,7 @@ def test_global_stress_recovery():
         u[dofs[0]] = eps_xx * x  # ux
         u[dofs[1]] = eps_yy * y  # uy
 
-    from anysolver.assembly import compute_stresses
+    from anyfesolver.assembly import compute_stresses
 
     # Compute stresses with return_global=True
     stresses = compute_stresses(model, u, return_global=True)

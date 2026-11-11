@@ -10,12 +10,12 @@ budget; the outer portable-CI shard budget stays authoritative.
 """
 import pytest
 
-import anysolver._ge_beam3_retained_fibre_state as fibre_state
-from anysolver._ge_beam3_effective_deadline import (
+import anyfesolver._ge_beam3_retained_fibre_state as fibre_state
+from anyfesolver._ge_beam3_effective_deadline import (
     SCALE_VARIABLE, deadline_scale, effective_deadline_seconds)
-from anysolver._ge_beam3_retained_fibre_state import Context
-from anysolver._ge_beam3_seeded_load_program import ForceProgram
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver._ge_beam3_retained_fibre_state import Context
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_ge_beam3_retained_fibre import make_model
 
 

@@ -4,7 +4,7 @@ from decimal import Decimal as D, localcontext
 import json
 import numpy as np
 import pytest
-from anysolver._ge_beam3_p5.section import SectionHistory
+from anyfesolver._ge_beam3_p5.section import SectionHistory
 from docs.reference_cases.ge_beam3_station_resultant_cell import StationResultantCell, pair
 from docs.reference_cases.ge_beam3_decimal_cell_force_audit import audit
 from test_ge_beam3_plastic_cell_conjugate_probe import build

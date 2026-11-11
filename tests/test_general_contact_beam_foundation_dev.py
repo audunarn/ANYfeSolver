@@ -16,11 +16,11 @@ from scipy.integrate import quad
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/"docs/d1_review_support"))
 from d3_beam_foundation_reference import cantilever_foundation_reference
 
-from anysolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
                        ContactSolverSettings, ContactSurface, LoadCase,
                        RigidContactBody, solve_static_nonlinear)
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
 
 
 RADIUS, YOUNG, NU, LENGTH = .01, 1.e7, .3, 1.

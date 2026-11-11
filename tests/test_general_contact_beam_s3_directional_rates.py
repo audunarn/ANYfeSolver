@@ -6,7 +6,7 @@ from decimal import Decimal,localcontext
 import numpy as np
 import pytest
 from examples.general_contact_beam_s3_transient_directional import build,run
-from anysolver.general_contact.beam_s3_directional_rates import (
+from anyfesolver.general_contact.beam_s3_directional_rates import (
     DirectionalBeamS3Manager,exact_gap_polynomial,directional_coefficients,
     directional_operator,solve_directional_velocity)
 
@@ -44,8 +44,8 @@ def test_directional_oracle_and_actual_first_touch_restart():
     assert result.contact[-1].active_line_length>0 and result.contact[-1].minimum_gap>=-1.e-5
     assert resumed.restart_checkpoint==result.restart_checkpoint
     np.testing.assert_array_equal(resumed.displacements,result.displacements[1:])
-    from anysolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
-    from anysolver.dynamics import TransientConfig
+    from anyfesolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
+    from anyfesolver.dynamics import TransientConfig
     m,d,s,v=build()
     with pytest.raises(ValueError,match='analysis|version|incompatible'):
         solve_transient_contact(m,d,TransientConfig(1.e-5,3.e-5,initial_velocity=v),contact_settings=s,
@@ -60,8 +60,8 @@ def test_directional_oracle_and_actual_first_touch_restart():
 
 
 def test_legacy_load_constructor_directional_controls_and_null_error_transfer():
-    from anysolver.general_contact.transient import ContactNodalLoadHistory,ContactTransientSolverControls
-    from anysolver.general_contact.beam_s3_directional_rates import _null_error_factor
+    from anyfesolver.general_contact.transient import ContactNodalLoadHistory,ContactTransientSolverControls
+    from anyfesolver.general_contact.beam_s3_directional_rates import _null_error_factor
     history=ContactNodalLoadHistory(((0.,0.),(1.,1.)))
     assert history.factor(.5)==.5
     assert ContactTransientSolverControls().allow_directional_beam_s3_dev is False

@@ -14,7 +14,7 @@ import sys
 import pytest
 
 import examples.general_contact_s3_friction_physical_path as cli
-from anysolver.control import SolveCancelled
+from anyfesolver.control import SolveCancelled
 
 CHECKPOINT = {"schema": "ANYSOLVER_NONLINEAR_RESTART_V2", "version": 1,
               "displacements": [0.0, 1.0, 2.0],

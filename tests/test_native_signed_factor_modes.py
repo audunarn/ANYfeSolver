@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 from scipy import linalg
-from anysolver._native_signed_factor_modes import solve_signed_factor_modes
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver._native_signed_factor_modes import solve_signed_factor_modes
+from anyfesolver.control import CancellationToken, SolveCancelled
 
 
 def test_negative_high_contrast_mode_and_mass_normalized_eigenvector():
@@ -48,7 +48,7 @@ def test_signed_trace_elimination_and_modes_match_moderate_dense_pencil():
 
 def test_cancelled_input_is_rejected_before_numerical_work(monkeypatch):
     token = CancellationToken(); token.cancel('test cancellation')
-    import anysolver._native_signed_factor_modes as kernel
+    import anyfesolver._native_signed_factor_modes as kernel
     monkeypatch.setattr(kernel, '_reduce', lambda *a: pytest.fail('numerics after cancellation'))
     with pytest.raises(SolveCancelled):
         kernel.solve_signed_factor_modes(np.eye(2), np.zeros((2, 2)), np.eye(2), (0, 1), (),
@@ -67,7 +67,7 @@ def test_bad_inputs_fail_closed(mutation):
 
 
 def test_cancellation_inside_bracketing_stops_before_mode_extraction(monkeypatch):
-    import anysolver._native_signed_factor_modes as kernel
+    import anyfesolver._native_signed_factor_modes as kernel
     token = CancellationToken(); real = kernel._inertia; calls = []
     def cancel(*a):
         calls.append(1)
@@ -81,7 +81,7 @@ def test_cancellation_inside_bracketing_stops_before_mode_extraction(monkeypatch
 
 
 def test_cooperative_time_limit_stops_before_reduction(monkeypatch):
-    import anysolver._native_signed_factor_modes as kernel
+    import anyfesolver._native_signed_factor_modes as kernel
     times = iter((0., 601.)); monkeypatch.setattr(kernel, 'monotonic', lambda: next(times))
     monkeypatch.setattr(kernel, '_reduce', lambda *a: pytest.fail('reduction after deadline'))
     with pytest.raises(ValueError, match='time limit'):
@@ -90,7 +90,7 @@ def test_cooperative_time_limit_stops_before_reduction(monkeypatch):
 
 
 def test_caller_mutation_does_not_change_owned_snapshot(monkeypatch):
-    import anysolver._native_signed_factor_modes as kernel
+    import anyfesolver._native_signed_factor_modes as kernel
     f = np.diag([1., 2.]); g = np.zeros((2, 2)); m = np.eye(2); real = kernel._reduce
     def mutate(*a):
         f[:] = 100.; g[:] = -100.; m[:] = 0.

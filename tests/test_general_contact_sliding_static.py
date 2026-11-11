@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     ContactDefinition,
     ContactInteraction,
@@ -15,7 +15,7 @@ from anysolver import (
     solve_static_nonlinear,
     validate_general_contact,
 )
-from anysolver.fe_core import FEModel
+from anyfesolver.fe_core import FEModel
 
 
 def test_restricted_sliding_pair_runs_through_nonlinear_static():
@@ -106,11 +106,11 @@ def test_restricted_sliding_pair_runs_through_nonlinear_static():
 
 def test_overlap_aware_swept_gap_excludes_distant_deep_source_nodes():
     """Independent linear height field is safe throughout nonzero sliding."""
-    from anysolver.general_contact.overlap import PlanarFace
-    from anysolver.general_contact.moving import (
+    from anyfesolver.general_contact.overlap import PlanarFace
+    from anyfesolver.general_contact.moving import (
         bound_swept_moving_mortar_gap, certify_swept_moving_mortar_gap,
     )
-    from anysolver.general_contact.sliding import _RestrictedSlidingPairFEManager
+    from anyfesolver.general_contact.sliding import _RestrictedSlidingPairFEManager
 
     source = PlanarFace((1, 1), np.array(
         ((0., 0., 0.), (2., 0., 0.), (2., 1., 0.), (0., 1., 0.))))
@@ -155,8 +155,8 @@ def test_overlap_aware_swept_gap_excludes_distant_deep_source_nodes():
 
 
 def test_overlap_aware_swept_gap_refuses_hidden_temporal_penetration():
-    from anysolver.general_contact.overlap import PlanarFace
-    from anysolver.general_contact.moving import (
+    from anyfesolver.general_contact.overlap import PlanarFace
+    from anyfesolver.general_contact.moving import (
         certify_moving_mortar_gap, certify_swept_moving_mortar_gap,
     )
     source = PlanarFace((1, 1), np.array(
@@ -179,8 +179,8 @@ def test_overlap_aware_swept_gap_refuses_hidden_temporal_penetration():
 
 
 def test_overlap_aware_swept_gap_keeps_nonaffine_q4_and_s3_interpolation():
-    from anysolver.general_contact.overlap import PlanarFace
-    from anysolver.general_contact.moving import certify_swept_moving_mortar_gap
+    from anyfesolver.general_contact.overlap import PlanarFace
+    from anyfesolver.general_contact.moving import certify_swept_moving_mortar_gap
     source = PlanarFace((1, 1), np.array(
         ((0., 0., 0.), (2., 0., 0.), (2.5, 1., 0.), (0., 1., 0.))))
     target = PlanarFace((2, 1), np.array(
@@ -198,8 +198,8 @@ def test_overlap_aware_swept_gap_keeps_nonaffine_q4_and_s3_interpolation():
 
 
 def test_overlap_aware_swept_gap_budget_exhaustion_is_non_success():
-    from anysolver.general_contact.overlap import PlanarFace
-    from anysolver.general_contact.moving import certify_swept_moving_mortar_gap
+    from anyfesolver.general_contact.overlap import PlanarFace
+    from anyfesolver.general_contact.moving import certify_swept_moving_mortar_gap
     face = PlanarFace((1, 1), np.array(
         ((0., 0., 0.), (1., 0., 0.), (1., 1., 0.), (0., 1., 0.))))
     zero = np.zeros(3)
@@ -216,8 +216,8 @@ def test_overlap_aware_swept_gap_budget_exhaustion_is_non_success():
 
 
 def test_swept_gap_fast_path_refuses_catastrophic_normal_cancellation():
-    from anysolver.general_contact.overlap import PlanarFace
-    from anysolver.general_contact.moving import (
+    from anyfesolver.general_contact.overlap import PlanarFace
+    from anyfesolver.general_contact.moving import (
         bound_swept_moving_mortar_gap, certify_swept_moving_mortar_gap,
     )
     xy = np.array(((0., 0.), (1., 0.), (1., 1.), (0., 1.)))
@@ -235,8 +235,8 @@ def test_swept_gap_fast_path_refuses_catastrophic_normal_cancellation():
 
 
 def test_swept_gap_fast_path_refuses_tiny_closing_overlap():
-    from anysolver.general_contact.overlap import PlanarFace
-    from anysolver.general_contact.moving import (
+    from anyfesolver.general_contact.overlap import PlanarFace
+    from anyfesolver.general_contact.moving import (
         bound_swept_moving_mortar_gap, certify_swept_moving_mortar_gap,
     )
     right = 1e-4

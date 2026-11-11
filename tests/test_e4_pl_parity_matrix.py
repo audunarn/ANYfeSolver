@@ -4,8 +4,8 @@ import ast
 import json
 from pathlib import Path
 
-from anysolver import QualifiedE4PLShellElement
-from anysolver.elements import LegacyShellElement, create_element
+from anyfesolver import QualifiedE4PLShellElement
+from anyfesolver.elements import LegacyShellElement, create_element
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,7 +13,7 @@ MATRIX = ROOT / "docs" / "reference_cases" / "e4_pl_q1j_parity_matrix.json"
 
 
 def _public_shell_api() -> set[str]:
-    tree = ast.parse((ROOT / "src" / "anysolver" / "elements.py").read_text(encoding="utf-8"))
+    tree = ast.parse((ROOT / "src" / "anyfesolver" / "elements.py").read_text(encoding="utf-8"))
     result: set[str] = set()
     for node in tree.body:
         if isinstance(node, ast.ClassDef) and node.name in {"Element", "ShellElement"}:
@@ -71,7 +71,7 @@ def test_every_required_parity_item_is_closed_at_default_activation() -> None:
     rollback = create_element("legacy-shell", 2, [1, 2, 3, 4], "steel")
     assert type(default) is QualifiedE4PLShellElement
     assert type(rollback) is LegacyShellElement
-    assert QualifiedE4PLShellElement.__module__ == "anysolver.e4_pl_element"
+    assert QualifiedE4PLShellElement.__module__ == "anyfesolver.e4_pl_element"
 
 
 def test_warped_and_performance_rows_are_closed_before_activation() -> None:
@@ -92,8 +92,8 @@ def test_runtime_shell_dispatch_accepts_subclasses_without_exact_name_checks() -
     matrix = json.loads(MATRIX.read_text(encoding="utf-8"))
     by_id = {row["id"]: row for row in matrix["capabilities"]}
     assert by_id["runtime_exact_class_name_dispatch"]["status"] == "CLOSED_ISINSTANCE_DISPATCH"
-    runtime_source = (ROOT / "src" / "anysolver" / "runtime.py").read_text(encoding="utf-8")
-    test_case_source = (ROOT / "src" / "anysolver" / "test_cases.py").read_text(encoding="utf-8")
+    runtime_source = (ROOT / "src" / "anyfesolver" / "runtime.py").read_text(encoding="utf-8")
+    test_case_source = (ROOT / "src" / "anyfesolver" / "test_cases.py").read_text(encoding="utf-8")
     assert '.__class__.__name__ != "ShellElement"' not in runtime_source
     assert '.__class__.__name__ == "ShellElement"' not in runtime_source
     assert ".__class__.__name__ == 'ShellElement'" not in test_case_source

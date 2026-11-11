@@ -14,12 +14,12 @@ from pathlib import Path
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_pose_joint import RigidPoseJoint
-from anysolver._ge_beam3_variational_shell import deformation
-from anysolver.e4_pl_s3_v2d_state import canonical_json_bytes
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.material_curves import DNVC208MaterialCurve
+from anyfesolver._ge_beam3_pose_joint import RigidPoseJoint
+from anyfesolver._ge_beam3_variational_shell import deformation
+from anyfesolver.e4_pl_s3_v2d_state import canonical_json_bytes
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.material_curves import DNVC208MaterialCurve
 
 
 REFERENCE = np.array(((0., 0., 0.), (1.2, .05, 0.), (.2, .95, 0.)))

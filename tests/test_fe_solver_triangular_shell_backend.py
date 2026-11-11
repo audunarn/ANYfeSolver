@@ -5,8 +5,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver import runtime as runtime_fe_solver
-from anysolver import (
+from anyfesolver import runtime as runtime_fe_solver
+from anyfesolver import (
     AnyStructureFEMConfig,
     FEModel,
     LoadCase,

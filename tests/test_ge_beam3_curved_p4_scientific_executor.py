@@ -445,7 +445,7 @@ def test_authority_scope_chain_and_hash_bindings_are_closed(
     elif mutation == "relative_location":
         authority["locations"]["output"] = "relative/result.json"
     elif mutation == "harness_path":
-        authority["harness"]["runner"]["path"] = "src/anysolver/elements.py"
+        authority["harness"]["runner"]["path"] = "src/anyfesolver/elements.py"
     elif mutation == "manifest_hash":
         authority["harness"]["authority_manifest_sha256"] = "F" * 64
     elif mutation == "harness_hash":
@@ -589,7 +589,7 @@ def test_executor_is_stdlib_only_and_cannot_author_request_or_authority() -> Non
         "signal", "stat", "subprocess", "sys", "time", "typing",
     }
     assert imports <= allowed
-    assert "numpy" not in imports and "anysolver" not in imports
+    assert "numpy" not in imports and "anyfesolver" not in imports
     assert "--create-authority" not in source
     assert "--create-request" not in source
     # The official request helper may be named in a comment, but the executor

@@ -8,7 +8,7 @@ capture,activity,identity,unchanged,exact=(_h[x] for x in ('capture','activity',
 def inputs():
  from scripts.r8_f06_paired_displacement_dev import DOC,INPUT,INPUT_SHA,write
  from scripts.r8_f06_cyclic_material_dev import definition,actions
- from anysolver import stiffened_shell as ss
+ from anyfesolver import stiffened_shell as ss
  plan=json.loads((DOC/'PHYSICAL_ROUTE.json').read_text());owner=ss.create_analysis(definition=definition('coupled'))
  return owner,actions('coupled'),ss.DisplacementControl('shell',2,1,force_seed_sha256=INPUT_SHA),plan['target'],INPUT,DOC,write
 
@@ -49,8 +49,8 @@ def shared_arrays(owner):
 def test_source_options_and_refusals():
  import numpy as np
  from dataclasses import replace
- from anysolver import stiffened_shell as ss
- from anysolver._stiffened_shell_displacement_checkpoint import identities,_layout,PAIRED_KIND
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._stiffened_shell_displacement_checkpoint import identities,_layout,PAIRED_KIND
  owner,loads,control,target,path,doc,write=inputs();out=Path(os.environ['F06_PAIRED_DISPLACEMENT_OUTPUT'])
  try:
   for value in ('',True,'A'*64,'g'*64,[]):
@@ -70,7 +70,7 @@ def test_source_options_and_refusals():
 
 @pytest.mark.parametrize('visit',(1,2))
 def test_source_actual_trial_cancellation(visit):
- from anysolver.control import CancellationToken,SolveCancelled
+ from anyfesolver.control import CancellationToken,SolveCancelled
  owner,loads,control,target,path,doc,write=inputs();out=Path(os.environ['F06_PAIRED_DISPLACEMENT_OUTPUT'])
  class Cancel(CancellationToken):
   def __init__(self):super().__init__();self.visits=0
@@ -89,11 +89,11 @@ def test_source_actual_trial_cancellation(visit):
 def test_history():
  import numpy as np,sys
  from dataclasses import asdict
- from anysolver._stiffened_shell_displacement_checkpoint import decode_snapshot
+ from anyfesolver._stiffened_shell_displacement_checkpoint import decode_snapshot
  owner,loads,control,target,path,doc,write=inputs();out=Path(os.environ['F06_PAIRED_DISPLACEMENT_OUTPUT']);accepted=[]
  try:
   owner.restore(path.read_bytes());before=identity(owner);controller=owner._finite_driver._adaptive_state;initial=save(out,'initial',owner)
-  import anysolver._stiffened_shell_displacement_control as dc
+  import anyfesolver._stiffened_shell_displacement_control as dc
   original_encode=dc.encode_snapshot
   def persisted(*args,**kwargs):
    # Preserve the complete prospective result before publication/replay assertions.
@@ -126,10 +126,10 @@ def test_history():
 
 def test_installed_restore_rebase_and_refusals():
  import numpy as np
- from anysolver import stiffened_shell as ss
- from anysolver.control import CancellationToken,SolveCancelled
- from anysolver._stiffened_shell_displacement_checkpoint import decode_snapshot,encode_snapshot
- from anysolver._stiffened_shell_displacement_control import publish
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver.control import CancellationToken,SolveCancelled
+ from anyfesolver._stiffened_shell_displacement_checkpoint import decode_snapshot,encode_snapshot
+ from anyfesolver._stiffened_shell_displacement_control import publish
  from scripts.r8_f06_cyclic_material_dev import definition
  owner,loads,control,target,path,doc,write=inputs();out=Path(os.environ['F06_PAIRED_DISPLACEMENT_OUTPUT']);raw=(doc/'attempt-installed-history1/accepted.bin').read_bytes()
  try:

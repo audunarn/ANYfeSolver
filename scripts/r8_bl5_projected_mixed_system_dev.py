@@ -10,13 +10,13 @@ import json
 from pathlib import Path
 import time
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 from scipy import linalg, sparse
 from scipy.sparse.linalg import splu
 from threadpoolctl import threadpool_info
-from anysolver._stiffened_shell_ge_experimental import _linear_equilibrium, _scaled_constraint_gap
+from anyfesolver._stiffened_shell_ge_experimental import _linear_equilibrium, _scaled_constraint_gap
 from scripts.r8_bl5_projected_density_patch_dev import compile_saved_projection, IDENTITY
 
 sha=lambda p:hashlib.sha256(Path(p).read_bytes()).hexdigest()
@@ -159,7 +159,7 @@ def evaluate(root, output):
         scope='one saved coarse virgin native mixed-system discriminator; no material-history parity, growing-space, locking, accuracy or F03 acceptance',
         candidate=IDENTITY,source_sha256=sha(__file__),source_files=source_files,
         helpers={name:sha(Path(__file__).parent/name) for name in ('b3_e4_bl5_mechanical_kernel_dev.py','r8_bl5_projected_density_patch_dev.py')},
-        anysolver_import=anysolver.__file__,numba_threads=numba.get_num_threads(),jit_disabled=bool(numba.config.DISABLE_JIT),
+        anyfesolver_import=anyfesolver.__file__,numba_threads=numba.get_num_threads(),jit_disabled=bool(numba.config.DISABLE_JIT),
         pools=threadpool_info(),physical_order=len(x),native_supported_order=len(free),constraint_rows=c.shape[0],
         original_constraint_parity=original_parity,local_blocks=local_info,
         work_pullback_relative=work_parity,constraint_pullback_relative=constraint_parity,

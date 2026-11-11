@@ -3,11 +3,11 @@ from dataclasses import replace
 from math import fsum
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_displacement_checkpoint import decode_snapshot
-from anysolver._stiffened_shell_ge_checkpoint_binary import decode, encode
-from anysolver._stiffened_shell_beam_history import shapes
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_displacement_checkpoint import decode_snapshot
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode, encode
+from anyfesolver._stiffened_shell_beam_history import shapes
 from test_stiffened_shell_native_point_displacement import (
     model, owner, compare, ACTIONS, DIRECTION, CONTROL, OPTIONS, HISTORICAL_POLICY)
 from test_stiffened_shell_native_s3_displacement_admission import compare_generalized
@@ -51,7 +51,7 @@ def test_native_fibre_s3_flow_cancel_restore_reject(request, monkeypatch, tmp_pa
     if family == 'mixed':
         compare_generalized(prefix.beam_generalized_material, restored.beam_generalized_material)
     (tmp_path/'fibre-s3-prefix.checkpoint').write_bytes(saved)
-    import anysolver._stiffened_shell_displacement_corrector as corrector
+    import anyfesolver._stiffened_shell_displacement_corrector as corrector
     with monkeypatch.context() as patch:
         patch.setattr(corrector, 'bordered_correction', lambda matrix, *args: (np.zeros(matrix.shape[0]), 0.))
         with pytest.raises(ss.DisplacementCorrectorFailure):
@@ -91,7 +91,7 @@ def test_legacy_fibre_s3_force_seed_does_not_upgrade_arithmetic(request, monkeyp
     legacy.restore(historical)
     assert legacy.checkpoint() == historical and not legacy._finite_driver._stable_s3
     before = legacy.recover()
-    import anysolver._stiffened_shell_displacement_control as control_module
+    import anyfesolver._stiffened_shell_displacement_control as control_module
     def forbidden(*args, **kwargs):
         raise AssertionError('incompatible seed reached checkpoint capture or trial')
     with monkeypatch.context() as patch:

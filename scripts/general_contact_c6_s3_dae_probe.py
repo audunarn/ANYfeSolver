@@ -8,12 +8,12 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tests"))
 from test_general_contact_transient_plane import _guided_s3_descriptor_impact
 
-from anysolver import ContactTransientSolverControls, TransientConfig, solve_transient_contact
-from anysolver.algebraic_dynamics import build_declared_algebraic_basis
-from anysolver.assembly import assemble_mass_matrix, build_constraint_transformation
-from anysolver.general_contact.core import contact_scope
-from anysolver.matrix_assembly import assemble_stiffness_matrix
-from anysolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver import ContactTransientSolverControls, TransientConfig, solve_transient_contact
+from anyfesolver.algebraic_dynamics import build_declared_algebraic_basis
+from anyfesolver.assembly import assemble_mass_matrix, build_constraint_transformation
+from anyfesolver.general_contact.core import contact_scope
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
 
 
 def run(dt: float) -> dict:

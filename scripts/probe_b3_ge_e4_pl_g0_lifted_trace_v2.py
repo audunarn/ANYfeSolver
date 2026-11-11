@@ -7,7 +7,7 @@ import json
 import numpy as np
 
 import probe_b3_ge_e4_pl_g0_lifted_trace as prior
-from anysolver._ge_beam3_p5.compensated_coordinates import split_sum, validate_pair
+from anyfesolver._ge_beam3_p5.compensated_coordinates import split_sum, validate_pair
 
 
 original_native = prior.native_work

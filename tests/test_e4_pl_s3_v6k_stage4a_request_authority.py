@@ -109,7 +109,7 @@ def test_v6k_extent_and_defaults_remain_nonproduction() -> None:
         path.startswith("docs/reference_cases/") or path.startswith("tests/")
         for path in contract["authority_commit"]["expected_paths"]
     )
-    tree = ast.parse((ROOT / "src/anysolver/elements.py").read_text(encoding="utf-8"))
+    tree = ast.parse((ROOT / "src/anyfesolver/elements.py").read_text(encoding="utf-8"))
     defaults: dict[str, str] = {}
     for node in tree.body:
         if not isinstance(node, (ast.Assign, ast.AnnAssign)):

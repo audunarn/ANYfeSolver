@@ -2,9 +2,9 @@
 from types import SimpleNamespace
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_native_generalized_paired_modal as paired
-from anysolver._native_paired_factor_chain_modes import apply_mode_map
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver import _ge_beam3_native_generalized_paired_modal as paired
+from anyfesolver._native_paired_factor_chain_modes import apply_mode_map
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from docs.reference_cases.ge_beam3_reference_modal_groups import principal_correlations
 from docs.reference_cases import ge_beam3_continuum_frequency_shooting as reference
 import test_ge_beam3_native_generalized_modal as inherited

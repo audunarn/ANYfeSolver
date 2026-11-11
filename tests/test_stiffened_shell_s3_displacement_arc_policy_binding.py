@@ -15,16 +15,16 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell as public
-from anysolver import _stiffened_shell_ge_finite_experimental as finite_module
-from anysolver._stiffened_shell_displacement_checkpoint import (
+from anyfesolver import stiffened_shell as public
+from anyfesolver import _stiffened_shell_ge_finite_experimental as finite_module
+from anyfesolver._stiffened_shell_displacement_checkpoint import (
     ELASTIC_S3_CHART_POLICY, ELASTIC_S3_POLICY,
     STABLE_ELASTIC_S3_CHART_POLICY, STABLE_ELASTIC_S3_POLICY,
     admitted_s3_policies, decode_snapshot as decode_displacement,
     encode_snapshot as encode_displacement, generalized_stable_live,
     identities as displacement_identities, replay_s3_stable,
 )
-from anysolver._stiffened_shell_arc_checkpoint import (
+from anyfesolver._stiffened_shell_arc_checkpoint import (
     _replay_s3_stable, _s3_arc_policies, decode_snapshot as decode_arc,
 )
 from test_stiffened_shell_ge_experimental import _panel
@@ -275,7 +275,7 @@ def test_replay_binding_guards_and_identity_classification():
         foreign = public.create_analysis(definition=_q4_generalized_definition())
         assert replay_s3_stable(foreign, STABLE_ELASTIC_S3_POLICY) is None
         assert _replay_s3_stable(foreign, STABLE_ARC_V2) is None
-        from anysolver._stiffened_shell_affine_endpoint import validate_arrays
+        from anyfesolver._stiffened_shell_affine_endpoint import validate_arrays
         with pytest.raises(ValueError, match='numerical policy mismatch'):
             validate_arrays(foreign, arrays, s3_stable=True)
         with pytest.raises(ValueError, match='numerical policy mismatch'):

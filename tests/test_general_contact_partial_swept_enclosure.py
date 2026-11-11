@@ -3,7 +3,7 @@ from dataclasses import replace
 
 import numpy as np
 
-from anysolver.general_contact import s3_patch_static as owner
+from anyfesolver.general_contact import s3_patch_static as owner
 from test_general_contact_projected_penalty import _candidate
 
 

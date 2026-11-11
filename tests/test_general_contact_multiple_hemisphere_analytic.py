@@ -6,14 +6,14 @@ import numpy as np
 import pytest
 from scipy.integrate import quad
 from scipy.optimize import brentq
-from anysolver import (ContactDefinition, ContactSurface, RigidContactBody,
+from anyfesolver import (ContactDefinition, ContactSurface, RigidContactBody,
     LoadCase, DisplacementControl, CancellationToken, SolveCancelled,
     solve_static_nonlinear, validate_general_contact, report_general_contact_capability)
-from anysolver.elements import QuadraticBeamElement
-from anysolver.general_contact.multiple_beam_rigid import (MultipleBeamRigidManager,
+from anyfesolver.elements import QuadraticBeamElement
+from anyfesolver.general_contact.multiple_beam_rigid import (MultipleBeamRigidManager,
     PROFILE_SUPPORT, PROFILE_SUPPORT_ANALYTIC)
-from anysolver.general_contact.beam_hemisphere_sphere import HemisphereSphereManager
-from anysolver.general_contact.beam_hemisphere_plane import HemispherePlaneManager
+from anyfesolver.general_contact.beam_hemisphere_sphere import HemisphereSphereManager
+from anyfesolver.general_contact.beam_hemisphere_plane import HemispherePlaneManager
 from test_general_contact_multiple_hemisphere_planes import orthogonal, positions, bars as plane_bars
 from test_general_contact_hemisphere_plane import scalar_gap
 from test_general_contact_hemisphere_sphere import angular_oracle
@@ -168,7 +168,7 @@ def test_common_gap_fraction_and_admission_limits_preserve_old_plane_identity():
     duplicate=replace(definition,interactions=(*definition.interactions,replace(definition.interactions[0],name='alias')))
     assert not validate_general_contact(model,duplicate,settings).valid
     assert not validate_general_contact(model,definition,replace(settings,maximum_candidate_pairs=1)).valid
-    from anysolver.general_contact.multiple_beam_rigid import PROFILE_SUPPORT_CYLINDER
+    from anyfesolver.general_contact.multiple_beam_rigid import PROFILE_SUPPORT_CYLINDER
     cylinder=replace(definition.rigid_bodies[1],kind='cylinder',normal=(0.,0.,1.))
     cylinder_definition=replace(definition,rigid_bodies=(definition.rigid_bodies[0],cylinder))
     assert validate_general_contact(model,cylinder_definition,settings).profile==PROFILE_SUPPORT_CYLINDER

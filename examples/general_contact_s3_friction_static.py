@@ -1,21 +1,21 @@
 """Development-only S3 mortar pressure/Coulomb press, slide, reverse and open.
 
-Run with an installed ANYsolver package. Fixed reference material quadrature,
+Run with an installed ANYfeSolver package. Fixed reference material quadrature,
 elastic shells and explicit regularization; this is not C5 qualification.
 """
 import json
 
 import numpy as np
 
-from anysolver import BoundaryCondition, create_shell_element, solve_static_nonlinear
-from anysolver.fe_core import FEModel
-from anysolver.general_contact import (
+from anyfesolver import BoundaryCondition, create_shell_element, solve_static_nonlinear
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact import (
     ContactDefinition, ContactInteraction, ContactSurface, ContactSolverSettings,
     ContactPathControl, ContactPathProgram,
 )
-from anysolver.general_contact.s3_friction_point import S3SkinMaterialPoint
-from anysolver.general_contact.s3_friction_pair import S3FrictionPointPair
-from anysolver.general_contact.s3_friction_static import S3MaterialFrictionSettings
+from anyfesolver.general_contact.s3_friction_point import S3SkinMaterialPoint
+from anyfesolver.general_contact.s3_friction_pair import S3FrictionPointPair
+from anyfesolver.general_contact.s3_friction_static import S3MaterialFrictionSettings
 
 
 def run_example(*, material_anchor=False):
@@ -54,7 +54,7 @@ def run_example(*, material_anchor=False):
     friction = S3MaterialFrictionSettings(tuple(quadrature),
         (2e-7,)*model.mesh.dof_manager.total_dofs,maximum_candidate_evaluations=100)
     if material_anchor:
-        from anysolver.general_contact.s3_sliding_friction import S3SlidingFrictionSettings
+        from anyfesolver.general_contact.s3_sliding_friction import S3SlidingFrictionSettings
         friction = S3SlidingFrictionSettings(.3,1000.,
             (2e-7,)*model.mesh.dof_manager.total_dofs,maximum_candidate_evaluations=100,
             source_quadrature_refinement=3,activation_history="linear_constant_normal_touch_dev")

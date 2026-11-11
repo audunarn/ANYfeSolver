@@ -10,9 +10,9 @@ import sys
 import numpy as np
 import pytest
 
-from anysolver.quality_control import QCReport, QCResult
-from anysolver.general_contact import static_results_archive as static
-from anysolver.general_contact import arc_results_archive as arc
+from anyfesolver.quality_control import QCReport, QCResult
+from anyfesolver.general_contact import static_results_archive as static
+from anyfesolver.general_contact import arc_results_archive as arc
 from test_general_contact_static_results_archive import sample as static_sample
 from test_general_contact_arc_results_archive import sample as arc_sample
 
@@ -107,7 +107,7 @@ def test_archive_wire_snapshot_compatibility(module, factory, kind, count):
     # The separately saved pre-cleanup sources are used for the differential run.
     legacy_root = os.environ.get('RESULT_REPORTING_LEGACY_ROOT')
     if legacy_root:
-        alias = f'anysolver.general_contact._cleanup_legacy_{kind}'
+        alias = f'anyfesolver.general_contact._cleanup_legacy_{kind}'
         spec = importlib.util.spec_from_file_location(alias, Path(legacy_root) / f'{kind}_results_archive.py')
         legacy = importlib.util.module_from_spec(spec)
         sys.modules[alias] = legacy

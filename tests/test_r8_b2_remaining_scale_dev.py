@@ -56,12 +56,12 @@ class Controls(unittest.TestCase):
     def test_product_namespace_package_only(self):
         inventory=json.loads(INVENTORY.read_text())
         package=r.product_package(inventory)
-        expected={n for n in inventory['files'] if n.startswith(('anysolver/','anyfem/'))}
+        expected={n for n in inventory['files'] if n.startswith(('anyfesolver/','anyfem/'))}
         self.assertEqual(set(package),expected)
         self.assertTrue(package and all('.dist-info' not in n and not n.startswith('bin/') for n in package))
         original=original_target()
-        for name in original.B2_FILES:self.assertIn('anysolver/'+name,package)
-        self.assertIn('anysolver/stiffened_shell.py',package)
+        for name in original.B2_FILES:self.assertIn('anyfesolver/'+name,package)
+        self.assertIn('anyfesolver/stiffened_shell.py',package)
         self.assertIn('anyfem/solve/stiffened_shell_b2.py',package)
 
     def test_execute_installed_reused_not_duplicated(self):
@@ -102,17 +102,17 @@ class Controls(unittest.TestCase):
 
     def test_graph_mismatch_closure(self):
         with tempfile.TemporaryDirectory() as tmp:
-            site=Path(tmp);(site/'anysolver').mkdir();(site/'anysolver'/'__init__.py').write_text('x')
-            inventory=dict(files={'anysolver/__init__.py':'sha','anysolver/extra.py':'sha'})
+            site=Path(tmp);(site/'anyfesolver').mkdir();(site/'anyfesolver'/'__init__.py').write_text('x')
+            inventory=dict(files={'anyfesolver/__init__.py':'sha','anyfesolver/extra.py':'sha'})
             self.assertEqual(sorted(r.graph_mismatch(site,inventory)),
-                ['bytes anysolver/__init__.py','missing anysolver/extra.py'])
-            (site/'anysolver'/'extra.py').write_text('y');(site/'stray.txt').write_text('z')
+                ['bytes anyfesolver/__init__.py','missing anyfesolver/extra.py'])
+            (site/'anyfesolver'/'extra.py').write_text('y');(site/'stray.txt').write_text('z')
             problems=r.graph_mismatch(site,inventory)
             self.assertTrue(any(p.startswith('extra ') for p in problems))
-            (site/'anysolver'/'extra.py').unlink();(site/'stray.txt').unlink()
+            (site/'anyfesolver'/'extra.py').unlink();(site/'stray.txt').unlink()
             import hashlib
             good=hashlib.sha256(b'x').hexdigest()
-            self.assertEqual(r.graph_mismatch(site,dict(files={'anysolver/__init__.py':good})),[])
+            self.assertEqual(r.graph_mismatch(site,dict(files={'anyfesolver/__init__.py':good})),[])
 
     def test_matrix_contracts_adopted(self):
         contracts=r.matrix_contracts();original=original_target()
@@ -132,7 +132,7 @@ class Controls(unittest.TestCase):
         if not prepared.is_file():self.skipTest('PREPARED.json not yet generated')
         p=json.loads(prepared.read_text())
         self.assertEqual(p['status'],'PREPARED_SLOT_HELD')
-        self.assertTrue(all(n.startswith(('anysolver/','anyfem/')) for n in p['package']))
+        self.assertTrue(all(n.startswith(('anyfesolver/','anyfem/')) for n in p['package']))
         graph=p['installed_graph']
         self.assertEqual(graph['files'],761)
         self.assertTrue(graph['reused_v9_verified_graph'])

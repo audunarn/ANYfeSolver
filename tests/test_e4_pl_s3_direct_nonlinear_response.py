@@ -6,18 +6,18 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver._native_rotation_state import (
+from anyfesolver._native_rotation_state import (
     NativeElementRotationView,
     create_native_rotation_state_store,
     rotation_exponential,
 )
-from anysolver.e4_pl_s3_element import (
+from anyfesolver.e4_pl_s3_element import (
     QualifiedE4PLS3ShellElement,
     invariant_drilling_scale,
 )
-from anysolver.e4_pl_s3_state import canonical_json_bytes
-from anysolver.fe_core import FEModel
-from anysolver.material_curves import (
+from anyfesolver.e4_pl_s3_state import canonical_json_bytes
+from anyfesolver.fe_core import FEModel
+from anyfesolver.material_curves import (
     DNVC208MaterialCurve,
     LinearHardeningCurve,
     PiecewiseLinearCurve,

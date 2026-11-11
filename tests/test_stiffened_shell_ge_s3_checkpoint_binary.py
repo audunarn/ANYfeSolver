@@ -5,7 +5,7 @@ from hashlib import sha256
 import numpy as np
 import pytest
 
-from anysolver._stiffened_shell_ge_checkpoint_binary import (
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import (
     MAGIC, S3_MAGIC, decode_s3, encode_s3,
 )
 

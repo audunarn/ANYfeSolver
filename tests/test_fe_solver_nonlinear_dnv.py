@@ -5,11 +5,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver.boundary import BoundaryCondition, FixedSupport, LoadCase
-from anysolver.buckling import BucklingMode, BucklingResult
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
-from anysolver.imperfections import (
+from anyfesolver.boundary import BoundaryCondition, FixedSupport, LoadCase
+from anyfesolver.buckling import BucklingMode, BucklingResult
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.imperfections import (
     ImperfectionField,
     apply_imperfection,
     imperfection_from_buckling_mode,
@@ -17,13 +17,13 @@ from anysolver.imperfections import (
     standard_member_bow,
     standard_plate_mode,
 )
-from anysolver.material_curves import (
+from anyfesolver.material_curves import (
     DNVC208MaterialCurve,
     FiberSectionPlasticityConfig,
     dnv_c208_steel_curve,
     dnv_c208_steel_properties,
 )
-from anysolver.nonlinear_static import (
+from anyfesolver.nonlinear_static import (
     DisplacementControl,
     NonlinearLoadProgram,
     NonlinearLoadStage,
@@ -74,7 +74,7 @@ def test_runtime_dnv_properties_facade_matches_canonical_table(
     thickness: float,
     thickness_class: str,
 ) -> None:
-    from anysolver.runtime import dnv_c208_steel_properties as runtime_dnv_c208_steel_properties
+    from anyfesolver.runtime import dnv_c208_steel_properties as runtime_dnv_c208_steel_properties
 
     canonical = dnv_c208_steel_properties(grade, thickness, thickness_class=thickness_class)
     runtime = runtime_dnv_c208_steel_properties(grade, thickness, thickness_class=thickness_class)

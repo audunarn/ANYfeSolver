@@ -3,7 +3,7 @@
 Independent ASDShellQ4/ElasticTimoshenkoBeam discretization of the flat BL5
 target, not an equal native discrete operator or a converged accuracy oracle.
 Shell edge interpolation is work conjugate. Beam root DOFs 1..5 are grounded;
-normal spin is free. One case per fresh Python 3.12 process; no ANYsolver/NumPy.
+normal spin is free. One case per fresh Python 3.12 process; no ANYfeSolver/NumPy.
 Existing recorder, atomic output and small recovery services are reused.
 """
 from __future__ import annotations

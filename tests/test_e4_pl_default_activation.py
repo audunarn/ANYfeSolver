@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from anysolver import (
+from anyfesolver import (
     DEFAULT_Q4_FORMULATION,
     DEFAULT_S3_FORMULATION,
     LegacyShellElement,
@@ -13,8 +13,8 @@ from anysolver import (
     create_shell_element,
     generate_simple_panel_mesh,
 )
-from anysolver.anystructure_fem_mode import build_fe_model_from_generated_geometry
-from anysolver.cylinder_benchmarks import (
+from anyfesolver.anystructure_fem_mode import build_fe_model_from_generated_geometry
+from anyfesolver.cylinder_benchmarks import (
     CylinderBenchmarkConfig,
     build_cylindrical_shell_benchmark_model,
 )
@@ -99,7 +99,7 @@ def test_explicit_e4_request_rejects_non_q4_topology() -> None:
 
 
 def test_in_package_shell_construction_is_closed_world_through_selector() -> None:
-    source_root = Path(__file__).resolve().parents[1] / "src" / "anysolver"
+    source_root = Path(__file__).resolve().parents[1] / "src" / "anyfesolver"
     direct_calls: list[str] = []
     for path in source_root.rglob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))

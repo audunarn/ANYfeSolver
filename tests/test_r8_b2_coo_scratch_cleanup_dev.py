@@ -2,9 +2,9 @@
 import numpy as np
 import pytest
 from scipy import sparse
-from anysolver import stiffened_shell as api
-from anysolver._stiffened_shell_b2_q4_panel_experimental import _scatter,_release_coo_scratch
-from anysolver._stiffened_shell_b2_assembly_diagnostics import Capture,DiagnosticRefusal,capture_assembly
+from anyfesolver import stiffened_shell as api
+from anyfesolver._stiffened_shell_b2_q4_panel_experimental import _scatter,_release_coo_scratch
+from anyfesolver._stiffened_shell_b2_assembly_diagnostics import Capture,DiagnosticRefusal,capture_assembly
 from examples.stiffened_shell_b2_physical_rigid_footprint import definition,preload
 
 def test_direct_csr_order_values_survive_default_release():

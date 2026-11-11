@@ -9,7 +9,7 @@ from hashlib import sha256
 import json
 from pathlib import Path
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 import psutil
@@ -54,8 +54,8 @@ def _face_loads(lines: list[str], bar: set[int]) -> dict[int, np.ndarray]:
 
 
 def evaluate() -> dict:
-    if Path(anysolver.__file__).resolve().parent != (ROOT / "src" / "anysolver").resolve():
-        raise RuntimeError("wrong ANYsolver checkout")
+    if Path(anyfesolver.__file__).resolve().parent != (ROOT / "src" / "anyfesolver").resolve():
+        raise RuntimeError("wrong ANYfeSolver checkout")
     meta_path = SOLID / "metadata.json"
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
     if meta["identity"] != "R8_BL5_C1_DETACHED_F2_FIVE_CHANNEL_DEV_V7":
@@ -142,7 +142,7 @@ def evaluate() -> dict:
             "numba_disable_jit": int(numba.config.DISABLE_JIT),
             "numba_threads": numba.get_num_threads(),
             "threadpools": threadpool_info(),
-            "anysolver_import": str(Path(anysolver.__file__).resolve()),
+            "anyfesolver_import": str(Path(anyfesolver.__file__).resolve()),
         },
         "limitation": "eleven hand-selected low-order fields, six support-admissible; no arbitrary face-warping or broken-port equivalence, loaded response, root parity, BL5/F03 acceptance",
     }

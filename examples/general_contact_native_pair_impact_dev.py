@@ -7,9 +7,9 @@ import argparse
 from hashlib import sha256
 import json
 import numpy as np
-from anysolver.dynamics import TransientConfig
-from anysolver.ge_beam3_native import define_beam, SELECTOR as BEAM, EllipsoidalGeneralizedSection
-from anysolver.general_contact.native_transient_pair import (
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.ge_beam3_native import define_beam, SELECTOR as BEAM, EllipsoidalGeneralizedSection
+from anyfesolver.general_contact.native_transient_pair import (
     SELECTOR, ENDPOINT_POLICY, create_native_transient_pair_analysis,
     solve_native_transient_pair,
 )

@@ -4,7 +4,7 @@ from dataclasses import replace
 
 import pytest
 
-from anysolver import report_general_contact_capability, validate_general_contact
+from anyfesolver import report_general_contact_capability, validate_general_contact
 from examples.general_contact_refined_q4_s3_tight_path import make_case
 
 

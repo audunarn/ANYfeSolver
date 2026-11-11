@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver.assembly import _backward_error
+from anyfesolver.assembly import _backward_error
 from prepared_static_response_m11_gate import GateRefusal, gate_enclosure
 
 

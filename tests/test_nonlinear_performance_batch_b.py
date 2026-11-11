@@ -4,19 +4,19 @@ import numpy as np
 import pytest
 from types import SimpleNamespace
 
-from anysolver import nonlinear_performance, nonlinear_static
-from anysolver.boundary import FixedSupport, LoadCase
-from anysolver.elements import create_element
-from anysolver.fe_core import FEModel
-from anysolver.jit_compiler import JIT_DISABLED_REASON, JIT_ENABLED, jit_diagnostics
-from anysolver.mesh_gen import generate_simple_panel_mesh
-from anysolver.nonlinear_performance_batch_b import batch_b_status
-from anysolver.nonlinear_performance_bootstrap import (
+from anyfesolver import nonlinear_performance, nonlinear_static
+from anyfesolver.boundary import FixedSupport, LoadCase
+from anyfesolver.elements import create_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.jit_compiler import JIT_DISABLED_REASON, JIT_ENABLED, jit_diagnostics
+from anyfesolver.mesh_gen import generate_simple_panel_mesh
+from anyfesolver.nonlinear_performance_batch_b import batch_b_status
+from anyfesolver.nonlinear_performance_bootstrap import (
     clear_nonlinear_assembly_cache,
     get_nonlinear_assembly_plan,
     nonlinear_performance_status,
 )
-from anysolver.runtime import _runtime_display_stresses
+from anyfesolver.runtime import _runtime_display_stresses
 
 pytestmark = pytest.mark.skipif(
     not JIT_ENABLED,
@@ -45,7 +45,7 @@ def _legacy_tilted_shell_model() -> FEModel:
 
     model = _tilted_shell_model()
     element = model.mesh.elements[1]
-    from anysolver.elements import create_shell_element
+    from anyfesolver.elements import create_shell_element
 
     model.mesh.elements[1] = create_shell_element(
         1, list(element.node_ids), element.material_name, thickness=element.thickness,
@@ -61,7 +61,7 @@ def _legacy_panel(*args, **kwargs) -> FEModel:
     elastic fast path, so its coverage is exercised on legacy shells.
     """
 
-    from anysolver.elements import create_shell_element
+    from anyfesolver.elements import create_shell_element
 
     model = generate_simple_panel_mesh(*args, **kwargs)
     for element_id, element in list(model.mesh.elements.items()):
@@ -83,7 +83,7 @@ def test_planar_qualified_q4_uses_single_law_batch_not_batch_b() -> None:
     # Execution check: the single-law batch kernel body runs, and its result is
     # what the plan assembles (equal to the scalar element responses).
     import sys
-    from anysolver import _q4_assumed_strain_plasticity as assumed
+    from anyfesolver import _q4_assumed_strain_plasticity as assumed
 
     rng = np.random.default_rng(7)
     displacement = 1e-3 * rng.standard_normal(model.mesh.dof_manager.total_dofs)
@@ -159,7 +159,7 @@ def test_elastic_batch_releases_history_work_arrays() -> None:
 def test_isotropic_batch_build_reuses_one_constitutive_matrix(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import anysolver.nonlinear_performance_batch_b as batch_b
+    import anyfesolver.nonlinear_performance_batch_b as batch_b
 
     model = _legacy_panel(
         1.2, 0.8, 0.01, num_divisions_x=4, num_divisions_y=2

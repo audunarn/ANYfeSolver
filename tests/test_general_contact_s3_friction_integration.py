@@ -7,8 +7,8 @@ from scipy import sparse
 
 from test_general_contact_s3_sliding_friction import _manager, _affine
 from test_general_contact_s3_friction_static import _mode
-from anysolver.general_contact.s3_sliding_friction import S3SlidingFrictionManager
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_sliding_friction import S3SlidingFrictionManager
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 
 
 def _refined(level):

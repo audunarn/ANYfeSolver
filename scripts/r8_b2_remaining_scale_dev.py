@@ -63,8 +63,8 @@ def save(path,data):
 
 
 def product_package(inventory):
-    """PRODUCT namespace map (anysolver/anyfem) only; never a raw wheel RECORD."""
-    package={n:h for n,h in inventory['files'].items() if n.startswith(('anysolver/','anyfem/'))}
+    """PRODUCT namespace map (anyfesolver/anyfem) only; never a raw wheel RECORD."""
+    package={n:h for n,h in inventory['files'].items() if n.startswith(('anyfesolver/','anyfem/'))}
     require(package and not any('.dist-info' in n or n.startswith('bin/') for n in package),
         'product namespace contamination')
     return package
@@ -150,7 +150,7 @@ def prepare():
     require(h.BEAM_BUILDER.is_file(),'registered beam-rich builder missing')
     package=product_package(inventory)
     original=h.module('b2_public_static_identity',ORIGINAL)
-    require(all('anysolver/'+name in package for name in original.B2_FILES),
+    require(all('anyfesolver/'+name in package for name in original.B2_FILES),
         'product package closure missing B2 files')
     problems=graph_mismatch(plan['package_site'],inventory)
     require(not problems,'installed site graph drift before preparation: '+', '.join(problems[:8]))

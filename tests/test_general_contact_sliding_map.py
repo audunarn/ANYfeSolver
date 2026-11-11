@@ -3,14 +3,14 @@
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     ContactDefinition,
     ContactInteraction,
     ContactSurface,
     create_shell_element,
 )
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.sliding import _RestrictedSlidingPairFEManager
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.sliding import _RestrictedSlidingPairFEManager
 
 
 def _two_q4_faces(director=None):

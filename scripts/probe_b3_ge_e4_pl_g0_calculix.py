@@ -11,7 +11,7 @@ import argparse
 import json
 from pathlib import Path
 
-from anysolver.external_references import (
+from anyfesolver.external_references import (
     _pressure_plate_case,
     calculix_solver_provenance,
     run_calculix_reference_case,

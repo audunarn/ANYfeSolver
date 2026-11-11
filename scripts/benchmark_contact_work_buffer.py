@@ -11,7 +11,7 @@ from typing import Any, Dict
 
 import numpy as np
 
-from anysolver.contact import (
+from anyfesolver.contact import (
     RigidSphereImpact,
     SphereContactConfig,
     SphereContactRecord,
@@ -21,9 +21,9 @@ from anysolver.contact import (
     _verification_contact_panel,
     assemble_sphere_contact_load_vector,
 )
-from anysolver.contact_performance import ContactWorkBuffer, ContactWorkCounters
-from anysolver.elements import create_element
-from anysolver.fe_core import FEModel
+from anyfesolver.contact_performance import ContactWorkBuffer, ContactWorkCounters
+from anyfesolver.elements import create_element
+from anyfesolver.fe_core import FEModel
 
 
 def _case_inputs(name: str):

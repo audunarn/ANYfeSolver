@@ -6,11 +6,11 @@ from scipy.integrate import quad
 from scipy.optimize import brentq, minimize_scalar
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_centered_reference import (
+from anyfesolver._ge_beam3_centered_reference import (
     CenteredCurvedBeam3ReferenceGeometry,
 )
-from anysolver.general_contact.native_curve_union import NativeTwoCellUnionSearch
-from anysolver.general_contact.native_retained_whole_pair import (
+from anyfesolver.general_contact.native_curve_union import NativeTwoCellUnionSearch
+from anyfesolver.general_contact.native_retained_whole_pair import (
     NativeRetainedWholeCurvePair,
     _straight_join_owner,
     _straight_join_partitions,

@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from docs.reference_cases.ge_beam3_slender_spectrum_probe import comparison
-from anysolver._ge_beam3_p5_loads.core import canonical
+from anyfesolver._ge_beam3_p5_loads.core import canonical
 
 
 @pytest.mark.parametrize('slenderness', [100., 10000., 1000000.])

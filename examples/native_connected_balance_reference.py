@@ -1,6 +1,6 @@
 """Independent straight-reference connected elastic physical balances.
 
-No anysolver import, cached station data or reported owner accounting is used.
+No anyfesolver import, cached station data or reported owner accounting is used.
 This reference is deliberately bounded to the registered two straight elements,
 identity reference triads and diagonal centered section tensors. No C7 claim.
 """

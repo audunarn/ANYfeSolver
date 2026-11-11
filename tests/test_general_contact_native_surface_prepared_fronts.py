@@ -2,10 +2,10 @@
 from dataclasses import replace
 import numpy as np
 import pytest
-from anysolver.general_contact.native_surface_front import (
+from anyfesolver.general_contact.native_surface_front import (
     stationary_front_angular_cover,prepare_stationary_band,stationary_front_partition_prepared,
     stationary_front_partition)
-from anysolver.general_contact.native_surface_support import SupportIntervalBudget
+from anyfesolver.general_contact.native_surface_support import SupportIntervalBudget
 from test_general_contact_native_surface_local_fronts import _mixed
 
 
@@ -52,7 +52,7 @@ def test_prepared_band_identity_resource_and_uncertainty_guards():
 @pytest.mark.parametrize('height,slope,open_interval,contact_interval',[
     (.035,.01,(-.49,-.2),(-.62,-.55)),(.025,-.01,(-.8,-.51),(-.45,-.38))])
 def test_prepared_open_interval_rejects_hidden_pulse(height,slope,open_interval,contact_interval):
-    from anysolver.general_contact.native_surface_front import prepared_front_open_interval
+    from anyfesolver.general_contact.native_surface_front import prepared_front_open_interval
     field=_mixed(height=height,slope=slope);angles=field.patch.rule.definition['angle_range']
     budget=SupportIntervalBudget(128)
     cover=stationary_front_angular_cover(field,0,0,angles,budget=budget)
@@ -64,7 +64,7 @@ def test_prepared_open_interval_rejects_hidden_pulse(height,slope,open_interval,
 
 
 def test_prepared_bounds_match_moving_target_slab_control():
-    from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
     original=_mixed();s=np.zeros(18);s[6:9]=(.02,.01,.001);s[12:15]=(-.01,.02,-.001)
     old=original.segments[0]
     field=NativeSurfaceHistoryField(original.patch,original.initial,
@@ -83,7 +83,7 @@ def test_prepared_bounds_match_moving_target_slab_control():
 
 def test_roundoff_propagation_covers_large_coordinate_cross_dot_amplification():
     from decimal import Decimal,localcontext
-    from anysolver.general_contact.native_surface_front import _front_coefficient_roundoff
+    from anyfesolver.general_contact.native_surface_front import _front_coefficient_roundoff
     # Admissible edge perturbations of size gamma*X can amplify through C dot x.
     # Unit edges, large shared coordinates, long relative arm: max(X,R) is not X*R.
     with localcontext() as context:
@@ -97,7 +97,7 @@ def test_roundoff_propagation_covers_large_coordinate_cross_dot_amplification():
 
 @pytest.mark.parametrize('height,slope',[(.035,.01),(.025,-.01)])
 def test_open_interior_starts_at_outward_extremum_edge(height,slope):
-    from anysolver.general_contact.native_surface_front import prepared_front_open_interval
+    from anyfesolver.general_contact.native_surface_front import prepared_front_open_interval
     field=_mixed(height=height,slope=slope);angles=field.patch.rule.definition['angle_range']
     budget=SupportIntervalBudget(128)
     cover=stationary_front_angular_cover(field,0,0,angles,budget=budget)

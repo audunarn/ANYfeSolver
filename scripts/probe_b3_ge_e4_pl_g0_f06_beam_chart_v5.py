@@ -20,8 +20,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_shell_joint_state import decode, decoded_array
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_shell_joint_state import decode, decoded_array
 from scripts.probe_b3_ge_e4_pl_g0_f06_owned_rebase_v4 import (
     OwnedRebasePrototype, PrototypeRun,
 )

@@ -1,6 +1,6 @@
 """Independent positive-gap path with unrelated clipped support."""
 import numpy as np
-from anysolver.general_contact.s3_pressure_hermite_bounds import s3_pressure_hermite_bounds
+from anyfesolver.general_contact.s3_pressure_hermite_bounds import s3_pressure_hermite_bounds
 
 
 def test_temporal_gap_proof_does_not_spend_space_on_unrelated_clipped_modes(monkeypatch):
@@ -19,7 +19,7 @@ def test_temporal_gap_proof_does_not_spend_space_on_unrelated_clipped_modes(monk
         start,end,target,target,v0,v1,np.zeros((3,3)),np.zeros((3,3)),1.,
         active=(False,)*6,gap_tolerance_m=1e-10,
         maximum_time_panels=8,maximum_spatial_cells=64,maximum_depth=4)
-    from anysolver.general_contact.s3_pressure_hermite_bounds import _SpatialPartition
+    from anyfesolver.general_contact.s3_pressure_hermite_bounds import _SpatialPartition
     selected=_SpatialPartition.pop
     with monkeypatch.context() as patch:
         patch.setattr(_SpatialPartition,"pop",lambda self,violations=None:selected(self))

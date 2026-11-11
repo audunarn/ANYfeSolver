@@ -2,10 +2,10 @@
 import numpy as np
 import pytest
 import json
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._native_factor_chain_modes import solve_factor_chain_modes
-import anysolver._ge_beam3_retained_plastic_modes as native
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._native_factor_chain_modes import solve_factor_chain_modes
+import anyfesolver._ge_beam3_retained_plastic_modes as native
 from docs.reference_cases.ge_beam3_paired_plastic_modal_probe import prepare, FROZEN, ALGORITHMIC
 from test_ge_beam3_paired_plastic_modal_probe import accepted
 

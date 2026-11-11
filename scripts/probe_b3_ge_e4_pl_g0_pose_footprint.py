@@ -7,10 +7,10 @@ import json
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_mixed_ad import (
+from anyfesolver._ge_beam3_mixed_ad import (
     Jet2, constant_matrix, matmul, matvec, so3_exp, so3_log, transpose,
 )
-from anysolver._ge_beam3_variational_shell import rotation_jets
+from anyfesolver._ge_beam3_variational_shell import rotation_jets
 
 
 REF = np.array([[-.5, -.5, 0.], [.5, -.5, 0.], [.5, .5, 0.], [-.5, .5, 0.]])

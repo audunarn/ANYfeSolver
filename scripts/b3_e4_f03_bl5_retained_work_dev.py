@@ -12,8 +12,8 @@ import json
 from pathlib import Path
 import subprocess
 
-import anysolver
-from anysolver import stiffened_shell
+import anyfesolver
+from anyfesolver import stiffened_shell
 import numpy as np
 from scipy.sparse.linalg import splu
 from threadpoolctl import threadpool_info, threadpool_limits
@@ -91,15 +91,15 @@ def _solve(owner, rows, case, *, owner_rows=False):
 def main(output: Path):
     if output.exists():
         raise FileExistsError("preserve prior retained-work evidence")
-    expected = (ROOT / "src" / "anysolver" / "__init__.py").resolve()
-    if Path(anysolver.__file__).resolve() != expected:
+    expected = (ROOT / "src" / "anyfesolver" / "__init__.py").resolve()
+    if Path(anyfesolver.__file__).resolve() != expected:
         raise RuntimeError("retained-work diagnostic imported another checkout")
     report = {
         "status": "BL5_LOADED_RETAINED_WORK_DEVELOPMENT_ONLY",
         "source_git": subprocess.check_output(
             ("git", "rev-parse", "HEAD"), cwd=ROOT, text=True).strip(),
         "runner_sha256": sha256(Path(__file__).read_bytes()).hexdigest(),
-        "imported_anysolver": str(expected), "cases": [],
+        "imported_anyfesolver": str(expected), "cases": [],
         "limitations": ("Work-conjugate algebraic split at one 16-interval "
                         "linear model. Raw retained coordinate/equation norms "
                         "have mixed units and are not physical stability "

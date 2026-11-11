@@ -10,12 +10,12 @@ import numpy as np
 import pytest
 from importlib.util import spec_from_file_location,module_from_spec
 from examples.general_contact_finite_q4_v2d import build, solve, rigid_pose
-from anysolver.general_contact.finite_mixed_state import (
+from anyfesolver.general_contact.finite_mixed_state import (
     PROFILE, STATIC_PROFILE, COORDINATES, owner_contract, admitted_definition,
     mixed_state_contract, prepare_mixed_states, seal_mixed_states,
 )
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.semismooth import linearize, complementarity, reference_nodal_support
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.semismooth import linearize, complementarity, reference_nodal_support
 
 FREF=1e-4;MREF=1e-4
 
@@ -29,7 +29,7 @@ def get_oracle():
 
 def require_saved_fixture(saved,model,definition,settings,program):
     from examples.general_contact_finite_q4_v2d import SCHEMA
-    from anysolver.nonlinear_restart import model_configuration_fingerprint
+    from anyfesolver.nonlinear_restart import model_configuration_fingerprint
     canonical=lambda v:json.loads(json.dumps(v))
     assert saved['schema']==SCHEMA and saved['status']=='completed'
     fixture=saved['fixture']
@@ -101,14 +101,14 @@ def test_typed_contract_refuses_mutation(change):
 
 @pytest.mark.parametrize('change',('linear_skin','native_companion','orphan','shared_nodes','selected_pressure'))
 def test_mixed_admission_refuses_scope_change(change):
-    from anysolver import create_shell_element
+    from anyfesolver import create_shell_element
     model,definition,settings,_=build()
     if change=='linear_skin':settings=replace(settings,shell_skin_kinematics='reference_linear')
     elif change=='selected_pressure':settings=replace(settings,q4_source_pressure_basis='selected_q1_knots_dev',q4_source_pressure_knot_columns=(0,1))
     elif change=='orphan':definition=replace(definition,surfaces=(definition.surfaces[0],replace(definition.surfaces[1],element_ids=(3,))))
     elif change=='shared_nodes':model.mesh.elements[3].node_ids=(1,8,10)
     else:
-        from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+        from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
         model.mesh.elements[3]=QualifiedE4PLS3ShellElement(3,(7,8,10),'elastic',thickness=.05,
                                                   reference_normal=(0.,0.,1.))
         assert type(model.mesh.elements[3]) is QualifiedE4PLS3ShellElement
@@ -137,7 +137,7 @@ def test_in_cap_spatial_spin_is_not_additive_chart_work():
 
 
 def test_actual_both_body_contact_and_structural_q_z_tangent():
-    from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
     model,definition,settings,_=build();manager=GeneralS3PatchManager(model,definition,settings)
     q=rigid_pose(model,.6);normal=np.array((math.sin(.6),0.,math.cos(.6)))
     for nid in range(1,7):q[model.mesh.dof_manager.get_node_dofs(nid)[:3]]-=2e-6*normal
@@ -172,7 +172,7 @@ def test_actual_both_body_contact_and_structural_q_z_tangent():
 
 
 def test_typed_actual_owner_roundtrip_and_mutation():
-    from anysolver.corotational import corotational_element_response
+    from anyfesolver.corotational import corotational_element_response
     model,*_=build();q=rigid_pose(model,.6);states={}
     for eid,element in model.mesh.elements.items():
         dofs=element.get_dof_mapping(model.mesh)
@@ -198,7 +198,7 @@ def test_typed_actual_owner_roundtrip_and_mutation():
 
 
 def test_triangle_whole_path_refuses_crossing_and_preserves_state():
-    from anysolver.general_contact.finite_rotation_sweep import finite_q4_path_admissible
+    from anyfesolver.general_contact.finite_rotation_sweep import finite_q4_path_admissible
     model,definition,settings,_=build();manager=GeneralS3PatchManager(model,definition,settings)
     start=np.zeros(60);end=start.copy()
     for nid in range(1,7):end[model.mesh.dof_manager.get_node_dofs(nid)[2]]=-1e-4
@@ -210,7 +210,7 @@ def test_triangle_whole_path_refuses_crossing_and_preserves_state():
 
 def test_legacy_q4_profile_keeps_its_actual_manager():
     from examples.general_contact_tilted_relative_sliding import build as old_build
-    from anysolver.general_contact.s3_patch_static import FINITE_Q4_Q4_MONOLITHIC_PROFILE
+    from anyfesolver.general_contact.s3_patch_static import FINITE_Q4_Q4_MONOLITHIC_PROFILE
     model,_,settings,resolution,_=old_build()
     manager=GeneralS3PatchManager(model,resolution.definition,settings)
     assert manager.profile==FINITE_Q4_Q4_MONOLITHIC_PROFILE
@@ -218,7 +218,7 @@ def test_legacy_q4_profile_keeps_its_actual_manager():
 
 
 def test_internal_diagonal_tie_retains_full_tangent_refusal():
-    from anysolver.general_contact.q4_s3_overlap_derivatives import UnsupportedQ4S3Branch
+    from anyfesolver.general_contact.q4_s3_overlap_derivatives import UnsupportedQ4S3Branch
     model,definition,settings,_=build()
     for nid in range(1,7):model.mesh.nodes[nid].y-=.03
     manager=GeneralS3PatchManager(model,definition,settings)
@@ -257,7 +257,7 @@ def test_saved_complete_workflow_independent_skin_gap():
     or not (Path(os.environ['FINITE_MIXED_WORKFLOW'])/'fresh.json').is_file(),
     reason='archived fresh.json workflow under FINITE_MIXED_WORKFLOW absent: saved scaled equilibrium/NCP/integration replay requires the saved poses and history')
 def test_saved_actual_scaled_equilibrium_wrench_ncp_and_integration():
-    from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
     oracle=get_oracle()
     root=Path(os.environ['FINITE_MIXED_WORKFLOW']);saved=json.loads((root/'fresh.json').read_text())
     model,definition,settings,program=build();model.apply_boundary_conditions()
@@ -361,11 +361,11 @@ def test_mixed_actual_cancellation_after_material_contact_trial(monkeypatch):
     model,definition,settings,program=build()
     # Cancel only after actual structural/material AND contact trial work.
     # No response values, laws, state coordinates or controls are mocked.
-    from anysolver import CancellationToken,SolveCancelled
+    from anyfesolver import CancellationToken,SolveCancelled
     from examples.general_contact_finite_q4_v2d import json_value
-    import anysolver.general_contact.semismooth_path as increment
-    from anysolver.general_contact.runtime import _ACTIVE_CONTACT
-    from anysolver.nonlinear_restart import model_configuration_fingerprint
+    import anyfesolver.general_contact.semismooth_path as increment
+    from anyfesolver.general_contact.runtime import _ACTIVE_CONTACT
+    from anyfesolver.nonlinear_restart import model_configuration_fingerprint
     token=CancellationToken();captured={};input_bytes=json.dumps(prefix,sort_keys=True)
     before_model=model_configuration_fingerprint(model);before_context=_ACTIVE_CONTACT.get()
     assemble=increment._assemble_nonlinear_system;contact_call=increment.linearize
@@ -469,7 +469,7 @@ def test_public_actual_restart_suffix_and_terminal_restore():
     reason='archived current-prefix15.json/fresh.json under FINITE_LEGACY_EVIDENCE absent: legacy installed suffix requires the saved legacy checkpoints')
 def test_legacy_q4_actual_installed_suffix():
     from examples.general_contact_tilted_relative_sliding import build as legacy_build,solve as legacy_solve
-    from anysolver.general_contact.finite_rotation_state import COORDINATES as legacy_coordinates
+    from anyfesolver.general_contact.finite_rotation_state import COORDINATES as legacy_coordinates
     root=Path(os.environ['FINITE_LEGACY_EVIDENCE'])
     prefix=json.loads((root/'current-prefix15.json').read_text());fresh=json.loads((root/'fresh.json').read_text())
     assert prefix['status']==fresh['status']=='completed'

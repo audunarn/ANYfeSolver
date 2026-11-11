@@ -1,9 +1,9 @@
 """Displacement chart events preserve accepted history and pending control."""
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_displacement_checkpoint import decode_snapshot, POLICY, CHART_POLICY, EVENT_POLICY, encode_snapshot
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_displacement_checkpoint import decode_snapshot, POLICY, CHART_POLICY, EVENT_POLICY, encode_snapshot
 from test_stiffened_shell_bl5_coupled_material import coupled
 from test_stiffened_shell_bl5_material import make
 from test_stiffened_shell_bl5_finite import _action
@@ -27,7 +27,7 @@ def test_chart_event_pending_adaptive_restart(request, monkeypatch,policy):
     m,a=decode_snapshot(owner,owner._displacement_snapshot[0]);assert m["policy"]==(POLICY if policy is None else EVENT_POLICY)
     with pytest.raises(ValueError,match="generation"):
         owner.rebase_rotations(before.generation-1)
-    import anysolver._stiffened_shell_displacement_control as control
+    import anyfesolver._stiffened_shell_displacement_control as control
     original=control.cancellation_safe_point
     def cancel_before_commit(token,point):
         if point=="stiffened-shell.displacement.publish":token.cancel("precommit")
@@ -74,7 +74,7 @@ def test_chart_event_pending_adaptive_restart(request, monkeypatch,policy):
     np.testing.assert_allclose(final.support_reactions,baseline.support_reactions,rtol=1e-8,atol=1e-8)
     np.testing.assert_allclose(final.shell_layer_alpha,baseline.shell_layer_alpha,rtol=1e-9,atol=1e-14)
     np.testing.assert_allclose(final.beam_station_accumulated,baseline.beam_station_accumulated,rtol=1e-9,atol=1e-14)
-    from anysolver._stiffened_shell_ge_finite_experimental import _material_arrays, _shell_material_arrays
+    from anyfesolver._stiffened_shell_ge_finite_experimental import _material_arrays, _shell_material_arrays
     _,accepted=decode_snapshot(owner,owner._displacement_snapshot[0])
     for actual,expected in zip(_material_arrays(owner._finite_driver._beam_origins),
                                (accepted["beam_plastic"],accepted["beam_accumulated"])):

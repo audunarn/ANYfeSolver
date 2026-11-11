@@ -7,8 +7,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 from examples.general_contact_finite_rotation_shell_work import build,solve,rigid_pose
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.semismooth import linearize,complementarity,reference_nodal_support
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.semismooth import linearize,complementarity,reference_nodal_support
 
 FREF=1e-4;MREF=1e-4
 def save(data):
@@ -32,9 +32,9 @@ def decimal_director(theta,dref):
 
 
 def test_director_work_and_coupled_chart_jacobian():
-    from anysolver.corotational import rotation_matrix_from_vector,_rotation_right_jacobian
-    from anysolver.general_contact.finite_rotation_skin import director_jets,director_value_error
-    from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+    from anyfesolver.corotational import rotation_matrix_from_vector,_rotation_right_jacobian
+    from anyfesolver.general_contact.finite_rotation_skin import director_jets,director_value_error
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
     model,domain,settings,res,program=build();manager=GeneralS3PatchManager(model,res.definition,settings)
     q=rigid_pose(model,math.pi/6.);normal=np.array((.5,0.,math.sqrt(3.)/2))
     for n in range(1,7):q[model.mesh.dof_manager.get_node_dofs(n)[:3]]-=2e-6*normal
@@ -64,7 +64,7 @@ def test_director_work_and_coupled_chart_jacobian():
     work_error=abs(float(pulled@virtual-f.ravel()@(pose.coordinate_map@delta)))
     assert work_error<=1e-13
     # Right multiplication by an axial reference drill leaves material skins.
-    from anysolver.corotational import rotation_vector_from_matrix
+    from anyfesolver.corotational import rotation_vector_from_matrix
     drill=q.copy()
     for i,dofs in enumerate(skin.dofs):
         qi=rotation_matrix_from_vector(q[dofs[3:]])
@@ -93,7 +93,7 @@ def test_director_work_and_coupled_chart_jacobian():
 
 
 def test_nonaffine_path_curvature_and_unsafe_chord():
-    from anysolver.general_contact.finite_rotation_skin import curvature_radius,director_norm_upper
+    from anyfesolver.general_contact.finite_rotation_skin import curvature_radius,director_norm_upper
     model,domain,settings,res,program=build();manager=GeneralS3PatchManager(model,res.definition,settings)
     a=np.zeros(manager.n_dof);safe=rigid_pose(model,math.pi/36.);unsafe=rigid_pose(model,math.pi/3.)
     skin=manager.finite_skin
@@ -114,8 +114,8 @@ def test_nonaffine_path_curvature_and_unsafe_chord():
     n=cross(sub(s[1],s[0]),sub(s[3],s[0]));numerator=dot(sub(s[0],t[0]),n)
     assert numerator<0 and numerator*numerator>F(float(5e-5))**2*dot(n,n)
     assert not manager._swept_admissible(a,unsafe)
-    from anysolver.general_contact.finite_rotation_sweep import finite_whole_pair_lower
-    from anysolver.general_contact.q4_q4_swept_bound import q4_q4_whole_pair_swept_lower
+    from anyfesolver.general_contact.finite_rotation_sweep import finite_whole_pair_lower
+    from anyfesolver.general_contact.q4_q4_swept_bound import q4_q4_whole_pair_swept_lower
     from examples.general_contact_finite_rotation_shell_work import rotation
     square=np.array(((0.,0.,0.),(1.,0.,0.),(1.,1.,0.),(0.,1.,0.)))
     r=rotation(math.pi/4.);tn=square@r.T;sn=tn-45e-6*(r@np.array((0.,0.,1.)))
@@ -138,9 +138,9 @@ def test_installed_finite_path(monkeypatch):
     previous={1:None,4:1,8:4,12:8,13:12,14:13,15:14}[step]
     if stage=='run-1':
         import time,functools
-        import anysolver.general_contact.semismooth_path as owner
-        import anysolver.general_contact.static_path as path_owner
-        from anysolver.general_contact.s3_patch_augmented import MovingS3PatchProjectedNormal
+        import anyfesolver.general_contact.semismooth_path as owner
+        import anyfesolver.general_contact.static_path as path_owner
+        from anyfesolver.general_contact.s3_patch_augmented import MovingS3PatchProjectedNormal
         counters={};accepted=[];last={}
         diagnostic=Path(os.environ['AUTOMATIC_RUNTIME_RESULT']).with_name('diagnostic.json')
         def flush():
@@ -197,7 +197,7 @@ def test_installed_finite_path(monkeypatch):
     reason='installed finite stage input FINITE_STAGE absent: saved finite-pose proof requires the original staged report and stage selection')
 def test_saved_finite_poses_independent_physical_gates():
     from importlib.util import spec_from_file_location,module_from_spec
-    from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
     spec=spec_from_file_location('_finite_pose_oracle',Path(__file__).parents[1]/'docs/d1_review_support/contact_finite_rotation_shell_work_20261008/oracle.py')
     oracle=module_from_spec(spec);spec.loader.exec_module(oracle)
     stage=os.environ['FINITE_STAGE'].removeprefix('proof-')
@@ -268,10 +268,10 @@ def test_saved_finite_poses_independent_physical_gates():
 
 def test_finite_state_and_translation_seed():
     from scipy.sparse import eye
-    from anysolver.general_contact.finite_rotation_predictor import finite_rigid_seed
-    from anysolver.general_contact.finite_rotation_state import owner_local_coordinates,seal_finite_states,prepare_finite_states,finite_state_contract,COORDINATES,PROFILE
-    from anysolver.general_contact.static_path import ContactPathControl,ContactPathProgram
-    from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+    from anyfesolver.general_contact.finite_rotation_predictor import finite_rigid_seed
+    from anyfesolver.general_contact.finite_rotation_state import owner_local_coordinates,seal_finite_states,prepare_finite_states,finite_state_contract,COORDINATES,PROFILE
+    from anyfesolver.general_contact.static_path import ContactPathControl,ContactPathProgram
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
     model,domain,settings,res,program=build();n=model.mesh.dof_manager.total_dofs
     controls=tuple(ContactPathControl(((1,name,1.),),coordinate_profile='finite_shell_spin_chart_dev') for name in ('ux','uy','uz','rx','ry','rz'))
     shift=np.array((.001,-.002,.003));target=np.r_[shift,[0.,0.,0.]]
@@ -287,7 +287,7 @@ def test_finite_state_and_translation_seed():
     q=rigid_pose(model,math.pi/36.)
     r,k,trial=_assemble_nonlinear_system(model,q,{},5,tangent=False,kinematics='corotational',corotational_tangent='consistent',require_full_coordinates=True)
     # Materialize the actual owner's trial record using the normal state-store API.
-    from anysolver.nonlinear_static import _materialize_final_nonlinear_states
+    from anyfesolver.nonlinear_static import _materialize_final_nonlinear_states
     states=_materialize_final_nonlinear_states(trial,{})
     info={};sealed=seal_finite_states(model,q,states,5,info)
     assert info['element_state_coordinates']==COORDINATES
@@ -307,13 +307,13 @@ def test_finite_state_and_translation_seed():
 
 
 def test_admission_and_restart_safety(monkeypatch):
-    from anysolver import CancellationToken,SolveCancelled
+    from anyfesolver import CancellationToken,SolveCancelled
     model,domain,settings,res,program=build();before=repr(model)
     token=CancellationToken();token.cancel('finite precancel')
     with pytest.raises(SolveCancelled):solve(model,settings,res,program,cancellation_token=token)
     assert repr(model)==before
-    from anysolver import BoundaryCondition
-    import anysolver.general_contact.static_path as path_owner
+    from anyfesolver import BoundaryCondition
+    import anyfesolver.general_contact.static_path as path_owner
     partial,_,ps,pr,pp=build()
     partial.add_boundary_condition(BoundaryCondition('unsupported-partial-spin',(3,),{'rx':0.}))
     material_calls=[]
@@ -323,15 +323,15 @@ def test_admission_and_restart_safety(monkeypatch):
         with pytest.raises(ValueError,match='all three constrained or all three free'):
             solve(partial,ps,pr,pp,max_load_factor=1/15.)
     assert not material_calls
-    from anysolver.general_contact.finite_rotation_state import prepare_finite_states,finite_state_contract,COORDINATES,PROFILE
+    from anyfesolver.general_contact.finite_rotation_state import prepare_finite_states,finite_state_contract,COORDINATES,PROFILE
     assert not finite_state_contract(dict(profile='unrelated',element_state_coordinates='another_coordinate_contract'))
     with pytest.raises(ValueError,match='exact named'):finite_state_contract(dict(profile='unrelated',element_state_coordinates=COORDINATES))
     with pytest.raises(ValueError,match='coordinate/profile'):finite_state_contract(dict(profile=PROFILE,element_state_coordinates='global_q'))
     # Actual admitted legacy multi-beam public transient branch, before allocation.
     from examples.general_contact_multiple_beam_s3_transient import build as dynamic
-    from anysolver.dynamics import TransientConfig
-    from anysolver.general_contact.transient import solve_transient_contact,_admit,ContactTransientSolverControls
-    import anysolver.general_contact.multiple_beam_s3_transient as owner
+    from anyfesolver.dynamics import TransientConfig
+    from anyfesolver.general_contact.transient import solve_transient_contact,_admit,ContactTransientSolverControls
+    import anyfesolver.general_contact.multiple_beam_s3_transient as owner
     dm,dd,ds,velocity=dynamic();controls=ContactTransientSolverControls(allow_multiple_deformable_beam_s3_dev=True)
     assert _admit(dm,dd,ds,controls)==owner.PROFILE
     calls=[]
@@ -346,7 +346,7 @@ def test_admission_and_restart_safety(monkeypatch):
 @pytest.mark.skipif(not os.environ.get('AUTOMATIC_WORKFLOW_EVIDENCE') or not (Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])/'run-1.json').is_file(),
     reason='archived finite input AUTOMATIC_WORKFLOW_EVIDENCE/run-1.json absent: restart-safety replay requires the original staged checkpoint')
 def test_archive_checkpoint_restart_safety():
-    from anysolver.nonlinear_restart import _sha256,_checkpoint_without_hash
+    from anyfesolver.nonlinear_restart import _sha256,_checkpoint_without_hash
     model,domain,settings,res,program=build();stored=read('run-1');checkpoint=stored['checkpoint'];before=repr(model)
     changed=replace(program,waypoints=tuple([program.waypoints[0]]+[tuple(v+1e-8 if i==0 else v for i,v in enumerate(w)) for w in program.waypoints[1:]]))
     with pytest.raises(ValueError,match='incompatible'):solve(model,settings,res,changed,restart_checkpoint=checkpoint,max_load_factor=1/15.)
@@ -363,7 +363,7 @@ def test_archive_checkpoint_restart_safety():
     reason='archived legacy cycle output contact_q4_pair_monolithic_cycle_20261008/outputs/full.json absent: legacy identity checkpoint replay requires the original saved run')
 def test_legacy_default_identity_checkpoint():
     from examples.general_contact_q4_pair_monolithic_cycle import build as legacy,solve as legacy_solve
-    from anysolver.general_contact.core import _contact_settings_contract
+    from anyfesolver.general_contact.core import _contact_settings_contract
     path=Path('C:/ANYworkspaceWork/contact_q4_pair_monolithic_cycle_20261008/outputs/full.json')
     stored=json.loads(path.read_text());model,domain,settings,res,program=legacy()
     assert res.identity==stored['identity'] and 'shell_skin_kinematics' not in _contact_settings_contract(settings)
@@ -377,14 +377,14 @@ def test_legacy_default_identity_checkpoint():
     reason='archived finite input AUTOMATIC_WORKFLOW_EVIDENCE/run-1.json absent: local-state binding replay requires the original staged checkpoint')
 def test_local_state_checkpoint_binding_discriminator(monkeypatch):
     model,domain,settings,res,program=build();checkpoint=copy.deepcopy(read('run-1')['checkpoint'])
-    from anysolver.nonlinear_restart import _sha256,_checkpoint_without_hash
+    from anyfesolver.nonlinear_restart import _sha256,_checkpoint_without_hash
     dof=model.mesh.dof_manager.get_node_dofs(3)[2]
     fixed=[model.mesh.dof_manager.get_node_dofs(n)[1] for n in (7,9)]
     free=np.setdiff1d(np.arange(model.mesh.dof_manager.total_dofs),fixed)
     checkpoint['displacements'][dof]+=1e-4
     checkpoint['path_state']['reduced_coordinates'][int(np.flatnonzero(free==dof)[0])]+=1e-4
     checkpoint['checkpoint_sha256']=_sha256(_checkpoint_without_hash(checkpoint))
-    import anysolver.general_contact.static_path as owner
+    import anyfesolver.general_contact.static_path as owner
     calls=[]
     def forbidden(*args,**kwargs):calls.append(True);raise AssertionError('material activation before invalid local record refusal')
     monkeypatch.setattr(owner,'_activate_nonlinear_state_storage',forbidden)

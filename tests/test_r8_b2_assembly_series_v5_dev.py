@@ -33,7 +33,7 @@ class Controls(unittest.TestCase):
         self.assertTrue(any(isinstance(n,ast.Constant) and n.value=='installed-post-close.json' for n in ast.walk(fn)))
     def test_source_scatter_proof(self):
         import ast
-        tree=ast.parse((ROOT/'src/anysolver/_stiffened_shell_b2_q4_panel_experimental.py').read_text())
+        tree=ast.parse((ROOT/'src/anyfesolver/_stiffened_shell_b2_q4_panel_experimental.py').read_text())
         fn=next(x for x in tree.body if isinstance(x,ast.FunctionDef) and x.name=='_scatter')
         calls=[x for x in ast.walk(fn) if isinstance(x,ast.Call) and isinstance(x.func,ast.Attribute) and x.func.attr=='extend']
         self.assertEqual(len(calls),3);self.assertEqual({x.func.value.id for x in calls},{'rows','columns','values'})

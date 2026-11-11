@@ -3,14 +3,14 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import _stiffened_shell_distributing_footprint as reference
-from anysolver._stiffened_shell_distributing_pose import (
+from anyfesolver import _stiffened_shell_distributing_footprint as reference
+from anyfesolver._stiffened_shell_distributing_pose import (
     FiniteDistributingPose, DistributingPoseDomainError,
 )
-from anysolver._ge_beam3_mixed_ad import rotation_exponential as exp
-from anysolver._ge_beam3_mixed_ad import RotationDomainError
-from anysolver._ge_beam3_pose_joint import _exp_terms
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver._ge_beam3_mixed_ad import rotation_exponential as exp
+from anyfesolver._ge_beam3_mixed_ad import RotationDomainError
+from anyfesolver._ge_beam3_pose_joint import _exp_terms
+from anyfesolver.control import CancellationToken, SolveCancelled
 
 
 def fixture(nx=2,ny=1):
@@ -227,7 +227,7 @@ def test_explicit_physical_domain_failures(kind):
 
 def test_compensated_positions_ownership_and_cancellation():
     c,p,x,Q,rb,Qb=fixture();lam=np.ones(6)
-    from anysolver._ge_beam3_p5.compensated_coordinates import split_sum
+    from anyfesolver._ge_beam3_p5.compensated_coordinates import split_sum
     shift=np.array((1e12,-2e12,3e12));correction=np.array((1e-9,-2e-9,3e-9))
     low=np.empty_like(x);bl=np.empty_like(rb)
     for i,j in np.ndindex(x.shape):x[i,j],low[i,j]=split_sum((float(x[i,j]),float(shift[j])))

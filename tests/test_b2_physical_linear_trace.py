@@ -3,10 +3,10 @@
 import numpy as np
 import pytest
 
-from anysolver._b2_physical_flexibility_linear import (
+from anyfesolver._b2_physical_flexibility_linear import (
     LinearOperator, LinearSection, RepresentabilityError,
 )
-from anysolver._b2_physical_linear_definition import PhysicalB2Member
+from anyfesolver._b2_physical_linear_definition import PhysicalB2Member
 
 
 STATIONS = (0., 1/8, 1/3, .5, 7/8, 1.)

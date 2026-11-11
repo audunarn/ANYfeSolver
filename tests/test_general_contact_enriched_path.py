@@ -5,8 +5,8 @@ import os
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver.e4_pl_enriched import EnrichedProfileError
-from anysolver.control import SolveCancelled
+from anyfesolver.e4_pl_enriched import EnrichedProfileError
+from anyfesolver.control import SolveCancelled
 from scripts.general_contact_enriched_path_run import equal_tree,complete_paths
 
 

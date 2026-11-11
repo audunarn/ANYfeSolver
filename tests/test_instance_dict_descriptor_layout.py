@@ -8,7 +8,7 @@ running interpreter's own layout and still refuse a replaced descriptor.
 import sys
 import types
 
-from anysolver.boundary import _SHARED_INSTANCE_DICT, _builtin_instance_dict_descriptor
+from anyfesolver.boundary import _SHARED_INSTANCE_DICT, _builtin_instance_dict_descriptor
 
 
 class _Plain:

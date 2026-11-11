@@ -60,8 +60,8 @@ def test_bounded_registered_overlap_profiles_and_no_native_imports():
     with pytest.raises(ValueError): comparison.overlap_sites(1,True)
     tree=ast.parse(Path(comparison.__file__).read_text())
     for node in ast.walk(tree):
-        if isinstance(node,ast.ImportFrom): assert not (node.module or '').startswith('anysolver')
-        if isinstance(node,ast.Import): assert not any(n.name.startswith('anysolver') for n in node.names)
+        if isinstance(node,ast.ImportFrom): assert not (node.module or '').startswith('anyfesolver')
+        if isinstance(node,ast.Import): assert not any(n.name.startswith('anyfesolver') for n in node.names)
     calls={ast.unparse(n.func) for n in ast.walk(tree) if isinstance(n,ast.Call)}
     assert not any('native.solve' in x or 'model(' in x or 'solve_modes' in x for x in calls)
 

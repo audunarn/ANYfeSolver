@@ -2,18 +2,18 @@
 from dataclasses import replace
 from hashlib import sha256
 import pytest
-from anysolver.control import CancellationToken
-from anysolver._ge_beam3_native_arc import solve_arc,_ARC
-from anysolver._ge_beam3_native_arc_restart import decode_checkpoint
-from anysolver._ge_beam3_native_translation import _PATH
-from anysolver._ge_beam3_native_generalized_program import _PROGRAM
+from anyfesolver.control import CancellationToken
+from anyfesolver._ge_beam3_native_arc import solve_arc,_ARC
+from anyfesolver._ge_beam3_native_arc_restart import decode_checkpoint
+from anyfesolver._ge_beam3_native_translation import _PATH
+from anyfesolver._ge_beam3_native_generalized_program import _PROGRAM
 from test_ge_beam3_native_arc import bar,packet
 from test_ge_beam3_schur_line_program import save
 
 
 @pytest.mark.parametrize('kind',['cancel','factorization','mutation'])
 def test_accepted_prefix_preserved(kind,monkeypatch,tmp_path):
-    import anysolver._ge_beam3_native_arc as module
+    import anyfesolver._ge_beam3_native_arc as module
     m,p=bar();prefix=solve_arc(m,p,stop_after=1);assert prefix.status=='paused'
     m,p=bar();token=CancellationToken();committed=False;original=module.factorize
     def observer(event):
@@ -38,7 +38,7 @@ def test_accepted_prefix_preserved(kind,monkeypatch,tmp_path):
 
 @pytest.mark.parametrize('kind',['steps','step-zero','step-range','step-type','length','tiny-length','huge-length','parameter-scale','sign','iterations','backtracks','stop','hash','translation-scope','force-scope','arc-scope'])
 def test_preflight(kind,monkeypatch,tmp_path):
-    import anysolver._ge_beam3_native_arc as module
+    import anyfesolver._ge_beam3_native_arc as module
     m,p=bar();kwargs={};scope=None;token=None
     if kind=='steps':p=replace(p,steps=())
     elif kind=='step-zero':p=replace(p,steps=(0.,))

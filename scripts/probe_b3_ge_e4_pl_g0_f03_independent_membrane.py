@@ -11,8 +11,8 @@ import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEMesh, Material
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEMesh, Material
 from _b3_e4_f03_shell_trace import make_shell
 
 

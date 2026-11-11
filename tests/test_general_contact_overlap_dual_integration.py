@@ -6,8 +6,8 @@ from unittest.mock import Mock
 import numpy as np
 import pytest
 
-from anysolver.general_contact.core import ContactSolverSettings, _contact_settings_contract
-from anysolver.general_contact import s3_patch_static as owner
+from anyfesolver.general_contact.core import ContactSolverSettings, _contact_settings_contract
+from anyfesolver.general_contact import s3_patch_static as owner
 from test_general_contact_predictor_compatibility import legacy_settings
 
 
@@ -101,7 +101,7 @@ def test_enabled_actual_caller_refuses_unresolved_and_preserves_exceptions(monke
 
 def test_default_public_request_settings_preserve_original_asdict_shape():
     from test_general_contact_q4_s3_patch_static import _case
-    from anysolver import identify_general_contact_request, ContactPathControl, ContactPathProgram
+    from anyfesolver import identify_general_contact_request, ContactPathControl, ContactPathProgram
     model, definition, config = _case()
     assert config.q4_source_overlap_dual_dev is False
     program = ContactPathProgram((ContactPathControl.node(1, 'uz'),), ((0.,), (-.01,)))
@@ -118,7 +118,7 @@ def test_default_public_request_settings_preserve_original_asdict_shape():
 
 def test_enabled_actual_dispatch_refuses_reversed_body_family():
     from test_general_contact_q4_s3_patch_static import _case
-    from anysolver import validate_general_contact
+    from anyfesolver import validate_general_contact
     model, definition, _ = _case()
     pair = replace(definition.interactions[0], surface='s3_target', target='q4_source')
     incompatible = replace(definition, interactions=(pair,))

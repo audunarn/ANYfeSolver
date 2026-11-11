@@ -79,7 +79,7 @@ def run(output, revision, package_receipt, package_sha256, lane):
             or code or recorder.bad or recorder.passed != recorder.collected):
         raise RuntimeError("G6 scientific inventory failed")
     records=recorder.module.SCIENTIFIC_RECORDS
-    from anysolver._ge_beam3_g6_domain import PARITY_DISPOSITIONS, adjudicate
+    from anyfesolver._ge_beam3_g6_domain import PARITY_DISPOSITIONS, adjudicate
     result=adjudicate(records, parity_rows=dict(PARITY_DISPOSITIONS),
                       installed_artifact=receipt["installed_artifact"])
     science={"schema":"GE_BEAM3_G6_CONFIRMATION_V1", "candidate_commit":revision,

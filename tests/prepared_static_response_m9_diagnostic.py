@@ -5,11 +5,11 @@ from dataclasses import replace
 import numpy as np
 ROOT=Path(__file__).resolve().parents[1]
 sys.path[:0]=[str(ROOT/'tests'),str(ROOT/'scripts')]
-from anysolver import PatternCase,RecoveryConfig,prepare_static_response_evaluator
-from anysolver.prepared_static import PreparedStaticEvaluator
-from anysolver.prepared_static_recovery import _recover_owned_local,_derived_measure
-from anysolver.prepared_static_measures import SHELL_LINEAR_COMPONENTS,shell_surface_tensor
-from anysolver.prepared_static_q4 import recover_q4_stages
+from anyfesolver import PatternCase,RecoveryConfig,prepare_static_response_evaluator
+from anyfesolver.prepared_static import PreparedStaticEvaluator
+from anyfesolver.prepared_static_recovery import _recover_owned_local,_derived_measure
+from anyfesolver.prepared_static_measures import SHELL_LINEAR_COMPONENTS,shell_surface_tensor
+from anyfesolver.prepared_static_q4 import recover_q4_stages
 from test_prepared_static_evaluator import _shell_model,_shell_case
 from benchmark_static_batches import mixed_free_model,free_cases
 
@@ -43,7 +43,7 @@ def combine(columns,c,extended=False):
 
 
 def s3_setup(recipe):
-    from anysolver import e4_pl_s3_element as native
+    from anyfesolver import e4_pl_s3_element as native
     element,mesh,material=recipe.execution_owner
     element._compute_stiffness_components(mesh,material,enforce_positive_winding=True)
     arrays=element._snapshot_qualified_component_arrays((("frame",(3,3)),("bubble_map",(2,15)),("local_nodes",(3,2)),("constitutive",(8,8)),("assumed_shear_samples",tuple((name,(2,17)) for name in ('A','B','C','D','E','F')))))
@@ -154,7 +154,7 @@ def run_family(family):
                         records['local_sum_vs_same_u']=shell_metrics(proposed,same_u)
                     row['elements'][eid]=records
                 else:
-                    from anysolver.elements import _beam_material_properties
+                    from anyfesolver.elements import _beam_material_properties
                     element,mesh,material=recipe.execution_owner
                     L,Q=element._beam_frame_and_transform(element.get_node_coordinates(mesh))
                     G13=_beam_material_properties(material,element.cross_section)[2]

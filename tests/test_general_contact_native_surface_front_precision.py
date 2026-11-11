@@ -11,17 +11,17 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver.general_contact.native_surface_front import (axial_contact_front,
+from anyfesolver.general_contact.native_surface_front import (axial_contact_front,
     stationary_front_angular_cover, prepare_stationary_band, stationary_front_partition_prepared)
-from anysolver.general_contact.native_surface_front_boundary import stationary_endpoint_angular_partition
-from anysolver.general_contact.native_surface_friction_integral import _final_segment_depth
-from anysolver.general_contact.native_surface_front_precision import (PrefixReplayField,
+from anyfesolver.general_contact.native_surface_front_boundary import stationary_endpoint_angular_partition
+from anyfesolver.general_contact.native_surface_friction_integral import _final_segment_depth
+from anyfesolver.general_contact.native_surface_front_precision import (PrefixReplayField,
     contact_side_turning, final_segment_strip_work_bound)
-from anysolver.general_contact.native_surface_front_work import _segment_motion_bounds
-from anysolver.general_contact.native_surface_history import (NativeSurfaceHistoryField,
+from anyfesolver.general_contact.native_surface_front_work import _segment_motion_bounds
+from anyfesolver.general_contact.native_surface_history import (NativeSurfaceHistoryField,
     NativeSurfaceMotionSegment, NativeSurfaceReplayBudget)
-from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
-from anysolver.general_contact.native_surface_support import SupportIntervalBudget
+from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+from anyfesolver.general_contact.native_surface_support import SupportIntervalBudget
 from test_general_contact_native_surface_normal import _settings as normal_settings
 from test_general_contact_native_surface_patch import _patch
 from test_general_contact_native_surface_friction_integral import _settings as friction_settings
@@ -171,7 +171,7 @@ def test_quiet_final_segment_preserves_nonzero_prefix_dissipation():
 
 
 def test_material_node_rounding_keeps_tiny_interval_and_refuses_no_interior():
-    from anysolver.general_contact.native_surface_friction_integral import _interior_material_coordinate
+    from anyfesolver.general_contact.native_surface_friction_integral import _interior_material_coordinate
     left,right=.7999999999999997,.8
     for node in np.polynomial.legendre.leggauss(5)[0]:
         actual=_interior_material_coordinate(left,right,node,allow_rounding=True)

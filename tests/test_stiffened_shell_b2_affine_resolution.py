@@ -5,10 +5,10 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 from scipy import sparse
-from anysolver import stiffened_shell as api
-from anysolver import _stiffened_shell_b2_affine_resolution as proof
-from anysolver import _stiffened_shell_b2_q4_panel_experimental as panel
-from anysolver._b2_physical_linear_batch_dev import B2NumericalSolveFailure
+from anyfesolver import stiffened_shell as api
+from anyfesolver import _stiffened_shell_b2_affine_resolution as proof
+from anyfesolver import _stiffened_shell_b2_q4_panel_experimental as panel
+from anyfesolver._b2_physical_linear_batch_dev import B2NumericalSolveFailure
 from examples.stiffened_shell_b2_physical_rigid_footprint import definition
 
 

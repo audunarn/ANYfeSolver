@@ -5,11 +5,11 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import solve_static_nonlinear
-from anysolver.general_contact.core import suspend_contact
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.semismooth import linearize
-from anysolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver import solve_static_nonlinear
+from anyfesolver.general_contact.core import suspend_contact
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.semismooth import linearize
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
 from scripts.general_contact_d1_free_target_press_probe import (
     build_free_target_case,
 )

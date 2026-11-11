@@ -55,7 +55,7 @@ def test_two_fresh_diagnostics_match_and_archive_extent_is_exact():
         assert left['bytes'] == right['bytes'] and left['sha256'] == right['sha256']
 
 
-@pytest.mark.parametrize('path', ['src/anysolver/_ge_beam3_loaded_modal.py', 'tests/test_ge_beam3_loaded_modal.py'])
+@pytest.mark.parametrize('path', ['src/anyfesolver/_ge_beam3_loaded_modal.py', 'tests/test_ge_beam3_loaded_modal.py'])
 def test_mutated_adapter_or_test_is_rejected(monkeypatch, path):
     original = source
     monkeypatch.setattr(__import__(__name__), 'source',

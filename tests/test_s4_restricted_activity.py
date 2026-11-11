@@ -7,12 +7,12 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver.activity import ElementActivity
+from anyfesolver.activity import ElementActivity
 
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = ROOT / "docs" / "reference_cases" / "s4_restricted_release_contract.json"
-POLICY_PATH = ROOT / "src" / "anysolver" / "shell_formulations" / "s4_restricted_policy.py"
+POLICY_PATH = ROOT / "src" / "anyfesolver" / "shell_formulations" / "s4_restricted_policy.py"
 
 
 def _normalized_git_blob_id(path: Path) -> str:

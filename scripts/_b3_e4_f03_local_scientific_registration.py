@@ -51,7 +51,7 @@ SOURCE_ROLES = (
     ("cases", "scripts/_b3_e4_f03_local_scientific_cases.py"),
     ("budgets", "scripts/_b3_e4_f03_local_scientific_budgets.py"),
 )
-PACKAGE_NAMES = ("ANYsolver", "numpy", "psutil", "scipy", "threadpoolctl")
+PACKAGE_NAMES = ("ANYfeSolver", "numpy", "psutil", "scipy", "threadpoolctl")
 TERMINAL_PRECEDENCE = (
     "FAILED_EVIDENCE",
     "FAILED_EXECUTION",

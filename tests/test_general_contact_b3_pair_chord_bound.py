@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.beam_curve_pair import (
+from anyfesolver.general_contact.beam_curve_pair import (
     _source_interval_target_gap_lower,
 )
 

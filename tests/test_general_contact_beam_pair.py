@@ -6,14 +6,14 @@ import numpy as np
 import pytest
 from scipy.integrate import quad
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, DisplacementControl, LoadCase,
     solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.beam_pair import _BeamPairManager
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.beam_pair import _BeamPairManager
 
 
 def _pair(*, crossing=False):

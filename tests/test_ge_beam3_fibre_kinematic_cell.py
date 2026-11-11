@@ -3,9 +3,9 @@ from decimal import Decimal as D, localcontext
 from dataclasses import replace
 import numpy as np
 import pytest
-from anysolver._ge_beam3_fibre_kinematic_cell import response
-from anysolver._ge_beam3_fibre_section import canonical
-from anysolver._ge_beam3_station_resultant_cell import mul, mv, tr
+from anyfesolver._ge_beam3_fibre_kinematic_cell import response
+from anyfesolver._ge_beam3_fibre_section import canonical
+from anyfesolver._ge_beam3_station_resultant_cell import mul, mv, tr
 from test_ge_beam3_fibre_cell import model, unpack, dot
 
 

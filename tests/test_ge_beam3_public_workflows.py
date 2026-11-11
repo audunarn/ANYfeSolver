@@ -4,8 +4,8 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import ge_beam3_native as api
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver import ge_beam3_native as api
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_native_analysis import analysis
 from test_ge_beam3_native_generalized import problem as generalized
 from test_ge_beam3_native_fibre_static_element import problem as fibre
@@ -107,15 +107,15 @@ def test_profile_does_not_self_declare_artifact_acceptance_or_relabel_history():
     assert 'production_qualified' not in value
     assert api.PROFILE_SHA256 == sha256(api.PROFILE_BYTES).hexdigest()
     assert set(api.__all__) <= set(vars(api))
-    from anysolver.ge_beam3_element import GeometricallyExactBeam3D3NElement
+    from anyfesolver.ge_beam3_element import GeometricallyExactBeam3D3NElement
     assert GeometricallyExactBeam3D3NElement.formulation_id == 'GE_BEAM3_DC_MIXED_K1_MACRO_V2'
 
 
 def test_exported_programs_are_exact_existing_workflow_types():
-    from anysolver._ge_beam3_retained_nodal_loading import Program as Nodal
-    from anysolver._ge_beam3_retained_generalized_state import Program as Distributed
-    from anysolver._ge_beam3_retained_translation_control import Program as Translation
-    from anysolver._ge_beam3_retained_fibre_control import TranslationProgram as FibreTranslation
+    from anyfesolver._ge_beam3_retained_nodal_loading import Program as Nodal
+    from anyfesolver._ge_beam3_retained_generalized_state import Program as Distributed
+    from anyfesolver._ge_beam3_retained_translation_control import Program as Translation
+    from anyfesolver._ge_beam3_retained_fibre_control import TranslationProgram as FibreTranslation
     assert api.NodalProgram is Nodal
     assert api.DistributedProgram is Distributed
     assert api.TranslationProgram is Translation

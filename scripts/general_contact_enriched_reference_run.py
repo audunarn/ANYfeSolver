@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 W = Path('C:/ANYworkspaceWork/contact_trackB_dependency_repair_20261013/d1-polynomial-reference-work-v15')
-REPO = Path('C:/Github/ANYsolver/.worktrees/contact-portable-replay')
+REPO = Path('C:/Github/ANYfeSolver/.worktrees/contact-portable-replay')
 OWNED_EXISTING = ('scripts/general_contact_enriched_reference.py',
     'scripts/general_contact_enriched_reference_geometry.py',
     'scripts/general_contact_enriched_reference_bounds.py',

@@ -8,10 +8,10 @@ if importlib.util.find_spec('anyloads') is None:
     pytest.importorskip('anyloads', reason='optional line-hydrodynamics provider is not installed')
 from anyloads.marine import AiryEnvironment,AiryComponent,CurrentProfile
 from anyloads.marine_line import LineHydrodynamics
-from anysolver.marine_mooring import (MooringLineError,data_to_dict,data_from_dict,HYDRO_API_VERSION)
-from anysolver.marine_mechanical import (MarineMechanicalModel,MarineMechanicalRunSpec,
+from anyfesolver.marine_mooring import (MooringLineError,data_to_dict,data_from_dict,HYDRO_API_VERSION)
+from anyfesolver.marine_mechanical import (MarineMechanicalModel,MarineMechanicalRunSpec,
     MarineMechanicalInputError,solve_marine_mechanical,model_to_dict,model_from_dict,result_to_dict)
-from anysolver.marine_contributions import WorldWrenchContribution
+from anyfesolver.marine_contributions import WorldWrenchContribution
 from test_marine_mooring import coupled_case,fixed_case,perturb
 from test_marine_mooring_driver import case as driver_case
 
@@ -83,7 +83,7 @@ def test_public_model_reserves_mooring_diagnostic_namespace(cid):
 
 def test_same_physical_line_identity_refuses_duplicate_morison_provider():
     from anyloads.marine import MorisonSection,HydrodynamicOwnership
-    from anysolver.marine_morison import MemberEndpoint,MorisonMember,MorisonMemberSetContribution
+    from anyfesolver.marine_morison import MemberEndpoint,MorisonMember,MorisonMemberSetContribution
     model,states,nodes=driver_case()
     s=section();env=AiryEnvironment(20.)
     lines=tuple(replace(line,hydrodynamics=(s,s)) for line in model.mooring.lines)

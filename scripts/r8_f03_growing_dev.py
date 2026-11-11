@@ -172,8 +172,8 @@ def source_stored(reference):
     if reference['level']!=16:raise Unresolved('actual source assessment only level16 until reviewed readiness')
     import numpy as np
     from scipy import sparse
-    from anysolver import _stiffened_shell_ge_experimental as compiler
-    from anysolver._stiffened_shell_l1_assembly_experimental import compile_lines
+    from anyfesolver import _stiffened_shell_ge_experimental as compiler
+    from anyfesolver._stiffened_shell_l1_assembly_experimental import compile_lines
     from scripts.b3_e4_bl5_coherent_aggregation_dev import model
     n,ny=reference['n'],reference['ny'];definition,policy=model(n,ny,n,2)
     sm,sids,xyz,si,sparts=compiler._shell_reference(definition.shell)

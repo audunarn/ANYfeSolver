@@ -4,9 +4,9 @@ from dataclasses import replace
 from hashlib import sha256
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_displacement_checkpoint import (
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_displacement_checkpoint import (
     MAGIC, ELASTIC_S3_POLICY, STABLE_ELASTIC_S3_POLICY, decode_snapshot,
     identities, replay_s3_stable)
 from test_stiffened_shell_native_point_displacement import (
@@ -77,7 +77,7 @@ def test_native_elastic_s3_displacement_cancel_restore_reject(request, monkeypat
     assert resumed.checkpoint() == saved
     compare(prefix, restored)
     (tmp_path/'s3-prefix.checkpoint').write_bytes(saved)
-    import anysolver._stiffened_shell_displacement_corrector as corrector
+    import anyfesolver._stiffened_shell_displacement_corrector as corrector
     with monkeypatch.context() as patch:
         patch.setattr(corrector, 'bordered_correction', lambda matrix, *args: (np.zeros(matrix.shape[0]), 0.))
         with pytest.raises(ss.DisplacementCorrectorFailure):

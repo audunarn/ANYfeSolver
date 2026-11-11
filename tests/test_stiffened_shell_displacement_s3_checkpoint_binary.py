@@ -3,7 +3,7 @@ from pathlib import Path
 from hashlib import sha256
 import numpy as np
 import pytest
-from anysolver._stiffened_shell_ge_checkpoint_binary import (
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import (
     encode_s3, decode_s3, NATIVE_SHELL_DISPLACEMENT_MAGIC)
 
 
@@ -64,7 +64,7 @@ def test_displacement_s3_rejects_incompatible_configuration(options, states):
 
 def test_shared_s3_replay_rejects_incomplete_accepted_history():
     from types import SimpleNamespace
-    from anysolver._stiffened_shell_ge_finite_experimental import _require_native_s3_replay
+    from anyfesolver._stiffened_shell_ge_finite_experimental import _require_native_s3_replay
     owner = SimpleNamespace(_shell_parts=(object(),))
     with pytest.raises(ValueError, match='complete accepted shell'):
         _require_native_s3_replay(owner, None, (), ())
@@ -73,7 +73,7 @@ def test_shared_s3_replay_rejects_incomplete_accepted_history():
 @pytest.mark.parametrize('bad_support', (False, True))
 def test_shared_s3_restore_rejects_bad_predecessor_before_deserialization(bad_support):
     from types import SimpleNamespace
-    from anysolver._stiffened_shell_ge_finite_experimental import _restore_native_s3_histories
+    from anyfesolver._stiffened_shell_ge_finite_experimental import _restore_native_s3_histories
     owner = SimpleNamespace(_definition=SimpleNamespace(shell=SimpleNamespace(
         q4_elements=(), s3_elements=(object(),))), _shell_count=6,
         _shell_ids=(1,), _fixed=np.array((0,)))

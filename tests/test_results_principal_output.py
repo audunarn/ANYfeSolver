@@ -3,8 +3,8 @@ from importlib.util import find_spec
 from threading import enumerate as threads
 import numpy as np
 import pytest
-from anysolver_results import derive_field,DerivationError
-from anysolver_results.formulas import principal_stresses,SHELL_LINEAR_COMPONENTS
+from anyfesolver_results import derive_field,DerivationError
+from anyfesolver_results.formulas import principal_stresses,SHELL_LINEAR_COMPONENTS
 
 
 @pytest.mark.parametrize('workers',[1,2])
@@ -15,7 +15,7 @@ def test_actual_extreme_finite_tensor_never_returns_nonfinite_eigenvalues(worker
     else:tensor[:,0,1]=tensor[:,1,0]=1e308
     with np.errstate(over='ignore',invalid='ignore'),pytest.raises((ValueError,np.linalg.LinAlgError)):
         principal_stresses(tensor,workers=workers)
-    assert not any(t.name.startswith('anysolver-principal') for t in threads())
+    assert not any(t.name.startswith('anyfesolver-principal') for t in threads())
 
 
 @pytest.mark.parametrize('workers',[1,2])
@@ -23,7 +23,7 @@ def test_nonfinite_lapack_return_is_explicit_value_error_and_workers_join(monkey
     tensor=np.zeros((4096 if workers==2 else 1,3,3))
     monkeypatch.setattr(np.linalg,'eigvalsh',lambda value:np.full(value.shape[:-1],np.nan))
     with pytest.raises(ValueError,match='eigenvalues must be finite'):principal_stresses(tensor,workers=workers)
-    assert not any(t.name.startswith('anysolver-principal') for t in threads())
+    assert not any(t.name.startswith('anyfesolver-principal') for t in threads())
 
 
 @pytest.mark.parametrize('workers',[1,2])
@@ -47,4 +47,4 @@ def test_derived_and_reader_nonfinite_or_floating_error_is_chained(tmp_path,work
         assert isinstance(public.value.__cause__,DerivationError)
         assert isinstance(public.value.__cause__.__cause__,FloatingPointError if numpy_error=='raise' else (ValueError,np.linalg.LinAlgError))
         assert public.value.case_id=='a' and public.value.component_key=='principal'
-    assert not any(t.name.startswith('anysolver-principal') for t in threads())
+    assert not any(t.name.startswith('anyfesolver-principal') for t in threads())

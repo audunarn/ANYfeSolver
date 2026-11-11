@@ -20,7 +20,7 @@ def test_null_restart_is_refused(tmp_path):
 def test_force_restart_refusal_preserves_global_sweep_method(kind,tmp_path,monkeypatch):
     import inspect
     from scripts import general_contact_d1_interior_press_dev as entry
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     fixture=json.loads(FIXTURE.read_text())
     payload=copy.deepcopy(fixture)
     if kind=='null':payload={'restart_checkpoint':None}

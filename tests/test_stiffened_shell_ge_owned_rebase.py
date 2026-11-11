@@ -8,13 +8,13 @@ from scipy.spatial.transform import Rotation
 from scipy.sparse.linalg import spsolve
 
 from anymaterial import DNVC208MaterialCurve
-from anysolver import stiffened_shell
-from anysolver._stiffened_shell_ge_experimental import FixedCoordinate
-from anysolver._stiffened_shell_ge_checkpoint_binary import (
+from anyfesolver import stiffened_shell
+from anyfesolver._stiffened_shell_ge_experimental import FixedCoordinate
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import (
     CHART_MAGIC, decode_chart, encode_chart,
 )
-from anysolver._stiffened_shell_rotation_charts import total_coordinates
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_rotation_charts import total_coordinates
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_stiffened_shell_ge_experimental import _panel
 from test_stiffened_shell_ge_finite_experimental import _actions, _q4_shell_j2_panel
 
@@ -226,7 +226,7 @@ def test_rebase_preserves_rejected_increment_prefix(monkeypatch):
     # A physical .55 increment need not fail on every admitted numerical
     # platform. Exercise deterministic chart rejection after forming an actual
     # candidate, rather than requiring an old observed convergence failure.
-    from anysolver._stiffened_shell_ge_finite_experimental import (
+    from anyfesolver._stiffened_shell_ge_finite_experimental import (
         FinitePointDriver, _RotationStepTooLarge,
     )
     advance=FinitePointDriver._advance

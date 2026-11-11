@@ -9,12 +9,12 @@ from time import perf_counter
 import numpy as np
 import pytest
 
-from anysolver.ge_beam3_native_dynamics import create_analysis, SELECTOR, workflow_provenance
-from anysolver._ge_beam3_native_dynamic_restart import MAX_BYTES
-from anysolver._ge_beam3_p5_seeded.core import canonical, sha, NativeMaterialError
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._native_reference_modal import _owned
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver.ge_beam3_native_dynamics import create_analysis, SELECTOR, workflow_provenance
+from anyfesolver._ge_beam3_native_dynamic_restart import MAX_BYTES
+from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha, NativeMaterialError
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._native_reference_modal import _owned
+from anyfesolver.control import CancellationToken, SolveCancelled
 from native_contact_free_finite_velocity_dev import build_definition, initial_velocity
 
 
@@ -206,7 +206,7 @@ def test_committed_native_dynamic_split_restart(record_property):
 
 def test_package_manifest_relative_transitive_binding(tmp_path, monkeypatch, record_property):
     """Disposable filesystem controls only; never modify actual package sources."""
-    import anysolver._ge_beam3_native_dynamic_restart as codec
+    import anyfesolver._ge_beam3_native_dynamic_restart as codec
     from types import SimpleNamespace
     import stat
     class MetadataPath:
@@ -225,7 +225,7 @@ def test_package_manifest_relative_transitive_binding(tmp_path, monkeypatch, rec
         assert not codec._source_is_link(MetadataPath(st_mode=stat.S_IFREG))
     contents = {'__init__.py': b'', 'retained/structural.py': b'tangent = 1\n',
                 'algebra.py': b'work = 2\n'}
-    roots = [tmp_path/'source'/'anysolver', tmp_path/'installed'/'anysolver']
+    roots = [tmp_path/'source'/'anyfesolver', tmp_path/'installed'/'anyfesolver']
     for root in roots:
         for name, raw in contents.items():
             path = root/name

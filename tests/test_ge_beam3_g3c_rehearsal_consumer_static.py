@@ -35,7 +35,7 @@ class ConsumerStaticTests(unittest.TestCase):
         for name in r.WAVES['positive']:
             raw,digest=r.origin_packet(r.ASSIGNMENTS[name],collected)
             self.assertEqual(sha256(raw).hexdigest(),digest)
-        self.assertNotIn('numpy',sys.modules); self.assertNotIn('anysolver',sys.modules)
+        self.assertNotIn('numpy',sys.modules); self.assertNotIn('anyfesolver',sys.modules)
 
     def test_scope_review_hash_and_role_substitution(self):
         candidate,inputs,review=review_fixture()
@@ -52,7 +52,7 @@ class ConsumerStaticTests(unittest.TestCase):
         for path in expected:
             bad=dict(expected); bad.pop(path)
             with self.assertRaises(ValueError): r.verify_extent(bad)
-        bad=dict(expected); bad['src/anysolver/_ge_beam3_g3c_stable/owner.py']='M'
+        bad=dict(expected); bad['src/anyfesolver/_ge_beam3_g3c_stable/owner.py']='M'
         with self.assertRaises(ValueError): r.verify_extent(bad)
         for key in b.identity():
             bad=b.identity(); bad[key]='wrong'
@@ -90,7 +90,7 @@ class ConsumerStaticTests(unittest.TestCase):
     def test_unchanged_source_runtime_and_raw_packet_mutations(self):
         lease=r.environment.strict((b.ARCHIVE/'none/none-j_b2_pair/lease.json').read_bytes())
         original=Path.read_bytes
-        target=ROOT/'src/anysolver/_ge_beam3_g1_analysis.py'
+        target=ROOT/'src/anyfesolver/_ge_beam3_g1_analysis.py'
         def changed(path): return original(path)+b'\n' if path==target else original(path)
         with patch.object(Path,'read_bytes',changed):
             with self.assertRaisesRegex(ValueError,'unchanged producer input changed'):

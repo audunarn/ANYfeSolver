@@ -7,13 +7,13 @@ import pytest
 from scipy.integrate import quad
 from scipy.optimize import root
 
-from anysolver import (BoundaryCondition, ContactDefinition, ContactSurface, ContactInteraction,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactSurface, ContactInteraction,
                        ContactSolverSettings, LoadCase, create_shell_element,
                        solve_static_nonlinear, validate_general_contact)
-from anysolver.fe_core import FEModel
-from anysolver.elements import BeamElement
-from anysolver.general_contact.deformable_beam_s3_static import DeformableBeamS3Manager, PROFILE
-from anysolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement
+from anyfesolver.general_contact.deformable_beam_s3_static import DeformableBeamS3Manager, PROFILE
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
 
 
 def fixture():

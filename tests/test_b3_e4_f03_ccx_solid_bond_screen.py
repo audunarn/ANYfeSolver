@@ -590,7 +590,7 @@ def test_c1_penalty_runner_allows_only_its_known_static_notice():
 
 def test_smooth_terminal_clearance_admits_shared_native_b3_frames():
     """The native Q2 frame guard admits the C1 reference used by the solid."""
-    source=MODULE.parents[1]/"src"/"anysolver"/"ge_beam3_curved_reference.py"
+    source=MODULE.parents[1]/"src"/"anyfesolver"/"ge_beam3_curved_reference.py"
     spec=importlib.util.spec_from_file_location("f03_curved_reference_source",source)
     curved=importlib.util.module_from_spec(spec)
     sys.modules[spec.name]=curved

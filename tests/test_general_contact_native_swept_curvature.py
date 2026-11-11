@@ -9,9 +9,9 @@ import numpy as np
 import pytest
 from scipy.optimize import minimize_scalar
 
-from anysolver.control import CancellationToken
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver.general_contact.native_retained_pair_static import _swept_distance_chord_lower
+from anyfesolver.control import CancellationToken
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver.general_contact.native_retained_pair_static import _swept_distance_chord_lower
 from test_general_contact_native_curved_gap import _independent_gap
 
 
@@ -92,7 +92,7 @@ def test_budget_cancellation_mutation_and_policy_identity(monkeypatch):
     owner = _owner(control=False)
     assert owner._identity() == owner.identity
     # All curved owners bind the changed policy, irrespective of secant flag.
-    from anysolver._ge_beam3_p5_seeded.core import sha
+    from anyfesolver._ge_beam3_p5_seeded.core import sha
     old = dict(profile=owner.profile,native_model=owner.context.identity,
                native_support_sha256=__import__('hashlib').sha256(owner.context.support_identity).hexdigest(),
                contact=owner.contact.identity,gap_tolerance_m=owner.gap_tolerance,

@@ -11,12 +11,12 @@ from scipy import sparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tests"))
 
-from anysolver._ge_beam3_fibre_line_work import evaluate as line_work
-from anysolver._ge_beam3_generalized_static_boundary import cell_couple_load, spatial_jacobian
-from anysolver._ge_beam3_operator_validation_scope import operator_call
-from anysolver._ge_beam3_retained_fibre_state import Context as FibreContext
-from anysolver._ge_beam3_retained_generalized_state import Context as GeneralizedContext, Program
-from anysolver._ge_beam3_seeded_load_program import ForceProgram
+from anyfesolver._ge_beam3_fibre_line_work import evaluate as line_work
+from anyfesolver._ge_beam3_generalized_static_boundary import cell_couple_load, spatial_jacobian
+from anyfesolver._ge_beam3_operator_validation_scope import operator_call
+from anyfesolver._ge_beam3_retained_fibre_state import Context as FibreContext
+from anyfesolver._ge_beam3_retained_generalized_state import Context as GeneralizedContext, Program
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram
 from test_ge_beam3_native_generalized_restart import make as generalized_model, pattern
 from test_ge_beam3_retained_fibre import make_model as fibre_model
 

@@ -60,7 +60,7 @@ G4A_NODES=(G4A_TESTS[0],
     *(G4A_TESTS[1]+'['+str(index)+']' for index in range(3)),
     *(G4A_TESTS[2]+'['+str(index)+']' for index in range(3)),*G4A_TESTS[3:])
 G4A_IMPLEMENTATION_PATHS={
-    'src/anysolver/_ge_beam3_g4a_station_transaction.py',
+    'src/anyfesolver/_ge_beam3_g4a_station_transaction.py',
     'docs/reference_cases/ge_beam3_g4a_station_transaction_checker.py',
     'tests/test_ge_beam3_g4a_station_transaction.py',
     'scripts/run_ge_beam3_qualification.py','tests/test_ge_beam3_qualification_runner.py'}
@@ -84,7 +84,7 @@ G4_NODES=(G4_TESTS[0],
     *(G4_TESTS[2]+'['+name+']' for name in ('duplicate','nonfinite','external_hash','cross_family')),
     *(G4_TESTS[3]+'['+name+']' for name in ('trial','prepare','before_publication')),
     *G4_TESTS[4:])
-G4_IMPLEMENTATION_PATHS={'src/anysolver/_ge_beam3_g4_completion.py',
+G4_IMPLEMENTATION_PATHS={'src/anyfesolver/_ge_beam3_g4_completion.py',
     'tests/test_ge_beam3_g4_completion.py','scripts/run_ge_beam3_qualification.py',
     'tests/test_ge_beam3_qualification_runner.py'}
 G5_BASE='0373b8bc0a7c5bbfc4c991cd62d59d718734e24c'
@@ -98,8 +98,8 @@ G5_TESTS=('test_actual_legacy_b2_reference_routes',
     'test_explicit_native_static_restart_recovery_and_provenance',
     'test_unsupported_routes_fail_closed_before_state_mutation',
     'test_selector_and_provenance_boundary_remains_additive')
-G5_IMPLEMENTATION_PATHS={'src/anysolver/_ge_beam3_g5_completion.py',
-    'src/anysolver/ge_beam3_element.py','tests/test_ge_beam3_g5_completion.py',
+G5_IMPLEMENTATION_PATHS={'src/anyfesolver/_ge_beam3_g5_completion.py',
+    'src/anyfesolver/ge_beam3_element.py','tests/test_ge_beam3_g5_completion.py',
     'scripts/run_ge_beam3_g5_package.py','tests/test_ge_beam3_g5_package_gate.py',
     'tests/test_ge_beam3_mixed_p3_optin.py',
     'scripts/run_ge_beam3_qualification.py','tests/test_ge_beam3_qualification_runner.py'}
@@ -192,8 +192,8 @@ PHYSICAL_PROOF_COMPRESSED_SUCCESSOR_REVIEW='docs/reference_cases/ge_beam3_g3c_pr
 PHYSICAL_PROOF_COMPRESSED_SUCCESSOR_REVIEW_SHA='ad2196bdde31b9f8c3519dcd883ca54097fd26b9d1fbac6bba9fc5fe5554b2a2'
 PHYSICAL_IMPLEMENTATION_PATHS={PHYSICAL_PLAN,PHYSICAL_DESIGN_REVIEW,
     PHYSICAL_PARTITION_ADDENDUM,PHYSICAL_PARTITION_REVIEW,
-    'src/anysolver/_ge_beam3_g3c_physical_owner.py',
-    'src/anysolver/_ge_beam3_g3c_physical_authority.py',
+    'src/anyfesolver/_ge_beam3_g3c_physical_owner.py',
+    'src/anyfesolver/_ge_beam3_g3c_physical_authority.py',
     'scripts/ge_beam3_g3c_physical_history_owner.py',
     'scripts/ge_beam3_g3c_physical_restart_preflight.py',
     PHYSICAL_OWNER_TEST,PHYSICAL_HISTORY_TEST,
@@ -264,14 +264,14 @@ CHART_ADDENDUM_SHA='1eb29b8814e6555e7d16569e2c8d30c828a60458dea4a2801c10f4d58d2c
 CHART_REVIEW='docs/reference_cases/ge_beam3_q4_affine_stable_chart_design_review_v1.json'
 CHART_REVIEW_SHA='ca6de27e79186c9e0b37bf21e765322aa8e46dc323eb858db039951fec7efeab'
 CHART_SOURCES={
- 'src/anysolver/_ge_beam3_g3c_affine_q4_chart.py':'2a26742ec7680a5e75934fb32ee8601d3877cd0befb250489f991f1b9d198a9f',
+ 'src/anyfesolver/_ge_beam3_g3c_affine_q4_chart.py':'2a26742ec7680a5e75934fb32ee8601d3877cd0befb250489f991f1b9d198a9f',
  'docs/reference_cases/ge_beam3_q4_affine_numerical_chart.py':'b7cc92f70d35e3b8f2ab10202cb2f3ad1116e92775425888e482293b323c23ac',
- 'src/anysolver/_ge_beam3_g3c_so3_numerics.py':'588ace39570658f1a83c0110d3a019ebad770d6091b271ff4bbc40b97f96e12e',
+ 'src/anyfesolver/_ge_beam3_g3c_so3_numerics.py':'588ace39570658f1a83c0110d3a019ebad770d6091b271ff4bbc40b97f96e12e',
  'docs/GE_BEAM3_G3C_SO3_NUMERICS_CONTRACT.md':'269bcd4e1fda151e7c22c396a70c43498e8450b222c263dd2655b9ca45998496',
  'docs/reference_cases/ge_beam3_g3c_so3_numerics_implementation_review_v1.json':'4debde89b44c990478487dda4852d7734b852ca01dfb2d3626e782c2328756f1',
  'docs/reference_cases/ge_beam3_g3c_so3_numerics_confirmation_receipt_v1.json':'aa7225cae347662bf92b3c02f8a1ff541d40e67f13db21900d0ad3269f88b91f',
  'docs/reference_cases/ge_beam3_g3c_so3_numerics_result_v1.json':'c8b938bbdbcce329aa83afc00037905d158142d7d2e417acee159bab95aba6fd',
- 'src/anysolver/_ge_beam3_g3c_affine_q4_registry.py':'5f208b716d89ba778193d1261fb5975db4ece68c93fa2efce97e5c129c56acf1'}
+ 'src/anyfesolver/_ge_beam3_g3c_affine_q4_registry.py':'5f208b716d89ba778193d1261fb5975db4ece68c93fa2efce97e5c129c56acf1'}
 NUMERICAL_TESTS=['test_affine_recovery_'+suffix for suffix in (
     'definition_and_source_identity','zero_and_station_constitutive','independent_material_fields',
     '64_stationarity_and_schur','actual_chart_work_hessian','directional_derivatives_all_steps',
@@ -314,14 +314,14 @@ NUMERICAL_TABLE_IDS=[
                         'eigen_first_derivative','eigen_second_derivative'],
      'eigen_derivatives':['SQUARE::1::amplitude=1e-06']}]
 NUMERICAL_SOURCE_HASHES={
- 'src/anysolver/e4_pl_element.py':'7fc46a18046e043512a5fb2c3f61ed0b95b834e4dde764f63c500a885e87ea38',
- 'src/anysolver/elements.py':'f8c59792947a3c9b84416c61a4d9db98e42926d1bf21e74e736afbf6a9a88b37',
- 'src/anysolver/_ge_beam3_g3c_local_shell.py':'69d9f27a96ed7e9a5959a42a081eeafbbe72021de6e4da1f91355c5fb3850f10',
- 'src/anysolver/_ge_beam3_variational_shell.py':'b0db7a83633f4a835c06e940a6f0de36ab958f7e816c37a23c6ebc16259a2a60',
- 'src/anysolver/_ge_beam3_mixed_ad.py':'b299ff765cd2eaae8b33a2ba1d05069f6fe8c39209e1eac75df356a2afb1fe36',
- 'src/anysolver/_ge_beam3_pose_joint.py':'69cfb0a71761ab7cad0d62080d81511949e7c920f7f70162bcaba0497b402657',
- 'src/anysolver/_ge_beam3_g3c_definition.py':'4b46b870fec010e3378df83c374d763f858d8f25820c14f9704dc6f0a656f0c2',
- 'src/anysolver/_ge_beam3_g3c_owner.py':'18b9565d56192e23f192b1a3fbae3cb12ed7ede958c0e4b3e46279a799d1afc5',
+ 'src/anyfesolver/e4_pl_element.py':'7fc46a18046e043512a5fb2c3f61ed0b95b834e4dde764f63c500a885e87ea38',
+ 'src/anyfesolver/elements.py':'f8c59792947a3c9b84416c61a4d9db98e42926d1bf21e74e736afbf6a9a88b37',
+ 'src/anyfesolver/_ge_beam3_g3c_local_shell.py':'69d9f27a96ed7e9a5959a42a081eeafbbe72021de6e4da1f91355c5fb3850f10',
+ 'src/anyfesolver/_ge_beam3_variational_shell.py':'b0db7a83633f4a835c06e940a6f0de36ab958f7e816c37a23c6ebc16259a2a60',
+ 'src/anyfesolver/_ge_beam3_mixed_ad.py':'b299ff765cd2eaae8b33a2ba1d05069f6fe8c39209e1eac75df356a2afb1fe36',
+ 'src/anyfesolver/_ge_beam3_pose_joint.py':'69cfb0a71761ab7cad0d62080d81511949e7c920f7f70162bcaba0497b402657',
+ 'src/anyfesolver/_ge_beam3_g3c_definition.py':'4b46b870fec010e3378df83c374d763f858d8f25820c14f9704dc6f0a656f0c2',
+ 'src/anyfesolver/_ge_beam3_g3c_owner.py':'18b9565d56192e23f192b1a3fbae3cb12ed7ede958c0e4b3e46279a799d1afc5',
  'docs/reference_cases/ge_beam3_g3c_fixtures_v1.json':'d5fecc80c3203ac7d191b4031d64bf35c56d2900066cb01fc1dfa4276d24c006'}
 PHYSICAL_TABLES=frozenset(('work','common_motion','d4','director','passive','rebase','graph','tiny','smoke'))
 PHYSICAL_SHAPES={'physical_energy':[],'physical_force':[24],'physical_hessian':[24,24],
@@ -343,11 +343,11 @@ Q4_PLAN_SHA='65f51816fe678acd38dffa9578f7cf2864d7cea518fc0e16e659899632cc3ce8'
 ALLOWED={
     'scripts/run_ge_beam3_qualification.py','tests/test_ge_beam3_qualification_runner.py',
     'docs/GE_BEAM3_QUALIFICATION_COMPLETION_REGISTER.md',
-    'src/anysolver/_ge_beam3_g3c_affine_q4_recovery.py',
-    'src/anysolver/_ge_beam3_g3c_affine_q4_chart.py',CHART_ADDENDUM,CHART_REVIEW,
-    'src/anysolver/_ge_beam3_g3c_affine_q4_increment_chart.py',INCREMENT_ADDENDUM,INCREMENT_REVIEW,
+    'src/anyfesolver/_ge_beam3_g3c_affine_q4_recovery.py',
+    'src/anyfesolver/_ge_beam3_g3c_affine_q4_chart.py',CHART_ADDENDUM,CHART_REVIEW,
+    'src/anyfesolver/_ge_beam3_g3c_affine_q4_increment_chart.py',INCREMENT_ADDENDUM,INCREMENT_REVIEW,
     'docs/reference_cases/ge_beam3_q4_affine_increment_chart.py',
-    'src/anysolver/_ge_beam3_g3c_affine_q4_registry.py',
+    'src/anyfesolver/_ge_beam3_g3c_affine_q4_registry.py',
     'docs/reference_cases/ge_beam3_q4_affine_numerical_checker.py',
     'docs/reference_cases/ge_beam3_q4_affine_numerical_chart.py',
     'docs/GE_BEAM3_Q4_AFFINE_RECOVERY_EXTENSION_LEMMA.md',
@@ -419,7 +419,7 @@ PHYSICAL_OBLIGATIONS={
  'MO18':'SHARED_RUNNER_TWO_FULL_CYCLE_AND_INDEPENDENT_REVIEW'}
 
 def physical_support():
-    """Inert inventory module only; it imports no anysolver or numerical package."""
+    """Inert inventory module only; it imports no anyfesolver or numerical package."""
     import ge_beam3_g3c_physical_history_owner as support
     return support
 
@@ -857,7 +857,7 @@ def execute_physical_formal_measurement(args,watchdog,expected):
     partition=physical_formal_measurement_partition();runtime=physical_support().runtime_identity()
     common_value=physical_formal_common_manifest(expected[0],expected[1],environment.strict(expected[2]),
         runtime,partition,cycle=0)
-    root=Path(tempfile.mkdtemp(prefix='anysolver-g3c-physical-formal-measurement-'))
+    root=Path(tempfile.mkdtemp(prefix='anyfesolver-g3c-physical-formal-measurement-'))
     print('DIAGNOSTICS '+str(root),flush=True)
     common_path=root/'common.json';write(common_path,common_value)
     common=physical_validate_formal_common(environment.strict(read(common_path)))
@@ -973,7 +973,7 @@ def execute_physical_proof_compressed(args,watchdog,expected):
     runtime=physical_support().runtime_identity()
     common_value=physical_formal_common_manifest(expected[0],expected[1],environment.strict(expected[2]),
         runtime,partition,cycle=args.proof_cycle)
-    root=Path(tempfile.mkdtemp(prefix=f'anysolver-g3c-proof-compressed-cycle{args.proof_cycle}-'))
+    root=Path(tempfile.mkdtemp(prefix=f'anyfesolver-g3c-proof-compressed-cycle{args.proof_cycle}-'))
     print('DIAGNOSTICS '+str(root),flush=True);common_path=root/'common.json';write(common_path,common_value)
     common=physical_validate_formal_common(environment.strict(read(common_path)))
     specs=common['partition']['body']['shards'];results={};passed=True;failure=None
@@ -1208,7 +1208,7 @@ def physical_formal_worker(out,lease_sha):
     if any(os.environ.get(key)!='1' for key in THREADS):raise ValueError('formal numerical thread environment')
     print('BEAM CHECKPOINT formal authority complete',flush=True)
     sys.path[:0]=[str(ROOT/'src'),str(ROOT),str(CAPSULE.parent/'site')]
-    from anysolver import _ge_beam3_g3c_physical_authority as runtime_authority
+    from anyfesolver import _ge_beam3_g3c_physical_authority as runtime_authority
     runtime_authority.capture(canonical(common))
     import pytest
     node=PHYSICAL_FORMAL_TEST+'::test_physical_formal_shard_assignment'
@@ -1937,7 +1937,7 @@ def physical_authority_probe(lease):
     elif probe['category']=='R10_NORMAL_SOURCE' and probe['member'] in ('mocked_normal_authority_read','mocked_source_hash'):
         rows=json.loads(json.dumps(lease['inputs']))
         target=('docs/reference_cases/ge_beam3_g3c_fixtures_v1.json' if probe['member']=='mocked_normal_authority_read'
-                else 'src/anysolver/_ge_beam3_g3c_definition.py')
+                else 'src/anyfesolver/_ge_beam3_g3c_definition.py')
         before=rows[target]['sha256'];rows[target]['sha256']='0'*64 if before!='0'*64 else '1'*64
         try:verify_review(review,original_review_sha,lease['candidate'],rows,'g3c-physical')
         except ValueError as exc:error=str(exc)
@@ -1964,7 +1964,7 @@ def physical_worker(out,lease_sha):
         records=physical_authority_probe(lease);passed=[]
     else:
         sys.path[:0]=[str(ROOT/'src'),str(ROOT),str(CAPSULE.parent/'site')]
-        from anysolver import _ge_beam3_g3c_physical_authority as runtime_authority
+        from anyfesolver import _ge_beam3_g3c_physical_authority as runtime_authority
         runtime_authority.capture(raw)
         if correction:
             import ge_beam3_g3c_correction_lease_binding as correction_binding
@@ -2774,7 +2774,7 @@ def execute_physical_partition(args,watchdog,expected):
     physical_verify_partition_priors(prior_paths,expected,args.partition_id)
     inventory_rows=physical_inventory('rehearsal');_,spec=physical_partition_spec(args.partition_id,inventory_rows)
     indices=spec['indices'];runtime=physical_support().runtime_identity()
-    root=Path(tempfile.mkdtemp(prefix='anysolver-g3c-physical-partition-'));print('DIAGNOSTICS '+str(root),flush=True)
+    root=Path(tempfile.mkdtemp(prefix='anyfesolver-g3c-physical-partition-'));print('DIAGNOSTICS '+str(root),flush=True)
     base=dict(lane='rehearsal',candidate=expected[0],inputs=expected[1],review_sha256=args.review_sha256,
         implementation_review=environment.strict(expected[2]),runtime_sha256=runtime,inventory=inventory_rows)
     outputs={} if args.partition_id=='R-HISTORY' else physical_history_outputs_from_partition(prior_paths[2])
@@ -2902,7 +2902,7 @@ def execute_physical_union(args,watchdog,expected):
     for partition_id,path in zip(PHYSICAL_PARTITION_IDS,paths[2:]):
         partition_values.append(physical_validate_partition(path,expected,partition_id)[0])
     if authority(args.review,args.review_sha256,'g3c-physical')!=expected:raise ValueError('physical union final authority')
-    root=Path(tempfile.mkdtemp(prefix='anysolver-g3c-physical-union-'));print('DIAGNOSTICS '+str(root),flush=True)
+    root=Path(tempfile.mkdtemp(prefix='anyfesolver-g3c-physical-union-'));print('DIAGNOSTICS '+str(root),flush=True)
     process=dict(schema='GE_BEAM3_G3C_PHYSICAL_UNION_PROCESS_V1',lane='rehearsal',
         partition_manifest_sha256=PHYSICAL_PARTITION_MANIFEST_SHA,passed=True,required_partitions=6,
         terminal_partitions=6,elapsed_seconds=time.monotonic()-started,active_processes=0)
@@ -3043,7 +3043,7 @@ def execute_physical_correction_guards(args,watchdog,expected):
     incident=physical_failed_guards(args.failed_guards_process,predecessor)
     compatibility=physical_runtime_compatibility(expected,predecessor)
     inventory_rows=physical_inventory('rehearsal');indices=list(range(90,234));runtime=physical_support().runtime_identity()
-    root=Path(tempfile.mkdtemp(prefix='anysolver-g3c-physical-correction-guards-'));print('DIAGNOSTICS '+str(root),flush=True)
+    root=Path(tempfile.mkdtemp(prefix='anyfesolver-g3c-physical-correction-guards-'));print('DIAGNOSTICS '+str(root),flush=True)
     base=dict(lane='rehearsal',candidate=expected[0],inputs=expected[1],review_sha256=args.review_sha256,
         implementation_review=environment.strict(expected[2]),runtime_sha256=runtime,inventory=inventory_rows,
         runtime_compatibility=compatibility)
@@ -3236,7 +3236,7 @@ def execute_physical_correction_guard_segment(args,watchdog,expected):
         physical_validate_correction_guard_segment(prior_path,expected,prior_paths[:7+prior_ordinal],prior_id,
             args.failed_guards_process,args.interrupted_guards_root,memo=memo)
     inventory_rows=physical_inventory('rehearsal')
-    root=Path(tempfile.mkdtemp(prefix='anysolver-g3c-physical-correction-'+segment_id.lower()+'-'));print('DIAGNOSTICS '+str(root),flush=True)
+    root=Path(tempfile.mkdtemp(prefix='anyfesolver-g3c-physical-correction-'+segment_id.lower()+'-'));print('DIAGNOSTICS '+str(root),flush=True)
     base=dict(lane='rehearsal',candidate=expected[0],inputs=expected[1],review_sha256=args.review_sha256,
         implementation_review=environment.strict(expected[2]),runtime_sha256=physical_support().runtime_identity(),
         inventory=inventory_rows,runtime_compatibility=compatibility,guard_segment_id=segment_id,
@@ -3350,7 +3350,7 @@ def execute_physical_correction_guard_union(args,watchdog,expected):
     records=[row for segment in segments for row in segment['records']]
     if [row.get('assignment_index') for row in records]!=list(range(90,234)):
         raise ValueError('correction guard union exact ordering')
-    root=Path(tempfile.mkdtemp(prefix='anysolver-g3c-physical-correction-guards-union-'));print('DIAGNOSTICS '+str(root),flush=True)
+    root=Path(tempfile.mkdtemp(prefix='anyfesolver-g3c-physical-correction-guards-union-'));print('DIAGNOSTICS '+str(root),flush=True)
     stage=root/'staged';stage.mkdir()
     process=dict(schema='GE_BEAM3_G3C_PHYSICAL_CORRECTION_GUARDS_PROCESS_V2',lane='rehearsal',partition_id='R-GUARDS',
         guard_segment_manifest_sha256=PHYSICAL_CORRECTION_GUARD_SEGMENT_MANIFEST_SHA,passed=True,
@@ -3460,7 +3460,7 @@ def execute_physical_correction_union(args,watchdog,expected):
     if (any(type(row)is not dict or type(row.get('assignment_index'))is not int for row in records)
         or [row.get('assignment_index') for row in records]!=list(range(234))):
         raise ValueError('correction union exact ordering')
-    root=Path(tempfile.mkdtemp(prefix='anysolver-g3c-physical-correction-union-'));print('DIAGNOSTICS '+str(root),flush=True)
+    root=Path(tempfile.mkdtemp(prefix='anyfesolver-g3c-physical-correction-union-'));print('DIAGNOSTICS '+str(root),flush=True)
     stage=root/'staged';stage.mkdir()
     process=dict(schema='GE_BEAM3_G3C_PHYSICAL_CORRECTION_UNION_PROCESS_V1',lane='rehearsal',passed=True,
         required_partitions=6,terminal_partitions=6,elapsed_seconds=time.monotonic()-started,active_processes=0)
@@ -3530,7 +3530,7 @@ def execute_physical(args,watchdog):
         raise ValueError('physical partition mode is rehearsal-only')
     verify_physical_priors(args.prior or [],expected,args.lane)
     inventory_rows=physical_inventory(args.lane);runtime=physical_support().runtime_identity()
-    root=Path(tempfile.mkdtemp(prefix='anysolver-g3c-physical-'));print('DIAGNOSTICS '+str(root),flush=True)
+    root=Path(tempfile.mkdtemp(prefix='anyfesolver-g3c-physical-'));print('DIAGNOSTICS '+str(root),flush=True)
     base=dict(lane=args.lane,candidate=expected[0],inputs=expected[1],review_sha256=args.review_sha256,
         implementation_review=environment.strict(expected[2]),runtime_sha256=runtime,inventory=inventory_rows)
     history=[i for i,a in enumerate(inventory_rows)if a['kind'] in ('owner-static','owner','history')]
@@ -3747,7 +3747,7 @@ def validate_numerical_result(raw,completion,lease,index,assignment_sha,observat
 
 def registered_observation_state(table,row_id):
     """Fixture data only. Never construct a facade or evaluate any operator."""
-    from anysolver import _ge_beam3_g3c_affine_q4_registry as registry
+    from anyfesolver import _ge_beam3_g3c_affine_q4_registry as registry
     c=registry.construction(row_construction(table,row_id))
     pose=row_id.rsplit('::',1)[1] if table in ('work','graph','smoke') else 'MIXED'
     amplitude=float(row_id.split('::amplitude=')[1]) if table=='tiny' else 1.
@@ -3771,8 +3771,8 @@ def observation_specs():
 
 
 def fixture_source_bindings():
-    """Whole importable ANYsolver Python graph plus frozen fixture/environment."""
-    paths={p.relative_to(ROOT).as_posix() for p in (ROOT/'src/anysolver').rglob('*.py')}
+    """Whole importable ANYfeSolver Python graph plus frozen fixture/environment."""
+    paths={p.relative_to(ROOT).as_posix() for p in (ROOT/'src/anyfesolver').rglob('*.py')}
     paths.update(('docs/reference_cases/ge_beam3_g3c_fixtures_v1.json',
                   'scripts/ge_beam3_g3b_environment.py',JOB))
     return {path:fingerprint(read(ROOT/path).replace(b'\r\n',b'\n')) for path in sorted(paths)}
@@ -4175,7 +4175,7 @@ def monitor_batch(entries,watchdog,clock=time.monotonic,sleep=time.sleep):
 def execute_numerical(args,watchdog):
     observations={}
     expected=authority(args.review,args.review_sha256,args.gate,observation_capture=observations);watchdog.check()
-    out=Path(tempfile.mkdtemp(prefix='anysolver-beam-qualification-'))
+    out=Path(tempfile.mkdtemp(prefix='anyfesolver-beam-qualification-'))
     print('DIAGNOSTICS '+str(out),flush=True)
     lease=dict(schema=SCOPE,run_id=str(uuid.uuid4()),gate=args.gate,lane=args.lane,candidate=expected[0],
         inputs=expected[1],review_sha256=args.review_sha256,selected=inventory(args.lane,args.gate),
@@ -4243,7 +4243,7 @@ def execute_guarded(args,watchdog):
     wave_start=time.monotonic()
     expected=authority(args.review,args.review_sha256,args.gate)
     watchdog.check()
-    out=Path(tempfile.mkdtemp(prefix='anysolver-beam-qualification-'))
+    out=Path(tempfile.mkdtemp(prefix='anyfesolver-beam-qualification-'))
     print('DIAGNOSTICS '+str(out),flush=True)
     lease=dict(schema=SCOPE,run_id=str(uuid.uuid4()),gate=args.gate,lane=args.lane,
                candidate=expected[0],inputs=expected[1],review_sha256=args.review_sha256,selected=inventory(args.lane,args.gate))

@@ -11,13 +11,13 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver.fe_core import FEModel
-from anysolver.elements import BeamElement, QuadraticBeamElement, create_shell_element
-from anysolver.boundary import BoundaryCondition, FixedSupport, LoadCase
-from anysolver.assembly import compute_stresses, solve_linear
-from anysolver.buckling import solve_eigenvalue_buckling
-from anysolver.mesh_gen import StiffenerCrossSection
-from anysolver.nonlinear import solve_nonlinear_load_stepping
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement, QuadraticBeamElement, create_shell_element
+from anyfesolver.boundary import BoundaryCondition, FixedSupport, LoadCase
+from anyfesolver.assembly import compute_stresses, solve_linear
+from anyfesolver.buckling import solve_eigenvalue_buckling
+from anyfesolver.mesh_gen import StiffenerCrossSection
+from anyfesolver.nonlinear import solve_nonlinear_load_stepping
 
 E = 210.0e9
 NU = 0.3

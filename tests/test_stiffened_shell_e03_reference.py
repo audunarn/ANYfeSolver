@@ -59,7 +59,7 @@ def test_fitted_port_transpose_work_and_world_wrench(sign):
 @pytest.mark.parametrize("sign", (-1, 1))
 def test_native_b2_world_rows_and_dual_multiplier_map(sign):
     # Local reference-law control only: no owner compilation or global solve.
-    from anysolver._b2_f10_f11_point_attachment import compile_reference_point
+    from anyfesolver._b2_f10_f11_point_attachment import compile_reference_point
 
     case = ref.build_case(0, sign)
     definition, _, _, _ = native.b2_definition(case)

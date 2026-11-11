@@ -11,12 +11,12 @@ import time
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver._ge_beam3_connected_dynamic import _RetainedMidpointAssembly
-from anysolver._ge_beam3_native_pair_contact import PATH_FAILURE, PROFILE
-from anysolver._ge_beam3_native_transient import NativeTransientError
-from anysolver._ge_beam3_p5_seeded.core import canonical, sha
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver.general_contact import solve_native_transient_pair
+from anyfesolver._ge_beam3_connected_dynamic import _RetainedMidpointAssembly
+from anyfesolver._ge_beam3_native_pair_contact import PATH_FAILURE, PROFILE
+from anyfesolver._ge_beam3_native_transient import NativeTransientError
+from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver.general_contact import solve_native_transient_pair
 from examples.general_contact_native_pair_impact_dev import build, config, run
 
 
@@ -92,7 +92,7 @@ def test_public_two_body_impact_genuine_stages_storage_and_path():
             return evaluate(*poses,**kwargs)
         except Exception as failure:
             if os.environ.get('C8_JOB_DIR'):
-                from anysolver.general_contact.native_retained_whole_pair import _private_interval_open, _private_factored_gap
+                from anyfesolver.general_contact.native_retained_whole_pair import _private_interval_open, _private_factored_gap
                 if 'source_curve' in diagnostics:
                     source,target = diagnostics['source_curve'],diagnostics['target_curve']
                     left,right = diagnostics['interval']
@@ -246,8 +246,8 @@ def test_native_contact_identity_change_and_event_budget_refuse():
         build(maximum_penetration_m=.1)
     with pytest.raises(ValueError):
         build(maximum_swept_intervals=4097)
-    from anysolver._ge_beam3_native_pair_contact import NativePairContactAnalysis, ENDPOINT_POLICY
-    from anysolver.general_contact.native_retained_whole_pair import NativeRetainedWholeCurvePair
+    from anyfesolver._ge_beam3_native_pair_contact import NativePairContactAnalysis, ENDPOINT_POLICY
+    from anyfesolver.general_contact.native_retained_whole_pair import NativeRetainedWholeCurvePair
     from examples.general_contact_native_pair_impact_dev import definitions
     curved = definitions(separation=.2,rise=.01)
     a,_ = curved[0].instantiate(); b,_ = curved[1].instantiate()

@@ -10,21 +10,21 @@ from math import pi
 
 import numpy as np
 
-from anysolver import create_shell_element
-from anysolver.boundary import BoundaryCondition, FixedSupport
-from anysolver.fe_core import FEModel
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-from anysolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_retained_nodal_loading import NodalDeadForces, Program
-from anysolver.general_contact.native_material_s3 import NativeMaterialS3Patch, NativeRetainedMaterialS3Work
-from anysolver.general_contact.native_retained_s3_static import NativeRetainedRoundS3Analysis
-from anysolver.general_contact.native_surface_normal import StraightNormalIntegrationSettings
-from anysolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
-from anysolver.general_contact.s3_skin_work import S3SkinWorkAdapter
+from anyfesolver import create_shell_element
+from anyfesolver.boundary import BoundaryCondition, FixedSupport
+from anyfesolver.fe_core import FEModel
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+from anyfesolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_retained_nodal_loading import NodalDeadForces, Program
+from anyfesolver.general_contact.native_material_s3 import NativeMaterialS3Patch, NativeRetainedMaterialS3Work
+from anyfesolver.general_contact.native_retained_s3_static import NativeRetainedRoundS3Analysis
+from anyfesolver.general_contact.native_surface_normal import StraightNormalIntegrationSettings
+from anyfesolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
+from anyfesolver.general_contact.s3_skin_work import S3SkinWorkAdapter
 
 
 def analysis(*, beams=1, targets=None, facets=1):
@@ -87,7 +87,7 @@ def analysis(*, beams=1, targets=None, facets=1):
             geometry_tolerance_m=1e-10,rim_clearance_m=1e-6)
         works.append(NativeRetainedMaterialS3Work(vertical_patch,vertical_skin))
     if beams==2 or facets==2:
-        from anysolver.general_contact import NativeS3ContactPair, create_native_contact_analysis
+        from anyfesolver.general_contact import NativeS3ContactPair, create_native_contact_analysis
         pairs=tuple(NativeS3ContactPair('beam'+str(work.contact.beam_element_id-1)+
             ('-skin'+str(work.shell.element_id) if facets==2 else ''),work,5e-5,128) for work in works)
         return create_native_contact_analysis(tuple(definitions),tuple(roots),program,shell,pairs,

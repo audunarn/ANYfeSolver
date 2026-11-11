@@ -13,10 +13,10 @@ import subprocess
 import sys
 from math import fsum, fma
 
-import anysolver
-from anysolver import stiffened_shell
-from anysolver._stiffened_shell_ge_experimental import _linear_equilibrium, _scaled_constraint_gap
-from anysolver._stiffened_shell_ge_experimental import _require_independent_supported_rows
+import anyfesolver
+from anyfesolver import stiffened_shell
+from anyfesolver._stiffened_shell_ge_experimental import _linear_equilibrium, _scaled_constraint_gap
+from anyfesolver._stiffened_shell_ge_experimental import _require_independent_supported_rows
 import numpy as np
 import numba
 from scipy import sparse
@@ -189,14 +189,14 @@ def _parity(a, b, n, *, require=True):
 def main(destination):
     if destination.exists(): raise FileExistsError("preserve previous decision output")
     destination.mkdir()
-    expected = (ROOT/'src/anysolver/__init__.py').resolve()
-    if Path(anysolver.__file__).resolve() != expected:
+    expected = (ROOT/'src/anyfesolver/__init__.py').resolve()
+    if Path(anyfesolver.__file__).resolve() != expected:
         raise ValueError("decision imported another solver checkout")
     definition = _bl5_joint_mesh_definition(INTERVALS, INTERVALS, 1)
     report = {"status":"IN_PROGRESS", "source_git":subprocess.check_output(
         ['git','-c',f'safe.directory={ROOT.as_posix()}','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
         "runner_sha256":hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-        "imported_anysolver":str(expected), "physical_shell":asdict(definition.shell),
+        "imported_anyfesolver":str(expected), "physical_shell":asdict(definition.shell),
         "runtime":{"python":sys.version,"numba_jit_disabled":bool(numba.config.DISABLE_JIT),
                    "numba_threads":numba.config.NUMBA_NUM_THREADS},
         "beam_definition_hashes":[b.sha256 for b in definition.beams],
@@ -353,7 +353,7 @@ def boundary_control(destination, previous):
     try:
         with threadpool_limits(limits=1):
             report['threadpools']=threadpool_info()
-            if (Path(anysolver.__file__).resolve()!=(ROOT/'src/anysolver/__init__.py').resolve()
+            if (Path(anyfesolver.__file__).resolve()!=(ROOT/'src/anyfesolver/__init__.py').resolve()
                     or any(p['num_threads']!=1 for p in report['threadpools'])
                     or not report['threadpools'] or not numba.config.DISABLE_JIT
                     or numba.config.NUMBA_NUM_THREADS!=1):

@@ -5,11 +5,11 @@ from threading import RLock
 from types import SimpleNamespace as NS
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver import _stiffened_shell_displacement_adaptive as adaptive
-from anysolver import _stiffened_shell_affine_endpoint as endpoint
-from anysolver import _stiffened_shell_displacement_control as fixed
-from anysolver._stiffened_shell_ge_checkpoint_binary import COMPENSATED_MAGIC
+from anyfesolver import stiffened_shell as ss
+from anyfesolver import _stiffened_shell_displacement_adaptive as adaptive
+from anyfesolver import _stiffened_shell_affine_endpoint as endpoint
+from anyfesolver import _stiffened_shell_displacement_control as fixed
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import COMPENSATED_MAGIC
 
 SEED=COMPENSATED_MAGIC+b'injected original seed'
 DIGEST=sha256(SEED).hexdigest()
@@ -63,7 +63,7 @@ def test_source_paired_identity_and_legacy_header(owner,monkeypatch):
     # Golden bytes come from the immutable original wheel's encode function,
     # rather than reconstructing expected bytes with this candidate's encoder.
     from scripts.r8_ge_paired_adaptive_dev import BASE_DOC as DOC
-    from anysolver._stiffened_shell_ge_checkpoint_binary import MAGIC as FORCE_MAGIC
+    from anyfesolver._stiffened_shell_ge_checkpoint_binary import MAGIC as FORCE_MAGIC
     inner=FORCE_MAGIC+b'golden-inner-framing-only'
     digests={'legacy':'e02fa7e466ff996f259b0aa4dd818b1302fb912f822f31e1f6dc2677bca5f20e',
              'native':'4eb46e0f4ef4005c02a4933606e468341cf3e486aa2e90d3bcd521371775e374',
@@ -119,7 +119,7 @@ def test_source_typed_cutback_and_durable_limit(owner,monkeypatch):
     assert owner.recover().status=='accepted_prefix'
 
 def test_source_cancellation_and_untyped_failures_not_cutback(owner,monkeypatch):
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.control import CancellationToken,SolveCancelled
     token=CancellationToken();token.cancel('injected cancellation')
     for failure in (ValueError('admission'),reject(owner).__class__('missing detail')):
         def fail(*a,**k):raise failure
@@ -149,7 +149,7 @@ def test_source_restore_atomic_cancel_stale_and_progress(owner,monkeypatch):
         source=FakeOwner();self._finite_driver=source._finite_driver
         return source.recover()
     monkeypatch.setattr(FakeOwner,'restore',restore,raising=False)
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.control import CancellationToken,SolveCancelled
     token=CancellationToken();token.cancel('before restore')
     with pytest.raises(SolveCancelled):adaptive.restore_paired(owner,raw,cancellation_token=token)
     assert owner._finite_driver is None and owner._generation==9
@@ -172,7 +172,7 @@ def test_source_restore_atomic_cancel_stale_and_progress(owner,monkeypatch):
     assert result.status=='accepted_prefix' and owner.checkpoint()==raw
 
 def test_source_public_restore_dispatch_before_legacy(owner,monkeypatch):
-    from anysolver._stiffened_shell_ge_experimental import ExperimentalGEAnalysis
+    from anyfesolver._stiffened_shell_ge_experimental import ExperimentalGEAnalysis
     owner._finite_driver=None;owner._unsupported_modes=()
     owner._require_open=lambda:None;owner._require_stateful_scope=lambda:None
     raw=adaptive.encode(owner._identity,context(FakeOwner()),SEED,paired=True)
@@ -192,7 +192,7 @@ def test_source_public_restore_dispatch_before_legacy(owner,monkeypatch):
         patch.setattr(endpoint,'is_paired_displacement',lambda o:False)
         with pytest.raises(ValueError):ExperimentalGEAnalysis.restore.__wrapped__(owner,raw)
     assert owner._finite_driver is None and owner._displacement_adaptive is None
-    from anysolver.control import CancellationToken
+    from anyfesolver.control import CancellationToken
     with pytest.raises(ValueError,match='cancellation'):
         ExperimentalGEAnalysis.restore.__wrapped__(owner,b'legacy unsupported',cancellation_token=CancellationToken())
     assert owner._finite_driver is None and owner._displacement_adaptive is None
@@ -200,8 +200,8 @@ def test_source_public_restore_dispatch_before_legacy(owner,monkeypatch):
     assert owner.checkpoint()==raw
 
 def test_source_public_solve_adaptive_dispatch(owner,monkeypatch):
-    from anysolver._stiffened_shell_ge_experimental import ExperimentalGEAnalysis
-    from anysolver._stiffened_shell_f06_increment_arithmetic import POLICY
+    from anyfesolver._stiffened_shell_ge_experimental import ExperimentalGEAnalysis
+    from anyfesolver._stiffened_shell_f06_increment_arithmetic import POLICY
     owner._beam_parts=((NS(operator=NS(arithmetic_policy=POLICY)),None,None),)
     for name in ('_require_open','_require_stateful_scope'):setattr(owner,name,lambda:None)
     owner._require_distributing_reference_only=lambda *a:None

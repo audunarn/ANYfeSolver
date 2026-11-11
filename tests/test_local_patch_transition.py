@@ -19,7 +19,7 @@ from typing import Any
 import numpy as np
 import pytest
 
-from anysolver.runtime import (
+from anyfesolver.runtime import (
     LightweightFEMConfig,
     build_generated_geometry,
     run_production_fem,
@@ -610,7 +610,7 @@ def test_axial_cylinder_stress_is_mesh_style_invariant() -> None:
     to turn the clustered graded end rings into a global bending moment
     (81-484 MPa), and true-surface node placement used to bulge the local
     patch proud of the chordal base facets (222-447 MPa stress dimple)."""
-    from anysolver import runtime as fs
+    from anyfesolver import runtime as fs
 
     captured = {}
     original = fs._backend_solve_linear
@@ -701,7 +701,7 @@ def test_local_patch_buckling_has_no_spurious_flat_facet_modes() -> None:
     shell load factor (spiky single-element modes, LF ~3 vs classical ~7).
     With the curvature-adequate base ring + blended node placement the first
     buckling factor must stay at shell level, above the classical value."""
-    from anysolver import runtime as fs
+    from anyfesolver import runtime as fs
 
     cylinder = {
         "geometry": "cylinder",
@@ -744,7 +744,7 @@ def test_axial_flat_plate_stress_is_mesh_style_invariant() -> None:
     must leave flat panels exact.  Unstiffened plate L=4 m, W=3 m, t=12 mm
     under 10 MN balanced axial force: sigma = F/(W t) = 277.8 MPa uniform and
     the plate stays exactly planar for every mesh style."""
-    from anysolver import runtime as fs
+    from anyfesolver import runtime as fs
 
     captured = {}
     original = fs._backend_solve_linear
@@ -821,7 +821,7 @@ def _stiffened_cylinder_style_outcome(
 ) -> tuple[str, dict[str, float]]:
     """Construct and solve one unchanged stiffened-cylinder mesh style."""
 
-    from anysolver import runtime as fs
+    from anyfesolver import runtime as fs
 
     captured = {}
     original = fs._backend_solve_linear

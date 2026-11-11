@@ -3,10 +3,10 @@
 Each genuine cap/cap contributes one point spring; the distributed line penalty
 uses its own N/m² setting. This is a code example, not engineering qualification.
 """
-from anysolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, LoadCase, solve_static_nonlinear)
-from anysolver.elements import QuadraticBeamElement
-from anysolver.fe_core import FEModel
+from anyfesolver.elements import QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
 
 
 def run():

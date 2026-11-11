@@ -5,18 +5,18 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import BoundaryCondition, create_shell_element, solve_static_nonlinear
-from anysolver.fe_core import FEModel
-from anysolver.general_contact import (
+from anyfesolver import BoundaryCondition, create_shell_element, solve_static_nonlinear
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact import (
     ContactDefinition, ContactInteraction, ContactSurface, ContactSolverSettings,
     ContactPathControl, ContactPathProgram, solve_static_contact_path,
 )
-from anysolver.general_contact.s3_friction_point import S3SkinMaterialPoint
-from anysolver.general_contact.s3_friction_pair import S3FrictionPointPair
-from anysolver.general_contact.s3_friction_static import (
+from anyfesolver.general_contact.s3_friction_point import S3SkinMaterialPoint
+from anyfesolver.general_contact.s3_friction_pair import S3FrictionPointPair
+from anyfesolver.general_contact.s3_friction_static import (
     S3MaterialFrictionSettings, S3MaterialFrictionManager,
 )
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 
 
 def _case():
@@ -130,8 +130,8 @@ def test_friction_restore_rejects_wrong_partner_and_model():
 
 
 def test_friction_invalid_candidate_and_cancel_restore_context():
-    from anysolver.control import CancellationToken, SolveCancelled
-    from anysolver.general_contact.runtime import active_contact_manager
+    from anyfesolver.control import CancellationToken, SolveCancelled
+    from anyfesolver.general_contact.runtime import active_contact_manager
     model, definition, settings, friction = _case()
     manager = S3MaterialFrictionManager(model,GeneralS3PatchManager(model,definition,settings),friction)
     old = manager.checkpoint_state()
@@ -164,10 +164,10 @@ def test_friction_rejects_cut_face_even_with_interior_quadrature():
 
 
 def test_precancelled_entry_skips_assembly_predictor_and_keeps_context(monkeypatch):
-    from anysolver.control import CancellationToken, SolveCancelled
-    from anysolver.general_contact.runtime import active_contact_manager
-    import anysolver.general_contact.static_path as path_driver
-    import anysolver.nonlinear_static as driver
+    from anyfesolver.control import CancellationToken, SolveCancelled
+    from anyfesolver.general_contact.runtime import active_contact_manager
+    import anyfesolver.general_contact.static_path as path_driver
+    import anyfesolver.nonlinear_static as driver
     model, definition, settings, friction = _case()
     model.add_boundary_condition(BoundaryCondition("target",(4,5,6,7),
         {d:0 for d in ("ux","uy","uz","rx","ry","rz")}))
@@ -198,7 +198,7 @@ def test_uncancelled_legacy_friction_reports_zero_reaction_predictor(monkeypatch
     # helper runs first with the projected-profile zero allowance, its finite
     # nonnegative result is checked, and the reported diagnostic is the zero
     # the caller consumes. Step one stays in the expected stick branch.
-    import anysolver.general_contact.static_path as path_driver
+    import anyfesolver.general_contact.static_path as path_driver
     real = path_driver._elastic_displacement_force_predictor
     seen = []
     def spy(*args, **kwargs):

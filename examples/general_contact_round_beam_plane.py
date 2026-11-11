@@ -1,18 +1,18 @@
 """A declared round B3 centreline contacts a fixed rigid plane.
 
-Run with ANYsolver installed: python examples/general_contact_round_beam_plane.py
+Run with ANYfeSolver installed: python examples/general_contact_round_beam_plane.py
 This demonstrates the classical line-penalty development profile, not C2 acceptance.
 """
 
 import json
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, DisplacementControl, LoadCase,
     RigidContactBody, solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.elements import QuadraticBeamElement
-from anysolver.fe_core import FEModel
+from anyfesolver.elements import QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
 
 
 def main() -> None:

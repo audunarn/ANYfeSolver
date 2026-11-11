@@ -7,8 +7,8 @@ import numpy as np
 import pytest
 
 from anymaterial import Hill48Yield, OrthotropicMaterial
-from anysolver.fe_core import Material
-from anysolver.e4_pl_s3_state import (
+from anyfesolver.fe_core import Material
+from anyfesolver.e4_pl_s3_state import (
     BUBBLE_STATE_ROLE,
     CANONICALIZATION_ID,
     DIRECTOR_INCREMENT_MAP_ID,

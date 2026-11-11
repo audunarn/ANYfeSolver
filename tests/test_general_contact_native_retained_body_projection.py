@@ -10,12 +10,12 @@ import unittest
 import sys
 
 if __name__ == '__main__':
-    _path = Path(__file__).parents[1]/'src/anysolver/general_contact/native_retained_body_projection.py'
+    _path = Path(__file__).parents[1]/'src/anyfesolver/general_contact/native_retained_body_projection.py'
     _spec = importlib.util.spec_from_file_location('body_projection_inventory',_path)
     _module = importlib.util.module_from_spec(_spec)
     _spec.loader.exec_module(_module)
 else:
-    from anysolver.general_contact import native_retained_body_projection as _module
+    from anyfesolver.general_contact import native_retained_body_projection as _module
 
 
 class EndpointProjectionInventory(unittest.TestCase):
@@ -35,7 +35,7 @@ class EndpointProjectionInventory(unittest.TestCase):
 
     def test_private_omission_keeps_legacy_midpoint_branch(self):
         import ast,inspect
-        from anysolver.general_contact.native_retained_whole_pair import NativeRetainedWholeCurvePair
+        from anyfesolver.general_contact.native_retained_whole_pair import NativeRetainedWholeCurvePair
         import textwrap
         tree = ast.parse(textwrap.dedent(inspect.getsource(NativeRetainedWholeCurvePair.evaluate)))
         band_loop = next(node for node in ast.walk(tree) if isinstance(node,ast.For)
@@ -64,7 +64,7 @@ class EndpointProjectionInventory(unittest.TestCase):
         from examples.general_contact_native_retained_body_pair import analysis
         report.update(phase='construction',pools=threadpool_info(),numba_jit_disabled=os.environ['NUMBA_DISABLE_JIT'],
                       imports={n:str(Path(m.__file__).resolve()) for n,m in tuple(sys.modules.items())
-                               if n.startswith('anysolver') and getattr(m,'__file__',None)})
+                               if n.startswith('anyfesolver') and getattr(m,'__file__',None)})
         save()
         owner = analysis(separation=.101,reference_rise_m=.001)
         positions = owner.initial.mechanical.positions.copy()
@@ -117,7 +117,7 @@ class EndpointProjectionInventory(unittest.TestCase):
             sys.modules[spec.name] = beam
             spec.loader.exec_module(beam)
         else:
-            from anysolver.general_contact import beam_curve_pair as beam
+            from anyfesolver.general_contact import beam_curve_pair as beam
         height, x = .09998, 5e-11
         target = np.array(((0.,height,0.),(.5,height,0.),(1.,height,0.)))
         source = np.array(((x,0.,0.),(.5+x,0.,0.),(1.+x,0.,0.)))

@@ -10,10 +10,10 @@ def test_same_parent_directions():
  from dataclasses import asdict
  from scripts.r8_f06_pending_direction_dev import INPUT,HISTORY,PACKAGE,write,runtime
  from scripts.r8_f06_adaptive_material_dev import cyclic,programme
- from anysolver import stiffened_shell as ss
- from anysolver.control import CancellationToken,SolveCancelled
- from anysolver._stiffened_shell_increment_control import AdaptiveIncrementControl
- from anysolver._stiffened_shell_beam_history import arrays as history_arrays
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver.control import CancellationToken,SolveCancelled
+ from anyfesolver._stiffened_shell_increment_control import AdaptiveIncrementControl
+ from anyfesolver._stiffened_shell_beam_history import arrays as history_arrays
  out=Path(os.environ['F06_PENDING_DIRECTION_OUTPUT']);owner=ss.create_analysis(definition=cyclic.definition('bend-z'))
  fields=('q','q_low','frames','frames_low','cells','cells_low','resultants','resultants_low','multipliers','shell_anchors')
  try:

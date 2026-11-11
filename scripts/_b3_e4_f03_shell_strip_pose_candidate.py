@@ -14,7 +14,7 @@ from scripts._b3_e4_f03_shell_finite_pose_candidate import (
     DirectionalPose, directional_pose_from_e4_total, pose_from_e4_total,
     pose, reference_nodes,
 )
-from anysolver.corotational import rotation_matrix_from_vector
+from anyfesolver.corotational import rotation_matrix_from_vector
 from scripts._b3_e4_f03_shell_trace import ShellPanel
 
 

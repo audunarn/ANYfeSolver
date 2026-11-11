@@ -3,13 +3,13 @@ import json
 from copy import deepcopy
 import numpy as np
 import pytest
-import anysolver._ge_beam3_factor_chain_modes as adapter
-from anysolver._ge_beam3_seeded_loaded_modal import solve_elastic_modes
-from anysolver._ge_beam3_seeded_load_program import ForceProgram, solve_force_program
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_p5_seeded import NativeP5BeamElement
-from anysolver._ge_beam3_p5.algebra import rotation as proper_rotation
-from anysolver.control import CancellationToken, SolveCancelled
+import anyfesolver._ge_beam3_factor_chain_modes as adapter
+from anyfesolver._ge_beam3_seeded_loaded_modal import solve_elastic_modes
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram, solve_force_program
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5_seeded import NativeP5BeamElement
+from anyfesolver._ge_beam3_p5.algebra import rotation as proper_rotation
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_ge_beam3_curved_contrast_probe import make_curved, ROTATION
 from test_ge_beam3_seeded_load_program import problem
 from test_ge_beam3_curved_p5_mass_probe import section_mass
@@ -89,8 +89,8 @@ def test_loaded_curved_coupled_modes_match_dense_moderate_reference_and_replay(l
     assert canonical(states)==before
     # Numerical representation only: prestress/load Hessians remain exactly
     # those of the preserved source split, not a positive-reference fallback.
-    from anysolver._ge_beam3_seeded_signed_modes import _split as original_split
-    from anysolver._ge_beam3_shared_kinematic_split import shared_kinematic_chain
+    from anyfesolver._ge_beam3_seeded_signed_modes import _split as original_split
+    from anyfesolver._ge_beam3_shared_kinematic_split import shared_kinematic_chain
     for eid,e in model.mesh.elements.items():
         decoded=e.validate_model_bound_nonlinear_state(model.mesh,e.core.section,states[eid],1)
         old_factor,old_g=original_split(e,decoded['material_state'],lambda stage:None)

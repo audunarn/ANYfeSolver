@@ -8,8 +8,8 @@ import math
 import numpy as np
 import pytest
 
-import anysolver.e4_pl_s3_element as s3
-from anysolver import (
+import anyfesolver.e4_pl_s3_element as s3
+from anyfesolver import (
     AnalysisSession,
     FEModel,
     QualifiedE4PLS3ShellElement,
@@ -17,22 +17,22 @@ from anysolver import (
     solve_eigenvalue_buckling,
     solve_static_nonlinear,
 )
-from anysolver.assembly import build_constraint_transformation
-from anysolver.boundary import BoundaryCondition, FixedSupport, LoadCase
-from anysolver.buckling import CURRENT_STATE_BUCKLING_POLICY_ID
-from anysolver.current_state_tangent import (
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.boundary import BoundaryCondition, FixedSupport, LoadCase
+from anyfesolver.buckling import CURRENT_STATE_BUCKLING_POLICY_ID
+from anyfesolver.current_state_tangent import (
     assemble_committed_current_tangent_components,
 )
-from anysolver.e4_pl_s3_state import canonical_json_bytes
-from anysolver.element_capabilities import (
+from anyfesolver.e4_pl_s3_state import canonical_json_bytes
+from anyfesolver.element_capabilities import (
     ElementCapabilityError,
     STATEFUL_MATERIAL_RESPONSE_MODE,
     STATELESS_FIXED_GENERALIZED_SECTION_RESPONSE_MODE,
     require_model_element_capabilities,
     require_model_nonlinear_workflow_capabilities,
 )
-from anysolver.linalg import FactorizationCache
-from anysolver.nonlinear_state import (
+from anyfesolver.linalg import FactorizationCache
+from anyfesolver.nonlinear_state import (
     NonlinearStateStore,
     begin_state_evaluation,
     create_model_native_rotation_store,

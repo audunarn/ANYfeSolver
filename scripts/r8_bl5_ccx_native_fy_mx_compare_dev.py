@@ -15,12 +15,12 @@ from time import perf_counter
 ROOT=Path(__file__).resolve().parents[1]
 sys.path[:0]=[str(ROOT),str(ROOT/"src")]
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 import psutil
 from threadpoolctl import threadpool_info
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from scripts import r8_bl5_matched_native_reference as native
 from scripts import r8_bl5_ccx_weak_p0_dev as deck_source
 from scripts import r8_bl5_ccx_weak_p0_run_dev as external
@@ -123,7 +123,7 @@ def main():
         if (psutil.Process().cpu_affinity()!=[0] or numba.config.DISABLE_JIT!=1 or
                 numba.get_num_threads()!=1 or not pools or
                 any(item["num_threads"]!=1 for item in pools) or
-                not Path(anysolver.__file__).resolve().is_relative_to(ROOT/"src")):
+                not Path(anyfesolver.__file__).resolve().is_relative_to(ROOT/"src")):
             raise ValueError("effective native source/runtime identity changed")
         saved={name:checked_saved(path,name,report) for name,path,report in
                (("fy",args.fy,args.fy_result),("mx",args.mx,args.mx_result))}
@@ -156,7 +156,7 @@ def main():
             effective_runtime=dict(affinity=psutil.Process().cpu_affinity(),
                 numba_disable_jit=int(numba.config.DISABLE_JIT),
                 numba_threads=int(numba.get_num_threads()),threadpools=pools,
-                anysolver_source=str(Path(anysolver.__file__).resolve())),
+                anyfesolver_source=str(Path(anyfesolver.__file__).resolve())),
             matched_geometry=dict(shell_thickness_m=model.shell.thickness_m,
                 shell_young_pa=model.shell.young_pa,shell_poisson=model.shell.poisson,
                 beam_section_area_m2=section["area"],beam_iy_m4=section["Iy"],

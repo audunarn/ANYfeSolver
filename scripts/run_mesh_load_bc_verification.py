@@ -11,7 +11,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from anysolver.mesh_load_bc_verification import DEFAULT_MESH_LOAD_BC_VERIFICATION_PATH, write_mesh_load_bc_verification_report
+from anyfesolver.mesh_load_bc_verification import DEFAULT_MESH_LOAD_BC_VERIFICATION_PATH, write_mesh_load_bc_verification_report
 
 
 def main() -> int:

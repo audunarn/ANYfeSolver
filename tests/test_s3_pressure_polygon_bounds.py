@@ -2,9 +2,9 @@
 from fractions import Fraction as Q
 import numpy as np
 import pytest
-from anysolver.general_contact.s3_pressure_hermite_bounds import (
+from anyfesolver.general_contact.s3_pressure_hermite_bounds import (
     _ROOT,_prepare_overlap,_factor,s3_pressure_hermite_bounds)
-from anysolver.general_contact.s3_pressure_polygon_bounds import _integral,_signed_integral,_polygon_cell
+from anyfesolver.general_contact.s3_pressure_polygon_bounds import _integral,_signed_integral,_polygon_cell
 
 SOURCE=np.array([[0.,0.,0.],[.6,0.,0.],[0.,.4,0.]])
 TARGET=np.array([[-.2,-.2,0.],[.3,-.2,0.],[.3,.9,0.]])

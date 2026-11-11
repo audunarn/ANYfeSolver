@@ -7,8 +7,8 @@ import math
 import numpy as np
 import pytest
 
-import anysolver.shell_formulations.director_field as director_field_module
-from anysolver.shell_formulations.director_field import (
+import anyfesolver.shell_formulations.director_field as director_field_module
+from anyfesolver.shell_formulations.director_field import (
     DIRECTOR_PROVENANCE_NUMERIC_CODE,
     DirectorProvenanceCode,
     DirectorValidationLimits,
@@ -18,7 +18,7 @@ from anysolver.shell_formulations.director_field import (
     reconstruct_corner_directors,
     validate_element_corner_directors,
 )
-from anysolver.shell_formulations.mitc4_plus_d_quality import (
+from anyfesolver.shell_formulations.mitc4_plus_d_quality import (
     numeric_payload_fingerprint,
     q4_geometry_quality,
 )

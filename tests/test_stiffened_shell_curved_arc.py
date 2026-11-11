@@ -1,13 +1,13 @@
 """Elastic curved point arc lifecycle; not roof capacity qualification."""
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_stiffened_shell_curved_reference_seam import curved_panel
 
 
 def test_curved_elastic_arc_cancel_restore_continue(request, tmp_path):
-    from anysolver._stiffened_shell_arc_checkpoint import decode_snapshot, encode_snapshot
+    from anyfesolver._stiffened_shell_arc_checkpoint import decode_snapshot, encode_snapshot
     def make():
         owner=ss.create_analysis(definition=curved_panel())
         request.addfinalizer(owner.close)

@@ -52,7 +52,7 @@ def test_checker_has_no_production_import() -> None:
             imports.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module:
             imports.append(node.module)
-    assert not any(name == "anysolver" or name.startswith("anysolver.") for name in imports)
+    assert not any(name == "anyfesolver" or name.startswith("anyfesolver.") for name in imports)
 
 
 def test_scope_and_bounds_are_frozen() -> None:
@@ -88,6 +88,6 @@ def test_strict_loader_rejects_duplicate_and_nonfinite_json(tmp_path: Path) -> N
 
 
 def test_defaults_remain_unchanged() -> None:
-    source = (ROOT / "src/anysolver/elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src/anyfesolver/elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source

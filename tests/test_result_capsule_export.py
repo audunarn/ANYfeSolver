@@ -2,17 +2,17 @@
 import numpy as np
 import pytest
 
-from anysolver import (FixedSupport, PatternCase, RecoveryConfig, RecoveryCapsuleError,
+from anyfesolver import (FixedSupport, PatternCase, RecoveryConfig, RecoveryCapsuleError,
                        export_recovery_capsule, prepare_static_evaluator,
                        prepare_static_response_evaluator)
-from anysolver_results import derive_field, reconstruct_response, validate_capsule
+from anyfesolver_results import derive_field, reconstruct_response, validate_capsule
 from test_prepared_static_evaluator import _bar, _case, _shell_case, _shell_model
 
 
 @pytest.mark.parametrize('callback_fails', [False, True])
 def test_source_export_failure_reports_original_diagnostics_and_never_ends(callback_fails):
     import json
-    from anysolver import export_recovery_capsule_to_sink, PreparedStaticError
+    from anyfesolver import export_recovery_capsule_to_sink, PreparedStaticError
     cases = [PatternCase('a', {'p': 1.}), PatternCase('b', {'missing': 2.})]
     class Sink:
         def __init__(self):
@@ -47,8 +47,8 @@ def test_source_export_failure_reports_original_diagnostics_and_never_ends(callb
 
 def test_failure_diagnostics_keep_nonfinite_values_as_explicit_json_tags():
     import json
-    from anysolver import PreparedStaticError
-    from anysolver.result_capsule import _report_export_failure
+    from anyfesolver import PreparedStaticError
+    from anyfesolver.result_capsule import _report_export_failure
     errors = []
     class Sink:
         def capsule_failed(self, record): errors.append(record)
@@ -106,7 +106,7 @@ def test_public_capsule_is_an_immutable_owned_snapshot():
 
 
 def test_failed_record_keeps_source_diagnostics_without_certifying_fields():
-    from anysolver.result_capsule import _CapsuleExport
+    from anyfesolver.result_capsule import _CapsuleExport
     cases = [PatternCase('failed-case', {'p': 1.0})]
     failed = {
         'status': 'failed',
@@ -415,7 +415,7 @@ def test_source_envelope_ties_keep_exact_earliest_input_index():
     capsule's ``tie_policy`` descriptor label and per-case ``input_index``
     refer to exactly this contract.
     """
-    from anysolver.static_envelopes import EnvelopeReducer
+    from anyfesolver.static_envelopes import EnvelopeReducer
     reducer = EnvelopeReducer()
     for index in (3, 1, 2, 0):  # reversed traversal order
         reducer.update({'v': -5.0}, case_id=f'c{index}', input_index=index)
@@ -433,7 +433,7 @@ def test_source_envelope_ties_keep_exact_earliest_input_index():
     # The prepared canonical accumulator keeps the same policy across tile
     # folding and reduced-subset merging, in either traversal order.
     from types import SimpleNamespace
-    from anysolver.prepared_static_envelopes import EnvelopeAccumulator
+    from anyfesolver.prepared_static_envelopes import EnvelopeAccumulator
 
     def accumulator():
         recipe = SimpleNamespace(staged_kernel=None, staged_fallback_reason='tie-test')
@@ -479,8 +479,8 @@ def _rotated_shell_model():
     def rotated(x, y, z):
         return (x, y * cos - z * sin, y * sin + z * cos)
 
-    from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-    from anysolver.fe_core import FEModel
+    from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+    from anyfesolver.fe_core import FEModel
     model = FEModel('prepared-static-shell-rotated')
     model.add_material('steel', 210.0e9, 0.3, density=100.0)
     coordinates = {1: rotated(0.0, 0.0, 0.0), 2: rotated(1.0, 0.0, 0.0),
@@ -639,7 +639,7 @@ def test_geometry_and_solver_identity_passthrough():
         capsule = export_recovery_capsule(evaluator, [PatternCase('a', {'p': 1.0})],
                                          model_identity='m', mesh_identity='x',
                                          geometry={'positions': positions},
-                                         solver_identity={'solver': 'ANYsolver', 'build': 'test'})
+                                         solver_identity={'solver': 'ANYfeSolver', 'build': 'test'})
     np.testing.assert_array_equal(capsule['geometry']['positions'], positions)
     assert capsule['solver_identity']['build'] == 'test'
     assert capsule['solver_identity']['stress_execution'] == 'canonical'

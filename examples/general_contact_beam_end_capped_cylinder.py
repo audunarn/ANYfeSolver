@@ -1,9 +1,9 @@
 """Opt-in axial B2 with separate line and hemispherical endpoint penalties."""
-from anysolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, RigidCappedCylinder, RigidContactBody, LoadCase,
     solve_static_nonlinear)
-from anysolver.fe_core import FEModel
-from anysolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement
 
 
 def run(*,plane=False,radial=None):

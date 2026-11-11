@@ -6,7 +6,7 @@ from pathlib import Path
 from examples.general_contact_finite_v2d_pair import (
     build as paired_build,solve as paired_solve,report_result as paired_report,json_value,rigid_pose,
 )
-from anysolver.general_contact import (
+from anyfesolver.general_contact import (
     AutomaticContactDomain,AutomaticContactDefaults,AutomaticContactParticipant,
     AutomaticContactResolution,resolve_automatic_contact_domain,verify_automatic_contact_resolution,
 )

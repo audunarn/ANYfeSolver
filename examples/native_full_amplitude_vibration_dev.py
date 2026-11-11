@@ -9,9 +9,9 @@ from time import perf_counter
 from hashlib import sha256
 from fractions import Fraction
 import numpy as np
-from anysolver.ge_beam3_native import define_beam, SELECTOR as STATIC_SELECTOR
-from anysolver.ge_beam3_native_dynamics import create_analysis, SELECTOR, PROFILE_BYTES
-from anysolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
+from anyfesolver.ge_beam3_native import define_beam, SELECTOR as STATIC_SELECTOR
+from anyfesolver.ge_beam3_native_dynamics import create_analysis, SELECTOR, PROFILE_BYTES
+from anyfesolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
 from examples import native_vibration_physical_reference as physical
 
 def fixture():
@@ -83,14 +83,14 @@ def _validate_acceptance_scope(actual,record):
 
 def _measured_acceptance_scope(record):
     """Measure actual package and runtime; no historical workspace file is needed."""
-    import anysolver
+    import anyfesolver
     import numba
     import scipy
     import threadpoolctl
     parallel=sys.modules.get('numba.np.ufunc.parallel')
     active=parallel is not None and vars(parallel).get('_is_initialized')is True
-    package=Path(anysolver.__file__).resolve().parent
-    files={'anysolver/'+p.relative_to(package).as_posix():sha256(p.read_bytes()).hexdigest()
+    package=Path(anyfesolver.__file__).resolve().parent
+    files={'anyfesolver/'+p.relative_to(package).as_posix():sha256(p.read_bytes()).hexdigest()
         for p in package.rglob('*.py')if '__pycache__'not in p.parts}
     digest=sha256(json.dumps(files,sort_keys=True,separators=(',',':')).encode()).hexdigest()
     actual=dict(platform=sys.platform,
@@ -260,9 +260,9 @@ def _envelope_case_binding(facts,record):
 
 
 def _measure_envelope_source():
-    import anysolver
-    package=Path(anysolver.__file__).resolve().parent
-    files={'anysolver/'+p.relative_to(package).as_posix():sha256(p.read_bytes()).hexdigest()
+    import anyfesolver
+    package=Path(anyfesolver.__file__).resolve().parent
+    files={'anyfesolver/'+p.relative_to(package).as_posix():sha256(p.read_bytes()).hexdigest()
         for p in package.rglob('*.py')if '__pycache__'not in p.parts}
     return dict(product_python_count=len(files),
         product_python_manifest_sha256=sha256(json.dumps(files,sort_keys=True,separators=(',',':')).encode()).hexdigest(),

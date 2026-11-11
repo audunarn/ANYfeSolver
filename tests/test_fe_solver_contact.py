@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     CoupledBeamShellElement,
     ImpactDamageConfig,
@@ -20,11 +20,11 @@ from anysolver import (
     validate_contact_configuration,
     create_shell_element,
 )
-from anysolver.contact import _impact_contact_patch_area, _update_impact_damage_states
-from anysolver.recovery import RecoveryConfig
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
-from anysolver.validation import load_vector_resultant
+from anyfesolver.contact import _impact_contact_patch_area, _update_impact_damage_states
+from anyfesolver.recovery import RecoveryConfig
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.validation import load_vector_resultant
 
 
 def _contact_panel(stiffener: bool = False) -> FEModel:
@@ -824,7 +824,7 @@ def test_beam_contact_targets_detect_strike_and_balance() -> None:
 
 def test_impact_fracture_erodes_struck_beam_target() -> None:
     """Impact fracture (contact-force trigger) erodes beam contact targets, not just shells."""
-    from anysolver.fracture import ImpactFractureConfig
+    from anyfesolver.fracture import ImpactFractureConfig
 
     def _beam_bridge() -> FEModel:
         model = FEModel("frac_bridge")
@@ -858,7 +858,7 @@ def test_impact_fracture_erodes_struck_beam_target() -> None:
 
 
 def test_capacity_impact_damage_warns_it_skips_beam_contact_targets() -> None:
-    from anysolver.fracture import ImpactDamageConfig
+    from anyfesolver.fracture import ImpactDamageConfig
 
     model = FEModel("mixed_damage")
     model.add_material("steel", 2.1e11, 0.3, density=7850.0)

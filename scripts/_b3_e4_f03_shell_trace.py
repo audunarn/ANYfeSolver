@@ -13,8 +13,8 @@ from dataclasses import dataclass
 import numpy as np
 from scipy import sparse
 
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEMesh, Material
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEMesh, Material
 
 
 _HALF_WINDOW = 0.2

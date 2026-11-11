@@ -13,14 +13,14 @@ import sys
 import time
 
 import anymaterial
-import anysolver
+import anyfesolver
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, LoadCase, create_shell_element,
     solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.fe_core import FEModel
+from anyfesolver.fe_core import FEModel
 
 
 def build_case(divisions: int, *, total_load_n: float = 0.4,
@@ -204,7 +204,7 @@ def main():
         "final_displacements": result.displacements.tolist(),
         "runtime_identity": {
             "python": sys.version.split()[0],
-            "anysolver_module": str(Path(anysolver.__file__).resolve()),
+            "anyfesolver_module": str(Path(anyfesolver.__file__).resolve()),
             "anymaterial_module": str(Path(anymaterial.__file__).resolve()),
         },
     }

@@ -11,9 +11,9 @@ import sys
 
 import numpy as np
 
-import anysolver.general_contact.linearized_pivot as pivot
-from anysolver import solve_static_nonlinear
-from anysolver.general_contact.supported_schur import SupportedSchurProposal
+import anyfesolver.general_contact.linearized_pivot as pivot
+from anyfesolver import solve_static_nonlinear
+from anyfesolver.general_contact.supported_schur import SupportedSchurProposal
 
 from general_contact_d1_coupled_refinement import build_case
 

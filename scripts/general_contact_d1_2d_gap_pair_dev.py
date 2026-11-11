@@ -9,12 +9,12 @@ from pathlib import Path
 
 import numpy as np
 
-import anysolver
-from anysolver import solve_static_nonlinear
-from anysolver.general_contact.q4_source_overlap import (
+import anyfesolver
+from anyfesolver import solve_static_nonlinear
+from anyfesolver.general_contact.q4_source_overlap import (
     q4_source_projected_gap_lower,
 )
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 
 from scripts.general_contact_d1_2d_target_press_dev import build_case
 
@@ -71,7 +71,7 @@ def main(output: Path, *, overlap_local: bool = False) -> None:
     pair_data.sort(key=lambda item: item["bound_m"])
     payload = {
         "candidate": "d1_2d_target_conservative_gap_pair_discriminator",
-        "anysolver_module": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_module": str(Path(anyfesolver.__file__).resolve()),
         "status": result.status,
         "certificate": settings.q4_source_gap_certificate,
         "failure_reason": result.failure_reason,

@@ -13,14 +13,14 @@ import json
 from pathlib import Path
 import time
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 from scipy import linalg, sparse
 from threadpoolctl import threadpool_info
 
-from anysolver import stiffened_shell
-from anysolver._stiffened_shell_ge_experimental import _linear_equilibrium, _scaled_constraint_gap
+from anyfesolver import stiffened_shell
+from anyfesolver._stiffened_shell_ge_experimental import _linear_equilibrium, _scaled_constraint_gap
 from scripts.b3_e4_bl5_coherent_aggregation_dev import model, LOADS, physical_transfer
 
 
@@ -237,7 +237,7 @@ if __name__ == '__main__':
     pools = threadpool_info()
     assert pools and all(p['num_threads']==1 for p in pools) and numba.config.DISABLE_JIT
     result = evaluate(args.output, basis=args.basis)
-    result.update(threads=pools, jit_disabled=True, imported_anysolver=anysolver.__file__)
+    result.update(threads=pools, jit_disabled=True, imported_anyfesolver=anyfesolver.__file__)
     args.output.write_text(json.dumps(result, indent=2, allow_nan=False))
     print(json.dumps({key:result[key] for key in ('status','physical_order','kernel_positive_resolved','elapsed_seconds')}))
     raise SystemExit(0 if all(result['predicates'].values()) else 1)

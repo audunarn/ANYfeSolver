@@ -64,10 +64,10 @@ def main():
     if args.restart_after is not None and not 0<args.restart_after<args.steps:
         parser.error('--restart-after must be strictly between zero and --steps')
     args.output.mkdir(parents=True,exist_ok=False)
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
     from docs.reference_cases.stiffened_shell_e04_roof import (
         build,definition,material_definition,crown_reference_perturbations)
-    import anysolver,threadpoolctl,numba
+    import anyfesolver,threadpoolctl,numba
     pools=threadpoolctl.threadpool_info()
     assert pools and all(p['num_threads']==1 for p in pools)
     assert numba.get_num_threads()==1 and numba.config.DISABLE_JIT
@@ -96,7 +96,7 @@ def main():
             stress_free_scaled_max=reference_change.stress_free_scaled_max)),
         continuation_metric='fixed nominal reference area/length; equal domain weights',
         connection='six-channel nodal full-pose bonds',samples=[],timings={},
-        imported_solver=str(Path(anysolver.__file__).resolve()),threadpools=pools)
+        imported_solver=str(Path(anyfesolver.__file__).resolve()),threadpools=pools)
     if material:
         record['material_definition']=dict(shell_curve=curve.as_dict(),
             native_resultant_limits=list(limits),native_resultant_units=['N']*3+['Nm']*3,

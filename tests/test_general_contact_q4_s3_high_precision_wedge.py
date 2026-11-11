@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver.general_contact.q4_s3_overlap_derivatives import (
+from anyfesolver.general_contact.q4_s3_overlap_derivatives import (
     q4_s3_overlap_derivatives,
 )
 from scripts.general_contact_d1_wedge_decimal_oracle import (

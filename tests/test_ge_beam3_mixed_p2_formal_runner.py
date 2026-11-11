@@ -701,7 +701,7 @@ def test_execution_review_and_authority_bind_runtime_registry_command_and_one_ti
 
 def test_exact_one_parent_two_path_git_authorization_overlay(tmp_path: Path) -> None:
     repository, harness_commit, harness_tree = _init_repository(
-        tmp_path / "ANYsolver", {runner.RUNNER_RELATIVE: RUNNER.read_bytes()}
+        tmp_path / "ANYfeSolver", {runner.RUNNER_RELATIVE: RUNNER.read_bytes()}
     )
     registry_root, registry_identity = _registry(tmp_path)
     snapshot = _snapshot(
@@ -895,8 +895,8 @@ def test_closed_world_materialization_and_isolated_bound_dependency_import(
 ) -> None:
     script = b"import json,os,pathlib,sys\nimport anyfileio\nout=pathlib.Path(sys.argv[1])\nr={'origin':str(pathlib.Path(anyfileio.__file__).resolve()),'plugin':os.environ.get('PYTEST_DISABLE_PLUGIN_AUTOLOAD'),'value':anyfileio.VALUE}\nout.write_text(json.dumps(r,sort_keys=True,separators=(',',':'))+'\\n',encoding='utf-8')\n"
     solver, commit, tree = _init_repository(
-        tmp_path / "ANYsolver",
-        {"tool.py": script, "src/anysolver/__init__.py": b"VALUE = 'solver'\n"},
+        tmp_path / "ANYfeSolver",
+        {"tool.py": script, "src/anyfesolver/__init__.py": b"VALUE = 'solver'\n"},
     )
     dependency = _dependency_repository(tmp_path)
     dep_identity = runner.validate_anyfileio_repository(dependency)
@@ -1016,7 +1016,7 @@ def test_actual_lane_import_closure_is_bound_and_runtime_mutation_refuses(
 def test_prelaunch_materialization_mutation_fails_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     made = runner.MaterializedExecution(
         anyfileio=tmp_path / "ANYfileIO", manifest_path=tmp_path / "materialization.json",
-        manifest_sha256="A" * 64, root=tmp_path / "materialized", solver=tmp_path / "ANYsolver",
+        manifest_sha256="A" * 64, root=tmp_path / "materialized", solver=tmp_path / "ANYfeSolver",
     )
     monkeypatch.setattr(
         runner, "validate_materialization",
@@ -1103,7 +1103,7 @@ def test_aggregate_is_path_timing_and_measurement_free() -> None:
 
 
 def test_child_environment_is_closed_and_forces_one_numerical_thread(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    repository, dependency = tmp_path / "ANYsolver", tmp_path / "ANYfileIO"
+    repository, dependency = tmp_path / "ANYfeSolver", tmp_path / "ANYfileIO"
     repository.mkdir(); dependency.mkdir()
     monkeypatch.setenv("PYTHONPATH", "UNBOUND_SENTINEL")
     monkeypatch.setenv("PYTEST_ADDOPTS", "--unbound")
@@ -1132,6 +1132,6 @@ def test_runner_does_not_author_or_expose_public_integration() -> None:
     source = RUNNER.read_text(encoding="utf-8")
     assert "--emit-authority" not in source and "--create-authority" not in source
     assert "cycle_runner=" not in source
-    assert "src/anysolver/__init__.py" not in runner.HARNESS_PATHS
+    assert "src/anyfesolver/__init__.py" not in runner.HARNESS_PATHS
     assert "PROVISIONAL_GO_GE_BEAM3_P2_PRIVATE_PARITY" in source
     assert "PROVISIONAL_GO_GE_BEAM3_STRAIGHT_STANDALONE_OPT_IN" not in source

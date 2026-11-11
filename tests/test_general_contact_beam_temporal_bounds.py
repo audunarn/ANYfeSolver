@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver.general_contact.beam_temporal_bounds import (
+from anyfesolver.general_contact.beam_temporal_bounds import (
     BeamHermiteGapBoundsError,
     beam_hermite_gap_bounds,
 )

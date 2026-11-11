@@ -5,14 +5,14 @@ import numpy as np
 import pytest
 from scipy.linalg import eig
 
-from anysolver import _ge_beam3_native_buckling as buckling
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._ge_beam3_native_analysis import NativeBeamAnalysis
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_p5.algebra import rotation
+from anyfesolver import _ge_beam3_native_buckling as buckling
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._ge_beam3_native_analysis import NativeBeamAnalysis
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5.algebra import rotation
 from test_ge_beam3_native_analysis import analysis, generalized_problem, fibre_problem
 
 
@@ -96,7 +96,7 @@ def test_bad_pencils_and_changed_inputs_fail_closed(kind):
 def make(family, curved=True, common=None, mass_scale=1.):
     source, _ = (generalized_problem if family == 'generalized' else fibre_problem)(curved, False)
     if common is not None:
-        from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+        from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
         old = source.mesh.elements[1]
         reference = Reference(old.operator.reference.coordinates@common.T,
                               common@old.operator.reference.nodal_triads)
@@ -218,7 +218,7 @@ def test_active_plastic_history_and_bad_authority_not_relabelled():
 
 def test_connected_curved_fibres_retain_all_stationary_coordinates(tmp_path):
     from test_ge_beam3_retained_fibre import make_model
-    from anysolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
+    from anyfesolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
     source = make_model()
     definitions = tuple(NativeBeamDefinition.capture(NativeFibreStaticElement(
         i, tuple(e.node_ids), e.operator.reference, e.section, order=4),

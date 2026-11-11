@@ -13,7 +13,7 @@ if not os.environ.get('NUMBA_CACHE_DIR'):
     raise RuntimeError('set an explicit writable NUMBA_CACHE_DIR before import')
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'src'))
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 import scipy
@@ -29,7 +29,7 @@ from probe_b3_ge_e4_pl_g0_f03_signed_norm_v1 import CASES,U,L0,W0,couplings,reci
 from probe_b3_ge_e4_pl_g0_f03_trace_dual_v1 import dual_gram,primal_factors
 
 
-PREDECESSOR=Path('C:/Github/ANYsolver/.qualification/b3-ge-e4-pl/f03-trace-dual-v1')
+PREDECESSOR=Path('C:/Github/ANYfeSolver/.qualification/b3-ge-e4-pl/f03-trace-dual-v1')
 PREDECESSOR_SHA={
     'manifest.json':'ea783b9f4df3d89c94d01564c4799fb9e5414f4eb29b2c351381764acd0e59ec',
     'results.jsonl':'c2a54018fe6a81e151066610dc0f1ba5a855dfc4c99a4e473c62c65487b784dc',
@@ -213,7 +213,7 @@ def main():
             for name in names}
     manifest={'purpose':'EXPLORATORY_SIGNED_WEAK_MODE_NOT_F03_ACCEPTANCE',
               'cases':CASES,'spaces':('k4','local-dual'),
-              'source_sha256':hashes,'anysolver_import':str(Path(anysolver.__file__).resolve()),
+              'source_sha256':hashes,'anyfesolver_import':str(Path(anyfesolver.__file__).resolve()),
               'python':sys.version,'numpy':np.__version__,'scipy':scipy.__version__,
               'numba':numba.__version__,'cache':os.environ['NUMBA_CACHE_DIR'],
               'blas_threads':1,'max_dense_kkt_rows':1200,

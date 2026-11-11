@@ -18,18 +18,18 @@ pytest.importorskip("skfem")
 anysolid_backend = pytest.importorskip("anysolid.backend")
 from anysolid.mesh import SolidMesh  # noqa: E402
 
-from anysolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement  # noqa: E402
-from anysolver.elements import create_shell_element  # noqa: E402
-from anysolver.fe_core import FEModel  # noqa: E402
-from anysolver import BoundaryCondition  # noqa: E402
-from anysolver.solid_submodel import (  # noqa: E402
+from anyfesolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement  # noqa: E402
+from anyfesolver.elements import create_shell_element  # noqa: E402
+from anyfesolver.fe_core import FEModel  # noqa: E402
+from anyfesolver import BoundaryCondition  # noqa: E402
+from anyfesolver.solid_submodel import (  # noqa: E402
     ATTRIBUTION_RULE,
     SolidSubmodelCancelled,
     SolidSubmodelError,
     evaluate_shell_displacement,
     solve_shell_driven_solid,
 )
-from anysolver.submodel_transfer import element_interpolation_weights  # noqa: E402
+from anyfesolver.submodel_transfer import element_interpolation_weights  # noqa: E402
 
 E, NU, T = 210.0e9, 0.3, 0.01
 LZ = 0.2

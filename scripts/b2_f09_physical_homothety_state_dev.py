@@ -59,12 +59,12 @@ def _source_graph():
         Path(__file__).resolve(),
         THIN_PATH,
         PROBE_PATH,
-        ROOT / "src" / "anysolver" / "_b2_physical_flexibility_linear.py",
-        ROOT / "src" / "anysolver" / "_b2_physical_linear_definition.py",
-        ROOT / "src" / "anysolver" / "_b2_physical_linear_batch_dev.py",
-        ROOT / "src" / "anysolver" / "control.py",
-        ROOT / "src" / "anysolver" / "linalg.py",
-        ROOT / "src" / "anysolver" / "threading_policy.py",
+        ROOT / "src" / "anyfesolver" / "_b2_physical_flexibility_linear.py",
+        ROOT / "src" / "anyfesolver" / "_b2_physical_linear_definition.py",
+        ROOT / "src" / "anyfesolver" / "_b2_physical_linear_batch_dev.py",
+        ROOT / "src" / "anyfesolver" / "control.py",
+        ROOT / "src" / "anyfesolver" / "linalg.py",
+        ROOT / "src" / "anyfesolver" / "threading_policy.py",
     ]
     return [{"path": str(path.resolve()),
              "sha256": sha256(path.read_bytes()).hexdigest()}

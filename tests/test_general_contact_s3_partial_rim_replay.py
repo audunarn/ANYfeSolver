@@ -6,8 +6,8 @@ import numpy as np
 import pytest
 from scipy import sparse
 from examples.general_contact_s3_rim_replay import build_case,solve_case
-from anysolver.general_contact.s3_friction_replay import S3RimReplayFrictionManager,S3RimReplayFrictionSettings,S3ReplayFrictionManager,S3ReplayFrictionSettings
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_friction_replay import S3RimReplayFrictionManager,S3RimReplayFrictionSettings,S3ReplayFrictionManager,S3ReplayFrictionSettings
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 
 def root():return Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])
 def save(v):
@@ -78,9 +78,9 @@ def test_unit():
 def test_public(monkeypatch):
     stage=os.environ['FINITE_STAGE'];step=int(stage.removeprefix('A'));case=build_case();m,d,s,f,p=case
     incoming=json.loads((root()/f'A{step-1}.json').read_text())['checkpoint'] if step>1 else None
-    import anysolver.general_contact.static_path as driver
+    import anyfesolver.general_contact.static_path as driver
     original=driver.create_s3_friction_manager if hasattr(driver,'create_s3_friction_manager') else None
-    import anysolver.general_contact.s3_friction_static as factory
+    import anyfesolver.general_contact.s3_friction_static as factory
     original=factory.create_s3_friction_manager;captured=[]
     def make(*args):
         a=original(*args);commit=a.commit;restore=a.restore
@@ -99,7 +99,7 @@ def test_public(monkeypatch):
     checkpoint=result.to_restart_checkpoint();assert checkpoint['path_state']['accepted_step']==step
     save(dict(status=result.status,checkpoint=checkpoint,info=result.info,verification='saved before independent physical assertions'))
     snap=result.snapshots[-1];u=np.array(checkpoint['displacements']);a=captured[-1]
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
     K=assemble_stiffness_matrix(m)[0];contact=a.saved_force+a.saved_normal
     phase=checkpoint['path_state']['history'][-1];reaction=np.array(phase['reaction_generalized']);res=K@u+contact
     res[np.asarray(m.mesh.dof_manager.get_node_dofs(1))[[0,2]]]-=reaction
@@ -165,7 +165,7 @@ def test_birth():
 
 
 def test_prepared_uniform(monkeypatch):
-    from anysolver.general_contact.s3_friction_prepared_path import prepare_s3_plane_pressure_path,PreparedS3PlanePressurePath
+    from anyfesolver.general_contact.s3_friction_prepared_path import prepare_s3_plane_pressure_path,PreparedS3PlanePressurePath
     case=build_case();a=owner(case);m=case[0]
     x=mode(m,(1,2,3),0);z=mode(m,(1,2,3),2)
     tx=mode(m,(5,6,7),0)
@@ -205,8 +205,8 @@ def test_prepared_uniform(monkeypatch):
 @pytest.mark.skipif(os.environ.get('ATOMIC_KIND')=='trial' and (not os.environ.get('AUTOMATIC_WORKFLOW_EVIDENCE') or not (Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])/'A2.json').is_file()),
     reason='archived rim input AUTOMATIC_WORKFLOW_EVIDENCE/A2.json absent: trial-branch atomic replay requires the original staged checkpoint')
 def test_atomic(monkeypatch):
-    from anysolver.control import CancellationToken
-    import anysolver.general_contact.s3_friction_static as factory
+    from anyfesolver.control import CancellationToken
+    import anyfesolver.general_contact.s3_friction_static as factory
     import copy
     case=build_case();m=case[0];kind=os.environ.get('ATOMIC_KIND','commit');incoming=json.loads((root()/'A2.json').read_text())['checkpoint'] if kind=='trial' else None
     before=copy.deepcopy(incoming);declared=repr((m.boundary_conditions,m.constraint_equations,m.load_cases));nodes=[(n.x,n.y,n.z) for n in m.mesh.nodes.values()]
@@ -232,7 +232,7 @@ def test_atomic(monkeypatch):
     with pytest.raises(Exception) as error:solve_case(case,3 if kind=='trial' else 1,incoming,token)
     assert fault and 'injected rim' in str(error.value),repr(error.value)
     if kind=='cancel':
-        from anysolver.control import SolveCancelled
+        from anyfesolver.control import SolveCancelled
         assert isinstance(error.value,SolveCancelled)
     assert captured[0].checkpoint_state()==expected[0]
     assert incoming==before and repr((m.boundary_conditions,m.constraint_equations,m.load_cases))==declared
@@ -303,7 +303,7 @@ def test_proof():
 @pytest.mark.skipif(not os.environ.get('AUTOMATIC_WORKFLOW_EVIDENCE') or not all((Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])/(name+'.json')).is_file() for name in ('A2','A3')),
     reason='archived rim inputs AUTOMATIC_WORKFLOW_EVIDENCE A2.json/A3.json absent: facet replay requires the original staged checkpoints')
 def test_facet(monkeypatch):
-    import anysolver.general_contact.s3_friction_static as factory
+    import anyfesolver.general_contact.s3_friction_static as factory
     original=factory.create_s3_friction_manager;captured=[]
     def make(*args):a=original(*args);captured.append(a);return a
     monkeypatch.setattr(factory,'create_s3_friction_manager',make)

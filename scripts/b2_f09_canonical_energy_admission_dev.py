@@ -25,7 +25,7 @@ import numpy as np
 import psutil
 from threadpoolctl import threadpool_info, threadpool_limits
 
-from anysolver._b2_physical_flexibility_linear import (
+from anyfesolver._b2_physical_flexibility_linear import (
     LinearSection, RepresentabilityError,
 )
 
@@ -34,7 +34,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PREDECESSOR = (ROOT / "docs" / "agent_plans" /
                "B3_GE_E4_PL_G0_F09_LOCAL_ENERGY_ADMISSION_DEV_V1.json")
 V1_PATH = ROOT / "scripts" / "b2_f09_local_energy_admission_dev.py"
-SOURCE = ROOT / "src" / "anysolver" / "_b2_physical_flexibility_linear.py"
+SOURCE = ROOT / "src" / "anyfesolver" / "_b2_physical_flexibility_linear.py"
 OUTPUT = (ROOT / "docs" / "agent_plans" /
           "B3_GE_E4_PL_G0_F09_CANONICAL_ENERGY_ADMISSION_DEV_V1.json")
 V1 = runpy.run_path(str(V1_PATH))

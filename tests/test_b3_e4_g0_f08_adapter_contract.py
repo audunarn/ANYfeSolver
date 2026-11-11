@@ -7,17 +7,17 @@ import json
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_retained_fibre_program import solve_force_program
-from anysolver._ge_beam3_retained_generalized_program import solve as solve_generalized
-from anysolver._ge_beam3_retained_fibre_state import Context as FibreContext
-from anysolver._ge_beam3_retained_generalized_state import (
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_retained_fibre_program import solve_force_program
+from anyfesolver._ge_beam3_retained_generalized_program import solve as solve_generalized
+from anyfesolver._ge_beam3_retained_fibre_state import Context as FibreContext
+from anyfesolver._ge_beam3_retained_generalized_state import (
     Context as GeneralizedContext, Program as GeneralizedProgram,
 )
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_seeded_load_program import ForceProgram
-from anysolver._stiffened_shell_b3_local_adapter import (
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram
+from anyfesolver._stiffened_shell_b3_local_adapter import (
     evaluate_local_trial, evaluate_sparse_trial,
 )
 from scripts._b3_e4_f03_native_fixture import build

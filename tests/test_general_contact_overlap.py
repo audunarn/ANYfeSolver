@@ -3,9 +3,9 @@
 import numpy as np
 import pytest
 
-from anysolver import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.overlap import (
+from anyfesolver import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.overlap import (
     PlanarFace,
     current_planar_shell_face,
     planar_projected_overlap,

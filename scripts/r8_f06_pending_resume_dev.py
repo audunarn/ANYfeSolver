@@ -11,7 +11,7 @@ INPUT=BASE/'adaptive-material-v1/attempt-primary2/accepted-00.bin'
 ORACLE=BASE/'adaptive-material-v1/attempt-primary2'
 
 def bindings():
- paths=[ROOT/'src/anysolver'/n for n in (*infra.PRODUCTS,'_stiffened_shell_increment_control.py','_stiffened_shell_staged_load_experimental.py')]
+ paths=[ROOT/'src/anyfesolver'/n for n in (*infra.PRODUCTS,'_stiffened_shell_increment_control.py','_stiffened_shell_staged_load_experimental.py')]
  paths += [Path(__file__),ROOT/'tests/test_r8_f06_pending_resume_dev.py',INPUT,
   ORACLE/'final-prefix.bin',ORACLE/'histories-00.npz',ORACLE/'histories-01.npz',ORACLE/'accepted.json',
   PACKAGE/'artifact.json',PACKAGE/'snapshot-bindings.json',DOC/'READINESS.json']

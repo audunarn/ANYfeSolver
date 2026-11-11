@@ -3,15 +3,15 @@
 import numpy as np
 from scipy import sparse
 
-from anysolver.general_contact.core import suspend_contact
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.semismooth import (
+from anyfesolver.general_contact.core import suspend_contact
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.semismooth import (
     complementarity, linearize, reference_nodal_support,
 )
-from anysolver.general_contact.semismooth_path import (
+from anyfesolver.general_contact.semismooth_path import (
     _assemble_direct_matrix, _coupled_contact_blocks,
 )
-from anysolver.nonlinear_static import (
+from anyfesolver.nonlinear_static import (
     _assemble_nonlinear_system, _discard_nonlinear_state_candidate,
 )
 from scripts.general_contact_d1_eccentric_source_director import (

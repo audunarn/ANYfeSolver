@@ -162,7 +162,7 @@ def test_control_variate_refusal_actual_pose_rebuild_mutation_and_cancel(monkeyp
     finally:
         base.model.mesh.nodes[1].z = old
     assert abs(oracle.evaluate(trial)['work']-changed['work']) <= 1e-13
-    from anysolver.control import SolveCancelled
+    from anyfesolver.control import SolveCancelled
     from scripts import general_contact_enriched_reference as reference
     # The requested full_work callback must remain authoritative when a prior
     # oracle (whose own callback is false) supplies an exact cached pose.

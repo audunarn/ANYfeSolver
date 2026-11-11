@@ -7,9 +7,9 @@ pytestmark=pytest.mark.skipif('F06_ADAPTIVE_OUTPUT' not in os.environ,reason='bo
 def test_source_admission():
  from scripts.r8_f06_adaptive_material_dev import cyclic,programme
  from scripts.r8_f06_native_material_breadth_dev import definition
- from anysolver import stiffened_shell as ss
- from anysolver._stiffened_shell_increment_control import AdaptiveIncrementControl
- from anysolver._stiffened_shell_ge_finite_experimental import supports_paired_fibre_adaptive
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._stiffened_shell_increment_control import AdaptiveIncrementControl
+ from anyfesolver._stiffened_shell_ge_finite_experimental import supports_paired_fibre_adaptive
  owner=ss.create_analysis(definition=cyclic.definition('bend-z'))
  try:
   assert supports_paired_fibre_adaptive(owner)
@@ -33,11 +33,11 @@ def test_source_lifecycle():
  import numpy as np
  from dataclasses import replace,asdict
  from scripts.r8_f06_adaptive_material_dev import cyclic,programme,PREFIX,write,sha
- from anysolver import stiffened_shell as ss
- from anysolver._stiffened_shell_increment_control import AdaptiveIncrementControl,decode_control,encode_control
- from anysolver._stiffened_shell_staged_load_experimental import decode_checkpoint,encode_checkpoint
- from anysolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,encode_compensated
- from anysolver._ge_beam3_p5_seeded.core import canonical
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._stiffened_shell_increment_control import AdaptiveIncrementControl,decode_control,encode_control
+ from anyfesolver._stiffened_shell_staged_load_experimental import decode_checkpoint,encode_checkpoint
+ from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,encode_compensated
+ from anyfesolver._ge_beam3_p5_seeded.core import canonical
  out=Path(os.environ['F06_ADAPTIVE_OUTPUT']);model=cyclic.definition('bend-z')
  owner=ss.create_analysis(definition=model)
  try:
@@ -94,9 +94,9 @@ def test_primary():
  from dataclasses import asdict
  from scripts.r8_f06_adaptive_material_dev import paired_value,persist_accepted
  from scripts.r8_f06_adaptive_material_dev import cyclic,programme,PREFIX,write,sha
- from anysolver import stiffened_shell as ss
- from anysolver._stiffened_shell_increment_control import AdaptiveIncrementControl,AdaptiveIncrementExhausted,FiniteIncrementFailure
- from anysolver._stiffened_shell_beam_history import arrays as history_arrays
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._stiffened_shell_increment_control import AdaptiveIncrementControl,AdaptiveIncrementExhausted,FiniteIncrementFailure
+ from anyfesolver._stiffened_shell_beam_history import arrays as history_arrays
  out=Path(os.environ['F06_ADAPTIVE_OUTPUT']);owner=ss.create_analysis(definition=cyclic.definition('bend-z'))
  try:
   raw=PREFIX.read_bytes();owner.restore(raw);assert owner.checkpoint()==raw
@@ -156,7 +156,7 @@ def test_primary():
 def test_source_exact_pair():
  import math,json,numpy as np
  from scripts.r8_f06_adaptive_material_dev import paired_value,persist_accepted,cyclic,PREFIX,write
- from anysolver import stiffened_shell as ss
+ from anyfesolver import stiffened_shell as ss
  out=Path(os.environ['F06_ADAPTIVE_OUTPUT']);owner=ss.create_analysis(definition=cyclic.definition('bend-z'))
  try:
   owner.restore(PREFIX.read_bytes());d=owner._finite_driver;raw=owner.checkpoint()
@@ -186,13 +186,13 @@ def test_installed_lifecycle():
  import numpy as np,json
  from dataclasses import replace
  from scripts.r8_f06_adaptive_material_dev import DOC,cyclic,programme,write,persist_accepted,paired_value
- from anysolver import stiffened_shell as ss
- from anysolver._stiffened_shell_increment_control import AdaptiveIncrementControl,AdaptiveIncrementExhausted,decode_control,encode_control
- from anysolver._stiffened_shell_staged_load_experimental import decode_checkpoint,encode_checkpoint
- from anysolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,encode_compensated,decode_chart,encode_chart,decode,encode
- from anysolver._stiffened_shell_beam_history import shapes
- from anysolver._ge_beam3_p5_seeded.core import canonical
- from anysolver.control import CancellationToken,SolveCancelled
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._stiffened_shell_increment_control import AdaptiveIncrementControl,AdaptiveIncrementExhausted,decode_control,encode_control
+ from anyfesolver._stiffened_shell_staged_load_experimental import decode_checkpoint,encode_checkpoint
+ from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,encode_compensated,decode_chart,encode_chart,decode,encode
+ from anyfesolver._stiffened_shell_beam_history import shapes
+ from anyfesolver._ge_beam3_p5_seeded.core import canonical
+ from anyfesolver.control import CancellationToken,SolveCancelled
  out=Path(os.environ['F06_ADAPTIVE_OUTPUT']);model=cyclic.definition('bend-z');completed=[]
  def progress(label):completed.append(label);write(out/'progress.json',completed)
  pending=(DOC/'attempt-primary2/accepted-00.bin').read_bytes()
@@ -295,8 +295,8 @@ def test_installed_lifecycle():
 def test_installed_continuation():
  import json
  from scripts.r8_f06_adaptive_material_dev import DOC,cyclic,programme,write,persist_accepted,paired_value
- from anysolver import stiffened_shell as ss
- from anysolver._stiffened_shell_increment_control import AdaptiveIncrementControl,AdaptiveIncrementExhausted
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._stiffened_shell_increment_control import AdaptiveIncrementControl,AdaptiveIncrementExhausted
  out=Path(os.environ['F06_ADAPTIVE_OUTPUT']);completed=[]
  def progress(label):completed.append(label);write(out/'progress.json',completed)
  owner=ss.create_analysis(definition=cyclic.definition('bend-z'))

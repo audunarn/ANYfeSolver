@@ -5,8 +5,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 from examples.general_contact_tilted_relative_sliding import build,solve,rigid_pose,rotation
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.semismooth import linearize,complementarity,reference_nodal_support
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.semismooth import linearize,complementarity,reference_nodal_support
 spec=importlib.util.spec_from_file_location('_tilted_finite_proof',Path(__file__).with_name('test_general_contact_finite_rotation_shell_work.py'))
 _finite_proof=importlib.util.module_from_spec(spec);spec.loader.exec_module(_finite_proof)
 decimal_director,save,read,sha=(_finite_proof.decimal_director,_finite_proof.save,_finite_proof.read,_finite_proof.sha)
@@ -130,8 +130,8 @@ def rows_for(model,program):
 
 def test_independent_partition_seed_and_current_work_tangent(monkeypatch):
     from scipy.sparse import eye
-    from anysolver.general_contact.finite_rotation_predictor import per_surface_seed_descriptor,per_surface_rigid_seed
-    from anysolver.general_contact.finite_rotation_state import owner_local_coordinates
+    from anyfesolver.general_contact.finite_rotation_predictor import per_surface_seed_descriptor,per_surface_rigid_seed
+    from anyfesolver.general_contact.finite_rotation_state import owner_local_coordinates
     model,domain,settings,res,program=build();manager=GeneralS3PatchManager(model,res.definition,settings)
     desc=per_surface_seed_descriptor(model,res.definition,program);n=manager.n_dof;rows=rows_for(model,program)
     q=rigid_pose(model,math.pi/3.)
@@ -184,7 +184,7 @@ def test_installed_relative_path():
 @pytest.mark.skipif(not os.environ.get('AUTOMATIC_WORKFLOW_EVIDENCE'),
     reason='archived tilted inputs AUTOMATIC_WORKFLOW_EVIDENCE run-4..run-16.json absent: saved-pose physical-gate replay requires the original staged evidence root')
 def test_saved_relative_poses_independent_physical_gates():
-    from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
     spec=importlib.util.spec_from_file_location('_tilted_pose_oracle',Path(__file__).parents[1]/'docs/d1_review_support/contact_tilted_relative_sliding_20261008/oracle.py')
     oracle=importlib.util.module_from_spec(spec);spec.loader.exec_module(oracle)
     stages=['run-'+str(i) for i in (4,8,12,13,14,15,16)];chunks=[read(s) for s in stages]
@@ -247,8 +247,8 @@ def test_saved_relative_poses_independent_physical_gates():
 
 
 def test_relative_admission_and_restart_safety(monkeypatch):
-    from anysolver import CancellationToken,SolveCancelled,solve_static_nonlinear,validate_general_contact
-    from anysolver.general_contact.finite_rotation_predictor import finite_surface_partitions,per_surface_seed_descriptor,per_surface_rigid_seed
+    from anyfesolver import CancellationToken,SolveCancelled,solve_static_nonlinear,validate_general_contact
+    from anyfesolver.general_contact.finite_rotation_predictor import finite_surface_partitions,per_surface_seed_descriptor,per_surface_rigid_seed
     from scipy.sparse import eye
     model,domain,settings,res,program=build();before=repr(model)
     token=CancellationToken();token.cancel('tilted relative precancel')
@@ -276,9 +276,9 @@ def test_relative_admission_and_restart_safety(monkeypatch):
     descriptors=per_surface_seed_descriptor(model,res.definition,program);rows=rows_for(model,program);q=rigid_pose(model,math.pi/3.);target=program.target_at(14).copy();target[0]+=1e-4
     with pytest.raises(ValueError,match='consistent reference frame'):per_surface_rigid_seed(model,program,target,eye(manager_n:=len(q),format='csr'),np.zeros(manager_n),q,rows,descriptors)
     from examples.general_contact_multiple_beam_s3_transient import build as dynamic
-    from anysolver.dynamics import TransientConfig
-    from anysolver.general_contact.transient import solve_transient_contact,_admit,ContactTransientSolverControls
-    import anysolver.general_contact.multiple_beam_s3_transient as owner
+    from anyfesolver.dynamics import TransientConfig
+    from anyfesolver.general_contact.transient import solve_transient_contact,_admit,ContactTransientSolverControls
+    import anyfesolver.general_contact.multiple_beam_s3_transient as owner
     dm,dd,ds,velocity=dynamic();controls=ContactTransientSolverControls(allow_multiple_deformable_beam_s3_dev=True);assert _admit(dm,dd,ds,controls)==owner.PROFILE
     class WrongSettings:finite_frame_seed='per_surface_reference_frames_dev'
     with pytest.raises(ValueError,match='requires exact contact definitions/settings'):_admit(dm,dd,WrongSettings(),controls)
@@ -288,9 +288,9 @@ def test_relative_admission_and_restart_safety(monkeypatch):
     with pytest.raises(ValueError,match='finite_frame_seed'):
         solve_transient_contact(dm,dd,TransientConfig(dt=1e-5,t_end=1e-5,initial_velocity=velocity),contact_settings=replace(ds,finite_frame_seed='per_surface_reference_frames_dev'),solver_controls=controls)
     assert not calls
-    from anysolver import LoadCase,ArcLengthControl,solve_static_arc_length
+    from anyfesolver import LoadCase,ArcLengthControl,solve_static_arc_length
     from examples.general_contact_triangulated_rigid_patch import case
-    import anysolver.general_contact.arc_contact as arc_owner
+    import anyfesolver.general_contact.arc_contact as arc_owner
     am,ad,aset=case();assert validate_general_contact(am,ad,aset,analysis_control='arc_length').valid
     load=LoadCase('unused-independent-frame');load.add_nodal_load(2,forces=(0.,0.,-.01));arc_before=repr(am)
     arc_calls=[]
@@ -324,7 +324,7 @@ def test_relative_archive_checkpoint_restart_refusals():
     reason='archived legacy checkpoint contact_finite_rotation_shell_work_20261008/outputs/run-15.json absent: legacy default continuation replay requires the original saved run')
 def test_legacy_default_finite_checkpoint_continuation():
     from examples.general_contact_finite_rotation_shell_work import build as prior,solve as prior_solve
-    from anysolver.general_contact.core import _contact_settings_contract
+    from anyfesolver.general_contact.core import _contact_settings_contract
     path=Path('C:/ANYworkspaceWork/contact_finite_rotation_shell_work_20261008/outputs/run-15.json');stored=json.loads(path.read_text())
     model,domain,settings,res,program=prior();assert settings.finite_frame_seed=='common_reference_frame_dev'
     assert 'finite_frame_seed' not in _contact_settings_contract(settings) and res.identity==stored['identity']
@@ -337,7 +337,7 @@ def test_legacy_default_finite_checkpoint_continuation():
 @pytest.mark.skipif(not os.environ.get('AUTOMATIC_WORKFLOW_EVIDENCE'),
     reason='archived tilted inputs AUTOMATIC_WORKFLOW_EVIDENCE run-4..run-16.json absent: equilibrium discriminator replay requires the original staged evidence root')
 def test_saved_equilibrium_discriminator():
-    from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
     model,domain,settings,res,program=build();manager=GeneralS3PatchManager(model,res.definition,settings);C=rows_for(model,program)
     fixed=[model.mesh.dof_manager.get_node_dofs(9)[1]];free=np.setdiff1d(np.arange(manager.n_dof),fixed);names=dict(ux=0,uy=1,uz=2,rx=3,ry=4,rz=5);rows=[]
     for stage in ('run-4','run-8','run-12','run-13','run-14','run-15','run-16'):

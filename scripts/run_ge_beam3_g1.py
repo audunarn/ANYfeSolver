@@ -24,7 +24,7 @@ def main():
     spec = importlib.util.spec_from_file_location("g1_bound_process", ROOT / "docs/reference_cases/e4_pl_s3_v2_bounded_process.py")
     module = importlib.util.module_from_spec(spec); sys.modules[spec.name] = module
     spec.loader.exec_module(module)
-    output = Path(tempfile.mkdtemp(prefix="anysolver-g1-development-"))
+    output = Path(tempfile.mkdtemp(prefix="anyfesolver-g1-development-"))
     print("DIAGNOSTICS " + str(output), flush=True)
     env = dict(os.environ)
     for name in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS"):

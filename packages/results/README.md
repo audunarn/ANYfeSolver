@@ -1,12 +1,12 @@
-# anysolver-results
+# anyfesolver-results
 
-NumPy-only offline runtime for ANYsolver recovery capsules
+NumPy-only offline runtime for ANYfeSolver recovery capsules
 (`RUNTIME_ID = "anysolver-results/2"`, also supporting the legacy runtime1 contract).
 
 The package reconstructs solver response fields from the plain-data
-recovery capsules exported by ANYsolver's `export_recovery_capsule`
+recovery capsules exported by ANYfeSolver's `export_recovery_capsule`
 (contract `anysolver.recovery_capsule`, versions 1 and 2) without importing
-anysolver, scipy, ANYfem or ANYpost:
+anyfesolver, scipy, ANYfem or ANYpost:
 
 - `shell_surface_component(record, surface, component)` returns the requested
   local `xx`, `yy` or `xy` top/bottom stress using only its membrane/bending
@@ -40,12 +40,12 @@ anysolver, scipy, ANYfem or ANYpost:
 - `OPERATIONS` is the closed operation registry; errors are typed
   (`CapsuleValidationError`, `ReconstructionError`, `DerivationError`).
 
-The only runtime dependency is NumPy.  The full ANYsolver distribution
+The only runtime dependency is NumPy.  The full ANYfeSolver distribution
 delegates its shared beam/shell/principal formulas to this package and
-depends on it as `ANYsolver-results>=2,<3`; this standalone wheel
-carries no ANYsolver payload.
+depends on it as `ANYfeSolver-results>=2,<3`; this standalone wheel
+carries no ANYfeSolver payload.
 
-The capsule format and exporter are documented in the ANYsolver
+The capsule format and exporter are documented in the ANYfeSolver
 repository (`docs/RESULT_CAPSULE.md`).
 
 Public reconstruction/preparation defaults retain `combination='legacy_blas/1'`.

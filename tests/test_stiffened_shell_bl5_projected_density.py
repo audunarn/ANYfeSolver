@@ -8,9 +8,9 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import b3_ge, stiffened_shell as api
-from anysolver._ge_beam3_retained_generalized_state import Mechanical
-from anysolver._stiffened_shell_l1_assembly_experimental import _sample_rows
+from anyfesolver import b3_ge, stiffened_shell as api
+from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
+from anyfesolver._stiffened_shell_l1_assembly_experimental import _sample_rows
 from test_stiffened_shell_bl5_affine_supports import candidate
 from test_stiffened_shell_l1_assembly_experimental import _bl5_joint_mesh_definition
 
@@ -180,7 +180,7 @@ def test_physical_cell_means_all_channels_and_common_row_projection(nonuniform):
 
 
 def test_projected_multiplier_curvature_through_actual_state_update():
-    from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+    from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
     definition = replace(projected_definition(),
                          q4_pullback_policy=api.Q4_ALGORITHMIC_PULLBACK_V1)
     owner = api.create_analysis(definition=definition)

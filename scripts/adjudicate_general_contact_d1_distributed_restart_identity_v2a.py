@@ -60,8 +60,8 @@ def main(registration_path: Path, report_path: Path, output_path: Path) -> None:
             for key in ("python", "numpy", "scipy")
         ),
         "runtime_source_roots": (
-            Path(runtime.get("anysolver_module", "")).resolve().parents[1]
-            == Path(environment["anysolver_source_root"]).resolve()
+            Path(runtime.get("anyfesolver_module", "")).resolve().parents[1]
+            == Path(environment["anyfesolver_source_root"]).resolve()
             and Path(runtime.get("anymaterial_module", "")).resolve().parents[1]
             == Path(environment["anymaterial_source_root"]).resolve()),
         "wall_time": _bounded(

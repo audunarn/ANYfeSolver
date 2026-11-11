@@ -182,7 +182,7 @@ def test_v6l_rejects_support_mutation_and_preserves_defaults(tmp_path: Path) -> 
         "__future__", "argparse", "copy", "hashlib", "importlib", "json",
         "os", "pathlib", "shutil", "stat", "sys", "tarfile", "types", "typing",
     }
-    elements = ast.parse((ROOT / "src/anysolver/elements.py").read_text(encoding="utf-8"))
+    elements = ast.parse((ROOT / "src/anyfesolver/elements.py").read_text(encoding="utf-8"))
     defaults: dict[str, str] = {}
     for node in elements.body:
         if not isinstance(node, (ast.Assign, ast.AnnAssign)):

@@ -6,12 +6,12 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import _ge_beam3_retained_translation_control as control
-from anysolver import _ge_beam3_retained_nodal_loading as force
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_p5_seeded.core import canonical, sha
-from anysolver.control import CancellationToken
+from anyfesolver import _ge_beam3_retained_translation_control as control
+from anyfesolver import _ge_beam3_retained_nodal_loading as force
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
+from anyfesolver.control import CancellationToken
 from test_ge_beam3_native_generalized_modal import make
 from test_ge_beam3_schur_line_program import save
 

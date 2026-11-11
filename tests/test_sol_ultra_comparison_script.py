@@ -50,7 +50,7 @@ def _case(*, warm_seconds: float) -> dict[str, Any]:
 
 def _benchmark_artifacts() -> tuple[dict[str, Any], dict[str, Any]]:
     baseline = {
-        "schema_name": "anysolver.sol_ultra.benchmark",
+        "schema_name": "anyfesolver.sol_ultra.benchmark",
         "schema_version": 1,
         "report_kind": "baseline",
         "revision": {

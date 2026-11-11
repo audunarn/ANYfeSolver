@@ -3,14 +3,14 @@ import json
 from hashlib import sha256
 import numpy as np
 import pytest
-from anysolver.fe_core import FEModel
-from anysolver.boundary import BoundaryCondition
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
-from anysolver._ge_beam3_retained_fibre_element import NativeRetainedFibreElement
-from anysolver._ge_beam3_seeded_load_program import ForceProgram
-from anysolver._ge_beam3_fibre_line_work import ReferenceLineForces
-from anysolver import _ge_beam3_equilibrium_line_program as native
-from anysolver import _ge_beam3_fibre_line_program as dense
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import BoundaryCondition
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+from anyfesolver._ge_beam3_retained_fibre_element import NativeRetainedFibreElement
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram
+from anyfesolver._ge_beam3_fibre_line_work import ReferenceLineForces
+from anyfesolver import _ge_beam3_equilibrium_line_program as native
+from anyfesolver import _ge_beam3_fibre_line_program as dense
 from test_ge_beam3_spatial_nodal_moments import model as section_model
 from test_ge_beam3_schur_line_program import save,numerical_difference
 

@@ -15,8 +15,8 @@ import numpy as np
 from scipy.sparse import linalg as spla
 from threadpoolctl import threadpool_info
 
-from anysolver import stiffened_shell
-from anysolver._stiffened_shell_l1_assembly_experimental import SPACE_B
+from anyfesolver import stiffened_shell
+from anyfesolver._stiffened_shell_l1_assembly_experimental import SPACE_B
 from scripts.b3_e4_f03_l1_matched_flat_web import build
 from scripts.b3_e4_f03_ccx_matched_t_reference import PLATE_T_M
 

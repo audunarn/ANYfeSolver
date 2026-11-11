@@ -5,11 +5,11 @@ import copy,json
 import numpy as np
 import pytest
 from scipy import sparse
-from anysolver.marine_seabed import SeabedContact
-from anysolver.marine_mooring import (MooringLineError,MooringNodeState,
+from anyfesolver.marine_seabed import SeabedContact
+from anyfesolver.marine_mooring import (MooringLineError,MooringNodeState,
     CONTACT_API_VERSION,data_to_dict,data_from_dict)
-from anysolver.marine_rigid import RigidBody6D
-from anysolver.marine_mechanical import (MarineMechanicalModel,MarineMechanicalRunSpec,
+from anyfesolver.marine_rigid import RigidBody6D
+from anyfesolver.marine_mechanical import (MarineMechanicalModel,MarineMechanicalRunSpec,
     MarineMechanicalSolveError,solve_marine_mechanical,model_to_dict,model_from_dict,result_to_dict)
 from test_marine_mooring import coupled_case,fixed_case,perturb
 
@@ -160,7 +160,7 @@ def test_failed_combined_contact_trial_preserves_last_body_node_history_and_evid
         pytest.importorskip('anyloads', reason='optional marine-morison provider is not installed')
     from anyloads.marine import AiryEnvironment
     from anyloads.marine_line import LineHydrodynamics
-    from anysolver.marine_contributions import DynamicContribution,ContributionResult,HISTORY_CHART
+    from anyfesolver.marine_contributions import DynamicContribution,ContributionResult,HISTORY_CHART
     model,states,nodes=contact_oscillator(0.)
     class Memory(DynamicContribution):
         contribution_id='memory';ownership_key='contact-test-memory';history_basis=HISTORY_CHART

@@ -7,7 +7,7 @@ import json
 import numpy as np
 import pytest
 
-from anysolver.activity import (
+from anyfesolver.activity import (
     ContributionPolicy,
     CouplingPolicy,
     CouplingResolutionError,

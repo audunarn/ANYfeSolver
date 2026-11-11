@@ -7,11 +7,11 @@ between scopes. The maps must be identical to a build with any other stride.
 import numpy as np
 import pytest
 
-from anysolver import FEModel, FixedSupport, LoadCase, RecoveryConfig, prepare_static_response_evaluator
-from anysolver import prepared_static_recovery as recovery_module
-from anysolver import prepared_static_vectorized as vector
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from anysolver.elements import BeamElement, create_shell_element
+from anyfesolver import FEModel, FixedSupport, LoadCase, RecoveryConfig, prepare_static_response_evaluator
+from anyfesolver import prepared_static_recovery as recovery_module
+from anyfesolver import prepared_static_vectorized as vector
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+from anyfesolver.elements import BeamElement, create_shell_element
 
 STRESS = RecoveryConfig(include_displacements=False, include_stresses=True, include_reactions=True)
 

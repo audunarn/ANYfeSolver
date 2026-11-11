@@ -34,7 +34,7 @@ def carrier_reference(length, bending, shear, moment, x):
 
 
 def rigid_carrier_definition(nx=16, ny=4, halfcells=32):
-    from anysolver import stiffened_shell as api
+    from anyfesolver import stiffened_shell as api
     from b3_e4_bl5_coherent_aggregation_dev import model
     definition, policy = model(nx, ny, halfcells, 2)
     shell_fixed = tuple(api.FixedCoordinate("shell", node, axis)
@@ -54,9 +54,9 @@ def write(path, value):
 def run(output, nx=16, ny=4, halfcells=32):
     import numba
     from threadpoolctl import threadpool_info
-    import anysolver
-    from anysolver import stiffened_shell as api
-    from anysolver._ge_beam3_retained_generalized_state import Mechanical
+    import anyfesolver
+    from anyfesolver import stiffened_shell as api
+    from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
     from b3_e4_bl5_coherent_aggregation_dev import physical_transfer
     output.mkdir(exist_ok=False)
     pools = threadpool_info()
@@ -71,7 +71,7 @@ def run(output, nx=16, ny=4, halfcells=32):
     bending, shear = float(section[5, 5]), float(section[1, 1])
     reference = carrier_reference(length, bending, shear, moment, length)
     summary = dict(status="IN_PROGRESS", policy=policy,
-        source=anysolver.__file__, settings=dict(pools=pools,
+        source=anyfesolver.__file__, settings=dict(pools=pools,
             numba_threads=numba.get_num_threads(), jit_disabled=bool(numba.config.DISABLE_JIT)),
         physical=dict(length_m=length, EI_z_Nm2=bending, kGA_y_N=shear,
             tip_moment_Nm=moment, beam_axis_z_m=.0675, shell_top_z_m=.0175,

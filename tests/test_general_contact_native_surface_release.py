@@ -5,8 +5,8 @@ from hashlib import sha256
 import numpy as np
 import pytest
 
-from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialPointFriction
-from anysolver.general_contact.native_surface_transaction import NativeS3MaterialTransaction
+from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialPointFriction
+from anyfesolver.general_contact.native_surface_transaction import NativeS3MaterialTransaction
 from test_general_contact_native_surface_s3_friction import _case
 from test_general_contact_native_surface_patch import _patch
 
@@ -60,7 +60,7 @@ def test_release_settings_bound_to_restart():
 
 def test_exact_release_endpoint_matches_beyond_endpoint_and_retains_small_work():
     from test_general_contact_native_surface_path import _touch
-    from anysolver.general_contact.native_surface_path import material_path_pose
+    from anyfesolver.general_contact.native_surface_path import material_path_pose
     _,original,pose,empty=_case()
     pair=NativeS3MaterialPointFriction(original.source,original.target,reference_weight_m2=.01,
         normal_stiffness_Pa_per_m=1000.,friction_coefficient=.3,tangential_stiffness_Pa_per_m=1000.,
@@ -80,12 +80,12 @@ def test_exact_release_endpoint_matches_beyond_endpoint_and_retains_small_work()
 def test_saved_closed_unloading_path_has_bounded_gap_certificate():
     import json
     from pathlib import Path
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
-    from anysolver.general_contact.native_surface_path import certify_material_path
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_path import certify_material_path
     record=json.loads((Path(__file__).parents[1]/'docs/d1_review_support/contact_c5_native_surface_point_20261002/release_rejected_path.json').read_text())['record']
     _,bridge=_patch(activation_policy='transverse_events')
     pair=bridge.pair.pairs[record['point']]
-    from anysolver._ge_beam3_p5_seeded.core import sha
+    from anyfesolver._ge_beam3_p5_seeded.core import sha
     assert sha(record['definition'])==pair.definition_sha256
     start=NativeS3MaterialConfiguration(**{k:np.asarray(v) for k,v in record['start'].items()})
     result=certify_material_path(pair,start,np.asarray(record['translations']),np.asarray(record['angular']),

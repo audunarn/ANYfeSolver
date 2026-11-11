@@ -201,11 +201,11 @@ def _check_environment_manifest_and_same_environment_snapshots() -> None:
 
 def _check_synthetic_loader_binds_exact_six_and_hashes_sources() -> None:
     modules = ORACLE.load_numeric_modules()
-    expected = {"anysolver", "anysolver.shell_formulations"}
-    expected.update(f"anysolver.shell_formulations.{Path(name).stem}" for name in ORACLE.SOURCE_ORDER)
+    expected = {"anyfesolver", "anyfesolver.shell_formulations"}
+    expected.update(f"anyfesolver.shell_formulations.{Path(name).stem}" for name in ORACLE.SOURCE_ORDER)
     assert set(modules) == expected
     for filename, digest in ORACLE.SOURCE_HASHES.items():
-        path = REPOSITORY / "src" / "anysolver" / "shell_formulations" / filename
+        path = REPOSITORY / "src" / "anyfesolver" / "shell_formulations" / filename
         assert ORACLE._canonical_source_hash(path) == digest
 
 
@@ -226,7 +226,7 @@ def _check_hostile_constraints_and_model_indices_fail_early() -> None:
             raise AssertionError(f"hostile constraint unexpectedly accepted: {specification['id']}")
 
 
-def _check_preloaded_anysolver_module_is_rejected_in_isolated_process() -> None:
+def _check_preloaded_anyfesolver_module_is_rejected_in_isolated_process() -> None:
     script = (
         "import importlib.util,pathlib,sys,types;"
         f"p=pathlib.Path({str(ORACLE_PATH)!r});"
@@ -294,19 +294,19 @@ _WORKER_CHECKS = (
     _check_environment_manifest_and_same_environment_snapshots,
     _check_synthetic_loader_binds_exact_six_and_hashes_sources,
     _check_hostile_constraints_and_model_indices_fail_early,
-    _check_preloaded_anysolver_module_is_rejected_in_isolated_process,
+    _check_preloaded_anyfesolver_module_is_rejected_in_isolated_process,
     _check_numbering_topology_deletion_and_threshold_sensitive_evidence,
     _check_full_registered_proof_catalog_and_byte_repeatability,
 )
 
 
 def _worker_main() -> int:
-    """Run all gates in a clean process before NumPy or ANYsolver imports."""
+    """Run all gates in a clean process before NumPy or ANYfeSolver imports."""
 
     global ORACLE, NP
     assert "numpy" not in sys.modules
     assert not any(
-        name.casefold() == "anysolver" or name.casefold().startswith("anysolver.")
+        name.casefold() == "anyfesolver" or name.casefold().startswith("anyfesolver.")
         for name in sys.modules
     )
     specification = importlib.util.spec_from_file_location(

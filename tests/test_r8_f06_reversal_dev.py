@@ -8,8 +8,8 @@ def test_paired_event_witness_and_actual_update():
  from dataclasses import replace
  from decimal import Decimal as D,localcontext
  from pathlib import Path
- from anysolver import stiffened_shell as ss
- from anysolver._ge_beam3_fibre_cell import PairedFibreTrialState
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._ge_beam3_fibre_cell import PairedFibreTrialState
  from scripts import r8_f06_cyclic_material_dev as cyclic
  from scripts.r8_f06_log_domain_check_dev import write
  doc=cyclic.DOC.parent/'reversal-v1'

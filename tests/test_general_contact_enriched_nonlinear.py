@@ -9,13 +9,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver import FEModel,BoundaryCondition,create_shell_element
-from anysolver.control import SolveCancelled
-from anysolver.e4_pl_enriched import EnrichedProfileError
-from anysolver.e4_pl_enriched_nonlinear import compile_nonlinear_cell,FORMULATION
-from anysolver.e4_pl_element import _source_fields,_coefficients
-from anysolver.general_contact.enriched_overlap import QuadraturePolicy,EnrichedGeometryError
-from anysolver.general_contact.enriched_nonlinear import (
+from anyfesolver import FEModel,BoundaryCondition,create_shell_element
+from anyfesolver.control import SolveCancelled
+from anyfesolver.e4_pl_enriched import EnrichedProfileError
+from anyfesolver.e4_pl_enriched_nonlinear import compile_nonlinear_cell,FORMULATION
+from anyfesolver.e4_pl_element import _source_fields,_coefficients
+from anyfesolver.general_contact.enriched_overlap import QuadraturePolicy,EnrichedGeometryError
+from anyfesolver.general_contact.enriched_nonlinear import (
     NonlinearEnrichedSystem,PairDefinition,MixedCriteria,IterationControl,
 )
 
@@ -95,7 +95,7 @@ def independent_difference(cell,q):
 
 
 def actual_assembly(model,u):
-    from anysolver.nonlinear_static import (_prepare_initial_states,
+    from anyfesolver.nonlinear_static import (_prepare_initial_states,
         _prepare_qualified_q4_states_for_nonlinear_solve,_activate_nonlinear_state_storage,
         _assemble_nonlinear_system,_discard_nonlinear_state_candidate)
     zero=np.zeros(model.mesh.dof_manager.total_dofs);info={}
@@ -174,8 +174,8 @@ def test_all_four_bubbles_and_complete_current_normal_chain_tangent(record_prope
 
 
 def test_affine_physical_offset_map_matches_original_both_body_helpers(record_property):
-    from anysolver.general_contact.q4_skin_work import Q4SkinWorkAdapter
-    from anysolver.general_contact.s3_skin_work import S3SkinWorkAdapter
+    from anyfesolver.general_contact.q4_skin_work import Q4SkinWorkAdapter
+    from anyfesolver.general_contact.s3_skin_work import S3SkinWorkAdapter
     model,_=small()
     source=Q4SkinWorkAdapter.from_model(model,1,1,'bottom')
     target=S3SkinWorkAdapter.from_model(model,2,2,'top')
@@ -277,7 +277,7 @@ def test_union_external_nonconforming_and_folded_domains_refuse():
     # Put the first source edge on the actual shared line x+y=0.
     for x,_,_ in mapping:
         x[:12]=np.array(((-.5,.5,-.025),(.5,-.5,-.025),(.5,.5,-.025),(-.5,1.5,-.025))).ravel()
-    from anysolver.general_contact.enriched_union import certify_union
+    from anyfesolver.general_contact.enriched_union import certify_union
     with pytest.raises(EnrichedGeometryError,match='collinearity'):
         certify_union(pairs[0],pairs[1],mapping[0],mapping[1])
 

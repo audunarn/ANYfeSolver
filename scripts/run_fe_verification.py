@@ -351,8 +351,8 @@ def _commands(
     import_check = [
         py,
         "-c",
-        "import anysolver; missing=[n for n in anysolver.__all__ if not hasattr(anysolver,n)]; "
-        "assert not missing, missing; print(f'imported {len(anysolver.__all__)} public FE symbols')",
+        "import anyfesolver; missing=[n for n in anyfesolver.__all__ if not hasattr(anyfesolver,n)]; "
+        "assert not missing, missing; print(f'imported {len(anyfesolver.__all__)} public FE symbols')",
     ]
     commands: List[tuple[str, List[str]]] = [("public_imports", import_check)]
     if quick:

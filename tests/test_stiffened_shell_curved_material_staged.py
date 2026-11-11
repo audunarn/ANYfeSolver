@@ -2,8 +2,8 @@
 from dataclasses import replace
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken,SolveCancelled
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken,SolveCancelled
 from test_stiffened_shell_curved_material import curved_material_panel,make_owner,_actions
 from test_stiffened_shell_curved_material_displacement import material_equal
 
@@ -92,8 +92,8 @@ def test_curved_staged_profile_and_progress_failures_are_atomic(request):
     # Reframe a valid binary endpoint with valid digests: mechanical checks,
     # not checksum failure, must reject changed applied loads/predecessors.
     import json
-    from anysolver._stiffened_shell_staged_load_experimental import decode_checkpoint,encode_checkpoint
-    from anysolver._stiffened_shell_ge_checkpoint_binary import MAGIC,decode,encode
+    from anyfesolver._stiffened_shell_staged_load_experimental import decode_checkpoint,encode_checkpoint
+    from anyfesolver._stiffened_shell_ge_checkpoint_binary import MAGIC,decode,encode
     descriptor,position,inner=decode_checkpoint(raw)
     start=len(MAGIC)+4;length=int.from_bytes(inner[len(MAGIC):start],'little')
     header=json.loads(inner[start:start+length])
@@ -113,7 +113,7 @@ def test_curved_staged_profile_and_progress_failures_are_atomic(request):
 
 
 def test_curved_staged_rebase_and_before_publish_cancellation(request,monkeypatch):
-    from anysolver import _stiffened_shell_ge_finite_experimental as finite
+    from anyfesolver import _stiffened_shell_ge_finite_experimental as finite
     owner=make_owner(request,curved_material_panel());plan=programme(owner)
     previous=owner.solve(plan,(.5,1.),**OPTIONS)
     before=owner.checkpoint();generation=owner._generation;token=CancellationToken()

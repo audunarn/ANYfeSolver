@@ -6,10 +6,10 @@ import zipfile
 import numpy as np
 import pytest
 from scipy import sparse
-from anysolver import BoundaryCondition,FixedSupport
-from anysolver.fe_core import FEModel
-from anysolver.elements import BeamElement
-import anysolver.assembly as assembly
+from anyfesolver import BoundaryCondition,FixedSupport
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement
+import anyfesolver.assembly as assembly
 
 def model(count, supported):
     result=FEModel('supported-mode-storage')
@@ -30,13 +30,13 @@ def model(count, supported):
 def legacy():
     path=os.environ.get('RIGID_LEGACY_WHEEL')
     if not path:pytest.skip('Independent archived-wheel comparator needs RIGID_LEGACY_WHEEL')
-    with zipfile.ZipFile(path) as archive:source=archive.read('anysolver/assembly.py').decode()
+    with zipfile.ZipFile(path) as archive:source=archive.read('anyfesolver/assembly.py').decode()
     tree=ast.parse(source)
     names={'_rigid_body_modes_full','_orthonormalize_columns','build_reduced_rigid_body_modes'}
     selected=[node for node in tree.body if isinstance(node,(ast.FunctionDef,ast.ImportFrom)) and (getattr(node,'name','') in names or isinstance(node,ast.ImportFrom) and node.module=='__future__')]
     assert len([node for node in selected if isinstance(node,ast.FunctionDef)])==3
     namespace=dict(vars(assembly))
-    exec(compile(ast.Module(body=selected,type_ignores=[]),str(Path(path)/'anysolver/assembly.py'),'exec'),namespace)
+    exec(compile(ast.Module(body=selected,type_ignores=[]),str(Path(path)/'anyfesolver/assembly.py'),'exec'),namespace)
     return namespace
 
 @pytest.mark.parametrize('supported',[(),(0,),(1,),(0,1)])

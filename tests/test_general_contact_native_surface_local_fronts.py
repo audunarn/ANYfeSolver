@@ -3,10 +3,10 @@ from dataclasses import replace
 import os
 import numpy as np
 import pytest
-from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
-from anysolver.general_contact.native_surface_front import stationary_front_angular_cover,stationary_front_angular_envelopes
-from anysolver.general_contact.native_surface_support import SupportIntervalBudget,_minimum
-from anysolver.general_contact.native_surface_friction_integral import integrate_event_friction_fronts
+from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
+from anyfesolver.general_contact.native_surface_front import stationary_front_angular_cover,stationary_front_angular_envelopes
+from anyfesolver.general_contact.native_surface_support import SupportIntervalBudget,_minimum
+from anyfesolver.general_contact.native_surface_friction_integral import integrate_event_friction_fronts
 from test_general_contact_native_surface_support import _field
 from test_general_contact_native_surface_friction_integral import _settings
 
@@ -91,7 +91,7 @@ def test_no_stationary_branch_does_not_discard_closed_material():
 
 def test_variable_front_route_keeps_closed_no_stationary_surface_force():
     from scipy.integrate import quad
-    from anysolver.general_contact.native_surface_friction_integral import integrate_variable_event_friction_fronts
+    from anyfesolver.general_contact.native_surface_friction_integral import integrate_variable_event_friction_fronts
     value=_mixed(height=.024,slope=.001,rotation=.2)
     result=integrate_variable_event_friction_fronts(value,_settings(),maximum_axial_uncertainty=1e-7)
     expected=.03*.3*1000*.6*quad(lambda delta:.03*np.cos(-.6+delta)-.0235,-.02,.02,epsabs=1e-14)[0]
@@ -103,8 +103,8 @@ def test_variable_front_route_keeps_closed_no_stationary_surface_force():
 
 def test_multisegment_strip_bound_uses_actual_branch_start():
     from math import acos,sin,cos,fsum
-    from anysolver.general_contact.native_surface_path import material_path_pose
-    from anysolver.general_contact.native_surface_front_work import open_front_strip_work_bound
+    from anyfesolver.general_contact.native_surface_path import material_path_pose
+    from anyfesolver.general_contact.native_surface_front_work import open_front_strip_work_bound
     value=_three_segment_pulse();prefix=value.segments[0]
     start=material_path_pose(value.initial,prefix.translations,prefix.angular,prefix.shell_increment,1.)
     middle=NativeSurfaceHistoryField(value.patch,start,(value.segments[1],))
@@ -183,10 +183,10 @@ def test_multisegment_front_integral_has_independent_cumulative_work(tmp_path):
 def _saved_local_front_field():
     import json
     from pathlib import Path
-    from anysolver.general_contact.native_surface_patch import NativeS3MaterialSurfacePatch
-    from anysolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
-    from anysolver.general_contact.native_surface_friction_integral import NativeSurfaceFrictionIntegrationSettings
+    from anyfesolver.general_contact.native_surface_patch import NativeS3MaterialSurfacePatch
+    from anyfesolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_friction_integral import NativeSurfaceFrictionIntegrationSettings
     from test_general_contact_native_surface_replay_owner import _replay_patch
     source=Path(__file__).parents[1]/'docs/d1_review_support/contact_c5_native_surface_point_20261002/replay_owner_second_load_rejected_path.json'
     saved=json.loads(source.read_text());_,bridge=_replay_patch('transverse_event_sequence')
@@ -245,9 +245,9 @@ def test_saved_second_load_local_front_window(tmp_path):
 
 
 def test_history_work_cap_covers_inherited_elastic_state_during_unloading():
-    from anysolver.general_contact.native_surface_front import prepare_stationary_band
-    from anysolver.general_contact.native_surface_front_work import history_front_strip_work_bound
-    from anysolver.general_contact.native_surface_history import NativeSurfaceReplayBudget
+    from anyfesolver.general_contact.native_surface_front import prepare_stationary_band
+    from anyfesolver.general_contact.native_surface_front_work import history_front_strip_work_bound
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceReplayBudget
     original=_mixed(rotation=0.)
     def move(dy,dz):
         translation=np.tile((0.,dy,dz),(3,1))
@@ -277,7 +277,7 @@ def test_deferred_directional_controls_match_eager_refined_integral(tmp_path,mon
     import json,os,time
     from pathlib import Path
     from types import SimpleNamespace
-    from anysolver.general_contact.native_surface_friction_integral import integrate_material_friction
+    from anyfesolver.general_contact.native_surface_friction_integral import integrate_material_friction
     value=_mixed(height=.024,slope=.001,rotation=.2)
     # Actual geometry, proof/cache and adaptive integration; replace only the
     # expensive material law with an independent degree-eight polynomial.
@@ -326,10 +326,10 @@ def test_deferred_directional_controls_match_eager_refined_integral(tmp_path,mon
 
 
 def test_complete_history_envelopes_bound_boundary_endpoint_and_stored_work():
-    from anysolver.general_contact.native_surface_front_boundary import stationary_endpoint_angular_partition
-    from anysolver.general_contact.native_surface_front import prepare_stationary_band,axial_contact_front
-    from anysolver.general_contact.native_surface_front_work import history_front_strip_work_bound
-    from anysolver.general_contact.native_surface_history import NativeSurfaceReplayBudget
+    from anyfesolver.general_contact.native_surface_front_boundary import stationary_endpoint_angular_partition
+    from anyfesolver.general_contact.native_surface_front import prepare_stationary_band,axial_contact_front
+    from anyfesolver.general_contact.native_surface_front_work import history_front_strip_work_bound
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceReplayBudget
     value=_mixed(rotation=.8);budget=SupportIntervalBudget(128)
     partition=stationary_endpoint_angular_partition(value,0,value.patch.rule.definition['angle_range'],budget=budget)
     saw_closed=False
@@ -370,7 +370,7 @@ def test_boundary_ending_front_retains_integrated_force_tangent_and_work(tmp_pat
     import json,time
     from pathlib import Path
     from scipy.integrate import quad
-    from anysolver.general_contact.native_surface_friction_integral import integrate_variable_event_friction_fronts
+    from anyfesolver.general_contact.native_surface_friction_integral import integrate_variable_event_friction_fronts
     value=_mixed(rotation=.8);folder=Path(os.environ.get('RUNNER_TEMP',str(tmp_path)))
     folder.mkdir(parents=True,exist_ok=True);start=time.perf_counter()
     try:
@@ -412,7 +412,7 @@ def test_variable_route_rules_match_advertised_polynomial_moments():
     production-kernel oracle.
     """
     from numpy.polynomial.legendre import leggauss
-    from anysolver.general_contact.native_surface_friction_integral import (
+    from anyfesolver.general_contact.native_surface_friction_integral import (
         _square_cubature_degree7_angular_groups)
     nodes, weights = leggauss(3)
     assert len(nodes) == 3 and np.all(weights > 0.)
@@ -460,7 +460,7 @@ def test_variable_route_gauss34_smooth_front_accuracy_tangent_and_refinement(tmp
     import json, os
     from pathlib import Path
     from scipy.integrate import quad
-    from anysolver.general_contact.native_surface_friction_integral import (
+    from anyfesolver.general_contact.native_surface_friction_integral import (
         integrate_variable_event_friction_fronts)
     value = _mixed(height=.024, slope=.001, rotation=.2)
     result = integrate_variable_event_friction_fronts(value, _settings(), maximum_axial_uncertainty=1e-7)
@@ -567,11 +567,11 @@ def test_captured_front_motion_detector_selects_only_moving_front_saved_paths():
     """
     import json
     from pathlib import Path
-    from anysolver.general_contact.native_surface_friction_integral import (
+    from anyfesolver.general_contact.native_surface_friction_integral import (
         _captured_fronts_move_between_poses)
-    from anysolver.general_contact.native_surface_history import (
+    from anyfesolver.general_contact.native_surface_history import (
         NativeSurfaceHistoryField, NativeSurfaceMotionSegment)
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
     from test_general_contact_native_surface_patch import _patch
     from test_general_contact_native_surface_normal import _settings as normal_settings
     expected = {
@@ -600,9 +600,9 @@ def _saved_locator_field():
     """Saved second-load window covering the theta 3.0973 interface bracket."""
     import json
     from pathlib import Path
-    from anysolver.general_contact.native_surface_patch import NativeS3MaterialSurfacePatch
-    from anysolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_patch import NativeS3MaterialSurfacePatch
+    from anyfesolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
     from test_general_contact_native_surface_replay_owner import _replay_patch
     source=Path(__file__).parents[1]/'docs/d1_review_support/contact_c5_native_surface_point_20261002/replay_owner_second_load_rejected_path.json'
     saved=json.loads(source.read_text());_,bridge=_replay_patch('transverse_event_sequence')
@@ -630,7 +630,7 @@ def test_safeguarded_locator_resolves_stagnating_curved_margin_counterexample():
     wide bracket midpoint near .55 as a cut after 12 calls. The safeguarded
     locator must resolve the true root .1 with an explicit tight bracket.
     """
-    from anysolver.general_contact.native_surface_friction_integral import _safeguarded_branch_refinement
+    from anyfesolver.general_contact.native_surface_friction_integral import _safeguarded_branch_refinement
     def probe(x):
         margin=x*x-.01
         return ('stick' if margin>=0. else 'slip',margin)
@@ -646,7 +646,7 @@ def test_safeguarded_locator_resolves_stagnating_curved_margin_counterexample():
 
 
 def test_exhausted_locator_returns_labelled_hint_never_wide_midpoint():
-    from anysolver.general_contact.native_surface_friction_integral import _safeguarded_branch_refinement
+    from anyfesolver.general_contact.native_surface_friction_integral import _safeguarded_branch_refinement
     def probe(x):
         margin=x*x-.01
         return ('stick' if margin>=0. else 'slip',margin)
@@ -665,7 +665,7 @@ def test_equal_endpoint_branches_make_hidden_transition_limitation_explicit():
     what endpoint sampling can decide; the locator must report the
     limitation explicitly instead of certifying a transition-free edge.
     """
-    from anysolver.general_contact.native_surface_friction_integral import _safeguarded_branch_refinement
+    from anyfesolver.general_contact.native_surface_friction_integral import _safeguarded_branch_refinement
     def probe(x):
         return ('slip' if .4<x<.6 else 'stick',x*x-.01)
     outcome=_safeguarded_branch_refinement(probe,0.,1.)
@@ -688,8 +688,8 @@ def test_saved_theta_30973_yield_margin_cut_lands_inside_known_bracket():
     bracket with the final bracket reported as its uncertainty. No point
     history is admitted by this test.
     """
-    from anysolver.general_contact.native_surface_history import NativeSurfaceReplayBudget
-    from anysolver.general_contact.native_surface_friction_integral import _safeguarded_branch_refinement
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceReplayBudget
+    from anyfesolver.general_contact.native_surface_friction_integral import _safeguarded_branch_refinement
     value=_saved_locator_field();pair=value.patch.pairs[0]
     def probe(xi):
         point=value.query(float(xi),3.0973,budget=NativeSurfaceReplayBudget(256)).last_contribution
@@ -723,8 +723,8 @@ def test_variable_route_safeguarded_cut_partitions_complete_domain(tmp_path,monk
     import json,os
     from pathlib import Path
     from types import SimpleNamespace
-    from anysolver.general_contact import native_surface_friction_integral as integral_module
-    from anysolver.general_contact.native_surface_friction_integral import integrate_material_friction
+    from anyfesolver.general_contact import native_surface_friction_integral as integral_module
+    from anyfesolver.general_contact.native_surface_friction_integral import integrate_material_friction
     value=_mixed(height=.024,slope=.001,rotation=.2)
     kink=-.5
     pair=value.patch.pairs[0]
@@ -798,8 +798,8 @@ def test_variable_route_smooth_converged_candidate_never_probes_constitutive_cut
     import json,os
     from pathlib import Path
     from types import SimpleNamespace
-    from anysolver.general_contact import native_surface_friction_integral as integral_module
-    from anysolver.general_contact.native_surface_friction_integral import integrate_material_friction
+    from anyfesolver.general_contact import native_surface_friction_integral as integral_module
+    from anyfesolver.general_contact.native_surface_friction_integral import integrate_material_friction
     value=_mixed(height=.024,slope=.001,rotation=.2)
     def polynomial_query(self,xi,angle,*,budget):
         q=((xi+.8)/.6)**2
@@ -841,7 +841,7 @@ def test_variable_route_smooth_converged_candidate_never_probes_constitutive_cut
 
 
 def test_captured_front_crossings_partition_the_complete_angular_span():
-    from anysolver.general_contact.native_surface_friction_integral import _captured_front_crossing_angles
+    from anyfesolver.general_contact.native_surface_friction_integral import _captured_front_crossing_angles
     coefficients=((-0.3,1.,0.,0.),(-0.8,1.,1.,0.))
     cuts=_captured_front_crossing_angles(coefficients,0.,1.,0.,np.pi)
     assert cuts==pytest.approx((np.pi/3,),abs=2e-15)
@@ -855,14 +855,14 @@ def test_captured_front_crossings_partition_the_complete_angular_span():
 
 
 def test_captured_front_structure_detects_root_order_change():
-    from anysolver.general_contact.native_surface_friction_integral import _captured_front_structure
+    from anyfesolver.general_contact.native_surface_friction_integral import _captured_front_structure
     coefficients=((-0.3,1.,0.,0.),(-0.8,1.,1.,0.))
     assert _captured_front_structure(coefficients,0.,1.,.8)==(1,0)
     assert _captured_front_structure(coefficients,0.,1.,1.3)==(0,1)
 
 
 def test_front_motion_axis_hint_distinguishes_window_translation_scales():
-    from anysolver.general_contact.native_surface_friction_integral import _captured_front_angular_motion_dominates
+    from anyfesolver.general_contact.native_surface_friction_integral import _captured_front_angular_motion_dominates
     # Two independent exact fronts x=.4+k sin(theta), .5+k sin(theta).
     # Across [0,.3], k=.8 moves farther than their .1 separation;
     # k=.001 moves less. Axis selection admits no integral or contact.
@@ -874,7 +874,7 @@ def test_front_motion_axis_hint_distinguishes_window_translation_scales():
 
 
 def test_front_contact_probe_moves_inside_the_correct_physical_side():
-    from anysolver.general_contact.native_surface_friction_integral import _captured_front_contact_probe
+    from anyfesolver.general_contact.native_surface_friction_integral import _captured_front_contact_probe
     # Independent exact fronts at .4 and .5; final gap=.4-x closes right.
     models=((-.5,1.,0.,0.),(.4,-1.,0.,0.))
     assert _captured_front_contact_probe(models,0.,1.,.3)==pytest.approx(.4001,abs=1e-16)

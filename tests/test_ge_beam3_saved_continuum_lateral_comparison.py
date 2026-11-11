@@ -83,8 +83,8 @@ def test_hash_mutation_before_reference_evaluation(monkeypatch):
 def test_no_production_import_or_base_solve():
     tree=ast.parse(Path(gate.__file__).read_text())
     for node in ast.walk(tree):
-        if isinstance(node,ast.Import):assert all(not n.name.startswith('anysolver') for n in node.names)
-        if isinstance(node,ast.ImportFrom):assert not (node.module or '').startswith('anysolver')
+        if isinstance(node,ast.Import):assert all(not n.name.startswith('anyfesolver') for n in node.names)
+        if isinstance(node,ast.ImportFrom):assert not (node.module or '').startswith('anyfesolver')
         if isinstance(node,ast.Call):
             name=node.func.id if isinstance(node.func,ast.Name) else node.func.attr if isinstance(node.func,ast.Attribute) else ''
             assert name not in ('solve','solve_bvp','prepare','restore','stage','solve_modes')

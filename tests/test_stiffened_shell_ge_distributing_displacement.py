@@ -4,12 +4,12 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_displacement_checkpoint import (
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_displacement_checkpoint import (
     decode_snapshot, encode_snapshot, DISTRIBUTING_KIND, DISTRIBUTING_POLICY,
 )
-from anysolver._stiffened_shell_displacement_control import prepare, publish
+from anyfesolver._stiffened_shell_displacement_control import prepare, publish
 from test_stiffened_shell_ge_distributing_finite_public import definition, actions
 
 
@@ -234,9 +234,9 @@ def test_canonical_but_inconsistent_endpoint_is_not_published(seed):
 
 
 def test_cancel_before_publication_and_domain_failure_preserve_seed(seed, monkeypatch):
-    import anysolver._stiffened_shell_displacement_control as controller
-    from anysolver._stiffened_shell_displacement_corrector import DisplacementCorrectorFailure
-    from anysolver._stiffened_shell_distributing_pose import DistributingPoseDomainError
+    import anyfesolver._stiffened_shell_displacement_control as controller
+    from anyfesolver._stiffened_shell_displacement_corrector import DisplacementCorrectorFailure
+    from anyfesolver._stiffened_shell_distributing_pose import DistributingPoseDomainError
     owner = _restored(seed)
     token = CancellationToken()
     original = controller.prepare
@@ -334,7 +334,7 @@ def test_actual_material_histories_and_restart(profile, monkeypatch):
             with pytest.raises(ValueError, match="stored seed force factor"):
                 prepare(restored, forged_base)
             assert restored.checkpoint() == raw
-        import anysolver._stiffened_shell_displacement_control as controller
+        import anyfesolver._stiffened_shell_displacement_control as controller
         original_prepare = controller.prepare
         token = CancellationToken()
         def cancel_after_material_prepare(*args):

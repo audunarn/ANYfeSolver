@@ -16,13 +16,13 @@ import time
 
 import numpy as np
 
-import anysolver.nonlinear_static as nonlinear_static
-import anysolver.general_contact.s3_patch_augmented as augmented
-import anysolver.general_contact.s3_patch_mortar_energy as mortar
-import anysolver.general_contact.s3_patch_static as patch_static
-import anysolver.general_contact.static_path as static_path
-import anysolver.general_contact.semismooth_path as semismooth_path
-import anysolver.nonlinear_restart as nonlinear_restart
+import anyfesolver.nonlinear_static as nonlinear_static
+import anyfesolver.general_contact.s3_patch_augmented as augmented
+import anyfesolver.general_contact.s3_patch_mortar_energy as mortar
+import anyfesolver.general_contact.s3_patch_static as patch_static
+import anyfesolver.general_contact.static_path as static_path
+import anyfesolver.general_contact.semismooth_path as semismooth_path
+import anyfesolver.nonlinear_restart as nonlinear_restart
 from scripts.general_contact_d1_selected_vs_fine_coupled_dev import _run
 from scripts.general_contact_d1_mixed_mesh_jet2_schur_press import build_case
 from scripts.general_contact_d1_pressure_bins import integrate_q1_bins

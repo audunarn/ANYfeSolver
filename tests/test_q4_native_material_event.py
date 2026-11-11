@@ -4,8 +4,8 @@ from types import SimpleNamespace
 import math
 import numpy as np
 import pytest
-from anysolver._stiffened_shell_q4_material_event import Q4MaterialTrial,boundary_amount,_origin_values
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver._stiffened_shell_q4_material_event import Q4MaterialTrial,boundary_amount,_origin_values
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
 
 def fixture(strain=.49,change=.1):
     origin=dict(plastic_strain=np.zeros((1,3)),alpha=np.zeros(1))
@@ -81,9 +81,9 @@ def test_driver_shell_binding_mutation_and_legacy_dispatch():
     assert driver._native_boundary_amount(state,np.array(d)) is None
 
 def test_actual_q4_capture_preserves_three_response_fields():
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
     from examples.stiffened_shell_native_fibre_bl5_material import definition
-    from anysolver._stiffened_shell_q4_algorithmic_pullback import response
+    from anyfesolver._stiffened_shell_q4_algorithmic_pullback import response
     owner=ss.create_analysis(definition=definition())
     try:
         driver=FinitePointDriver(owner)
@@ -101,9 +101,9 @@ def test_actual_q4_capture_preserves_three_response_fields():
     finally:owner.close()
 
 def test_nonzero_rotation_and_von_karman_layer_direction():
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
     from examples.stiffened_shell_native_fibre_bl5_material import definition
-    from anysolver._stiffened_shell_q4_algorithmic_pullback import response
+    from anyfesolver._stiffened_shell_q4_algorithmic_pullback import response
     owner=ss.create_analysis(definition=definition())
     try:
         driver=FinitePointDriver(owner);eid,element,slots,_=owner._shell_parts[0];origin=driver._shell_origins[0]

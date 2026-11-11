@@ -4,10 +4,10 @@ import json
 import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
-from anysolver import _ge_beam3_precise_geometric_work as precise
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_retained_generalized import RetainedGeneralizedOperator
-from anysolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
+from anyfesolver import _ge_beam3_precise_geometric_work as precise
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_retained_generalized import RetainedGeneralizedOperator
+from anyfesolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
 from docs.reference_cases.ge_beam3_refined_controlled_case import model
 
 
@@ -123,7 +123,7 @@ def test_native_finite_variations_and_material_origin(plastic):
 
 def test_explicit_arithmetic_identity_and_mutation():
     source=model(2).mesh.elements[1]
-    from anysolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement as Element
+    from anyfesolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement as Element
     old=Element(1,source.node_ids,source.operator.reference,source.section)
     new=Element(1,source.node_ids,source.operator.reference,source.section,arithmetic_policy=precise.POLICY)
     assert old.identity==source.identity and old.to_dict()==source.to_dict()

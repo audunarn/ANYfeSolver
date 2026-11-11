@@ -9,8 +9,8 @@ import numpy as np
 import pytest
 from examples import native_nonprincipal_reference as ref
 from examples.native_nonprincipal_dev import run,build,solve_transient
-from anysolver._ge_beam3_p5.algebra import rotation as native_rotation
-from anysolver._ge_beam3_p5.compensated_coordinates import split_sum
+from anyfesolver._ge_beam3_p5.algebra import rotation as native_rotation
+from anyfesolver._ge_beam3_p5.compensated_coordinates import split_sum
 
 PHYSICAL=[0,1,2,6,7,8,12,13,14,18,19,20,21,22,23]
 ENERGY_SCALE=ref.account(*ref.initial()[:3])['total_energy']

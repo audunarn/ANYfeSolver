@@ -6,12 +6,12 @@ import itertools
 import numpy as np
 import pytest
 
-import anysolver.e4_pl_s3_element as s3
-from anysolver._native_rotation_state import create_native_rotation_state_store
-from anysolver.arc_length import ArcLengthControl, solve_static_arc_length
-from anysolver.boundary import BoundaryCondition, FixedSupport, LoadCase
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from anysolver.e4_pl_s3_state import (
+import anyfesolver.e4_pl_s3_element as s3
+from anyfesolver._native_rotation_state import create_native_rotation_state_store
+from anyfesolver.arc_length import ArcLengthControl, solve_static_arc_length
+from anyfesolver.boundary import BoundaryCondition, FixedSupport, LoadCase
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+from anyfesolver.e4_pl_s3_state import (
     GENERALIZED_INITIAL_FIELD_POLICY_ID,
     GENERALIZED_NONLINEAR_STATE_SCHEMA,
     S3CommittedStateError,
@@ -19,10 +19,10 @@ from anysolver.e4_pl_s3_state import (
     seal_committed_s3_state,
     strict_canonical_json_loads,
 )
-from anysolver.fe_core import FEModel
-from anysolver.nonlinear_static import ShellInitialField, solve_static_nonlinear
-from anysolver.recovery import _recover_qualified_s3_committed_state
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.fe_core import FEModel
+from anyfesolver.nonlinear_static import ShellInitialField, solve_static_nonlinear
+from anyfesolver.recovery import _recover_qualified_s3_committed_state
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 REFERENCE = np.asarray(

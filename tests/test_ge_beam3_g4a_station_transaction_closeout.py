@@ -88,5 +88,5 @@ def test_closeout_is_static_and_has_no_mechanics_import():
     modules = {node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)}
     modules.update(alias.name for node in ast.walk(tree) if isinstance(node, ast.Import)
                    for alias in node.names)
-    assert not any(name == "anysolver" or name.startswith("anysolver.") for name in modules)
+    assert not any(name == "anyfesolver" or name.startswith("anyfesolver.") for name in modules)
     assert "subprocess" not in modules and "numpy" not in modules

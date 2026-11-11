@@ -9,8 +9,8 @@ import subprocess
 import numpy as np
 import pytest
 
-import anysolver
-from anysolver.e4_pl_s3_v2d_element import (
+import anyfesolver
+from anyfesolver.e4_pl_s3_v2d_element import (
     BLOCKED_OPERATIONS,
     CAPABILITY_MATRIX,
     COROTATIONAL_POLICY_ID,
@@ -21,8 +21,8 @@ from anysolver.e4_pl_s3_v2d_element import (
     NATIVE_STATE_SCHEMA_ID,
     NativeParityE4PLS3V2DShellElement,
 )
-from anysolver.e4_pl_s3_v2d_state import V2DStateError, strict_canonical_json_loads
-from anysolver.elements import create_shell_element
+from anyfesolver.e4_pl_s3_v2d_state import V2DStateError, strict_canonical_json_loads
+from anyfesolver.elements import create_shell_element
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -121,7 +121,7 @@ def test_v6b_identity_capabilities_and_defaults_are_fail_closed() -> None:
     candidate = contract["candidate"]
     source = _commit_blob(
         "afe691759a611278e341be7d58ffaae4f71bde89",
-        "src/anysolver/e4_pl_s3_v2d_element.py",
+        "src/anyfesolver/e4_pl_s3_v2d_element.py",
     ).decode("utf-8")
     assignments: dict[str, object] = {}
     for node in ast.parse(source).body:
@@ -142,7 +142,7 @@ def test_v6b_identity_capabilities_and_defaults_are_fail_closed() -> None:
     ]
     state_source = _commit_blob(
         "afe691759a611278e341be7d58ffaae4f71bde89",
-        "src/anysolver/e4_pl_s3_v2d_state.py",
+        "src/anyfesolver/e4_pl_s3_v2d_state.py",
     ).decode("utf-8")
     state_assignments: dict[str, object] = {}
     for node in ast.parse(state_source).body:
@@ -157,8 +157,8 @@ def test_v6b_identity_capabilities_and_defaults_are_fail_closed() -> None:
                 pass
     assert state_assignments["STATE_SCHEMA"] == candidate["state_schema"]
     assert state_assignments["STATE_LAYOUT_ID"] == candidate["state_layout_id"]
-    assert anysolver.DEFAULT_Q4_FORMULATION == "e4-pl"
-    assert anysolver.DEFAULT_S3_FORMULATION == "legacy-s3"
+    assert anyfesolver.DEFAULT_Q4_FORMULATION == "e4-pl"
+    assert anyfesolver.DEFAULT_S3_FORMULATION == "legacy-s3"
     element = create_shell_element(
         1,
         [1, 2, 3],
@@ -198,8 +198,8 @@ def test_v6b_state_json_rejects_duplicate_nonfinite_noncanonical_and_bom() -> No
 def test_v6b_implementation_does_not_import_qualified_v1_or_q4_mechanics() -> None:
     modules = {}
     for relative in (
-        "src/anysolver/e4_pl_s3_v2d_element.py",
-        "src/anysolver/e4_pl_s3_v2d_state.py",
+        "src/anyfesolver/e4_pl_s3_v2d_element.py",
+        "src/anyfesolver/e4_pl_s3_v2d_state.py",
     ):
         tree = ast.parse((ROOT / relative).read_text(encoding="utf-8"))
         imported: set[str] = set()
@@ -213,7 +213,7 @@ def test_v6b_implementation_does_not_import_qualified_v1_or_q4_mechanics() -> No
     assert not any(name.endswith("e4_pl_s3_element") for name in all_imports)
     source = _commit_blob(
         "afe691759a611278e341be7d58ffaae4f71bde89",
-        "src/anysolver/e4_pl_s3_v2d_element.py",
+        "src/anyfesolver/e4_pl_s3_v2d_element.py",
     ).decode("utf-8")
     assert "QualifiedE4PLS3ShellElement" not in source
     # The exact Q4 class is admitted only as a mixed-model registry identity;

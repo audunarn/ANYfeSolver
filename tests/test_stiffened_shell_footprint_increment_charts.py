@@ -6,10 +6,10 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell as ss
-from anysolver import _stiffened_shell_ge_finite_experimental as finite
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_rotation_charts import physical_frames
+from anyfesolver import stiffened_shell as ss
+from anyfesolver import _stiffened_shell_ge_finite_experimental as finite
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_rotation_charts import physical_frames
 from test_stiffened_shell_nodal_rigid_footprint import _definition, _owner, _group_checks
 
 
@@ -192,7 +192,7 @@ def test_loaded_origin_chart_actual_update_derivative(request, record_property, 
 
 @pytest.mark.parametrize("mixed", (False, True, "all-s3"))
 def test_current_chart_corruption_and_cross_policy_restore_reject_atomically(request, mixed):
-    from anysolver._stiffened_shell_ge_checkpoint_binary import decode_chart, encode_chart
+    from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode_chart, encode_chart
     owner = _owner(request, _charted_definition(mixed))
     legacy = _owner(request, _definition(mixed))
     actions = (ss.NodalAction("beam", 105, (0., 0., 10., 0., 0., 0.)),)

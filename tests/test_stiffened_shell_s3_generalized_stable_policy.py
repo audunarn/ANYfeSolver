@@ -12,17 +12,17 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell as public
-from anysolver import _stiffened_shell_ge_point_buckling as buckling
-from anysolver import _stiffened_shell_ge_finite_experimental as finite_module
-from anysolver._stiffened_shell_ge_finite_experimental import (
+from anyfesolver import stiffened_shell as public
+from anyfesolver import _stiffened_shell_ge_point_buckling as buckling
+from anyfesolver import _stiffened_shell_ge_finite_experimental as finite_module
+from anyfesolver._stiffened_shell_ge_finite_experimental import (
     FinitePointDriver, supports_generalized_stable_s3,
 )
-from anysolver._stiffened_shell_ge_checkpoint_binary import (
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import (
     SCHEMAS, STABLE_NATIVE_SCHEMA, decode, encode,
 )
-from anysolver._stiffened_shell_beam_history import shapes
-from anysolver._ge_beam3_variational_shell import deformation, response
+from anyfesolver._stiffened_shell_beam_history import shapes
+from anyfesolver._ge_beam3_variational_shell import deformation, response
 from test_stiffened_shell_ge_experimental import _panel
 from test_stiffened_shell_ge_physical_fibre_linear import _definition
 from test_stiffened_shell_ge_mixed_buckling import (
@@ -112,7 +112,7 @@ def test_displacement_seed_policy_admits_both_arithmetics_exactly(accepted_owner
     """The exact generalized stable domain admits legacy False and new True
     seeds; a restored legacy False seed is never upgraded, and nonboolean
     flags are refused."""
-    from anysolver._stiffened_shell_affine_endpoint import (
+    from anyfesolver._stiffened_shell_affine_endpoint import (
         require_native_displacement_policy)
     owner = accepted_owner
     driver = owner._finite_driver
@@ -133,7 +133,7 @@ def test_displacement_seed_policy_admits_both_arithmetics_exactly(accepted_owner
 
 
 def test_displacement_seed_policy_keeps_existing_guards_for_other_owners():
-    from anysolver._stiffened_shell_affine_endpoint import (
+    from anyfesolver._stiffened_shell_affine_endpoint import (
         require_native_displacement_policy)
     # (definition, admitted constructor seed, refused forged seed)
     cases = ((_definition(mixed=False, triangles=True), True, False),

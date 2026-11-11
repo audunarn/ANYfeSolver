@@ -131,9 +131,9 @@ def register(output):
 
 
 def compile_saved_projection(root):
-    from anysolver._ge_beam3_retained_generalized_state import Mechanical
-    from anysolver._stiffened_shell_l1_local_experimental import NativeHalfCellPort
-    from anysolver._stiffened_shell_bl5_local_experimental import BL5LocalOperator
+    from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
+    from anyfesolver._stiffened_shell_l1_local_experimental import NativeHalfCellPort
+    from anyfesolver._stiffened_shell_bl5_local_experimental import BL5LocalOperator
     data=json.loads((root/'native/inputs.json').read_text())
     if data['fixture']!=FIXTURE or data['fixture_case']!=FIXTURE_CASE:
         raise ValueError("actual reciprocal fixture differs")
@@ -191,7 +191,7 @@ def assess(root,registration,output,wheel):
     expected_full={"whole_half":804,"whole_double":1668}[FIXTURE_CASE]
     if c.shape!=(40,expected_full):raise ValueError("declared reciprocal operator dimensions required")
     for name,module in sys.modules.copy().items():
-        if name.split('.')[0]=='anysolver' and getattr(module,'__file__',None):
+        if name.split('.')[0]=='anyfesolver' and getattr(module,'__file__',None):
             path=Path(module.__file__).resolve();site=Path(owner['site']).resolve()
             if not path.is_relative_to(site) or sha(path)!=owner['module_sha256'].get(path.relative_to(site).as_posix()):
                 raise ValueError('changed installed product import: '+name)
@@ -268,7 +268,7 @@ def assess(root,registration,output,wheel):
         registration_sha256=sha(registration),source_sha256=sha(__file__),helper_sha256=helpers()|
             {Path(compile_saved_projection.__code__.co_filename).name:sha(compile_saved_projection.__code__.co_filename)},
         input_sha256={name:sha(root/'native'/name) for name in ('inputs.json','operators.npz')},wheel_sha256=sha(wheel),
-        imported_anysolver=sys.modules['anysolver'].__file__,
+        imported_anyfesolver=sys.modules['anyfesolver'].__file__,
         limitations='ONE reciprocal development level; no interlacing/coarseGram reuse, mechanical kernel claim, uniform stability or formalF03')
     output.write_text(json.dumps(result,indent=2,allow_nan=False)+'\n');return result
 

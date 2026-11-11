@@ -4,20 +4,20 @@ import struct
 import numpy as np
 import pytest
 
-from anysolver import (PatternCase, RecoveryConfig, FixedSupport, BoundaryCondition,
+from anyfesolver import (PatternCase, RecoveryConfig, FixedSupport, BoundaryCondition,
     prepare_static_response_evaluator, export_recovery_capsule, export_recovery_capsule_to_sink)
-from anysolver.prepared_static_numeric import NumericCase, float_bits_equal
+from anyfesolver.prepared_static_numeric import NumericCase, float_bits_equal
 from test_prepared_static_evaluator import _bar, _case, _shell_case
 from test_result_capsule_export import _rotated_shell_model
 from test_generalized_beam_sections import _model, _stiffness
-from anysolver.beam_sections import GeneralizedBeamSection
-from anysolver.elements import QuadraticBeamElement
+from anyfesolver.beam_sections import GeneralizedBeamSection
+from anyfesolver.elements import QuadraticBeamElement
 
 
 @pytest.mark.parametrize('indices',[[],[1,3],[3,1],[1,2,3]])
 def test_source_vector_publication_calls_original_complete_oracle_once_per_element(indices):
-    from anysolver.prepared_static_numeric import source_vectors
-    from anysolver.prepared_static_response import PreparedStaticResponseEvaluator,_PatternPacket
+    from anyfesolver.prepared_static_numeric import source_vectors
+    from anyfesolver.prepared_static_response import PreparedStaticResponseEvaluator,_PatternPacket
     random=np.random.default_rng(916)
     matrices=[np.asfortranarray(random.uniform(-1e100,1e100,(7,4))) for _ in range(3)]
     packet=_PatternPacket(np.asarray(indices,dtype=np.intp),np.array([.125,-3.,2.][:len(indices)]),None)
@@ -96,8 +96,8 @@ def test_numeric_float_admission_includes_signed_zero():
 
 
 def test_numeric_source_authority_and_interrupted_sink(monkeypatch):
-    from anysolver import PreparedStaticCapabilityError
-    from anysolver import prepared_static_numeric as numeric
+    from anyfesolver import PreparedStaticCapabilityError
+    from anyfesolver import prepared_static_numeric as numeric
     cases=[PatternCase('a',{'p':1.})]
     with prepare_static_response_evaluator(_bar(),{'p':_case(1).load_case},recovery_config=RecoveryConfig(include_stresses=True),stress_execution='certified_library') as evaluator:
         with monkeypatch.context() as patch:
@@ -120,7 +120,7 @@ def test_numeric_source_authority_and_interrupted_sink(monkeypatch):
 
 
 def test_numeric_cancellation_and_live_model_mutation_keep_owned_state():
-    from anysolver import CancellationToken, SolveCancelled
+    from anyfesolver import CancellationToken, SolveCancelled
     model = _bar()
     cases = [PatternCase('a',{'p':1.}),PatternCase('b',{'p':2.})]
     with prepare_static_response_evaluator(model,{'p':_case(1).load_case},recovery_config=RecoveryConfig(include_stresses=True),stress_execution='certified_library') as evaluator:
@@ -137,8 +137,8 @@ def test_numeric_cancellation_and_live_model_mutation_keep_owned_state():
 
 
 def test_numeric_extra_workspace_refuses_under_source_resource_policy():
-    from anysolver import ResourceConfig
-    from anysolver.recovery import ResourcePolicyError
+    from anyfesolver import ResourceConfig
+    from anyfesolver.recovery import ResourcePolicyError
     cases=[PatternCase('a',{'p':1.})]
     with prepare_static_response_evaluator(_bar(),{'p':_case(1).load_case},recovery_config=RecoveryConfig(include_stresses=True,include_reactions=False),stress_execution='certified_library') as evaluator:
         estimate=next(evaluator.iter_batches(cases,batch_size=1)).diagnostics['estimated_block_bytes']
@@ -165,15 +165,15 @@ def test_numeric_extra_workspace_refuses_under_source_resource_policy():
 
 @pytest.mark.parametrize('coefficient',[float('nan'),float('inf')])
 def test_numeric_nonfinite_input_refuses_without_success(coefficient):
-    from anysolver import PreparedStaticError
+    from anyfesolver import PreparedStaticError
     with prepare_static_response_evaluator(_bar(),{'p':_case(1).load_case},recovery_config=RecoveryConfig(include_stresses=True),stress_execution='certified_library') as evaluator:
         with pytest.raises(PreparedStaticError,match='finite'):
             export_recovery_capsule(evaluator,[PatternCase('bad',{'p':coefficient})],model_identity='m',mesh_identity='x')
 
 
 def test_numeric_tile_caller_observation_outside_owned_scope(monkeypatch):
-    from anysolver.prepared_static_recovery import _OWNED_RECOVERY_SCOPE
-    from anysolver import PreparedStaticCapabilityError, prepared_static_numeric as numeric
+    from anyfesolver.prepared_static_recovery import _OWNED_RECOVERY_SCOPE
+    from anyfesolver import PreparedStaticCapabilityError, prepared_static_numeric as numeric
     class Token:
         observed = 0
         def raise_if_cancelled(self,stage):

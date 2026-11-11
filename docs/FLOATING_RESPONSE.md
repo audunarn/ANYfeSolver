@@ -1,12 +1,12 @@
 # Floating-body response
 
 The floating response modules accept neutral numerical inputs and keep solver
-mechanics in ANYsolver. They were integrated on local main on 2026-10-28. Their
+mechanics in ANYfeSolver. They were integrated on local main on 2026-10-28. Their
 tests are development evidence; they do not confer broad marine qualification.
 
 ## Frequency response
 
-[`anysolver.floating_response`](../src/anysolver/floating_response.py) provides
+[`anyfesolver.floating_response`](../src/anyfesolver/floating_response.py) provides
 `solve_floating_response`, mean-frame operator/force transformations, restoring
 audits, rigid-motion reconstruction and waterline/rotation-envelope checks.
 The model is a linear six-DOF floating body at zero forward speed. Coordinates
@@ -19,7 +19,7 @@ module itself does not import ANYmarine, ANYhydro or Capytaine.
 
 ## Transient wind feedback
 
-[`anysolver.floating_transient`](../src/anysolver/floating_transient.py) exposes
+[`anyfesolver.floating_transient`](../src/anyfesolver/floating_transient.py) exposes
 `FloatingTransientSpec`, `FloatingTransientResourceConfig`,
 `FloatingTransientResult`, and `solve_floating_transient`.
 It uses fixed-step Newmark average acceleration with causal radiation memory
@@ -34,8 +34,8 @@ this route. Nonsymmetric external operators retain their skew parts.
 
 ## Structural pressure and mass
 
-[`pressure_regions`](../src/anysolver/pressure_regions.py) and
-[`floating_pressure_regions`](../src/anysolver/floating_pressure_regions.py)
+[`pressure_regions`](../src/anyfesolver/pressure_regions.py) and
+[`floating_pressure_regions`](../src/anyfesolver/floating_pressure_regions.py)
 integrate shell pressure over supplied overlap regions using the element's own
 virtual-work density. Physical quadrature points are inverted through the actual
 element mapping; native S3 rotational work is retained. Geometry ownership stays

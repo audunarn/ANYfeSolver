@@ -3,14 +3,14 @@
 import numpy as np
 import pytest
 
-from anysolver import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.friction_point import (
+from anyfesolver import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.friction_point import (
     FrictionPointState, initial_friction_point,
     objective_relative_tangent_increment,
 )
-from anysolver.general_contact.s3_friction_pair import S3FrictionPointPair
-from anysolver.general_contact.s3_friction_point import S3SkinMaterialPoint
+from anyfesolver.general_contact.s3_friction_pair import S3FrictionPointPair
+from anyfesolver.general_contact.s3_friction_point import S3SkinMaterialPoint
 
 
 def _case(*, maximum_active_columns=72):

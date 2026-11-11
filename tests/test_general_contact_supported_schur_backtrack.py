@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver.general_contact.supported_schur import (
+from anyfesolver.general_contact.supported_schur import (
     SupportedSchurBacktrackData,
     SupportedSchurProposal,
     propose_supported_schur_backtrack,

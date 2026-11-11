@@ -12,13 +12,13 @@ import json
 from pathlib import Path
 import time
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactPathControl, ContactPathProgram, ContactSolverSettings,
     ContactSurface, create_shell_element, solve_static_nonlinear,
     validate_general_contact,
 )
-from anysolver.fe_core import FEModel
+from anyfesolver.fe_core import FEModel
 
 
 def build_case(columns, rows=1, edge_control=False, *,

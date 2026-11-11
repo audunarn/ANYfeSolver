@@ -3,24 +3,24 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-import anysolver
-from anysolver.e4_pl_s3_v2c_element import (
+import anyfesolver
+from anyfesolver.e4_pl_s3_v2c_element import (
     StrictFlatLinearE4PLS3V2CShellElement,
 )
-from anysolver.e4_pl_s3_v2d_element import (
+from anyfesolver.e4_pl_s3_v2d_element import (
     FORMULATION_ID,
     NativeParityCapabilityError,
     NativeParityE4PLS3V2DShellElement,
 )
-from anysolver.elements import (
+from anyfesolver.elements import (
     DEFAULT_Q4_FORMULATION,
     DEFAULT_S3_FORMULATION,
     create_shell_element,
     shell_element_from_dict,
     shell_formulation_diagnostics,
 )
-from anysolver.fe_core import FEMesh, Material
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.fe_core import FEMesh, Material
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 COORDINATES = np.asarray(
@@ -57,7 +57,7 @@ def _v2d(**kwargs: object) -> NativeParityE4PLS3V2DShellElement:
 
 
 def test_v2d_elastic_surface_stress_is_available_through_default_public_recovery() -> None:
-    from anysolver import FEModel, recover_stress_result
+    from anyfesolver import FEModel, recover_stress_result
 
     model = FEModel("mixed-q4-s3-surface-stress")
     model.add_material("steel", E, NU, density=7850.0)
@@ -203,7 +203,7 @@ def test_v2d_is_the_s3_default_and_preserves_the_q4_default() -> None:
             reference_normal=NORMAL,
         )
     ) is NativeParityE4PLS3V2DShellElement
-    assert anysolver.S3_V2D_FORMULATION_ID == FORMULATION_ID
+    assert anyfesolver.S3_V2D_FORMULATION_ID == FORMULATION_ID
     assert shell_formulation_diagnostics(
         node_count=3, formulation="e4-pl-s3-v2d"
     )["topology_policy"] == "NATIVE_PARITY_E4_PL_S3_V2D_DEFAULT"
@@ -345,7 +345,7 @@ def test_v2d_stateless_identity_roundtrip_and_remaining_successor_gaps() -> None
         [
             "git",
             "show",
-            "dfe3d31424fdc97bd770a2657f19bb009bab7989:src/anysolver/e4_pl_s3_v2d_element.py",
+            "dfe3d31424fdc97bd770a2657f19bb009bab7989:src/anyfesolver/e4_pl_s3_v2d_element.py",
         ],
         check=True,
         stdout=subprocess.PIPE,
@@ -358,7 +358,7 @@ def test_v2d_stateless_identity_roundtrip_and_remaining_successor_gaps() -> None
         [
             "git",
             "show",
-            "afe691759a611278e341be7d58ffaae4f71bde89:src/anysolver/e4_pl_s3_v2d_element.py",
+            "afe691759a611278e341be7d58ffaae4f71bde89:src/anyfesolver/e4_pl_s3_v2d_element.py",
         ],
         check=True,
         stdout=subprocess.PIPE,

@@ -27,13 +27,13 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import _stiffened_shell_q4_algorithmic_pullback as q4
-from anysolver import _stiffened_shell_s3_algorithmic_pullback as s3
-from anysolver.e4_pl_s3_state import canonical_json_bytes
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.material_curves import DNVC208MaterialCurve
-from anysolver.plasticity import plane_stress_return_map
+from anyfesolver import _stiffened_shell_q4_algorithmic_pullback as q4
+from anyfesolver import _stiffened_shell_s3_algorithmic_pullback as s3
+from anyfesolver.e4_pl_s3_state import canonical_json_bytes
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.material_curves import DNVC208MaterialCurve
+from anyfesolver.plasticity import plane_stress_return_map
 
 
 @dataclass(frozen=True)

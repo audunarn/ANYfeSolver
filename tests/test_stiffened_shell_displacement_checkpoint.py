@@ -1,7 +1,7 @@
 """Controller framing only; physical restoration remains a separate requirement."""
 import numpy as np
 import pytest
-from anysolver._stiffened_shell_displacement_checkpoint import (
+from anyfesolver._stiffened_shell_displacement_checkpoint import (
     _layout,encode_snapshot,decode_snapshot)
 from test_stiffened_shell_bl5_coupled_material import coupled
 from test_stiffened_shell_bl5_material import make
@@ -50,8 +50,8 @@ def test_inconsistent_controller_snapshot_rejected(request,fault):
 def test_event_snapshot_zero_work_identity_and_strict_fields(request):
     from hashlib import sha256
     import json
-    from anysolver._stiffened_shell_displacement_checkpoint import MAGIC,EVENT_POLICY
-    from anysolver._stiffened_shell_branch_event_trial import POLICY as TRIAL
+    from anyfesolver._stiffened_shell_displacement_checkpoint import MAGIC,EVENT_POLICY
+    from anyfesolver._stiffened_shell_branch_event_trial import POLICY as TRIAL
     owner,_,args=fixture(request)
     raw=encode_snapshot(owner,**args,trial_policy=TRIAL)
     m,_=decode_snapshot(owner,raw)

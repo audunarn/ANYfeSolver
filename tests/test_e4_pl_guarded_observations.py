@@ -8,21 +8,21 @@ import numpy as np
 import pytest
 
 from anymaterial import DNVC208MaterialCurve, LinearHardeningCurve
-from anysolver import FEModel, QualifiedE4PLS3ShellElement, QualifiedE4PLShellElement
-from anysolver._native_rotation_state import (
+from anyfesolver import FEModel, QualifiedE4PLS3ShellElement, QualifiedE4PLShellElement
+from anyfesolver._native_rotation_state import (
     NativeElementRotationView,
     create_native_rotation_state_store,
 )
-from anysolver.current_state_tangent import (
+from anyfesolver.current_state_tangent import (
     require_exact_qualified_component_lifecycle_api,
 )
-from anysolver.e4_pl_element import _QUALIFIED_Q4_CLASS_NAMESPACE_AUTHORITY
-from anysolver.e4_pl_s3_element import _QUALIFIED_S3_CLASS_NAMESPACE_AUTHORITY
-from anysolver.element_capabilities import ElementCapabilityError
-from anysolver.elements import Element
-from anysolver.fe_core import FEMesh
-from anysolver.material_curves import FiberSectionPlasticityConfig
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.e4_pl_element import _QUALIFIED_Q4_CLASS_NAMESPACE_AUTHORITY
+from anyfesolver.e4_pl_s3_element import _QUALIFIED_S3_CLASS_NAMESPACE_AUTHORITY
+from anyfesolver.element_capabilities import ElementCapabilityError
+from anyfesolver.elements import Element
+from anyfesolver.fe_core import FEMesh
+from anyfesolver.material_curves import FiberSectionPlasticityConfig
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 def _qualified_case(family: str):

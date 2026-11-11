@@ -1,10 +1,10 @@
 import numpy as np
 import pytest
 
-from anysolver.boundary import LoadCase
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.pressure_regions import PressureRegionError, add_region_load, region_wrench, wet_region_load
+from anyfesolver.boundary import LoadCase
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.pressure_regions import PressureRegionError, add_region_load, region_wrench, wet_region_load
 
 RHO_G = 1000.
 
@@ -98,7 +98,7 @@ def test_refinement_total_force_is_conservative_for_linear_field():
 
 @pytest.mark.parametrize('points,corners', [(triangle_vertical(6), 3), (rectangle(8), 4)])
 def test_full_element_kernel_equals_fully_wet_region_load_and_full_area(points, corners):
-    from anysolver.pressure_regions import element_kernel
+    from anyfesolver.pressure_regions import element_kernel
     mesh, element = build(points)
     pressure = np.array([3., 5., 7., 11.][:corners])
     kernel, area, corner_areas = element_kernel(element, mesh)
@@ -110,9 +110,9 @@ def test_full_element_kernel_equals_fully_wet_region_load_and_full_area(points, 
 
 
 def test_qualified_formulations_match_their_native_dead_pressure_or_are_refused():
-    from anysolver.e4_pl_element import QualifiedE4PLShellElement
-    from anysolver.e4_pl_element import QualifiedE4PLShellElement
-    from anysolver.pressure_regions import element_kernel
+    from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+    from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+    from anyfesolver.pressure_regions import element_kernel
     model = FEModel('qualified')
     model.add_material('m', 210e9, .3)
     points = [(0., 0., 0.), (2., 0., 0.), (2., 1., 0.), (0., 1., 0.)]
@@ -126,7 +126,7 @@ def test_qualified_formulations_match_their_native_dead_pressure_or_are_refused(
 
 
 def v2d(points, normal):
-    from anysolver import create_shell_element
+    from anyfesolver import create_shell_element
     model = FEModel('v2d')
     model.add_material('m', 210e9, .3)
     for index, point in enumerate(points, 1):
@@ -138,7 +138,7 @@ def v2d(points, normal):
 
 
 def test_current_default_v2d_uniform_region_reproduces_all_native_components_including_moments():
-    from anysolver.pressure_regions import element_kernel
+    from anyfesolver.pressure_regions import element_kernel
     tilted = [(0., 0., 0.), (2., .3, .1), (.4, 1.5, -.2)]
     facet = np.cross(np.subtract(tilted[1], tilted[0]), np.subtract(tilted[2], tilted[0]))
     mesh, element = v2d(tilted, tuple(facet / np.linalg.norm(facet)))     # reference normal = the actual facet normal

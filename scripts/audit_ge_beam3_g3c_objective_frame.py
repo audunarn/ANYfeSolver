@@ -18,8 +18,8 @@ SOURCES=['docs/GE_BEAM3_GENERAL_STATIC_INTEGRATION_CONTRACT.md',
  'docs/GE_BEAM3_G3_COMPLETION_PLAN.md',
  'docs/reference_cases/ge_beam3_g3c_contract_v1.json',
  'docs/reference_cases/ge_beam3_g3c_fixtures_v1.json',
- 'src/anysolver/elements.py','src/anysolver/corotational.py',
- 'src/anysolver/_ge_beam3_mixed_ad.py','src/anysolver/_ge_beam3_pose_joint.py']
+ 'src/anyfesolver/elements.py','src/anyfesolver/corotational.py',
+ 'src/anyfesolver/_ge_beam3_mixed_ad.py','src/anyfesolver/_ge_beam3_pose_joint.py']
 ANCHORS=[['J_B2_PAIR',11,101],['J_B3_PAIR',11,102],
          ['J_MULTIFAMILY_LOOP',11,101],['J_MULTIFAMILY_LOOP',12,202]]
 LIMITS=dict(child_seconds=600,wave_seconds=1800,inactivity_seconds=120,

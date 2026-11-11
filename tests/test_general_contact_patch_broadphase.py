@@ -3,9 +3,9 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.overlap import PlanarFace, planar_projected_overlap
-from anysolver.general_contact.patch_mortar import MovingPatchMortar, PatchFace
-from anysolver.general_contact.pointwise_patch import PointwisePatchPenalty
+from anyfesolver.general_contact.overlap import PlanarFace, planar_projected_overlap
+from anyfesolver.general_contact.patch_mortar import MovingPatchMortar, PatchFace
+from anyfesolver.general_contact.pointwise_patch import PointwisePatchPenalty
 
 
 def _grid(body, origin_x, subdivisions=4):

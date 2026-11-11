@@ -64,8 +64,8 @@ def test_lift_rollback(monkeypatch):
 def test_lift_safety(monkeypatch):
     _patch_fixture(monkeypatch)
     reuse.test_mesh_refusal(monkeypatch)
-    from anysolver import solve_static_nonlinear
-    from anysolver.general_contact.core import _contact_settings_contract
+    from anyfesolver import solve_static_nonlinear
+    from anyfesolver.general_contact.core import _contact_settings_contract
     baseline=Path(os.environ['CONTROL_LIFT_BASELINE'])
     incoming=json.loads((baseline/'outputs/A2.json').read_text())['checkpoint']
     m,d,s,f,p,_=build_case();before=repr(m)
@@ -95,11 +95,11 @@ def test_lift_safety(monkeypatch):
 
 def test_lift_admission(monkeypatch):
     from dataclasses import asdict
-    from anysolver import solve_static_nonlinear
-    from anysolver.general_contact.core import validate_general_contact
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.s3_friction_static import create_s3_friction_manager
-    from anysolver.general_contact.s3_sliding_friction import S3MovingNormalFrictionSettings
+    from anyfesolver import solve_static_nonlinear
+    from anyfesolver.general_contact.core import validate_general_contact
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_friction_static import create_s3_friction_manager
+    from anyfesolver.general_contact.s3_sliding_friction import S3MovingNormalFrictionSettings
     m,d,s,f,p,_=build_case()
     assert validate_general_contact(m,d,s,analysis_control='contact_path').valid
     assert not validate_general_contact(m,d,s,analysis_control='force').valid
@@ -109,7 +109,7 @@ def test_lift_admission(monkeypatch):
     before=copy.deepcopy(owner.checkpoint_state())
     assert owner.admissible_step_fraction(initial,seed)==1.
     assert owner.checkpoint_state()==before
-    import anysolver.general_contact.static_path as consumer
+    import anyfesolver.general_contact.static_path as consumer
     with monkeypatch.context() as patch:
         patch.setattr(consumer,'_assemble_nonlinear_system',lambda *a,**k:(_ for _ in ()).throw(AssertionError('wrong owner reached material')))
         with pytest.raises(ValueError,match='moving-normal friction requires'):
@@ -120,10 +120,10 @@ def test_lift_admission(monkeypatch):
 
 
 def test_lift_unsafe_seed(monkeypatch):
-    from anysolver import solve_static_nonlinear
-    from anysolver.general_contact.runtime import active_contact_manager
-    import anysolver.general_contact.static_path as consumer
-    import anysolver.general_contact.s3_friction_static as factory
+    from anyfesolver import solve_static_nonlinear
+    from anyfesolver.general_contact.runtime import active_contact_manager
+    import anyfesolver.general_contact.static_path as consumer
+    import anyfesolver.general_contact.s3_friction_static as factory
     m,d,s,f,p,_=build_case();p=replace(p,waypoints=((0.,0.),(.95,0.),*p.waypoints[2:]))
     before=repr(m);context=active_contact_manager();created=[];origins=[]
     original=factory.create_s3_friction_manager
@@ -144,11 +144,11 @@ def test_lift_unsafe_seed(monkeypatch):
 
 def test_lift_dyadic_enclosure():
     from fractions import Fraction as F
-    from anysolver.general_contact.s3_friction_dyadic_interval import _bounds,compress,outward_dyadic_160,METHOD
-    from anysolver.general_contact import s3_friction_chart_interval as I
-    from anysolver.general_contact.s3_friction_mesh_coverage import mesh_moving_coverage
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.s3_friction_static import create_s3_friction_manager
+    from anyfesolver.general_contact.s3_friction_dyadic_interval import _bounds,compress,outward_dyadic_160,METHOD
+    from anyfesolver.general_contact import s3_friction_chart_interval as I
+    from anyfesolver.general_contact.s3_friction_mesh_coverage import mesh_moving_coverage
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_friction_static import create_s3_friction_manager
     values=[F(0),F(1,3),F(-1,3),F(2**401+17,3),F(-2**401-17,3),F(1,2**1074),F(-1,2**1074),F(2**311-1,2**313+1)]
     for x in values:
         lower,upper=_bounds(x,160)
@@ -185,9 +185,9 @@ def test_lift_dyadic_enclosure():
 
 def test_lift_physical_ray_bound(monkeypatch):
     from fractions import Fraction as F
-    from anysolver.general_contact.s3_friction_mesh_gap import pair_lower, _constant
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.s3_friction_static import create_s3_friction_manager
+    from anyfesolver.general_contact.s3_friction_mesh_gap import pair_lower, _constant
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_friction_static import create_s3_friction_manager
     # Remote target corners lie far below the extrapolated tilted source plane;
     # actual covered source gap is -1um at its lowest corner.
     source=np.array([[.2,.2,0.],[.3,.2,-1e-6],[.2,.3,0.]])
@@ -219,7 +219,7 @@ def test_lift_physical_ray_bound(monkeypatch):
     none=create_s3_friction_manager(m,GeneralS3PatchManager(m,d,replace(settings,path_predictor='none')),f)
     assert 'physical_gap_certificate' not in none.restart_contract()
     # A successful early pair must never hide a later unresolved pair.
-    import anysolver.general_contact.s3_friction_mesh_gap as gap
+    import anyfesolver.general_contact.s3_friction_mesh_gap as gap
     calls=[0]
     def partial(*args):
         calls[0]+=1
@@ -246,8 +246,8 @@ def test_lift_controls(monkeypatch):
 
 
 def test_lift_selector_integrity(monkeypatch):
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.s3_friction_static import create_s3_friction_manager
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_friction_static import create_s3_friction_manager
     reports=[]
     for change in ('settings','profile','owner'):
         m,d,s,f,p,_=build_case();normal=GeneralS3PatchManager(m,d,s)

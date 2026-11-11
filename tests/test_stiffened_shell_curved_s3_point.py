@@ -6,11 +6,11 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver import stiffened_shell as ss
-from anysolver._ge_beam3_pose_joint import _exp_terms
-from anysolver._ge_beam3_variational_shell import deformation, response
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
+from anyfesolver import stiffened_shell as ss
+from anyfesolver._ge_beam3_pose_joint import _exp_terms
+from anyfesolver._ge_beam3_variational_shell import deformation, response
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
 from test_stiffened_shell_curved_reference_seam import curved_panel
 
 

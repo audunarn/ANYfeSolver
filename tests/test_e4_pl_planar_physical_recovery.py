@@ -5,7 +5,7 @@ import math
 import numpy as np
 import pytest
 
-from anysolver.e4_pl_element import (
+from anyfesolver.e4_pl_element import (
     DIRECTOR_POLARITY_POLICY_ID,
     DIRECTOR_REVERSAL_TRANSFORM_ID,
     IMPLEMENTATION_ID,
@@ -23,10 +23,10 @@ from anysolver.e4_pl_element import (
     QualifiedQ4MigrationWarning,
     equation7_frame,
 )
-from anysolver.elements import LegacyShellElement, shell_element_from_dict
-from anysolver.fe_core import FEMesh, Material
-from anysolver.materials import OrthotropicMaterial
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.elements import LegacyShellElement, shell_element_from_dict
+from anyfesolver.fe_core import FEMesh, Material
+from anyfesolver.materials import OrthotropicMaterial
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 GAUSS = tuple(

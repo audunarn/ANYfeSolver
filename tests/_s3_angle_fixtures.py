@@ -195,8 +195,8 @@ def build_default_s3(
 ):
     """Build a one-element mesh and the *default* three-node shell element."""
 
-    from anysolver.elements import create_shell_element
-    from anysolver.fe_core import FEMesh, Material
+    from anyfesolver.elements import create_shell_element
+    from anyfesolver.fe_core import FEMesh, Material
 
     mesh = FEMesh()
     for node_id, xyz in zip((1, 2, 3), coordinates):

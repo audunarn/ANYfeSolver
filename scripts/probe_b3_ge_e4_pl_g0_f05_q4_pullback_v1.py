@@ -14,17 +14,17 @@ if not os.environ.get('NUMBA_CACHE_DIR'):
     raise RuntimeError('set an explicit writable NUMBA_CACHE_DIR before import')
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'src'))
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 import scipy
 from threadpoolctl import threadpool_limits
 
-from anysolver._ge_beam3_variational_shell import deformation
-from anysolver.e4_pl_s3_state import canonical_json_bytes
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.material_curves import DNVC208MaterialCurve
+from anyfesolver._ge_beam3_variational_shell import deformation
+from anyfesolver.e4_pl_s3_state import canonical_json_bytes
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.material_curves import DNVC208MaterialCurve
 
 
 REFERENCE=np.array(((0.,0.,0.),(1.,0.,0.),(1.,1.,0.),(0.,1.,0.)))
@@ -134,9 +134,9 @@ def main():
     modules=('_ge_beam3_variational_shell.py','_ge_beam3_mixed_ad.py',
              '_ge_beam3_pose_joint.py','e4_pl_element.py','e4_pl_s3_state.py',
              'elements.py','fe_core.py','material_curves.py','plasticity.py')
-    module_hashes={name:hashlib.sha256((repository/'src'/'anysolver'/name).read_bytes()).hexdigest()
+    module_hashes={name:hashlib.sha256((repository/'src'/'anyfesolver'/name).read_bytes()).hexdigest()
                    for name in modules}
-    tracked=['scripts/'+Path(__file__).name]+['src/anysolver/'+name for name in modules]
+    tracked=['scripts/'+Path(__file__).name]+['src/anyfesolver/'+name for name in modules]
     dirty=subprocess.check_output(['git','status','--porcelain','--',*tracked],
                                   cwd=repository,text=True).strip()
     if dirty:
@@ -144,7 +144,7 @@ def main():
     manifest={'purpose':'F05_Q4_FIXED_PREDECESSOR_DIAGNOSTIC_NOT_G0B',
               'source_sha256':hashlib.sha256(source).hexdigest(),
               'source_commit':source_commit,'module_sha256':module_hashes,
-              'anysolver_import':str(Path(anysolver.__file__).resolve()),
+              'anyfesolver_import':str(Path(anyfesolver.__file__).resolve()),
               'python':sys.version,'numpy':np.__version__,'scipy':scipy.__version__,
               'numba':numba.__version__,'blas_threads':1,
               'numba_cache':os.environ['NUMBA_CACHE_DIR'],

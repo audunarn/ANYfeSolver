@@ -38,7 +38,7 @@ def test_checker_imports_no_production_or_runner() -> None:
             imports.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module:
             imports.append(node.module)
-    assert not any(name == "anysolver" or name.startswith("anysolver.") for name in imports)
+    assert not any(name == "anyfesolver" or name.startswith("anyfesolver.") for name in imports)
     assert not any("v5l_stage4b" in name for name in imports)
 
 

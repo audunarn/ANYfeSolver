@@ -8,8 +8,8 @@ import math
 
 import numpy as np
 
-from anysolver.elements import BeamElement
-from anysolver.fe_core import Material
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import Material
 
 
 def basic(length: float) -> np.ndarray:

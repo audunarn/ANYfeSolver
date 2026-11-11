@@ -74,8 +74,8 @@ def test_programs_are_syntax_valid_and_checker_has_no_production_import() -> Non
     for path in (CHECKER, COORDINATOR):
         ast.parse(path.read_text(encoding="utf-8"))
     text = CHECKER.read_text(encoding="utf-8")
-    assert "from anysolver" not in text
-    assert "import anysolver" not in text
+    assert "from anyfesolver" not in text
+    assert "import anyfesolver" not in text
     assert "raw_metric_identity_disposition" in text
     assert "scientific_gate_passed" in text
 

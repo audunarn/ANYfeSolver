@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from anysolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
+from anyfesolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
 from docs.reference_cases import ge_beam3_curved_p5_assembly_history_probe as assembly
 from docs.reference_cases.ge_beam3_curved_p5_algebra_probe import rotation, T6
 from docs.reference_cases.ge_beam3_curved_p5_continuum_probe import parabolic_references, discrete_tip_compliance

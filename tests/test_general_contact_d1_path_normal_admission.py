@@ -4,7 +4,7 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 from scripts.general_contact_d1_interior_press_dev import build_interior_press
 
 

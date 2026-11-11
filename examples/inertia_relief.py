@@ -1,5 +1,5 @@
 """A free bar accelerates under an end force while developing elastic strain."""
-from anysolver import (AnalysisSession, BeamElement, FEModel, LoadCase, StaticCase,
+from anyfesolver import (AnalysisSession, BeamElement, FEModel, LoadCase, StaticCase,
                        iter_linear_batches, solve_inertia_relief)
 
 

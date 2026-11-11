@@ -2,10 +2,10 @@
 import argparse
 import json
 import numpy as np
-from anysolver.dynamics import TransientConfig
-from anysolver.ge_beam3_native import define_beam,SELECTOR as BEAM,EllipsoidalGeneralizedSection
-from anysolver.ge_beam3_native_connected_dynamics import create_analysis,solve_transient,SELECTOR
-from anysolver.boundary import BoundaryCondition
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.ge_beam3_native import define_beam,SELECTOR as BEAM,EllipsoidalGeneralizedSection
+from anyfesolver.ge_beam3_native_connected_dynamics import create_analysis,solve_transient,SELECTOR
+from anyfesolver.boundary import BoundaryCondition
 from examples import native_connected_deformation_reference as reference
 
 

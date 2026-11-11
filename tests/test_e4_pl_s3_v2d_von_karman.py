@@ -9,7 +9,7 @@ import sys
 import numpy as np
 import pytest
 
-from anysolver.e4_pl_s3_v2d_state import canonical_json_bytes
+from anyfesolver.e4_pl_s3_v2d_state import canonical_json_bytes
 from test_e4_pl_s3_v2d_native_state_corotational import _model
 
 
@@ -21,8 +21,8 @@ def record_measurements():
     yield
     path = os.environ.get("S3_EVIDENCE_OUT")
     if path:
-        import anysolver
-        MEASUREMENTS["runtime"] = {"python":sys.version, "module":anysolver.__file__,
+        import anyfesolver
+        MEASUREMENTS["runtime"] = {"python":sys.version, "module":anyfesolver.__file__,
             "PYTHONPATH":os.environ.get("PYTHONPATH"), "OMP_NUM_THREADS":os.environ.get("OMP_NUM_THREADS")}
         Path(path).write_text(json.dumps(MEASUREMENTS, indent=2))
 
@@ -93,9 +93,9 @@ def test_consistent_tangent_initial_fields_history_and_nonmutation(plastic, gene
 
 
 def test_reference_and_optimized_assembly_dispatch_and_recovery():
-    from anysolver.nonlinear_static import _assemble_nonlinear_system_unchecked
-    from anysolver.nonlinear_performance import NonlinearAssemblyPlan
-    from anysolver.recovery import _recover_v2d_committed_state
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system_unchecked
+    from anyfesolver.nonlinear_performance import NonlinearAssemblyPlan
+    from anyfesolver.recovery import _recover_v2d_committed_state
     model, element = _model()
     model.apply_boundary_conditions()
     u = np.zeros(18); u[8] = .02
@@ -115,9 +115,9 @@ def test_reference_and_optimized_assembly_dispatch_and_recovery():
 
 
 def test_public_clamped_n4_plate_membrane_stiffens():
-    import anysolver as fs
-    from anysolver.elements import create_shell_element
-    from anysolver.boundary import FixedSupport, LoadCase
+    import anyfesolver as fs
+    from anyfesolver.elements import create_shell_element
+    from anyfesolver.boundary import FixedSupport, LoadCase
     model = fs.FEModel("experimental-s3-vk-n4")
     model.add_material("steel", 210e9, .3, density=7850.)
     n = 4
@@ -153,7 +153,7 @@ def test_public_clamped_n4_plate_membrane_stiffens():
     assert .010 < deflection < .016
     assert max(np.linalg.norm(s["station_generalized_resultant"][:,:3])
                for s in result.element_states.values()) > 1.
-    from anysolver.matrix_assembly import assemble_load_vector
+    from anyfesolver.matrix_assembly import assemble_load_vector
     internal = np.zeros_like(result.displacements)
     for eid, element in model.mesh.elements.items():
         dofs = element.get_dof_mapping(model.mesh)
@@ -169,9 +169,9 @@ def test_public_clamped_n4_plate_membrane_stiffens():
 
 
 def test_candidate_state_provenance_integrity_and_spectral_refusal():
-    from anysolver.e4_pl_s3_v2d_state import V2DStateError, seal_v2d_state
-    from anysolver.element_capabilities import ElementCapabilityError
-    from anysolver.current_state_tangent import _s3_v2d_committed_current_tangent_components
+    from anyfesolver.e4_pl_s3_v2d_state import V2DStateError, seal_v2d_state
+    from anyfesolver.element_capabilities import ElementCapabilityError
+    from anyfesolver.current_state_tangent import _s3_v2d_committed_current_tangent_components
     model, element = _model()
     material = model.get_material("steel")
     u = np.zeros(18); u[8] = .02
@@ -197,7 +197,7 @@ def test_candidate_state_provenance_integrity_and_spectral_refusal():
 
 
 def test_virgin_accepted_state_recovery_and_non_vk_isolation():
-    from anysolver.corotational import corotational_element_response
+    from anyfesolver.corotational import corotational_element_response
     model, element = _model()
     model.apply_boundary_conditions()
     material = model.get_material("steel")
@@ -224,8 +224,8 @@ def test_virgin_accepted_state_recovery_and_non_vk_isolation():
 
 
 def test_cancelled_trial_discards_candidate_without_mutating_history():
-    from anysolver.nonlinear_state import NonlinearStateStore, discard_active_state_candidate
-    from anysolver.nonlinear_static import _assemble_nonlinear_system_unchecked
+    from anyfesolver.nonlinear_state import NonlinearStateStore, discard_active_state_candidate
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system_unchecked
     model, element = _model(plastic=True)
     model.apply_boundary_conditions()
     virgin = element.init_model_bound_nonlinear_state(model.mesh, model.get_material("steel"), 5)
@@ -265,8 +265,8 @@ def test_deleted_frozen_history_operator_preserves_explicit_mode(von_karman):
 
 
 def test_second_production_deleted_assembly_keeps_frozen_vk_history():
-    from anysolver.nonlinear_performance import _optimized_assemble_nonlinear_system
-    from anysolver.nonlinear_state import NonlinearStateStore, discard_active_state_candidate
+    from anyfesolver.nonlinear_performance import _optimized_assemble_nonlinear_system
+    from anyfesolver.nonlinear_state import NonlinearStateStore, discard_active_state_candidate
     model, element = _model(plastic=True)
     model.apply_boundary_conditions()
     material = model.get_material("steel")
@@ -293,9 +293,9 @@ def test_second_production_deleted_assembly_keeps_frozen_vk_history():
 
 
 def test_public_cancellation_after_accepted_step_preserves_restart_input():
-    import anysolver as fs
-    from anysolver.boundary import FixedSupport, LoadCase
-    from anysolver.control import CancellationToken, SolveCancelled
+    import anyfesolver as fs
+    from anyfesolver.boundary import FixedSupport, LoadCase
+    from anyfesolver.control import CancellationToken, SolveCancelled
     model, element = _model()
     model.add_boundary_condition(FixedSupport("root", [1,3]))
     model.apply_boundary_conditions()

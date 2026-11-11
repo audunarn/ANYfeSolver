@@ -7,12 +7,12 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-import anysolver.arc_length as arc_length_module
-import anysolver.imperfections as imperfections_module
-import anysolver.nonlinear_static as nonlinear_static_module
-import anysolver.recovery as recovery_module
-import anysolver.results as results_module
-from anysolver import (
+import anyfesolver.arc_length as arc_length_module
+import anyfesolver.imperfections as imperfections_module
+import anyfesolver.nonlinear_static as nonlinear_static_module
+import anyfesolver.recovery as recovery_module
+import anyfesolver.results as results_module
+from anyfesolver import (
     ElementCapabilityError,
     FEModel,
     GeneralizedShellSection,
@@ -26,8 +26,8 @@ from anysolver import (
     create_shell_element,
     shell_element_from_dict,
 )
-from anysolver.assembly import compute_stresses as assembly_compute_stresses
-from anysolver.element_capabilities import require_model_element_capabilities
+from anyfesolver.assembly import compute_stresses as assembly_compute_stresses
+from anyfesolver.element_capabilities import require_model_element_capabilities
 
 
 OWNER_NORMAL = np.asarray((0.0, 0.0, 1.0))

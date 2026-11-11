@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import numpy as np
 
-from anysolver.arc_length import ArcLengthControl, solve_static_arc_length
-from anysolver.boundary import BoundaryCondition, FixedSupport, LoadCase
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from anysolver.fe_core import FEModel
-from anysolver.material_curves import LinearHardeningCurve
-from anysolver.nonlinear_static import ShellInitialField, solve_static_nonlinear
+from anyfesolver.arc_length import ArcLengthControl, solve_static_arc_length
+from anyfesolver.boundary import BoundaryCondition, FixedSupport, LoadCase
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.material_curves import LinearHardeningCurve
+from anyfesolver.nonlinear_static import ShellInitialField, solve_static_nonlinear
 
 
 def _single_coordinate_model(*, plastic: bool = False) -> tuple[FEModel, LoadCase]:

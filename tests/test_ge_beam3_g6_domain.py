@@ -4,23 +4,23 @@ from hashlib import sha256
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     ContributionPolicy, ElementActivity, ElementActivityPolicy,
     assemble_damping_matrix, assemble_mass_matrix, assemble_stiffness_matrix,
 )
-from anysolver._ge_beam3_g1_elastic import ElasticSection
-from anysolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
-from anysolver._ge_beam3_g6_domain import (
+from anyfesolver._ge_beam3_g1_elastic import ElasticSection
+from anyfesolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
+from anyfesolver._ge_beam3_g6_domain import (
     ActivityEpochLease, ConsumerPolicy, GeneralizedInitialField, PARITY_DISPOSITIONS,
     ROUTES, adjudicate, canonical,
     evaluate_initial_field, evidence,
 )
-from anysolver.contact import (
+from anyfesolver.contact import (
     RigidSphereImpact, SphereContactConfig, assemble_sphere_contact_load_vector,
 )
-from anysolver.fracture import element_fracture_category, element_measure
-from anysolver.validation import load_vector_resultant
-from anysolver import ge_beam3_native as native
+from anyfesolver.fracture import element_fracture_category, element_measure
+from anyfesolver.validation import load_vector_resultant
+from anyfesolver import ge_beam3_native as native
 from test_ge_beam3_g5_completion import _model
 
 

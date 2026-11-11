@@ -25,8 +25,8 @@ from scipy import sparse
 from scipy.sparse.linalg import splu
 from threadpoolctl import threadpool_info
 
-from anysolver import stiffened_shell as ss
-from anysolver._stiffened_shell_ge_experimental import (
+from anyfesolver import stiffened_shell as ss
+from anyfesolver._stiffened_shell_ge_experimental import (
     _linear_equilibrium, _scaled_constraint_gap,
 )
 from scripts import r8_bl5_matched_native_reference as native

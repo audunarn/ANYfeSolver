@@ -42,7 +42,7 @@ def test_external_hash_dag_and_complete_recomputation_without_equilibrium_solves
     def forbidden(*args,**kwargs): raise AssertionError('Inspection must not solve')
     monkeypatch.setattr(compare,'build',forbidden)
     monkeypatch.setattr(compare.reference,'solve',forbidden)
-    from anysolver import _ge_beam3_fibre_line_program as native
+    from anyfesolver import _ge_beam3_fibre_line_program as native
     monkeypatch.setattr(native,'solve_force_program',forbidden)
     result=saved()
     for row in result['artifacts']:

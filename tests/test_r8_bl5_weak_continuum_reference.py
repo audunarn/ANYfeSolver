@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from scripts import r8_bl5_weak_continuum_reference as tool
 CHECKED=set()
 

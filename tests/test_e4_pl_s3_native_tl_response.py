@@ -5,8 +5,8 @@ import copy
 import numpy as np
 import pytest
 
-import anysolver.e4_pl_s3_element as s3
-from anysolver.fe_core import Material
+import anyfesolver.e4_pl_s3_element as s3
+from anyfesolver.fe_core import Material
 from _e4_pl_s3_native_trial import native_trial_for_increment
 
 

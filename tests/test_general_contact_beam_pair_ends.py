@@ -9,13 +9,13 @@ import pytest
 from scipy.optimize import brentq
 from scipy.integrate import quad
 
-from anysolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, DisplacementControl, LoadCase,
     solve_static_nonlinear, validate_general_contact, report_general_contact_capability)
-from anysolver.elements import BeamElement, QuadraticBeamElement
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.beam_pair_ends import BeamPairEndManager, PROFILE
-from anysolver.general_contact.beam_pair_end_geometry import minimum_gap, endpoint_feature
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.beam_pair_ends import BeamPairEndManager, PROFILE
+from anyfesolver.general_contact.beam_pair_end_geometry import minimum_gap, endpoint_feature
 
 
 def fixture(interior=False):
@@ -188,8 +188,8 @@ def test_active_line_projection_plateau_rejects_even_when_source_ends_open():
 
 
 def test_path_rejects_hidden_active_line_plateau_with_open_physical_ends():
-    from anysolver.general_contact.beam_pair_end_geometry import admissible_line_projection_path
-    from anysolver.general_contact.beam_end_radial_geometry import regular_curve_path
+    from anyfesolver.general_contact.beam_pair_end_geometry import admissible_line_projection_path
+    from anyfesolver.general_contact.beam_end_radial_geometry import regular_curve_path
     source0=np.array(((-.003,-.1,.024),(-.003,.1,.024)))
     source1=source0+(.006,0.,0.)
     target=np.array(((0.,0.,0.),(.2,0.,0.)))
@@ -271,7 +271,7 @@ def test_unselected_middle_node_junction_is_not_a_physical_cap():
 
 def test_hidden_fractional_double_ownership_root_and_open_bypass():
     from fractions import Fraction as F
-    from anysolver.general_contact.beam_pair_end_geometry import admissible_endpoint_path
+    from anyfesolver.general_contact.beam_pair_end_geometry import admissible_endpoint_path
     b=((0,0,-1),(0,0,1));root=F(1,3);height=F(1,100)
     a0=((0,height,-1),(-root,height,0));a1=((0,height,-1),(1-root,height,0))
     assert endpoint_feature(a0,b,1,F(1,50)).gap_sign>0
@@ -294,7 +294,7 @@ def test_failed_candidate_has_no_state_and_public_example():
 
 @pytest.mark.parametrize('cancel',(False,True))
 def test_candidate_exception_and_cancellation_restore_two_body_model(cancel,monkeypatch):
-    from anysolver import CancellationToken,SolveCancelled
+    from anyfesolver import CancellationToken,SolveCancelled
     model,definition,settings,load=fixture()
     args=dict(contact=definition,contact_settings=settings,num_steps=4,max_iterations=25,
         tolerance=1e-10,emit_restart_checkpoint=True)
@@ -334,7 +334,7 @@ def test_closed_active_endpoint_ties_reject(ownership_tie):
 
 
 def test_manager_rejects_plateau_path_at_an_unselected_material_junction():
-    from anysolver.general_contact.beam_pair_end_geometry import admissible_endpoint_path
+    from anyfesolver.general_contact.beam_pair_end_geometry import admissible_endpoint_path
     model,definition,settings,_=fixture()
     positions=((- .003,-.1,.019999),(-.003,.1,.019999),(0.,0.,0.),(.2,0.,0.))
     for node,p in zip(model.mesh.nodes.values(),positions):node.x,node.y,node.z=p

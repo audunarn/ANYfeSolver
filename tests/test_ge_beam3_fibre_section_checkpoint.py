@@ -52,7 +52,7 @@ def test_final_tested_source_hashes(index):
 
 
 def test_new_component_has_no_legacy_or_research_mechanics_imports():
-    tree = ast.parse((ROOT/'src/anysolver/_ge_beam3_fibre_section.py').read_text())
+    tree = ast.parse((ROOT/'src/anyfesolver/_ge_beam3_fibre_section.py').read_text())
     imports = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import): imports.update(alias.name for alias in node.names)

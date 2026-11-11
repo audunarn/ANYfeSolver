@@ -7,8 +7,8 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver.general_contact import static_path
-from anysolver.general_contact.supported_schur import SupportedSchurProposal
+from anyfesolver.general_contact import static_path
+from anyfesolver.general_contact.supported_schur import SupportedSchurProposal
 from scripts.general_contact_d1_free_target_press_probe import main as press_main
 
 

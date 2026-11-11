@@ -7,8 +7,8 @@ import pytest
 from scipy import sparse
 from scipy.sparse.linalg import splu
 
-from anysolver._b2_physical_flexibility_linear import LinearSection
-from anysolver._b2_physical_linear_definition import PhysicalB2Member
+from anyfesolver._b2_physical_flexibility_linear import LinearSection
+from anyfesolver._b2_physical_linear_definition import PhysicalB2Member
 
 
 def _members(rotation=np.eye(3), origin=np.zeros(3)):

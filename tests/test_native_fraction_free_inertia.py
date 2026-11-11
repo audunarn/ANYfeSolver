@@ -6,7 +6,7 @@ This establishes represented-pencil equality, not continuum certification.
 from fractions import Fraction
 import numpy as np
 import pytest
-from anysolver import _native_exact_shift_inertia as implementation
+from anyfesolver import _native_exact_shift_inertia as implementation
 
 
 def rational_inertia(h, mass, shift):

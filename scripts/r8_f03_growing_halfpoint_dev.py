@@ -152,7 +152,7 @@ def admit_symmetric_target(entries, box, family):
 
 
 def assess(level=16):
-    from anysolver.linalg import SparseSolverBackend, MatrixClass
+    from anyfesolver.linalg import SparseSolverBackend, MatrixClass
     reference = physical.exact_reference(level)
     stored = physical.source_stored(reference)
     j = physical.congruence(reference)

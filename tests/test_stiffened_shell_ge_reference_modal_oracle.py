@@ -13,8 +13,8 @@ import pytest
 from scipy import linalg
 from scipy.spatial.transform import Rotation
 
-from anysolver import b3_ge, stiffened_shell
-from anysolver._stiffened_shell_ge_reference_modal import _assemble_mass
+from anyfesolver import b3_ge, stiffened_shell
+from anyfesolver._stiffened_shell_ge_reference_modal import _assemble_mass
 from test_stiffened_shell_ge_experimental import _panel
 
 

@@ -13,8 +13,8 @@ import json
 from pathlib import Path
 import subprocess
 
-import anysolver
-from anysolver import stiffened_shell
+import anyfesolver
+from anyfesolver import stiffened_shell
 import numpy as np
 from scipy.sparse.linalg import splu
 from threadpoolctl import threadpool_info, threadpool_limits
@@ -117,7 +117,7 @@ def main(reference: Path, output: Path) -> None:
                   ("git", "rev-parse", "HEAD"), text=True).strip(),
               "runner_sha256": sha256(Path(__file__).read_bytes()).hexdigest(),
               "reference_sha256": sha256(raw).hexdigest(),
-              "imported_anysolver": str(Path(anysolver.__file__).resolve()),
+              "imported_anyfesolver": str(Path(anyfesolver.__file__).resolve()),
               "results": [], "failure": None,
               "limitations": ("Same recovered nodal shell action with identical "
                               "root supports; different shell formulations. "

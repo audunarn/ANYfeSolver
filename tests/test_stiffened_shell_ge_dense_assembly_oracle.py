@@ -5,16 +5,16 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_generalized_static_boundary import spatial_jacobian
-from anysolver._ge_beam3_pose_joint import RigidPoseJoint
-from anysolver._ge_beam3_variational_shell import response as variational_shell_response
-from anysolver._stiffened_shell_ge_experimental import (
+from anyfesolver._ge_beam3_generalized_static_boundary import spatial_jacobian
+from anyfesolver._ge_beam3_pose_joint import RigidPoseJoint
+from anyfesolver._ge_beam3_variational_shell import response as variational_shell_response
+from anyfesolver._stiffened_shell_ge_experimental import (
     ExperimentalGEAnalysis, NodalAction,
 )
-from anysolver._stiffened_shell_ge_finite_experimental import (
+from anyfesolver._stiffened_shell_ge_finite_experimental import (
     FinitePointDriver, _position_pair,
 )
-from anysolver.corotational import corotational_element_response
+from anyfesolver.corotational import corotational_element_response
 
 from test_stiffened_shell_ge_experimental import _panel
 

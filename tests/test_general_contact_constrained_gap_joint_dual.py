@@ -9,7 +9,7 @@ from fractions import Fraction
 
 import numpy as np
 
-from anysolver.general_contact import q4_overlap_local_bound as bounds
+from anyfesolver.general_contact import q4_overlap_local_bound as bounds
 
 
 def controls(values, count):

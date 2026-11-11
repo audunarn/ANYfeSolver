@@ -6,13 +6,13 @@ import numpy as np
 import pytest
 from scipy.integrate import quad
 from scipy.optimize import brentq
-from anysolver import (BoundaryCondition, ContactDefinition, ContactSurface,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactSurface,
     ContactInteraction, ContactSolverSettings, RigidContactBody, LoadCase,
     DisplacementControl, CancellationToken, SolveCancelled,
     solve_static_nonlinear, validate_general_contact)
-from anysolver.elements import BeamElement, QuadraticBeamElement
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.multiple_beam_rigid import MultipleBeamRigidManager, PROFILE_SUPPORT
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.multiple_beam_rigid import MultipleBeamRigidManager, PROFILE_SUPPORT
 from test_general_contact_hemisphere_plane import scalar_gap
 from test_general_contact_multiple_beam_rigid import fixture as orthogonal_fixture
 from test_general_contact_multiple_beam_ends import fixture as old_bar
@@ -149,7 +149,7 @@ def test_one_child_gap_gate_common_fraction_and_duplicate_resource_rejection():
     duplicate=replace(definition,interactions=definition.interactions+(replace(definition.interactions[0],name='duplicate'),))
     assert not validate_general_contact(model,duplicate,settings).valid
     assert not validate_general_contact(model,definition,replace(settings,maximum_candidate_pairs=1)).valid
-    from anysolver.general_contact.multiple_beam_rigid import PROFILE_SUPPORT_CYLINDER
+    from anyfesolver.general_contact.multiple_beam_rigid import PROFILE_SUPPORT_CYLINDER
     cylinder=replace(definition.rigid_bodies[0],kind='cylinder',normal=(0.,0.,1.),radius=.01)
     cylinder_definition=replace(definition,rigid_bodies=(cylinder,definition.rigid_bodies[1]))
     assert validate_general_contact(model,cylinder_definition,settings).profile==PROFILE_SUPPORT_CYLINDER
@@ -165,7 +165,7 @@ def test_one_child_gap_gate_common_fraction_and_duplicate_resource_rejection():
 
 @pytest.mark.parametrize('cancel',(False,True))
 def test_actual_aggregate_second_child_failure_or_cancel_restores_static_origin(cancel,monkeypatch):
-    from anysolver.general_contact.beam_hemisphere_plane import HemispherePlaneManager
+    from anyfesolver.general_contact.beam_hemisphere_plane import HemispherePlaneManager
     model,definition,settings,load=bars()
     common=dict(contact=definition,contact_settings=settings,num_steps=4,max_iterations=20,
         tolerance=1e-10,emit_restart_checkpoint=True)
@@ -216,7 +216,7 @@ def test_true_junction_caps_and_shared_body_reactions():
 
 def test_runnable_multi_plane_example_and_capability_remains_unaccepted():
     from examples.general_contact_multiple_hemisphere_planes import run
-    from anysolver import report_general_contact_capability
+    from anyfesolver import report_general_contact_capability
     result=run();assert result.status=='completed'
     assert result.info['general_contact']['profile']==PROFILE_SUPPORT
     model,definition,settings,load=bars()

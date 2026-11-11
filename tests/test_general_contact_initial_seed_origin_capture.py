@@ -25,9 +25,9 @@ import tempfile
 import numpy as np
 import pytest
 
-from anysolver.control import SolveCancelled
-from anysolver.general_contact import semismooth_path
-from anysolver.general_contact.initial_contact_seed import (
+from anyfesolver.control import SolveCancelled
+from anyfesolver.general_contact import semismooth_path
+from anyfesolver.general_contact.initial_contact_seed import (
     propose_linearized_kkt_seed,
 )
 

@@ -1,6 +1,6 @@
 """Small experimental two-Q4/two-B3 point-connected panel.
 
-Run with an installed development build of ANYsolver. This exercises a
+Run with an installed development build of ANYfeSolver. This exercises a
 reference-linear integration slice; it is not a qualified stiffened-shell
 example or a nonlinear response prediction.
 """
@@ -10,9 +10,9 @@ import argparse
 
 import numpy as np
 
-import anysolver
-from anysolver import b3_ge
-from anysolver.stiffened_shell import (
+import anyfesolver
+from anyfesolver import b3_ge
+from anyfesolver.stiffened_shell import (
     B3_GE_E4_PL_STIFFENED_SHELL_V1, FixedCoordinate, LinearDefinition,
     NodalAction, PointConnection, ShellPanel,
 )
@@ -63,7 +63,7 @@ def make_definition(beam_family="generalized"):
 
 def run(beam_family="generalized"):
     definition = make_definition(beam_family)
-    analysis = anysolver.stiffened_shell.create_analysis(definition=definition)
+    analysis = anyfesolver.stiffened_shell.create_analysis(definition=definition)
     first = analysis.solve_linear((NodalAction(
         "beam", 105, (0., 0., 100., 0., 0., 0.)),))
     saved = analysis.checkpoint()

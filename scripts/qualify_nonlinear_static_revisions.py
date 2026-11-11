@@ -37,13 +37,13 @@ def _worker_main(site: Path) -> int:
 
     import numpy as np
 
-    import anysolver
-    from anysolver.boundary import BoundaryCondition, LoadCase
-    from anysolver.mesh_gen import generate_simple_panel_mesh
-    from anysolver.nonlinear_performance_bootstrap import (
+    import anyfesolver
+    from anyfesolver.boundary import BoundaryCondition, LoadCase
+    from anyfesolver.mesh_gen import generate_simple_panel_mesh
+    from anyfesolver.nonlinear_performance_bootstrap import (
         nonlinear_performance_status,
     )
-    from anysolver import nonlinear_static
+    from anyfesolver import nonlinear_static
 
     nonlinear_static._ensure_nonlinear_acceleration()
     original_assemble = nonlinear_static._assemble_nonlinear_system
@@ -213,12 +213,12 @@ def _worker_main(site: Path) -> int:
 
     identity = {
         "event": "ready",
-        "module_file": str(Path(anysolver.__file__).resolve()),
+        "module_file": str(Path(anyfesolver.__file__).resolve()),
         "python": sys.version,
         "platform": platform.platform(),
         "dependencies": {
             name: importlib.metadata.version(name)
-            for name in ("anysolver", "numpy", "scipy", "numba")
+            for name in ("anyfesolver", "numpy", "scipy", "numba")
         },
         "performance_status": nonlinear_performance_status(),
     }
@@ -590,7 +590,7 @@ def _main(args: argparse.Namespace) -> int:
             case["summary"]["physical_match"] for case in cases.values()
         )
         payload = {
-            "schema": "anysolver.nonlinear_static.revision_qualification",
+            "schema": "anyfesolver.nonlinear_static.revision_qualification",
             "version": 1,
             "started_utc": started_utc,
             "completed_utc": time.strftime(

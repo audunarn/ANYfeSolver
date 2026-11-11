@@ -1,13 +1,13 @@
 """Headless experimental selected-node footprint; no weld qualification.
 
-Run against an installed ANYsolver with optional --finite. The selected right
+Run against an installed ANYfeSolver with optional --finite. The selected right
 Q4 cell's four vertices share a rigid pose at beam105. The left cell transfers
 load to the clamped shell root. All native B3 retained coordinates remain.
 """
 import argparse
 import json
 import numpy as np
-from anysolver import b3_ge, stiffened_shell as ss
+from anyfesolver import b3_ge, stiffened_shell as ss
 
 
 def definition():

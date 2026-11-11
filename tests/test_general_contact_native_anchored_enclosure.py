@@ -1,7 +1,7 @@
 """Anchored root gradients preserve mass difference and signed variation."""
 import numpy as np
 import pytest
-from anysolver.general_contact.native_curved_s3_work import (
+from anyfesolver.general_contact.native_curved_s3_work import (
     _anchored_root_leading_difference_bound,_root_component_gradient_bounds,
     NativeCurvedMaterialS3Work)
 from test_general_contact_native_curved_s3_work import _case

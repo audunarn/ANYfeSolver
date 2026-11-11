@@ -1,6 +1,6 @@
 """Independent straight centered principal-axis loading reference (SI).
 
-No anysolver import or production inertia/work/contact kernel is used here.
+No anyfesolver import or production inertia/work/contact kernel is used here.
 The ellipse primitives are independently declared geometry, not inferred from
 EllipsoidalGeneralizedSection (a generalized yield-law class).
 Prepared source only; this reference grants no execution or qualification.

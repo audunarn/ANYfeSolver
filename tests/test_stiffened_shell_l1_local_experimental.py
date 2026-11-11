@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from dataclasses import replace
 
-from anysolver._stiffened_shell_l1_local_experimental import (
+from anyfesolver._stiffened_shell_l1_local_experimental import (
     L1LocalOperator, NativeHalfCellPort,
 )
 from scripts._b3_e4_f03_native_fixture import build

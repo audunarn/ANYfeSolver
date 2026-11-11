@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 from scipy import sparse
-from anysolver._stiffened_shell_displacement_corrector import bordered_correction
+from anyfesolver._stiffened_shell_displacement_corrector import bordered_correction
 
 
 @pytest.mark.parametrize("coupling",(0.,3.))
@@ -24,10 +24,10 @@ def test_fixed_control_rejected():
 
 
 def test_coupled_displacement_trial_preserves_owner_and_predecessor(request,monkeypatch):
-    from anysolver import stiffened_shell as ss
-    from anysolver.control import CancellationToken,SolveCancelled
-    from anysolver._stiffened_shell_displacement_corrector import correct
-    from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+    from anyfesolver import stiffened_shell as ss
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    from anyfesolver._stiffened_shell_displacement_corrector import correct
+    from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
     from test_stiffened_shell_bl5_coupled_material import coupled
     from test_stiffened_shell_bl5_material import make
     from test_stiffened_shell_bl5_finite import _action
@@ -50,9 +50,9 @@ def test_coupled_displacement_trial_preserves_owner_and_predecessor(request,monk
     assert np.max([np.max(s["alpha"]) for s in trial.evaluation[4]])>0.
     assert owner.checkpoint()==saved
     from hashlib import sha256
-    from anysolver._stiffened_shell_displacement_checkpoint import encode_snapshot,validate_endpoint
-    from anysolver._stiffened_shell_ge_finite_experimental import _material_arrays,_shell_material_arrays
-    from anysolver._stiffened_shell_rotation_charts import physical_frames
+    from anyfesolver._stiffened_shell_displacement_checkpoint import encode_snapshot,validate_endpoint
+    from anyfesolver._stiffened_shell_ge_finite_experimental import _material_arrays,_shell_material_arrays
+    from anyfesolver._stiffened_shell_rotation_charts import physical_frames
     state=trial.state
     anchors=(np.tile(np.eye(3),(len(owner._shell_ids),1,1))
              if state.shell_anchors is None else state.shell_anchors)

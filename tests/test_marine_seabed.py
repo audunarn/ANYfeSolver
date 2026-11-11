@@ -3,7 +3,7 @@ import copy
 from dataclasses import FrozenInstanceError
 import numpy as np
 import pytest
-from anysolver.marine_seabed import SeabedContact,SeabedContactError,seabed_contact_force
+from anyfesolver.marine_seabed import SeabedContact,SeabedContactError,seabed_contact_force
 
 
 def test_closed_form_branches_energy_and_no_tensile_contact():

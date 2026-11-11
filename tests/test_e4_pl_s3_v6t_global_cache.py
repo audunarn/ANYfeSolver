@@ -3,11 +3,11 @@ from __future__ import annotations
 import numpy as np
 from scipy import sparse
 
-from anysolver.activity import ElementActivity
-from anysolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
-from anysolver.fe_core import FEModel
-from anysolver.matrix_assembly import assemble_stiffness_matrix
-from anysolver.s3_v2d_fast_assembly import V2D_GLOBAL_ASSEMBLY_POLICY_ID
+from anyfesolver.activity import ElementActivity
+from anyfesolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.s3_v2d_fast_assembly import V2D_GLOBAL_ASSEMBLY_POLICY_ID
 
 
 def _model(count: int = 4) -> FEModel:

@@ -48,14 +48,14 @@ def test_complete_historical_graph_rejects_site_and_wheel_mutation(tmp_path):
     import zipfile
 
     site = tmp_path/'site'
-    package = site/'anysolver'
+    package = site/'anyfesolver'
     package.mkdir(parents=True)
     wheel = tmp_path/'historical.whl'
     payload = b'# frozen historical module\n'
     modules = {}
     with zipfile.ZipFile(wheel, 'w') as archive:
         for i in range(417):
-            name = f'anysolver/module_{i}.py'
+            name = f'anyfesolver/module_{i}.py'
             archive.writestr(name, payload)
             (site/name).write_bytes(payload)
             modules[name] = hashlib.sha256(payload).hexdigest()
@@ -190,6 +190,6 @@ def test_work_mapping_keeps_retained_directors_and_rejects_wrong_column(monkeypa
 
 def test_installed_graph_rejects_incomplete_historical_modules(tmp_path):
     wheel = tmp_path/'wheel'; wheel.write_bytes(b'frozen')
-    summary = dict(wheel_sha256=envelope.sha(wheel), module_sha256={'anysolver/a.py': 'wrong'})
+    summary = dict(wheel_sha256=envelope.sha(wheel), module_sha256={'anyfesolver/a.py': 'wrong'})
     with pytest.raises(ValueError, match='417-module'):
         candidate.installed_graph(tmp_path, wheel, summary)

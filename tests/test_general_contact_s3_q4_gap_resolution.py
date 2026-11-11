@@ -4,8 +4,8 @@ from decimal import Decimal, localcontext
 import numpy as np
 import pytest
 
-from anysolver.general_contact.s3_overlap_derivatives import UnsupportedOverlapBranch
-from anysolver.general_contact.s3_q4_gap_resolution import s3_q4_gap_operand_allowance
+from anyfesolver.general_contact.s3_overlap_derivatives import UnsupportedOverlapBranch
+from anyfesolver.general_contact.s3_q4_gap_resolution import s3_q4_gap_operand_allowance
 
 
 SOURCE = np.array(((.1, .1, .04), (.9, .1, .04), (.1, .9, .04)))
@@ -178,7 +178,7 @@ def test_invalid_resolution_metadata_rejects(kwargs):
 
 
 def test_directed_enclosure_boundary_comparison():
-    from anysolver.general_contact.s3_q4_gap_resolution import _enclosure_fits
+    from anyfesolver.general_contact.s3_q4_gap_resolution import _enclosure_fits
     # Exact binary64 boundary must be rejected after directed comparison.
     assert not _enclosure_fits(1., 1., 2., 1.)
     assert _enclosure_fits(1., .5, 2., 1.)
@@ -186,7 +186,7 @@ def test_directed_enclosure_boundary_comparison():
 
 
 def test_directed_normalized_cap_boundary_comparison():
-    from anysolver.general_contact.s3_q4_gap_resolution import _within_cap
+    from anyfesolver.general_contact.s3_q4_gap_resolution import _within_cap
     support = np.ones(3)
     assert not _within_cap(np.full(3, 1e-9), support, 1.)
     assert _within_cap(np.full(3, .5e-9), support, 1.)

@@ -12,10 +12,10 @@ import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 from threadpoolctl import threadpool_info
-from anysolver._ge_beam3_retained_generalized_state import Mechanical
-from anysolver._stiffened_shell_l1_local_experimental import NativeHalfCellPort
-from anysolver._stiffened_shell_bl5_local_experimental import BL5LocalOperator
-from anysolver.corotational import rotation_matrix_from_vector
+from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
+from anyfesolver._stiffened_shell_l1_local_experimental import NativeHalfCellPort
+from anyfesolver._stiffened_shell_bl5_local_experimental import BL5LocalOperator
+from anyfesolver.corotational import rotation_matrix_from_vector
 
 IDENTITY = 'BL5_REFERENCE_HALFCELL_AVERAGED_AFFINE_DENSITY_DEV_V1'
 sha = lambda p: hashlib.sha256(Path(p).read_bytes()).hexdigest()

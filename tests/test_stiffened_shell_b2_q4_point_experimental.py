@@ -6,11 +6,11 @@ from scipy import sparse
 from scipy.linalg import null_space
 from types import SimpleNamespace
 
-from anysolver._stiffened_shell_b2_q4_point_experimental import (
+from anyfesolver._stiffened_shell_b2_q4_point_experimental import (
     create_experimental_b2_q4_point_analysis,
     _NumericalFailure,
 )
-from anysolver import stiffened_shell
+from anyfesolver import stiffened_shell
 from test_b2_f10_f11_point_attachment import VERTICES, specimen
 
 

@@ -1,10 +1,10 @@
 """Public-route checks against a same-step two-mass Newmark oracle."""
 import numpy as np
 import pytest
-import anysolver as fs
-from anysolver.contact import _verification_contact_panel
-from anysolver.boundary import BoundaryCondition
-from anysolver._impact_coupling import ImpactCoupledIteration
+import anyfesolver as fs
+from anyfesolver.contact import _verification_contact_panel
+from anyfesolver.boundary import BoundaryCondition
+from anyfesolver._impact_coupling import ImpactCoupledIteration
 
 
 def run_case(method="anderson", stiffness=40000., damping=0., deform=False, relaxation="aitken", end=.03, dt=.01, max_iterations=25, max_cutbacks=0, height=.205, token=None, callback=None, plastic=False, hht_alpha=0.):
@@ -12,7 +12,7 @@ def run_case(method="anderson", stiffness=40000., damping=0., deform=False, rela
     if deform:
         model.add_boundary_condition(BoundaryCondition("pin-one-z", [1], {"uz": 0.}))
     if plastic:
-        from anysolver.material_curves import DNVC208MaterialCurve
+        from anyfesolver.material_curves import DNVC208MaterialCurve
         model.materials["soft"].hardening_curve = DNVC208MaterialCurve(
             sigma_prop=.008, sigma_yield=.01, sigma_yield_2=.012,
             eps_p_y1=1.e-5, eps_p_y2=1.e-3, K=.02, n=.1)
@@ -240,7 +240,7 @@ def test_contact_newton_hht_damping_and_yielding_preserve_equations():
 
 
 def test_numerical_contact_jacobian_preserves_nonsymmetric_derivative():
-    from anysolver._impact_coupling import numerical_contact_jacobian
+    from anyfesolver._impact_coupling import numerical_contact_jacobian
     matrix=np.array([[3.,2.],[-7.,5.]])
     coordinates=np.array([.03,.2])
     original=coordinates.copy()
@@ -252,7 +252,7 @@ def test_numerical_contact_jacobian_preserves_nonsymmetric_derivative():
 
 
 def test_contact_jacobian_cancellation_propagates(monkeypatch):
-    import anysolver.contact as contact
+    import anyfesolver.contact as contact
     original=contact.cancellation_safe_point
     token=fs.CancellationToken()
     def cancel_during_probe(token_arg,phase):
@@ -273,7 +273,7 @@ def test_contact_newton_honors_contact_relaxation_disable():
 
 
 def test_numerical_contact_derivative_uses_physical_scale_under_origin_shift():
-    from anysolver._impact_coupling import numerical_contact_jacobian
+    from anyfesolver._impact_coupling import numerical_contact_jacobian
     for origin in [0.,1.e9]:
         point=np.array([origin+.03])
         local=point[0]-origin
@@ -283,8 +283,8 @@ def test_numerical_contact_derivative_uses_physical_scale_under_origin_shift():
 
 
 def test_contact_newton_large_translation_system_falls_back_to_anderson():
-    from anysolver.fe_core import FEModel
-    from anysolver.elements import create_shell_element
+    from anyfesolver.fe_core import FEModel
+    from anyfesolver.elements import create_shell_element
     model=FEModel('contact-newton-dimension-cap')
     model.add_material('soft',1.e5,.3,density=20.)
     for j in range(5):

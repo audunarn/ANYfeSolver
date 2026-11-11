@@ -26,7 +26,7 @@ WHEEL_SHA = "0c45666609355e654cb726a0e4e0780d386bccfaafef1209ffd994bdd3b9d09c"
 COHERENT_SHA = "9bd47696851110764486016f7d91f3de786818e87e4da88829dd76d5931f1fce"
 MATCHED_SHA = "92fa4515f1c61008f24bafe932e8fa2c50ea298903f2a1e5499e5be6c7dfaefb"
 EXTERNAL_REFINEMENT_SHA = "0e5435e0d38952642662eb1aad7dd374c341c866c9d099c87d2e66ce135a21c0"
-SOURCE_ROOT = Path("C:/Github/ANYsolver/.perf2-worktrees/b3-ge-e4-pl-coupling")
+SOURCE_ROOT = Path("C:/Github/ANYfeSolver/.perf2-worktrees/b3-ge-e4-pl-coupling")
 BALANCE_LIMIT, GAP_LIMIT = 1e-8, 1e-9
 
 
@@ -52,14 +52,14 @@ def runtime(site):
     global np, numba, stiffened_shell, coherent, matched, threadpool_info
     site = site.resolve(strict=True)
     fixtures = (site.parent/"fixtures").resolve(strict=True)
-    require(not any(n.split('.')[0] == "anysolver" for n in sys.modules),
+    require(not any(n.split('.')[0] == "anyfesolver" for n in sys.modules),
             "fresh process without preimported product required")
     sys.path.insert(0, str(fixtures))
     sys.path.insert(0, str(site))
     import numpy as np
     import numba
     from threadpoolctl import threadpool_info
-    from anysolver import stiffened_shell
+    from anyfesolver import stiffened_shell
     import b3_e4_bl5_coherent_aggregation_dev as coherent
     import b3_e4_bl5_matched_mz_native_dev as matched
     require(sha(coherent.__file__) == COHERENT_SHA and sha(matched.__file__) == MATCHED_SHA,
@@ -74,7 +74,7 @@ def runtime(site):
 
 def canonical_imports(site):
     imports = {name: str(Path(module.__file__).resolve()) for name, module in sys.modules.copy().items()
-               if name.split('.')[0] == "anysolver" and getattr(module, "__file__", None)}
+               if name.split('.')[0] == "anyfesolver" and getattr(module, "__file__", None)}
     require(imports and all(Path(path).is_relative_to(site) for path in imports.values()),
             "all product imports must resolve to the canonical installed site")
     return imports
@@ -87,11 +87,11 @@ def installed_identity(site, fixtures):
             "unchanged declared 388-module installed wheel required")
     wheels = list((site.parent/"wheels").glob("*.whl"))
     require(len(wheels) == 1 and sha(wheels[0]) == WHEEL_SHA, "exact installed wheel bytes required")
-    source_files = {"anysolver/"+p.relative_to(SOURCE_ROOT/"src/anysolver").as_posix(): p
-                    for p in (SOURCE_ROOT/"src/anysolver").rglob("*.py")}
+    source_files = {"anyfesolver/"+p.relative_to(SOURCE_ROOT/"src/anyfesolver").as_posix(): p
+                    for p in (SOURCE_ROOT/"src/anyfesolver").rglob("*.py")}
     modules = {}
     with zipfile.ZipFile(wheels[0]) as archive:
-        names = {n for n in archive.namelist() if n.startswith("anysolver/") and n.endswith(".py")}
+        names = {n for n in archive.namelist() if n.startswith("anyfesolver/") and n.endswith(".py")}
         require(len(names) == 388 and names == set(source_files), "complete source/wheel module set required")
         for name in sorted(names):
             data = archive.read(name)
@@ -426,7 +426,7 @@ def main(site, output, nx, external_level, old16):
     finally:
         cleanup_error = None
         actions = [("retain_imports", lambda: write("imports", {name: str(Path(m.__file__).resolve())
-            for name, m in sys.modules.copy().items() if name.split('.')[0] == "anysolver" and getattr(m, "__file__", None)}))]
+            for name, m in sys.modules.copy().items() if name.split('.')[0] == "anyfesolver" and getattr(m, "__file__", None)}))]
         if owner is not None:
             actions.append(("close", owner.close))
         for name, action in actions:

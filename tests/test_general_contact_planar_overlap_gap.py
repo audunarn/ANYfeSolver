@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.q4_source_overlap import (
+from anyfesolver.general_contact.q4_source_overlap import (
     q4_source_planar_overlap_gap_lower,
 )
 

@@ -6,7 +6,7 @@ import itertools
 import numpy as np
 import pytest
 
-from anysolver.e4_pl_s3_element import (
+from anyfesolver.e4_pl_s3_element import (
     NODAL_ROTATION_UPDATE_POLICY_ID,
     NONLINEAR_PL_ENERGY_POLICY_ID,
     PL_PHASE_POLICY_ID,
@@ -17,7 +17,7 @@ from anysolver.e4_pl_s3_element import (
     _rodrigues_rotation,
     triangle_frame,
 )
-from anysolver.e4_pl_s3_state import (
+from anyfesolver.e4_pl_s3_state import (
     PL_MINIMUM_TWIST_DENOMINATOR,
     PL_PHASE_MARGIN,
 )

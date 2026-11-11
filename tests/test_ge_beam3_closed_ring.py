@@ -15,15 +15,15 @@ import math
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-from anysolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
-from anysolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
-from anysolver._ge_beam3_retained_nodal_loading import Program, NodalDeadForces
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.fe_core import FEModel
-from anysolver.boundary import BoundaryCondition
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+from anyfesolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
+from anyfesolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
+from anyfesolver._ge_beam3_retained_nodal_loading import Program, NodalDeadForces
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import BoundaryCondition
 from test_ge_beam3_native_analysis import analysis
 
 EA = 1000.

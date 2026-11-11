@@ -3,10 +3,10 @@ from hashlib import sha256
 from types import SimpleNamespace
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_retained_arc_modal as modal
-from anysolver import _ge_beam3_retained_nodal_loading as nodal
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import _ge_beam3_retained_arc_modal as modal
+from anyfesolver import _ge_beam3_retained_nodal_loading as nodal
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken, SolveCancelled
 from docs.reference_cases import ge_beam3_retained_arch_case as case
 from docs.reference_cases.ge_beam3_retained_arc_spectrum import planar_partition
 

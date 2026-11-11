@@ -12,10 +12,10 @@ def test_direction():
  from scipy import sparse
  from scripts.r8_f06_coupled_history_unblock_dev import INPUT,write
  from scripts.r8_f06_cyclic_material_dev import definition,actions
- from anysolver import stiffened_shell as ss
- from anysolver._stiffened_shell_increment_control import FiniteIncrementFailure
- from anysolver._stiffened_shell_beam_history import arrays as history_arrays
- import anysolver._stiffened_shell_ge_finite_experimental as finite
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._stiffened_shell_increment_control import FiniteIncrementFailure
+ from anyfesolver._stiffened_shell_beam_history import arrays as history_arrays
+ import anyfesolver._stiffened_shell_ge_finite_experimental as finite
  out=Path(os.environ['F06_COUPLED_HISTORY_UNBLOCK_OUTPUT']);owner=ss.create_analysis(definition=definition('coupled'))
  state_fields=('q','q_low','frames','frames_low','cells','cells_low','resultants','resultants_low','multipliers','shell_anchors')
  originals={};d=None
@@ -165,11 +165,11 @@ def test_local_chain():
  from scipy import sparse
  from scripts.r8_f06_coupled_history_unblock_dev import DOC,INPUT,write
  from scripts.r8_f06_cyclic_material_dev import definition
- from anysolver import stiffened_shell as ss
- from anysolver._ge_beam3_variational_shell import deformation
- from anysolver._ge_beam3_pose_joint import _exp_terms
- from anysolver._stiffened_shell_algorithmic_pullback import spatial_response
- import anysolver.plasticity as pl
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._ge_beam3_variational_shell import deformation
+ from anyfesolver._ge_beam3_pose_joint import _exp_terms
+ from anyfesolver._stiffened_shell_algorithmic_pullback import spatial_response
+ import anyfesolver.plasticity as pl
  out=Path(os.environ['F06_COUPLED_HISTORY_UNBLOCK_OUTPUT']);saved=DOC/'attempt-diagnostic1'
  owner=ss.create_analysis(definition=definition('coupled'));original_kernel=pl._jit_plane_stress_return_map;calls=[]
  try:

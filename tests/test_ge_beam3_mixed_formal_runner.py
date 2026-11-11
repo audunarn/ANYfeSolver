@@ -70,12 +70,12 @@ import argparse,json,os,sys,time
 from pathlib import Path
 root=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(root/'src'))
-import anysolver
+import anyfesolver
 import numpy
 p=argparse.ArgumentParser();p.add_argument('--output',type=Path,required=True);a=p.parse_args()
 started=time.monotonic_ns();time.sleep(0.12);ended=time.monotonic_ns()
 (a.output.parent/'producer-timing.json').write_text(json.dumps({'start':started,'end':ended}),encoding='utf-8')
-payload={'anysolver_value':anysolver.VALUE,'schema':'fake-proof-v1','threads':{key:os.environ.get(key) for key in ('OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','NUMEXPR_NUM_THREADS')}}
+payload={'anyfesolver_value':anyfesolver.VALUE,'schema':'fake-proof-v1','threads':{key:os.environ.get(key) for key in ('OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','NUMEXPR_NUM_THREADS')}}
 with a.output.open('xb') as stream:stream.write((json.dumps(payload,allow_nan=False,ensure_ascii=True,separators=(',',':'),sort_keys=True)+'\\n').encode('ascii'))
 """
 
@@ -92,7 +92,7 @@ case_ids={list(template.CASE_ORDER)!r}
 metric_keys={sorted(template.CASE_METRIC_KEYS)!r}
 predicate_keys={sorted(template.CASE_EVIDENCE_PREDICATES | template.CASE_SCIENTIFIC_PREDICATES)!r}
 coverage_keys={sorted(template.COVERAGE_EVIDENCE_PREDICATES | template.COVERAGE_SCIENTIFIC_PREDICATES)!r}
-payload={{'authority_bindings':{{key:True for key in {sorted(template.CHECK_BINDING_KEYS)!r}}},'candidate_id':{template.CANDIDATE_ID!r},'cases':[{{'case_id':case_id,'metrics':{{key:'0' for key in metric_keys}},'predicates':{{key:True for key in predicate_keys}},'registered_input_sha256':'A'*64}} for case_id in case_ids],'checker_import_boundary':{{'anysolver':False,'legacy_beam':False,'production_ad':False,'v1_beam':False}},'coverage':{{key:True for key in coverage_keys}},'reversal':{{'energy':True,'residual':True,'tangent':True}},'schema':{template.CHECK_SCHEMA!r},'terminal':'NONCLASSIFYING_FINITE_GATE_PASS'}}
+payload={{'authority_bindings':{{key:True for key in {sorted(template.CHECK_BINDING_KEYS)!r}}},'candidate_id':{template.CANDIDATE_ID!r},'cases':[{{'case_id':case_id,'metrics':{{key:'0' for key in metric_keys}},'predicates':{{key:True for key in predicate_keys}},'registered_input_sha256':'A'*64}} for case_id in case_ids],'checker_import_boundary':{{'anyfesolver':False,'legacy_beam':False,'production_ad':False,'v1_beam':False}},'coverage':{{key:True for key in coverage_keys}},'reversal':{{'energy':True,'residual':True,'tangent':True}},'schema':{template.CHECK_SCHEMA!r},'terminal':'NONCLASSIFYING_FINITE_GATE_PASS'}}
 with a.output.open('xb') as stream:stream.write((json.dumps(payload,allow_nan=False,ensure_ascii=True,separators=(',',':'),sort_keys=True)+'\\n').encode('ascii'))
 """
 
@@ -118,13 +118,13 @@ def _make_harness(tmp_path: Path) -> Harness:
     _git(repository, "config", "user.name", "Formal Runner Test")
     _git(repository, "config", "user.email", "formal-runner@example.invalid")
     _git(repository, "config", "core.autocrlf", "false")
-    _write(repository / "src/anysolver/__init__.py", 'VALUE="materialized-candidate"\n')
+    _write(repository / "src/anyfesolver/__init__.py", 'VALUE="materialized-candidate"\n')
     _write(repository / ".gitattributes", "explicit-crlf.txt text eol=crlf\n")
     _write(repository / "explicit-crlf.txt", "first\nsecond\n")
     _git(
         repository,
         "add",
-        "src/anysolver/__init__.py",
+        "src/anyfesolver/__init__.py",
         ".gitattributes",
         "explicit-crlf.txt",
     )
@@ -432,7 +432,7 @@ def _check_record(runner, *, scientific_pass: bool = True) -> dict[str, object]:
             for case_id in runner.CASE_ORDER
         ],
         "checker_import_boundary": {
-            "anysolver": False,
+            "anyfesolver": False,
             "legacy_beam": False,
             "production_ad": False,
             "v1_beam": False,
@@ -497,12 +497,12 @@ def test_authenticated_rehearsal_is_isolated_overlapping_and_one_time(
     checker_origin = json.loads(
         (work / "cycle-1/checker/checker-origin.json").read_text(encoding="utf-8")
     )
-    assert producer_origin["anysolver_origins"]
+    assert producer_origin["anyfesolver_origins"]
     assert all(
         "materialized-harness" in path
-        for path in producer_origin["anysolver_origins"]
+        for path in producer_origin["anyfesolver_origins"]
     )
-    assert checker_origin["anysolver_origins"] == []
+    assert checker_origin["anyfesolver_origins"] == []
     assert producer_origin["isolated"] is checker_origin["isolated"] is True
 
     # Publication recovery is idempotent and does not execute or consume the
@@ -1000,8 +1000,8 @@ def test_runner_import_boundary_is_standard_library_only() -> None:
     }
     text = RUNNER_PATH.read_text(encoding="utf-8")
     assert "import numpy" not in text
-    assert "import anysolver" not in text
-    assert "from anysolver" not in text
+    assert "import anyfesolver" not in text
+    assert "from anyfesolver" not in text
     assert "ge_beam3_mixed_finite_producer import" not in text
     assert "ge_beam3_mixed_finite_checker import" not in text
 

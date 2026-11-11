@@ -5,28 +5,28 @@ import copy
 import numpy as np
 import pytest
 
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.contact import (
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.contact import (
     RigidSphereImpact,
     SphereContactConfig,
     assemble_sphere_contact_load_vector,
 )
-from anysolver.e4_pl_s3_v2d_element import (
+from anyfesolver.e4_pl_s3_v2d_element import (
     BATCH_POLICY_ID,
     NativeParityE4PLS3V2DShellElement,
 )
-from anysolver.e4_pl_s3_v2d_state import (
+from anyfesolver.e4_pl_s3_v2d_state import (
     V2DStateError,
     canonical_json_bytes,
     seal_v2d_state,
 )
-from anysolver.fe_core import FEModel
-from anysolver.fracture import FractureConfig
-from anysolver.material_curves import DNVC208MaterialCurve
-from anysolver.matrix_assembly import assemble_stiffness_matrix
-from anysolver.nonlinear_static import solve_static_nonlinear
-from anysolver.validation import load_vector_resultant
-import anysolver.s3_v2d_fast_assembly as v2d_batch
+from anyfesolver.fe_core import FEModel
+from anyfesolver.fracture import FractureConfig
+from anyfesolver.material_curves import DNVC208MaterialCurve
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.nonlinear_static import solve_static_nonlinear
+from anyfesolver.validation import load_vector_resultant
+import anyfesolver.s3_v2d_fast_assembly as v2d_batch
 
 
 COORDINATES = ((0.0, 0.0, 0.0), (1.2, 0.05, 0.0), (0.2, 0.95, 0.0))

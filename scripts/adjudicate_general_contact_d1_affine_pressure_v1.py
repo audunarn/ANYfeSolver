@@ -12,7 +12,7 @@ import numpy as np
 import scipy
 
 import anymaterial
-import anysolver
+import anyfesolver
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,7 +26,7 @@ def _git_blob(path: str) -> str:
 
 
 def _source_clean() -> bool:
-    paths = ["src/anysolver", "scripts/general_contact_d1_finite_area_load.py",
+    paths = ["src/anyfesolver", "scripts/general_contact_d1_finite_area_load.py",
              "scripts/general_contact_d1_pressure_space_probe.py"]
     return not subprocess.run(
         ["git", "status", "--porcelain", "--", *paths], cwd=ROOT,
@@ -61,8 +61,8 @@ def adjudicate(contract: dict, result: dict) -> dict:
         sys.version.split()[0] == environment["python"]
         and np.__version__ == environment["numpy"]
         and scipy.__version__ == environment["scipy"]
-        and Path(anysolver.__file__).resolve().parents[1]
-            == Path(environment["anysolver_source_root"]).resolve()
+        and Path(anyfesolver.__file__).resolve().parents[1]
+            == Path(environment["anyfesolver_source_root"]).resolve()
         and Path(anymaterial.__file__).resolve().parents[1]
             == Path(environment["anymaterial_source_root"]).resolve()
     )

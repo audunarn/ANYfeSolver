@@ -1,10 +1,10 @@
 """Connected curved native force owners retain the complete physical pencil."""
 import numpy as np
 from scipy.linalg import eigh
-from anysolver._ge_beam3_native_analysis import NativeBeamAnalysis
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_native_analysis import NativeBeamAnalysis
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_retained_fibre import make_model
 from test_ge_beam3_native_fibre_current_modal import decode
 

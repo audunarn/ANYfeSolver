@@ -5,9 +5,9 @@ from math import acos,cos,sin,fsum,pi
 import numpy as np
 import pytest
 
-from anysolver.general_contact.friction_point import initial_friction_point
-from anysolver.general_contact.native_surface_event_sequence import locate_material_event_sequence,evaluate_open_event_sequence
-from anysolver.general_contact.native_surface_history import NativeSurfaceMotionSegment
+from anyfesolver.general_contact.friction_point import initial_friction_point
+from anyfesolver.general_contact.native_surface_event_sequence import locate_material_event_sequence,evaluate_open_event_sequence
+from anyfesolver.general_contact.native_surface_history import NativeSurfaceMotionSegment
 from test_general_contact_native_surface_support import _field
 
 
@@ -48,8 +48,8 @@ def test_analytical_two_event_roots_and_discrete_history_work():
 
 
 def test_sequence_counts_actual_coulomb_evaluations(monkeypatch):
-    from anysolver.general_contact import native_surface_event_sequence as sequence_module
-    from anysolver.general_contact import native_surface_activation as activation_module
+    from anyfesolver.general_contact import native_surface_event_sequence as sequence_module
+    from anyfesolver.general_contact import native_surface_activation as activation_module
     original=sequence_module.trial_coulomb_point;calls=[]
     def counted(*args,**kwargs):
         calls.append(1)
@@ -64,8 +64,8 @@ def test_sequence_counts_actual_coulomb_evaluations(monkeypatch):
 def test_explicit_sequence_policy_routes_full_saved_query_and_binds_identity():
     import json
     from pathlib import Path
-    from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceReplayBudget
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceReplayBudget
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
     from test_general_contact_native_surface_replay_owner import _replay_patch,_patch,normal_settings,friction_settings
     _,bridge=_patch(activation_policy='transverse_event_sequence',gap_check='straight_patch',
         normal_integration='straight_segmented',normal_integration_settings=normal_settings(),
@@ -95,7 +95,7 @@ def test_sequence_budget_and_tangency_remain_explicit_non_success():
 
 
 def test_two_chart_admitted_segments_accumulate_physical_history():
-    from anysolver.general_contact.native_surface_path import material_path_pose
+    from anyfesolver.general_contact.native_surface_path import material_path_pose
     field,pair,history,segment=pulse()
     first=evaluate_open_event_sequence(pair,field.initial,history,segment.translations,segment.angular,segment.shell_increment)
     endpoint=material_path_pose(field.initial,segment.translations,segment.angular,segment.shell_increment,1.)
@@ -113,9 +113,9 @@ def test_two_chart_admitted_segments_accumulate_physical_history():
 def test_saved_two_event_point_replays_closed_window(tmp_path):
     import json,os
     from pathlib import Path
-    from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
-    from anysolver.general_contact.native_surface_path import material_path_pose
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_path import material_path_pose
     from test_general_contact_native_surface_replay_owner import _replay_patch
     folder=Path(__file__).parents[1]/'docs/d1_review_support/contact_c5_native_surface_point_20261002'
     saved=json.loads((folder/'replay_owner_second_load_rejected_path.json').read_text())
@@ -148,8 +148,8 @@ def test_saved_two_event_point_replays_closed_window(tmp_path):
 def _saved_front_field():
     import json
     from pathlib import Path
-    from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
     from test_general_contact_native_surface_replay_owner import _replay_patch
     saved=json.loads((Path(__file__).parents[1]
         /'docs/d1_review_support/contact_c5_native_surface_point_20261002'
@@ -162,7 +162,7 @@ def _saved_front_field():
 
 
 def _saved_front_second_segment_state(field,xi,angle):
-    from anysolver.general_contact.native_surface_path import material_path_pose
+    from anyfesolver.general_contact.native_surface_path import material_path_pose
     pair=field.pair_at(xi,angle);pose=field.initial
     state=initial_friction_point(pair.target.physical_pose(pose.shell_displacement).material_frame)
     segment=field.segments[0]
@@ -188,8 +188,8 @@ def test_saved_front_point_schedule_certifies_closed_end_below_binary64_resoluti
 
 
 def test_saved_front_point_certified_closed_endpoint_completes_with_corrected_primal():
-    from anysolver.general_contact.native_event_polynomial import certified_material_gap
-    from anysolver.general_contact.native_surface_history import NativeSurfaceReplayBudget
+    from anyfesolver.general_contact.native_event_polynomial import certified_material_gap
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceReplayBudget
     field=_saved_front_field()
     xi,angle=.7999999999999998,3.323806549199672
     pair,pose,state,segment=_saved_front_second_segment_state(field,xi,angle)
@@ -227,8 +227,8 @@ def test_saved_front_point_certified_closed_endpoint_completes_with_corrected_pr
 
 
 def test_certified_endpoint_primal_contract():
-    from anysolver._ge_beam3_mixed_ad import Jet2
-    from anysolver.general_contact.native_surface_activation import _certified_endpoint_primal
+    from anyfesolver._ge_beam3_mixed_ad import Jet2
+    from anyfesolver.general_contact.native_surface_activation import _certified_endpoint_primal
     padding=512*np.finfo(float).eps*150.
     g=Jet2.variable(5.06e-18,0,4)
     corrected=_certified_endpoint_primal(g,padding,-3.87e-18)
@@ -251,7 +251,7 @@ def test_certified_endpoint_primal_contract():
 
 
 def test_saved_front_point_certified_gap_refusals_preserve_rollback(monkeypatch):
-    from anysolver.general_contact import native_event_polynomial as polynomial
+    from anyfesolver.general_contact import native_event_polynomial as polynomial
     field=_saved_front_field()
     pair,pose,state,segment=_saved_front_second_segment_state(field,
         .7999999999999998,3.323806549199672)
@@ -270,7 +270,7 @@ def test_saved_front_point_certified_gap_refusals_preserve_rollback(monkeypatch)
 
 
 def test_certified_material_gap_requires_resolved_certified_sign(monkeypatch):
-    from anysolver.general_contact import native_event_polynomial as polynomial
+    from anyfesolver.general_contact import native_event_polynomial as polynomial
     monkeypatch.setattr(polynomial.MaterialTimeNumerator,'sign',lambda self,t:0)
     field,pair,history,segment=pulse()
     with pytest.raises(ValueError,match='resolved precise sign'):
@@ -279,7 +279,7 @@ def test_certified_material_gap_requires_resolved_certified_sign(monkeypatch):
 
 
 def test_saved_front_neighbor_certified_open_endpoint_rounds_negative_and_completes():
-    from anysolver.general_contact.native_surface_history import NativeSurfaceReplayBudget
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceReplayBudget
     field=_saved_front_field()
     pair,pose,state,segment=_saved_front_second_segment_state(field,.7999999999999994,3.3238065491996722)
     sequence=locate_material_event_sequence(pair,pose,segment.translations,segment.angular,
@@ -300,7 +300,7 @@ def test_saved_front_neighbor_certified_open_endpoint_rounds_negative_and_comple
 
 
 def test_certified_endpoint_state_resolution_contract():
-    from anysolver.general_contact.native_surface_event_sequence import _resolve_endpoint_state
+    from anyfesolver.general_contact.native_surface_event_sequence import _resolve_endpoint_state
     padding=512*np.finfo(float).eps*150.
     assert _resolve_endpoint_state(1e-3,0,padding)==1
     assert _resolve_endpoint_state(-1e-3,0,padding)==-1

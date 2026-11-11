@@ -5,13 +5,13 @@ import pytest
 from scipy.integrate import quad
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_centered_reference import (
+from anyfesolver._ge_beam3_centered_reference import (
     CenteredCurvedBeam3ReferenceGeometry,
 )
-from anysolver.general_contact.native_retained_line_s3 import (
+from anyfesolver.general_contact.native_retained_line_s3 import (
     NativeRetainedRoundLineS3Interior,
 )
-from anysolver.general_contact.overlap import PlanarFace
+from anyfesolver.general_contact.overlap import PlanarFace
 
 
 def _case(*, curved=False, maximum_integration_intervals=100):

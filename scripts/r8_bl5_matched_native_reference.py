@@ -12,11 +12,11 @@ from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
-from anysolver import b3_ge, stiffened_shell as ss
-from anysolver._ge_beam3_retained_generalized_state import Mechanical
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._stiffened_shell_l1_local_experimental import NativeHalfCellPort
-from anysolver._stiffened_shell_bl5_local_experimental import BL5LocalOperator
+from anyfesolver import b3_ge, stiffened_shell as ss
+from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._stiffened_shell_l1_local_experimental import NativeHalfCellPort
+from anyfesolver._stiffened_shell_bl5_local_experimental import BL5LocalOperator
 from scripts import r8_bl5_released_director_reference as external
 
 IDENTITY = 'R8_BL5_MATCHED_NATIVE_REFERENCE_LINEAR_DEV_V1'

@@ -16,13 +16,13 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT/'src'))
 
-import anysolver
+import anyfesolver
 import numpy as np
 from scipy.spatial.transform import Rotation
 from threadpoolctl import threadpool_limits
 
-from anysolver._ge_beam3_pose_joint import _exp_terms
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_pose_joint import _exp_terms
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from scripts.probe_b3_ge_e4_pl_g0_f06_owned_rebase_v4 import OwnedRebasePrototype
 
 
@@ -224,8 +224,8 @@ def main():
         fixture_sha256={name: sha256((ROOT/'scripts'/name).read_bytes()).hexdigest()
             for name in ('probe_b3_ge_e4_pl_g0_f06_owned_rebase_v4.py',
                 'probe_b3_ge_e4_pl_g0_f06_loaded_rebase_v3.py')},
-        module_sha256={name: sha256((ROOT/'src'/'anysolver'/name).read_bytes()).hexdigest()
-            for name in modules}, imported_package=str(Path(anysolver.__file__).resolve()),
+        module_sha256={name: sha256((ROOT/'src'/'anyfesolver'/name).read_bytes()).hexdigest()
+            for name in modules}, imported_package=str(Path(anyfesolver.__file__).resolve()),
         python=sys.version, numpy=np.__version__,
         numba_jit_disabled=os.environ.get('NUMBA_DISABLE_JIT') == '1',
         tolerance=TOLERANCE, floors=FLOORS)

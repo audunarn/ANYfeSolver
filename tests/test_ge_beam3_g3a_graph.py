@@ -6,13 +6,13 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
-from anysolver._ge_beam3_g1_analysis import ElasticAnalysis
-from anysolver._ge_beam3_g2_analysis import ConstrainedAnalysis
-from anysolver._ge_beam3_g1_element import ElasticElement
-from anysolver._ge_beam3_g1_elastic import ElasticSection, canonical
-from anysolver._ge_beam3_g3_analysis import NativeGraphAnalysis, rigid_basis
-from anysolver._ge_beam3_g3_constraints import GraphConstraintSet, compile_affine
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+from anyfesolver._ge_beam3_g1_analysis import ElasticAnalysis
+from anyfesolver._ge_beam3_g2_analysis import ConstrainedAnalysis
+from anyfesolver._ge_beam3_g1_element import ElasticElement
+from anyfesolver._ge_beam3_g1_elastic import ElasticSection, canonical
+from anyfesolver._ge_beam3_g3_analysis import NativeGraphAnalysis, rigid_basis
+from anyfesolver._ge_beam3_g3_constraints import GraphConstraintSet, compile_affine
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = json.loads((ROOT/"docs/reference_cases/ge_beam3_g3_graph_fixtures_v1.json").read_text())
@@ -253,7 +253,7 @@ def test_noncommuting_shared_pose_and_support_work(name):
 
 @pytest.mark.parametrize("name", list(GRAPHS))
 def test_full_stationary_schur_nonzero_internal_residual_and_load_work(name):
-    from anysolver._ge_beam3_g1_operator import schur
+    from anyfesolver._ge_beam3_g1_operator import schur
     owner = make(name); n = owner.size; size = n+24*len(owner.elements)
     H = np.zeros((size, size)); r = np.zeros(size)
     condensed = np.zeros((n, n)); residual = np.zeros(n)
@@ -495,7 +495,7 @@ def test_publication_guard_and_fallible_diagnostics_are_atomic(kind):
     elif kind == "diagnostic":
         def fail(stage):
             if stage == "acceptance prepare": raise OSError("broken progress destination")
-        with patch("anysolver._ge_beam3_g3_analysis.progress", side_effect=fail):
+        with patch("anyfesolver._ge_beam3_g3_analysis.progress", side_effect=fail):
             with pytest.raises(OSError): owner.solve(.5*loads(owner))
     else:
         cancel_at_final_acceptance(owner, loads(owner))
@@ -512,7 +512,7 @@ def test_exclusive_graph_publication_and_deterministic_development_packet(tmp_pa
     assert out.read_bytes() == data
     with pytest.raises(ValueError): a.publish(out)
     failed = tmp_path/"failed.json"
-    with patch("anysolver._ge_beam3_g1_analysis.os.link", side_effect=OSError("publication fault")):
+    with patch("anyfesolver._ge_beam3_g1_analysis.os.link", side_effect=OSError("publication fault")):
         with pytest.raises(OSError): a.publish(failed)
     assert not failed.exists() and out.read_bytes() == data
     assert not list(tmp_path.glob("*.pending"))
@@ -593,7 +593,7 @@ def test_per_graph_cancel_preserves_accepted_prefix(name, phase):
 @pytest.mark.parametrize("kind", ["stale", "foreign"])
 @pytest.mark.parametrize("operation", ["commit", "discard", "set_state"])
 def test_braced_graph_issued_token_isolation(kind, operation):
-    from anysolver.nonlinear_state import StateTransactionError
+    from anyfesolver.nonlinear_state import StateTransactionError
     owner = make("N_BRACED5"); f = loads(owner, "N_BRACED5"); owner.solve(f)
     other = make("N_BRACED5")
     before, foreign_before = snapshot(owner), snapshot(other); checkpoint = owner.checkpoint()

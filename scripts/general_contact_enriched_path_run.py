@@ -8,8 +8,8 @@ from examples.general_contact_enriched_d1_path import run
 from scripts.general_contact_enriched_path_geometry import PhysicalField,union_certificate
 from scripts.general_contact_enriched_path_bounds import global_gap_certificate
 from scripts.general_contact_enriched_path_reference import assess_endpoint
-from anysolver.e4_pl_enriched import EnrichedProfileError
-from anysolver.control import SolveCancelled
+from anyfesolver.e4_pl_enriched import EnrichedProfileError
+from anyfesolver.control import SolveCancelled
 
 
 def publish(path,value):
@@ -147,7 +147,7 @@ def complete_paths(output,*,cancel=lambda:False,include_extended_reference=False
     # Admission must reject BEFORE evaluating or publishing a restored state.
     from dataclasses import replace
     from examples.general_contact_enriched_d1_path import build
-    from anysolver.general_contact.enriched_path import EnrichedPathOwner
+    from anyfesolver.general_contact.enriched_path import EnrichedPathOwner
     model,definition,fresh,_=build('displacement')
     points=list(fresh.program.waypoints);last=list(points[-1]);last[0]+=.001;points[-1]=tuple(last)
     changed=replace(fresh.program,waypoints=tuple(points))

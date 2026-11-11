@@ -55,8 +55,8 @@ def source_binding():
             "saved full retained layout changed")
     require(inputs["line"]["multiplier_span"] == 4 and len(inputs["line"]["shell_nodes"]) == 17,
             "native saved integrated P0 support layout changed")
-    paths = [Path(__file__), ROOT / "src/anysolver/_stiffened_shell_l1_assembly_experimental.py",
-             ROOT / "src/anysolver/_stiffened_shell_l1_supported_work_experimental.py",
+    paths = [Path(__file__), ROOT / "src/anyfesolver/_stiffened_shell_l1_assembly_experimental.py",
+             ROOT / "src/anyfesolver/_stiffened_shell_l1_supported_work_experimental.py",
              NATIVE / "operators.npz", NATIVE / "inputs.json", NATIVE / "layout.json",
              EXTERNAL / "raw.json", EXTERNAL / "receipt.json", ADMISSION]
     return {"claim": CLAIM, "qualification": False,
@@ -87,7 +87,7 @@ def evaluate(folder, plan_path):
         from scipy import sparse
         import psutil
         from threadpoolctl import threadpool_info
-        from anysolver._stiffened_shell_l1_assembly_experimental import compile_supported_shell_work
+        from anyfesolver._stiffened_shell_l1_assembly_experimental import compile_supported_shell_work
 
         pools = threadpool_info()
         require(psutil.Process().cpu_affinity() == [0] and pools and all(p["num_threads"] == 1 for p in pools),

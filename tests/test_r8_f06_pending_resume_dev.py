@@ -9,11 +9,11 @@ def test_installed_partial_restore():
  from dataclasses import replace,asdict
  from scripts.r8_f06_pending_resume_dev import DOC,PACKAGE,write,runtime
  from scripts.r8_f06_adaptive_material_dev import cyclic
- from anysolver import stiffened_shell as ss
- from anysolver._stiffened_shell_beam_history import arrays as history_arrays
- from anysolver._stiffened_shell_staged_load_experimental import decode_checkpoint,encode_checkpoint
- from anysolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,encode_compensated
- from anysolver._stiffened_shell_increment_control import decode_control,encode_control
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._stiffened_shell_beam_history import arrays as history_arrays
+ from anyfesolver._stiffened_shell_staged_load_experimental import decode_checkpoint,encode_checkpoint
+ from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,encode_compensated
+ from anyfesolver._stiffened_shell_increment_control import decode_control,encode_control
  out=Path(os.environ['F06_PENDING_OUTPUT']);owner=ss.create_analysis(definition=cyclic.definition('bend-z'))
  try:
   raw=(DOC/'partial-accepted-2_3125.bin').read_bytes();owner.restore(raw);d=owner._finite_driver
@@ -58,11 +58,11 @@ def test_installed_material_pending_resume():
  from dataclasses import asdict
  from scripts.r8_f06_pending_resume_dev import INPUT,ORACLE,write,sha
  from scripts.r8_f06_adaptive_material_dev import cyclic,programme,persist_accepted,paired_value
- from anysolver import stiffened_shell as ss
- from anysolver.control import CancellationToken,SolveCancelled
- from anysolver._stiffened_shell_increment_control import AdaptiveIncrementControl,FiniteIncrementFailure
- from anysolver._stiffened_shell_beam_history import arrays as history_arrays
- from anysolver._ge_beam3_p5_seeded.core import canonical
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver.control import CancellationToken,SolveCancelled
+ from anyfesolver._stiffened_shell_increment_control import AdaptiveIncrementControl,FiniteIncrementFailure
+ from anyfesolver._stiffened_shell_beam_history import arrays as history_arrays
+ from anyfesolver._ge_beam3_p5_seeded.core import canonical
  out=Path(os.environ['F06_PENDING_OUTPUT']);owner=ss.create_analysis(definition=cyclic.definition('bend-z'))
  try:
   raw=INPUT.read_bytes();owner.restore(raw);d=owner._finite_driver;load=programme(owner)

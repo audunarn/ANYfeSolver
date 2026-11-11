@@ -1,12 +1,12 @@
 """Model dispatch must count distributed nodal/internal load work only once."""
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_native_generalized_modal as dense
-from anysolver import _ge_beam3_native_generalized_paired_modal as paired
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern,nodal_force_vector
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.control import CancellationToken,SolveCancelled
+from anyfesolver import _ge_beam3_native_generalized_modal as dense
+from anyfesolver import _ge_beam3_native_generalized_paired_modal as paired
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern,nodal_force_vector
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken,SolveCancelled
 from test_ge_beam3_native_analysis import analysis
 from test_ge_beam3_native_generalized import problem,pattern
 

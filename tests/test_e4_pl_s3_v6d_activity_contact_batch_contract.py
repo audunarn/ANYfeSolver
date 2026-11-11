@@ -6,8 +6,8 @@ import json
 from pathlib import Path
 import subprocess
 
-import anysolver
-from anysolver.e4_pl_s3_v2d_element import (
+import anyfesolver
+from anyfesolver.e4_pl_s3_v2d_element import (
     BATCH_POLICY_ID,
     BLOCKED_OPERATIONS,
     CAPABILITY_MATRIX,
@@ -93,12 +93,12 @@ def test_v6d_capability_boundary_and_defaults_are_exact() -> None:
         CAPABILITY_MATRIX[name] == "BLOCKED_PENDING_SUCCESSOR_GATE"
         for name in BLOCKED_OPERATIONS
     )
-    assert anysolver.DEFAULT_Q4_FORMULATION == "e4-pl"
-    assert anysolver.DEFAULT_S3_FORMULATION == "legacy-s3"
+    assert anyfesolver.DEFAULT_Q4_FORMULATION == "e4-pl"
+    assert anyfesolver.DEFAULT_S3_FORMULATION == "legacy-s3"
 
 
 def test_v6d_routes_are_orchestration_only_and_fail_closed() -> None:
-    element_source = (ROOT / "src/anysolver/e4_pl_s3_v2d_element.py").read_text(
+    element_source = (ROOT / "src/anyfesolver/e4_pl_s3_v2d_element.py").read_text(
         encoding="utf-8"
     )
     tree = ast.parse(element_source)
@@ -117,7 +117,7 @@ def test_v6d_routes_are_orchestration_only_and_fail_closed() -> None:
         "native_reference_directors",
     ):
         assert route in element_source
-    batch_source = (ROOT / "src/anysolver/s3_v2d_fast_assembly.py").read_text(
+    batch_source = (ROOT / "src/anyfesolver/s3_v2d_fast_assembly.py").read_text(
         encoding="utf-8"
     )
     assert "e4_pl_s3_element" not in batch_source

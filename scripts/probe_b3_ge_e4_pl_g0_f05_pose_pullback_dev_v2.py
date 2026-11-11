@@ -18,13 +18,13 @@ import numpy as np
 from scipy.spatial.transform import Rotation
 from threadpoolctl import threadpool_limits
 
-import anysolver
-from anysolver._ge_beam3_pose_joint import RigidPoseJoint
-from anysolver._ge_beam3_variational_shell import deformation
-from anysolver.e4_pl_s3_state import canonical_json_bytes
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.material_curves import DNVC208MaterialCurve
+import anyfesolver
+from anyfesolver._ge_beam3_pose_joint import RigidPoseJoint
+from anyfesolver._ge_beam3_variational_shell import deformation
+from anyfesolver.e4_pl_s3_state import canonical_json_bytes
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.material_curves import DNVC208MaterialCurve
 
 
 REFERENCE = np.array(((0., 0., 0.), (1., 0., 0.), (1., 1., 0.), (0., 1., 0.)))
@@ -226,9 +226,9 @@ def main():
         'material_curves.py', 'plasticity.py')
     manifest = dict(purpose='F05_DEV_Q4_POSE_NOT_G0B_ACCEPTANCE',
         source_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-        modules_sha256={name: hashlib.sha256((REPOSITORY/'src'/'anysolver'/name).read_bytes()).hexdigest()
+        modules_sha256={name: hashlib.sha256((REPOSITORY/'src'/'anyfesolver'/name).read_bytes()).hexdigest()
             for name in modules}, python=sys.version, numpy=np.__version__,
-        anysolver_import=str(Path(anysolver.__file__).resolve()),
+        anyfesolver_import=str(Path(anyfesolver.__file__).resolve()),
         numba_jit_disabled=os.environ.get('NUMBA_DISABLE_JIT') == '1',
         numba_cache=os.environ['NUMBA_CACHE_DIR'], steps=STEPS,
         tolerance=TOLERANCE, predecessor='Q4 v1 loaded sealed state')

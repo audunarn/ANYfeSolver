@@ -7,12 +7,12 @@ from scipy import linalg, sparse
 from scipy.sparse.linalg import ArpackNoConvergence
 from scipy.spatial.transform import Rotation
 
-from anysolver import stiffened_shell as api
-from anysolver.control import CancellationToken
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver._stiffened_shell_physical_q4_mass import POLICY as Q4_MASS_POLICY
-import anysolver._stiffened_shell_b2_q4_panel_experimental as owner_module
+from anyfesolver import stiffened_shell as api
+from anyfesolver.control import CancellationToken
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver._stiffened_shell_physical_q4_mass import POLICY as Q4_MASS_POLICY
+import anyfesolver._stiffened_shell_b2_q4_panel_experimental as owner_module
 from test_stiffened_shell_b2_mixed_panel_experimental import (
     _definition as _static_definition, _dense_operators,
 )
@@ -222,7 +222,7 @@ def test_modal_definition_rejects_unsupported_inputs(bad):
     elif bad == "policy": definition = replace(definition, inertia_policy="invented")
     elif bad == "no-policy": definition = replace(definition, inertia_policy=None)
     elif bad == "geometric":
-        from anysolver._b2_physical_linear_definition import GeometricMetadata
+        from anyfesolver._b2_physical_linear_definition import GeometricMetadata
         geometry = GeometricMetadata("geometry", (0., 0., 0.), (0., 0., 0.), (0., 0., 0.))
         definition = replace(definition, members=(replace(definition.members[0], geometric=geometry),)+definition.members[1:])
     with pytest.raises(ValueError): api.create_analysis(definition=definition)

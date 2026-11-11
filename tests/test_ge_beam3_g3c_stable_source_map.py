@@ -47,18 +47,18 @@ class SourceMapTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             m.audit(value)
         value = copy.deepcopy(self.contract)
-        value['module_map']['anysolver._ge_beam3_g1_operator'] = 'anysolver.forbidden'
+        value['module_map']['anyfesolver._ge_beam3_g1_operator'] = 'anyfesolver.forbidden'
         with self.assertRaises(ValueError):
             m.audit(value)
 
     def test_derivative_only_import_split(self):
         result = m.imports('from ._ge_beam3_mixed_ad import Jet2, so3_exp, rotation_log\n',
-                           'anysolver.owner', {})
-        self.assertIn('from anysolver._ge_beam3_mixed_ad import Jet2', result)
-        self.assertIn('from anysolver._ge_beam3_g3c_so3_numerics import so3_exp', result)
-        self.assertIn('from anysolver._ge_beam3_mixed_ad import rotation_log', result)
+                           'anyfesolver.owner', {})
+        self.assertIn('from anyfesolver._ge_beam3_mixed_ad import Jet2', result)
+        self.assertIn('from anyfesolver._ge_beam3_g3c_so3_numerics import so3_exp', result)
+        self.assertIn('from anyfesolver._ge_beam3_mixed_ad import rotation_log', result)
         with self.assertRaises(ValueError):
-            m.imports('import anysolver.old\n', 'anysolver.owner', {'anysolver.old':'anysolver.new'})
+            m.imports('import anyfesolver.old\n', 'anyfesolver.owner', {'anyfesolver.old':'anyfesolver.new'})
 
 
 if __name__ == '__main__':

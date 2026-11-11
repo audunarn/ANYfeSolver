@@ -7,7 +7,7 @@ import sys
 import numpy as np
 import pytest
 
-from anysolver.sestra_verification import (COMPONENTS, METRIC, Unsupported, admit, compare,
+from anyfesolver.sestra_verification import (COMPONENTS, METRIC, Unsupported, admit, compare,
     execute_reference, load_manifest, native_stresses, run_verification, generate_hanging_shell, validate_execution_fem)
 
 
@@ -23,7 +23,8 @@ def fixture(tmp_path):
         "GELMNT1 100 1 24 0 1 2 3 4", "GELREF1 100 1 0 0 0 0 0 0 1 0 0 0",
         "BNBCD 1 6 0 0 1 1 1 1", "BNBCD 2 6 0 0 1 1 1 1",
         "BNBCD 3 6 0 1 1 1 1 1", "BNBCD 4 6 1 1 1 1 1 1", "TDLOAD 4 1 103 0 LC1", "BGRAV 1 0 0 0 0 -10 0", "IEND 0 0 0 0"]
-    fem = tmp_path/"case.FEM"; fem.write_text('\n'.join(map(formatted,lines))+'\n')
+    fem = tmp_path/"case.FEM"
+    fem.write_bytes(('\r\n'.join(map(formatted,lines))+'\r\n').encode('ascii'))
     manifest = tmp_path/"case.json"
     m = {"schema_version":1,"case_id":"synthetic_harness_only","fem":"case.FEM","load_case":1,
          "units":"SI","frame":"GLOBAL","observable":METRIC,"element_ids":[100],
@@ -52,7 +53,7 @@ def test_native_axial_gravity_and_synthetic_sif(tmp_path):
 
 def test_prepare_does_not_solve_or_execute(tmp_path,monkeypatch):
     path,_ = fixture(tmp_path)
-    monkeypatch.setattr("anysolver.sestra_verification.native_stresses",lambda _: pytest.fail("unexpected solve"))
+    monkeypatch.setattr("anyfesolver.sestra_verification.native_stresses",lambda _: pytest.fail("unexpected solve"))
     report = run_verification(path,tmp_path/"reports")
     assert report["status"] == "not_executed"
     assert report["admission"] == "admitted"
@@ -114,7 +115,7 @@ def test_comparison_is_complete_and_absolute_plus_relative(tmp_path):
 
 def test_unconverged_native_is_refused(tmp_path,monkeypatch):
     path,_=fixture(tmp_path); imported=admit(load_manifest(path))
-    monkeypatch.setattr("anysolver.assembly.solve_linear",lambda *a,**kw:(np.zeros(24),{"convergence_info":{"status":"failed"}}))
+    monkeypatch.setattr("anyfesolver.assembly.solve_linear",lambda *a,**kw:(np.zeros(24),{"convergence_info":{"status":"failed"}}))
     with pytest.raises(Unsupported,match="did not converge"): native_stresses(imported)
 
 
@@ -128,7 +129,7 @@ def test_reference_source_binding_required(tmp_path):
 def test_execution_failure_and_timeout_keep_evidence(tmp_path,action,status):
     path,_=fixture(tmp_path); m=load_manifest(path)
     template=tmp_path/"control.inp"; template.write_text("INAM {prefix}\nRNAM {prefix} FORMATTED\n")
-    m["execution"]={"argv":[sys.executable,"-c",action],"timeout_seconds":.3,
+    m["execution"]={"argv":[sys.executable,"-c",action],"timeout_seconds":.3 if status=="timeout" else 5,
         "prefix":"test","control_template":str(template)}
     case=tmp_path/"run";case.mkdir()
     _, evidence=execute_reference(m,case)

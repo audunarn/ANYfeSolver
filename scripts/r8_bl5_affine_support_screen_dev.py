@@ -25,9 +25,9 @@ def affine_force_moment(left, right, a, b, order):
 def run(output):
     from scipy.integrate import quad
     from scipy.sparse import save_npz
-    import numba, anysolver
+    import numba, anyfesolver
     from threadpoolctl import threadpool_info
-    from anysolver import stiffened_shell as api
+    from anyfesolver import stiffened_shell as api
     from b3_e4_bl5_coherent_aggregation_dev import model, physical_transfer
     from r8_bl5_affine_carrier_reference_dev import solve_affine_carrier
     from r8_bl5_p0_carrier_reference_dev import solve_p0_carrier
@@ -65,7 +65,7 @@ def run(output):
             p0_vs_strong=(p0.transfer_moments()/strong-1.).tolist(),
             affine_vs_strong=(p1.transfer_moments()/strong-1.).tolist()))
     summary = dict(status="IN_PROGRESS", qualification="EXPERIMENTAL_NOT_QUALIFIED",
-        imports=dict(anysolver=anysolver.__file__), settings=dict(pools=pools,
+        imports=dict(anyfesolver=anyfesolver.__file__), settings=dict(pools=pools,
             numba_threads=numba.get_num_threads(), jit_disabled=True),
         physical=dict(length_m=1., EI_z_Nm2=bending, kGA_y_N=shear, Mz_tip_Nm=moment,
             shell_width_m=.2, shell_thickness_m=.035, beam_axis_z_m=.0675,

@@ -7,7 +7,7 @@ from pathlib import Path
 from hashlib import sha256
 import argparse,json
 import numpy as np
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 if __package__:
     from .stiffened_shell_coupled_s3_adaptive_history import definition
 else:

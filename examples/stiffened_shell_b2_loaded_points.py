@@ -8,7 +8,7 @@ footprints, finite gravity and spectra are outside this policy's current scope.
 import argparse
 import json
 from pathlib import Path
-from anysolver import stiffened_shell as api
+from anyfesolver import stiffened_shell as api
 from stiffened_shell_b2_body_acceleration import definition
 
 

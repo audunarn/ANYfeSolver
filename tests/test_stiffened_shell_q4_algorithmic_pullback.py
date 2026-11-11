@@ -4,11 +4,11 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver._stiffened_shell_q4_algorithmic_pullback import local_coordinates, response
-from anysolver.e4_pl_s3_state import canonical_json_bytes
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.material_curves import DNVC208MaterialCurve
+from anyfesolver._stiffened_shell_q4_algorithmic_pullback import local_coordinates, response
+from anyfesolver.e4_pl_s3_state import canonical_json_bytes
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.material_curves import DNVC208MaterialCurve
 
 
 @pytest.fixture(scope="module")

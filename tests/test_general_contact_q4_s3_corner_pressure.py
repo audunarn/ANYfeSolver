@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.overlap import PlanarFace
-from anysolver.general_contact.patch_mortar import MovingPatchMortar, PatchFace
+from anyfesolver.general_contact.overlap import PlanarFace
+from anyfesolver.general_contact.patch_mortar import MovingPatchMortar, PatchFace
 
 
 _PENETRATION = 1.0e-4  # m

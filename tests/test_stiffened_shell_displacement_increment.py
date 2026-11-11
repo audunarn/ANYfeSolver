@@ -3,8 +3,8 @@ import json
 import math
 from copy import deepcopy
 import pytest
-from anysolver._stiffened_shell_displacement_increment import DisplacementIncrementState as State,DisplacementIncrementLimit
-from anysolver._stiffened_shell_increment_control import AdaptiveIncrementControl
+from anyfesolver._stiffened_shell_displacement_increment import DisplacementIncrementState as State,DisplacementIncrementLimit
+from anyfesolver._stiffened_shell_increment_control import AdaptiveIncrementControl
 
 
 def record(state,accepted):

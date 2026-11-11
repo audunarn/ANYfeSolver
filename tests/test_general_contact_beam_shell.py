@@ -3,16 +3,16 @@
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, LoadCase, create_shell_element,
     solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.elements import BeamElement, QuadraticBeamElement
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.beam_shell import InteriorBeamShellLine
-from anysolver.general_contact.beam_shell import _BeamShellManager
-from anysolver.general_contact.overlap import PlanarFace
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.beam_shell import InteriorBeamShellLine
+from anyfesolver.general_contact.beam_shell import _BeamShellManager
+from anyfesolver.general_contact.overlap import PlanarFace
 
 
 def _triangle():

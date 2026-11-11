@@ -13,7 +13,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from anysolver.element_qualification import DEFAULT_ELEMENT_QUALIFICATION_PATH, write_element_qualification_report  # noqa: E402
+from anyfesolver.element_qualification import DEFAULT_ELEMENT_QUALIFICATION_PATH, write_element_qualification_report  # noqa: E402
 
 
 def _markdown(report: Dict[str, Any]) -> str:

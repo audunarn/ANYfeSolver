@@ -5,19 +5,19 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import create_shell_element
-from anysolver._ge_beam3_centered_reference import (
+from anyfesolver import create_shell_element
+from anyfesolver._ge_beam3_centered_reference import (
     CenteredCurvedBeam3ReferenceGeometry,
 )
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.native_retained_line_s3 import (
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.native_retained_line_s3 import (
     NativeRetainedRoundLineS3Interior,
 )
-from anysolver.general_contact.native_retained_line_s3_work import (
+from anyfesolver.general_contact.native_retained_line_s3_work import (
     NativeRetainedLineS3Work,
 )
-from anysolver.general_contact.overlap import reference_shell_face
-from anysolver.general_contact.s3_skin_work import S3SkinWorkAdapter
+from anyfesolver.general_contact.overlap import reference_shell_face
+from anyfesolver.general_contact.s3_skin_work import S3SkinWorkAdapter
 
 
 def _case():

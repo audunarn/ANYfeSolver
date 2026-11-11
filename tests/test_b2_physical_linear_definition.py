@@ -5,9 +5,9 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-import anysolver._b2_physical_linear_definition as definition_module
-from anysolver._b2_physical_flexibility_linear import LinearSection
-from anysolver._b2_physical_linear_definition import (
+import anyfesolver._b2_physical_linear_definition as definition_module
+from anyfesolver._b2_physical_flexibility_linear import LinearSection
+from anyfesolver._b2_physical_linear_definition import (
     GeometricMetadata, MassMetadata, PhysicalB2Member,
     PhysicalB2OperatorCache, PROFILE_ID,
 )

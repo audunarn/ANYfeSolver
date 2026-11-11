@@ -172,7 +172,7 @@ def canonical(owner):
 def run_fixture(out):
     import numpy as np
     from scipy import sparse
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
     from examples.stiffened_shell_ge_mixed_reference_modes import definition
     owner=ss.create_analysis(definition=definition('mixed','biaxial','mixed','point',free=True))
     try:
@@ -269,13 +269,13 @@ def runtime(out, name, selected):
         numba=dict(disable_jit=bool(numba.config.DISABLE_JIT),num_threads=numba.get_num_threads()),
         pools=threadpoolctl.threadpool_info())
     imports={n:str(Path(m.__file__).resolve()) for n,m in sys.modules.items()
-        if (n=='anysolver' or n.startswith('anysolver.')) and getattr(m,'__file__',None)}
+        if (n=='anyfesolver' or n.startswith('anyfesolver.')) and getattr(m,'__file__',None)}
     settings.update(imports=imports,import_sha256={n:sha(p) for n,p in imports.items()})
     write(out/(name+'.json'),settings)
     need(settings['affinity']==[0] and settings['optimize']==0 and settings['numba']==dict(disable_jit=True,num_threads=1) and all(p['num_threads']==1 for p in settings['pools']), 'effective runtime mismatch')
     for n,p in imports.items():
-        need(Path(p).is_relative_to(selected/'anysolver'), 'unexpected anysolver import path: '+n)
-        need(sha(p)==sha(ROOT/'src'/Path(p).relative_to(selected)), 'actual anysolver import hash mismatch: '+n)
+        need(Path(p).is_relative_to(selected/'anyfesolver'), 'unexpected anyfesolver import path: '+n)
+        need(sha(p)==sha(ROOT/'src'/Path(p).relative_to(selected)), 'actual anyfesolver import hash mismatch: '+n)
     return settings
 
 
@@ -288,7 +288,7 @@ def prepare():
             'examples/stiffened_shell_ge_mixed_reference_modes.py','examples/stiffened_shell_native_fibre_bl5.py',
             'tests/test_stiffened_shell_ge_mixed_reference_modal.py'):
         path=ROOT/rel;bindings[rel]=sha(path);(DOC/('frozen-'+path.name)).write_bytes(path.read_bytes())
-    source={p.relative_to(ROOT/'src').as_posix():sha(p) for p in (ROOT/'src/anysolver').rglob('*.py')}
+    source={p.relative_to(ROOT/'src').as_posix():sha(p) for p in (ROOT/'src/anyfesolver').rglob('*.py')}
     artifact=ROOT/'.development/r8-f13-dependency-repair-20261009/artifact-v2'
     saved=json.loads((artifact/'artifact-binding.json').read_text())
     need(all(sha(artifact/'site'/rel)==digest for rel,digest in source.items()),'source/site artifact mismatch')

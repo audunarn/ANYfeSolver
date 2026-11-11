@@ -5,7 +5,7 @@ import os
 import numpy as np
 import pytest
 
-from anysolver import solve_static_nonlinear, validate_general_contact
+from anyfesolver import solve_static_nonlinear, validate_general_contact
 from examples.general_contact_q4_s3_tight_path import (
     GAP_BUDGET_M, THICKNESS_M, make_case,
 )

@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import subprocess
 
-import anysolver
+import anyfesolver
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -93,8 +93,8 @@ def test_v6d_result_has_two_clean_cycles_and_only_successor_authority() -> None:
         "default_s3_formulation": "legacy-s3",
         "q4_mechanics_unchanged": True,
     }
-    assert anysolver.DEFAULT_Q4_FORMULATION == "e4-pl"
-    assert anysolver.DEFAULT_S3_FORMULATION == "legacy-s3"
+    assert anyfesolver.DEFAULT_Q4_FORMULATION == "e4-pl"
+    assert anyfesolver.DEFAULT_S3_FORMULATION == "legacy-s3"
 
 
 def test_v6d_review_is_five_key_empty_p0_p1_and_status_binds_bytes() -> None:

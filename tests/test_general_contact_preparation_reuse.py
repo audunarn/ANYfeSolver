@@ -5,10 +5,10 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver.general_contact import s3_patch_static as owner
-from anysolver.general_contact.q4_overlap_local_bound import overlap_local_lower
-from anysolver.general_contact.q4_source_overlap import q4_source_projected_gap_lower
-from anysolver.general_contact.s3_patch_mortar_energy import MovingS3PatchPrimalMortarPenalty
+from anyfesolver.general_contact import s3_patch_static as owner
+from anyfesolver.general_contact.q4_overlap_local_bound import overlap_local_lower
+from anyfesolver.general_contact.q4_source_overlap import q4_source_projected_gap_lower
+from anyfesolver.general_contact.s3_patch_mortar_energy import MovingS3PatchPrimalMortarPenalty
 from test_general_contact_jet2_candidate_budget import _scene
 from test_general_contact_q4_s3_refined_patch import _two_q4_two_s3
 from test_general_contact_q4_s3_jet2_static_owner import _settings

@@ -13,7 +13,7 @@ import pytest
 
 os.environ.setdefault("NUMBA_CACHE_DIR", str(Path(tempfile.gettempdir()) / "f06_v4_numba"))
 
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from scripts.adjudicate_b3_ge_e4_pl_g0_f06_v4 import (
     F_REF, ROOT, THRESHOLDS, _canonical, adjudicate,
 )
@@ -71,7 +71,7 @@ def _evidence(tmp_path, measurement):
     environment = body.get("effective_environment") or dict(
         python_executable=str(Path(sys.executable).resolve()),
         python_version=sys.version.split()[0], numpy_version="dry-run",
-        scipy_version="dry-run", anysolver_import=str((ROOT / "src/anysolver/__init__.py").resolve()),
+        scipy_version="dry-run", anyfesolver_import=str((ROOT / "src/anyfesolver/__init__.py").resolve()),
         psutil_version="dry-run", threadpoolctl_version="dry-run", platform="dry-run",
         numba_cache_dir=None, thread_environment={}, blas=[])
     command = dict(argv=[environment["python_executable"],

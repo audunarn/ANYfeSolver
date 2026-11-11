@@ -13,20 +13,20 @@ from typing import Any
 import numpy as np
 import pytest
 
-from anysolver import (BoundaryCondition, LoadCase, StaticCase, StaticBatchError,
+from anyfesolver import (BoundaryCondition, LoadCase, StaticCase, StaticBatchError,
     iter_linear_batches, RecoveryConfig, SolveCancelled, solve_linear,
     compute_constraint_force_diagnostics)
-from anysolver.matrix_assembly import AssemblyError
-from anysolver.recovery import recover_stress_result
+from anyfesolver.matrix_assembly import AssemblyError
+from anyfesolver.recovery import recover_stress_result
 
-import anysolver.recovery as recovery_module
-import anysolver.recovery_batches as recovery_batches_module
+import anyfesolver.recovery as recovery_module
+import anyfesolver.recovery_batches as recovery_batches_module
 
 from test_static_batch import _bar, _case
 
 
 def _panel(num_divisions: int = 2):
-    from anysolver import generate_simple_panel_mesh
+    from anyfesolver import generate_simple_panel_mesh
     model = generate_simple_panel_mesh(1.0, 1.0, 0.01,
         num_divisions_x=num_divisions, num_divisions_y=num_divisions)
     model.boundary_conditions.clear()
@@ -130,7 +130,7 @@ def test_borrowed_block_outputs_match_public_recovery_exactly():
 def test_foreign_edit_inside_borrowed_operation_fails_with_case_identity(
     monkeypatch,
 ):
-    import anysolver.matrix_assembly as matrix_assembly_module
+    import anyfesolver.matrix_assembly as matrix_assembly_module
     model = _panel()
     recovery = RecoveryConfig(include_displacements=False,
         include_reactions=False, components=["von_mises"])
@@ -279,7 +279,7 @@ def test_scope_borrow_revocation_wrong_model_and_copied_context(monkeypatch):
 
 @pytest.mark.parametrize("cancel", [False, True])
 def test_recovery_failure_and_cancel_restore_scope_state(monkeypatch, cancel):
-    from anysolver.e4_pl_element import _q4_trusted_operation_accepts
+    from anyfesolver.e4_pl_element import _q4_trusted_operation_accepts
     model = _panel()
     recovery = RecoveryConfig(include_displacements=False,
         include_reactions=False, components=["von_mises"])
@@ -396,7 +396,7 @@ def test_prescribed_mpc_reactions_match_public_under_borrowed_block():
 
 def _s3_triangle():
     """One prescribed-displacement S3 triangle for token lifetime tests."""
-    from anysolver import FEModel, QualifiedE4PLS3ShellElement
+    from anyfesolver import FEModel, QualifiedE4PLS3ShellElement
     model = FEModel("s3-operation-token-lifetime")
     model.add_material("steel", 210.0e9, 0.3, density=7850.0)
     coordinates = ((0.0, 0.0, 0.0), (1.0, 0.0, 0.0),
@@ -415,14 +415,14 @@ def _s3_triangle():
 def _trusted_operation_case(family):
     """Return (element, scope, accepts) for the Q4 or S3 trusted scope."""
     if family == "q4":
-        from anysolver.e4_pl_element import (
+        from anyfesolver.e4_pl_element import (
             _q4_trusted_operation_accepts as accepts,
             _q4_trusted_operation_scope as scope,
         )
         model = _panel(1)
         element = next(iter(model.mesh.elements.values()))
     else:
-        from anysolver.e4_pl_s3_element import (
+        from anyfesolver.e4_pl_s3_element import (
             _s3_trusted_operation_accepts as accepts,
             _s3_trusted_operation_scope as scope,
         )
@@ -434,7 +434,7 @@ def _trusted_operation_case(family):
 def test_copied_context_cannot_retain_q4_operation_token_after_close(
     monkeypatch,
 ):
-    from anysolver.e4_pl_element import _q4_trusted_operation_accepts
+    from anyfesolver.e4_pl_element import _q4_trusted_operation_accepts
     model = _panel(1)
     recovery = RecoveryConfig(include_displacements=False,
         include_reactions=False, components=["von_mises"])
@@ -467,7 +467,7 @@ def test_copied_context_cannot_retain_q4_operation_token_after_close(
 def test_copied_context_cannot_retain_s3_operation_token_after_close(
     monkeypatch,
 ):
-    from anysolver.e4_pl_s3_element import _s3_trusted_operation_accepts
+    from anyfesolver.e4_pl_s3_element import _s3_trusted_operation_accepts
     model = _s3_triangle()
     recovery = RecoveryConfig(element_ids=[1], include_displacements=False,
         include_reactions=False)

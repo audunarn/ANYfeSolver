@@ -3,10 +3,10 @@ from dataclasses import replace
 from copy import copy
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
-from anysolver._stiffened_shell_ge_pressure_load import encode_checkpoint,decode_checkpoint,VECTOR_EQUILIBRIUM_POLICY
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver._stiffened_shell_ge_pressure_load import encode_checkpoint,decode_checkpoint,VECTOR_EQUILIBRIUM_POLICY
 from test_stiffened_shell_ge_experimental import _panel
 
 
@@ -114,7 +114,7 @@ def test_pressure_external_tangent_through_actual_owner_update(request,kind):
 
 
 def test_follower_decrease_can_advance_newton_without_false_commit(request):
-    from anysolver._stiffened_shell_increment_control import FiniteIncrementFailure
+    from anyfesolver._stiffened_shell_increment_control import FiniteIncrementFailure
     a=owner(request)
     # The first full step decreases the parent's frozen merit, but its current
     # active-row ratio is still far above equilibrium. It must not be published.
@@ -123,7 +123,7 @@ def test_follower_decrease_can_advance_newton_without_false_commit(request):
     assert a._generation==0 and a._accepted is None and a._finite_driver is None
 
 def test_pressure_trial_work_norm_units_extremes_and_zero_load():
-    from anysolver._stiffened_shell_ge_finite_experimental import _trial_work_ratio
+    from anyfesolver._stiffened_shell_ge_finite_experimental import _trial_work_ratio
     expected=np.sqrt(52.)/10.
     assert _trial_work_ratio(np.array([3.,4.]),np.array([0.,10.]),np.array([2.,1.]))==pytest.approx(expected)
     assert _trial_work_ratio(np.array([3.,4000.]),np.array([0.,10000.]),np.array([2000.,1.]))==pytest.approx(expected)
@@ -136,8 +136,8 @@ def test_pressure_trial_work_norm_units_extremes_and_zero_load():
 
 
 def test_pressure_trial_merit_does_not_replace_component_acceptance():
-    from anysolver._stiffened_shell_ge_finite_experimental import _trial_work_ratio
-    from anysolver._stiffened_shell_ge_experimental import _linear_equilibrium
+    from anyfesolver._stiffened_shell_ge_finite_experimental import _trial_work_ratio
+    from anyfesolver._stiffened_shell_ge_experimental import _linear_equilibrium
     applied=np.array([10.,1e-10]);parent=.5*applied;candidate=np.array([1e-12,1e-10])
     assert _trial_work_ratio(candidate,applied,np.ones(2))<_trial_work_ratio(parent,applied,np.ones(2))
     assert _trial_work_ratio(candidate,applied,np.ones(2))<1e-8
@@ -145,7 +145,7 @@ def test_pressure_trial_merit_does_not_replace_component_acceptance():
 
 
 def test_equilibrated_pressure_trial_is_rechecked_despite_frozen_merit(request, monkeypatch):
-    import anysolver._stiffened_shell_ge_finite_experimental as finite
+    import anyfesolver._stiffened_shell_ge_finite_experimental as finite
     original_assemble = finite.FinitePointDriver._assemble
     latest = {'equilibrated': False, 'obstructed': 0, 'certificates': 0,
               'assembling': False}

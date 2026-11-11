@@ -7,9 +7,9 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import b3_ge, stiffened_shell as api
-from anysolver._ge_beam3_retained_generalized_state import Mechanical
-from anysolver._stiffened_shell_l1_assembly_experimental import _sample_rows
+from anyfesolver import b3_ge, stiffened_shell as api
+from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
+from anyfesolver._stiffened_shell_l1_assembly_experimental import _sample_rows
 from test_stiffened_shell_l1_assembly_experimental import _bl5_joint_mesh_definition
 
 
@@ -241,7 +241,7 @@ def test_same_row_count_cannot_restore_p0_checkpoint_as_affine():
 
 
 def test_affine_multiplier_curvature_through_actual_state_update():
-    from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+    from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
     definition = replace(candidate(4, 4), q4_pullback_policy=api.Q4_ALGORITHMIC_PULLBACK_V1)
     owner = api.create_analysis(definition=definition)
     try:

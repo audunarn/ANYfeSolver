@@ -21,7 +21,7 @@ import psutil
 from _b3_e4_ccx_3d_canary_parser import _HEADER, _NODE, _STEP
 
 
-EXE = Path("C:/Github/ANYsolver/.qualification/b3-ge-e4-pl/"
+EXE = Path("C:/Github/ANYfeSolver/.qualification/b3-ge-e4-pl/"
            "calculix-223/CalculiX-2.23.0-win-x64/bin/ccx.exe")
 EXE_SHA256 = "27a9426a1ee2f72c38fbe892e0ffaf38e14867628ffd0235770261b6f3ec9c5f"
 MAX_SECONDS = 120.

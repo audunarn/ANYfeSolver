@@ -5,13 +5,13 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     CylinderBenchmarkConfig,
     build_cylindrical_shell_benchmark_model,
     nominal_cylinder_membrane_stress,
     run_cylindrical_shell_benchmark,
 )
-from anysolver.elements import ShellElement
+from anyfesolver.elements import ShellElement
 
 
 def test_nominal_cylinder_membrane_stress_reports_hoop_axial_and_von_mises() -> None:

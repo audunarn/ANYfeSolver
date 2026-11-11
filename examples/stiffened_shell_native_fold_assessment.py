@@ -10,14 +10,14 @@ from pathlib import Path
 
 import numpy as np
 from scipy import sparse
-from anysolver import stiffened_shell as ss
-from anysolver import _stiffened_shell_displacement_corrector as corrector
-from anysolver._stiffened_shell_arc_metric import (
+from anyfesolver import stiffened_shell as ss
+from anyfesolver import _stiffened_shell_displacement_corrector as corrector
+from anyfesolver._stiffened_shell_arc_metric import (
     ChordDomainError, require_director_chart, require_metric_owner)
-from anysolver._stiffened_shell_rotation_charts import physical_frames
-from anysolver._stiffened_shell_bl5_local_experimental import BL5TrialDomainError
-from anysolver._ge_beam3_pose_joint import _exp_terms
-from anysolver._stiffened_shell_ge_finite_experimental import (
+from anyfesolver._stiffened_shell_rotation_charts import physical_frames
+from anyfesolver._stiffened_shell_bl5_local_experimental import BL5TrialDomainError
+from anyfesolver._ge_beam3_pose_joint import _exp_terms
+from anyfesolver._stiffened_shell_ge_finite_experimental import (
     _material_observables, _RotationStepTooLarge)
 from examples import stiffened_shell_native_capacity as case
 

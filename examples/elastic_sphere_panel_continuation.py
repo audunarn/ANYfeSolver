@@ -44,10 +44,10 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver import LoadCase, solve_static_nonlinear
-from anysolver.corotational import rotation_matrix_from_vector
-from anysolver.nonlinear_static import NonlinearLoadProgram, NonlinearLoadStage
-from anysolver.nonlinear_restart import model_configuration_fingerprint
+from anyfesolver import LoadCase, solve_static_nonlinear
+from anyfesolver.corotational import rotation_matrix_from_vector
+from anyfesolver.nonlinear_static import NonlinearLoadProgram, NonlinearLoadStage
+from anyfesolver.nonlinear_restart import model_configuration_fingerprint
 
 from examples.elastic_sphere_stiffened_panel import (
     FORCE_BALANCE_TOLERANCE,
@@ -67,7 +67,7 @@ from examples.elastic_sphere_stiffened_panel import (
 )
 from examples.elastic_sphere_panel_contact_skins import build_skin_maps
 
-SCHEMA = "anysolver.elastic-sphere-panel-continuation-v1"
+SCHEMA = "anyfesolver.elastic-sphere-panel-continuation-v1"
 STATUS = "gravity_probe_completed"
 CONTACT_RESPONSE_STATUS = "unsupported"
 IMPACT_STATUS = "unsupported"

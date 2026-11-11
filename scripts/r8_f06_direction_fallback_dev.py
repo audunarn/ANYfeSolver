@@ -10,7 +10,7 @@ INPUTS={'pending':BASE/'pending-resume-v1/attempt-installed-pending1/initial-pre
  'reversed':BASE/'adaptive-material-v1/attempt-installed-lifecycle1/reversed-rebased.bin'}
 
 def bindings():
- paths=[ROOT/'src/anysolver'/n for n in (*infra.PRODUCTS,'_stiffened_shell_increment_control.py','_stiffened_shell_staged_load_experimental.py')]
+ paths=[ROOT/'src/anyfesolver'/n for n in (*infra.PRODUCTS,'_stiffened_shell_increment_control.py','_stiffened_shell_staged_load_experimental.py')]
  paths += [DOC/'AUTHORITY_DELTA1.json',Path(__file__),ROOT/'tests/test_r8_f06_direction_fallback_dev.py',*INPUTS.values()]
  paths += [ROOT/'scripts'/n for n in ('r8_f06_adaptive_material_dev.py','r8_f06_cyclic_material_dev.py',
   'r8_f06_native_material_breadth_dev.py','r8_f06_fibre_log_domain_dev.py','r8_f06_log_domain_check_dev.py')]

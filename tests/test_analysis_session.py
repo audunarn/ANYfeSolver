@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     AnalysisSession,
     BoundaryCondition,
     FixedSupport,
@@ -13,9 +13,9 @@ from anysolver import (
     solve_linear,
     solve_linear_many,
 )
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
-from anysolver.mesh_gen import generate_beam_mesh
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.mesh_gen import generate_beam_mesh
 
 
 def _loads() -> tuple[LoadCase, LoadCase]:

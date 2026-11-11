@@ -212,8 +212,8 @@ def test_linear_midpoint_modal_phase_refinement():
     assert error(fine)<error(coarse)<=.001
 
 def test_stable_so3_successor_zero_arbitrary_axis_branches_and_jets():
-    from anysolver._ge_beam3_centered_so3_strain import base_delta,rotation_jets
-    from anysolver._ge_beam3_mixed_ad import Jet2
+    from anyfesolver._ge_beam3_centered_so3_strain import base_delta,rotation_jets
+    from anyfesolver._ge_beam3_mixed_ad import Jet2
     import pytest
     axis=np.array((1.,2.,-3.));axis/=np.linalg.norm(axis)
     cross=np.array(((0.,-axis[2],axis[1]),(axis[2],0.,-axis[0]),(-axis[1],axis[0],0.)))
@@ -251,12 +251,12 @@ def test_stable_so3_successor_zero_arbitrary_axis_branches_and_jets():
 
 
 def test_stable_so3_definition_identity_restore_and_legacy_policy_isolation():
-    from anysolver._ge_beam3_native_definition import (NativeBeamDefinition,SCHEMA,PRECISE_SCHEMA,STABLE_SO3_SCHEMA)
-    from anysolver._ge_beam3_precise_geometric_work import POLICY as OLD_PRECISE
-    from anysolver._ge_beam3_centered_so3_strain import POLICY as STABLE
-    from anysolver.ge_beam3_native import define_beam,SELECTOR as BEAM
+    from anyfesolver._ge_beam3_native_definition import (NativeBeamDefinition,SCHEMA,PRECISE_SCHEMA,STABLE_SO3_SCHEMA)
+    from anyfesolver._ge_beam3_precise_geometric_work import POLICY as OLD_PRECISE
+    from anyfesolver._ge_beam3_centered_so3_strain import POLICY as STABLE
+    from anyfesolver.ge_beam3_native import define_beam,SELECTOR as BEAM
     from examples.native_connected_bending_dev import build,config
-    from anysolver.ge_beam3_native_connected_dynamics import solve_transient
+    from anyfesolver.ge_beam3_native_connected_dynamics import solve_transient
     import pytest
     owner=build();element=owner.elements[0];inertia=owner.analysis._inertias[element.element_id]
     definitions={}
@@ -279,7 +279,7 @@ def test_stable_so3_definition_identity_restore_and_legacy_policy_isolation():
     _,prefix,mode=run(0)
     # Same physical geometry/settings with the old default work interpretation
     # must refuse the new explicitly bound arithmetic checkpoint.
-    from anysolver.ge_beam3_native_connected_dynamics import create_analysis,SELECTOR
+    from anyfesolver.ge_beam3_native_connected_dynamics import create_analysis,SELECTOR
     old_definitions=[]
     for held in owner.elements:
         r=held.operator.reference

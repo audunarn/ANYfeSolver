@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 
 from examples.general_contact_enriched_patch import build
-from anysolver.e4_pl_enriched import bubble_basis, compile_cell, EnrichedProfileError
+from anyfesolver.e4_pl_enriched import bubble_basis, compile_cell, EnrichedProfileError
 
 
 @pytest.fixture(scope="module")
@@ -22,7 +22,7 @@ def test_four_bubbles_have_zero_boundary_trace_and_independent_values():
 
 def test_complete_stationary_functional_nodal_identity_and_all_bubble_energy(compiled):
     model, system = compiled
-    from anysolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
+    from anyfesolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
     assert type(model.mesh.elements[2]) is NativeParityE4PLS3V2DShellElement
     target_identity = next(row for row in system.definition["element_formulations"] if row["element_id"] == 2)
     assert target_identity["formulation_id"] == model.mesh.elements[2].formulation_id
@@ -65,7 +65,7 @@ def test_complete_stationary_functional_nodal_identity_and_all_bubble_energy(com
 
 
 def test_rotated_cell_recovery_uses_same_global_coordinates_as_energy(compiled):
-    from anysolver._ge_beam3_mixed_ad import rotation_exponential
+    from anyfesolver._ge_beam3_mixed_ad import rotation_exponential
     rotation = rotation_exponential((.21, -.17, .11))
     model, system = build(target_z=-.01, rotation=rotation)
     cell = system.cells[0]
@@ -93,7 +93,7 @@ def test_rectangular_reference_and_immutable_energy_refuse_mutation(compiled):
     for unsupported in ({"director_polarity": -1}, {"reference_surface_offset": .001}):
         with pytest.raises(EnrichedProfileError, match="V2D elastic overlap"):
             build(target_options=unsupported)
-    from anysolver.shell_sections import GeneralizedShellSection
+    from anyfesolver.shell_sections import GeneralizedShellSection
     section = GeneralizedShellSection(A=np.eye(3), B=np.zeros((3, 3)), D=np.eye(3), As=np.eye(2))
     with pytest.raises(EnrichedProfileError, match="V2D elastic overlap"):
         build(target_options={"shell_section": section, "material_direction": (1., 0., 0.)})

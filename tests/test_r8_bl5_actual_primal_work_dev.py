@@ -4,7 +4,7 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell as api
+from anyfesolver import stiffened_shell as api
 from scripts.r8_bl5_actual_primal_work_dev import actual_flat_primal_work
 from test_stiffened_shell_bl5_affine_supports import candidate
 from test_stiffened_shell_l1_assembly_experimental import _bl5_joint_mesh_definition

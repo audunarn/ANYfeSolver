@@ -25,10 +25,10 @@ from scipy import linalg, sparse
 from scipy.sparse.linalg import splu
 from threadpoolctl import threadpool_info
 
-import anysolver
-from anysolver import stiffened_shell
-from anysolver._stiffened_shell_ge_experimental import _linear_equilibrium, _scaled_constraint_gap
-from anysolver._b2_physical_linear_batch_dev import _accurate_sparse_residual
+import anyfesolver
+from anyfesolver import stiffened_shell
+from anyfesolver._stiffened_shell_ge_experimental import _linear_equilibrium, _scaled_constraint_gap
+from anyfesolver._b2_physical_linear_batch_dev import _accurate_sparse_residual
 from scripts.b3_e4_bl5_coherent_aggregation_dev import model
 
 
@@ -37,7 +37,7 @@ def sha(path):
 
 
 def product_provenance(owner=None):
-    modules = dict(candidate=__file__,anysolver=anysolver.__file__,
+    modules = dict(candidate=__file__,anyfesolver=anyfesolver.__file__,
         stiffened_shell=stiffened_shell.__file__,
         equilibrium=sys.modules[_linear_equilibrium.__module__].__file__,
         compensated_residual=sys.modules[_accurate_sparse_residual.__module__].__file__,
@@ -46,7 +46,7 @@ def product_provenance(owner=None):
     if owner is not None:
         modules['owner']=sys.modules[type(owner).__module__].__file__
     for module_name,module in tuple(sys.modules.items()):
-        if module_name.startswith('anysolver.') and getattr(module,'__file__',None):
+        if module_name.startswith('anyfesolver.') and getattr(module,'__file__',None):
             modules['product_module:'+module_name]=module.__file__
     roots = dict(candidate=WORKTREE/'scripts',model=WORKTREE/'scripts',
         frozen_model_fixture=WORKTREE/'tests')
@@ -293,7 +293,7 @@ def evaluate(screen_path=None):
             policy=policy,source_sha256=sha(__file__),model_source_sha256=sha(sys.modules[model.__module__].__file__),
             owner_source_sha256=sha(sys.modules[type(owner).__module__].__file__),
             product_provenance=provenance,
-            anysolver_import=anysolver.__file__,effective=dict(cpu_affinity=psutil.Process().cpu_affinity(),
+            anyfesolver_import=anyfesolver.__file__,effective=dict(cpu_affinity=psutil.Process().cpu_affinity(),
                 numba_threads=numba.get_num_threads(),jit_disabled=bool(numba.config.DISABLE_JIT),pools=pools),
             dimensions=dict(full_q=k.shape[0],free=len(free),physical=len(x),resultants=len(pp),
                             constraints=c.shape[0],fixed=len(fixed)),

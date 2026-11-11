@@ -5,14 +5,14 @@ import pytest
 from scipy.linalg import eigvals
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_coupled_modes import capture, modes, buckling
-from anysolver._ge_beam3_shell_joint_trial import ShellBeamTrialAssembly
-from anysolver._ge_beam3_shell_joint_state import CoupledShellBeamAnalysis
-from anysolver._ge_beam3_shell_joint_state import decode
-from anysolver._ge_beam3_variational_shell import response as shell_response
-from anysolver._ge_beam3_pose_joint import _exp_terms
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver._ge_beam3_coupled_modes import capture, modes, buckling
+from anyfesolver._ge_beam3_shell_joint_trial import ShellBeamTrialAssembly
+from anyfesolver._ge_beam3_shell_joint_state import CoupledShellBeamAnalysis
+from anyfesolver._ge_beam3_shell_joint_state import decode
+from anyfesolver._ge_beam3_variational_shell import response as shell_response
+from anyfesolver._ge_beam3_pose_joint import _exp_terms
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_ge_beam3_coupled_free_beam import build
 from test_ge_beam3_native_generalized_modal import inertia
 
@@ -154,10 +154,10 @@ def test_buckling_without_mass_and_uncondensed_multiplier_pencil(topology, curve
 
 
 def test_nonconservative_programme_rejected_before_spectrum():
-    from anysolver._ge_beam3_retained_generalized_state import Program
-    from anysolver._ge_beam3_coupled_beam_subdomain import CoupledBeamSubdomain
-    from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-    from anysolver._ge_beam3_native_line_loading import LinePattern
+    from anyfesolver._ge_beam3_retained_generalized_state import Program
+    from anyfesolver._ge_beam3_coupled_beam_subdomain import CoupledBeamSubdomain
+    from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+    from anyfesolver._ge_beam3_native_line_loading import LinePattern
     base = fixture('Q4'); a = base.assembly
     program = Program((1.,), DistributedPattern(LinePattern(()), ((1, .1, .0, .0), (2, .1, .0, .0))))
     beam = CoupledBeamSubdomain(a.beam.model, program)
@@ -174,9 +174,9 @@ def test_nonconservative_programme_rejected_before_spectrum():
 
 @pytest.mark.parametrize('topology', ('Q4', 'S3-V2D'))
 def test_actual_active_plastic_coupled_state_is_not_elastic_spectral_authority(topology, tmp_path):
-    from anysolver._ge_beam3_retained_generalized_state import Context, Program
-    from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-    from anysolver._ge_beam3_native_line_loading import LinePattern
+    from anyfesolver._ge_beam3_retained_generalized_state import Context, Program
+    from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+    from anyfesolver._ge_beam3_native_line_loading import LinePattern
     from test_ge_beam3_native_generalized_restart import make as plastic_model
     model = plastic_model('curved-plastic')
     pattern = DistributedPattern(LinePattern(((1, .09, -.03, .02),)), ())
@@ -225,7 +225,7 @@ def test_exact_zero_versus_small_real_eccentric_inertia(offset, tmp_path):
 
 
 def test_inertia_mutation_during_spectral_solution_rejected(monkeypatch):
-    from anysolver import _ge_beam3_coupled_modes as module
+    from anyfesolver import _ge_beam3_coupled_modes as module
     owner = fixture('Q4', False); state = owner.solve(stop_after=0).state; kwargs = arguments(owner)
     def mutate(*args, **controls):
         kwargs['section_inertias'][1][0, 0] += 1.

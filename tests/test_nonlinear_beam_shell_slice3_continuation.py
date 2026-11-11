@@ -40,7 +40,7 @@ from collections.abc import Mapping
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     DisplacementControl,
     FEModel,
@@ -48,17 +48,17 @@ from anysolver import (
     create_shell_element,
     solve_static_nonlinear,
 )
-from anysolver.assembly import build_constraint_transformation
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver.constraint_audit import constraint_residual_summary
-from anysolver.corotational import build_nonlinear_rotating_mpc_map
-from anysolver.elements import BeamElement, CoupledBeamShellElement
-from anysolver.matrix_assembly import (
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver.constraint_audit import constraint_residual_summary
+from anyfesolver.corotational import build_nonlinear_rotating_mpc_map
+from anyfesolver.elements import BeamElement, CoupledBeamShellElement
+from anyfesolver.matrix_assembly import (
     assemble_load_vector,
     assemble_stiffness_matrix,
 )
-from anysolver.mesh_gen import InterpolatedBeamShellMPCElement
-from anysolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver.mesh_gen import InterpolatedBeamShellMPCElement
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
 
 L = 1.0
 W = 0.24
@@ -102,7 +102,7 @@ def _cached(key, factory):
 
 
 def _add_ep_material(model: FEModel, scale: float) -> None:
-    from anysolver.material_curves import (
+    from anyfesolver.material_curves import (
         DNVC208MaterialCurve,
         dnv_c208_steel_curve,
     )
@@ -682,7 +682,7 @@ def test_preyield_plastic_matches_distinct_linear_elastic_material(coupling: str
     fiber_errors = {}
     stress_witnesses = {}
     # Compare physical stress responses, allowing distinct state schemas.
-    from anysolver.corotational import _corotational_cache, _corotational_deformation_state
+    from anyfesolver.corotational import _corotational_cache, _corotational_deformation_state
     for eid, element in elastic["model"].mesh.elements.items():
         if isinstance(element, BeamElement):
             assert element._fiber_plasticity_config(elastic["model"].get_material("steel")) is None
@@ -718,7 +718,7 @@ def test_preyield_plastic_matches_distinct_linear_elastic_material(coupling: str
             # The true elastic shell shortcut has no stored layer stresses.
             # Recover them directly from its own mapped displacement and the
             # isotropic elastic law; do not send it through return mapping.
-            from anysolver.plasticity import lobatto_layers
+            from anyfesolver.plasticity import lobatto_layers
             model = elastic["model"]
             shell = model.mesh.elements[eid]
             dofs = np.concatenate([model.mesh.dof_manager.get_node_dofs(n) for n in shell.node_ids])
@@ -731,7 +731,7 @@ def test_preyield_plastic_matches_distinct_linear_elastic_material(coupling: str
             # A plastic-capable qualified Q4 evaluates its layers at the hybrid
             # assumed strain (compatible strain + dE u); its elastic stress is
             # C times that strain.  The oracle uses the same kinematics.
-            from anysolver import _q4_assumed_strain_plasticity as assumed_strain
+            from anyfesolver import _q4_assumed_strain_plasticity as assumed_strain
             pshell = plastic["model"].mesh.elements[eid]
             pmaterial = plastic["model"].get_material("steel")
             offsets = (assumed_strain.offset_operator(pshell, plastic["model"].mesh, pmaterial)
@@ -771,12 +771,12 @@ def test_preyield_plastic_matches_distinct_linear_elastic_material(coupling: str
 def test_dc_full_target_plasticity_and_equilibrium(coupling: str, monkeypatch, tmp_path) -> None:
     # Persist accepted physical arrays before checking completion. A bounded
     # timeout must retain the actual path, not merely a pytest progress marker.
-    import anysolver.nonlinear_static as nonlinear_static
+    import anyfesolver.nonlinear_static as nonlinear_static
     real_snapshot = nonlinear_static._increment_snapshot
     accepted = []
     real_factorize = nonlinear_static.factorize
     rhs_per_attempt = {}
-    import anysolver._nonlinear_seed as nonlinear_seed
+    import anyfesolver._nonlinear_seed as nonlinear_seed
     real_seed = nonlinear_seed.secant_plane_seed
     observed_failed_seed_origins = set()
 
@@ -891,7 +891,7 @@ def test_dc_seed_cancellation_preserves_restart_inputs(stage):
 
 
 def test_dc_seed_unrelated_linear_error_propagates_and_preserves_inputs(monkeypatch):
-    import anysolver.nonlinear_static as driver
+    import anyfesolver.nonlinear_static as driver
     half = _half_case('direct')
     model, load, probe, grid = _build_ep_model('direct'); _add_tip_load(model, load, grid)
     u = half['result'].displacements.copy(); states = copy.deepcopy(dict(half['result'].element_states))
@@ -1089,7 +1089,7 @@ def test_dc_cancelled_resume_preserves_inputs_and_same_inputs_still_deliver(monk
         equilibrate_initial_state=False,
         record_increment_snapshots=True,
     )
-    import anysolver.nonlinear_static as nonlinear_static
+    import anyfesolver.nonlinear_static as nonlinear_static
     real_snapshot = nonlinear_static._increment_snapshot
     observed_snapshots = []
 

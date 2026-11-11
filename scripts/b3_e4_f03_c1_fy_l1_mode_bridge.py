@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 import subprocess
 
-import anysolver
+import anyfesolver
 import numpy as np
 from scipy import linalg
 from threadpoolctl import threadpool_info, threadpool_limits
@@ -190,7 +190,7 @@ def analyze(saved: dict) -> dict:
         "source_git_of_mode": saved["source_git"],
         "current_source_git": subprocess.check_output(
             ("git", "rev-parse", "HEAD"), text=True).strip(),
-        "imported_anysolver": str(Path(anysolver.__file__).resolve()),
+        "imported_anyfesolver": str(Path(anyfesolver.__file__).resolve()),
         "mode_action_work_shell": saved["shell_work_sq"],
         "mode_action_work_beam": saved["beam_work_sq"],
         "physical_core_shell_quadratic_j": shell_energy,

@@ -4,13 +4,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 from scipy import sparse
-from anysolver import FEModel, InterpolatedBeamShellMPCElement
-from anysolver._director_trace import director_trace_state
-from anysolver.assembly import build_constraint_transformation
-from anysolver.corotational import (build_nonlinear_rotating_mpc_map,rotation_matrix_from_vector,
+from anyfesolver import FEModel, InterpolatedBeamShellMPCElement
+from anyfesolver._director_trace import director_trace_state
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.corotational import (build_nonlinear_rotating_mpc_map,rotation_matrix_from_vector,
     rotation_vector_from_matrix,spatial_moment_from_rotation_covector,SO3MeanDomainError)
-from anysolver.nonlinear_restart import model_configuration_fingerprint
-from anysolver.elements import BeamElement
+from anyfesolver.nonlinear_restart import model_configuration_fingerprint
+from anyfesolver.elements import BeamElement
 
 
 def fixture(offset=(0.,0.,.03),xi=.37):
@@ -203,7 +203,7 @@ def test_unsupported_trace_geometry_is_refused_without_mutation(fault):
 
 
 def elastic_trace_model(policy="director_integrated"):
-    from anysolver import BoundaryCondition,LoadCase
+    from anyfesolver import BoundaryCondition,LoadCase
     model=FEModel("elastic_trace"); model.add_material("elastic",210e9,.3)
     for n,xyz in ((1,(0.,0.,0.)),(2,(1.,0.,0.)),(3,(0.,0.,.03)),(4,(.5,0.,.03)),(5,(1.,0.,.03))): model.add_node(n,*xyz)
     for i,(slave,masters,weights) in enumerate(((3,[1],[1.]),(4,[1,2],[.5,.5]),(5,[2],[1.]))):
@@ -228,7 +228,7 @@ def test_all_new_trace_chart_bounds_refused_without_mutation(fault):
 
 
 def test_baseline_style_linear_checkpoint_and_explicit_linear_identity():
-    from anysolver import solve_static_nonlinear
+    from anyfesolver import solve_static_nonlinear
     baseline,load=elastic_trace_model("linear")
     for element in baseline.mesh.elements.values():
         if isinstance(element,InterpolatedBeamShellMPCElement):
@@ -286,8 +286,8 @@ def test_trace_preserves_exact_nonzero_reference_closure():
 
 
 def test_public_solve_copied_restart_and_cancel_integrity():
-    from anysolver import solve_static_nonlinear
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver import solve_static_nonlinear
+    from anyfesolver.control import CancellationToken,SolveCancelled
     model,load=elastic_trace_model()
     common=dict(kinematics="corotational",num_steps=2,max_iterations=20,tolerance=1e-8,emit_restart_checkpoint=False)
     first=solve_static_nonlinear(model,load,**common)
@@ -313,7 +313,7 @@ def test_public_solve_copied_restart_and_cancel_integrity():
         solve_static_nonlinear(model,load,kinematics="von_karman")
     with pytest.raises(ValueError,match="rotating-MPC"):
         solve_static_nonlinear(model,load,kinematics="corotational",corotational_tangent="rotated")
-    from anysolver.nonlinear_restart import NonlinearCheckpointError
+    from anyfesolver.nonlinear_restart import NonlinearCheckpointError
     checkpointed=solve_static_nonlinear(model,load,**dict(common,emit_restart_checkpoint=True))
     assert checkpointed.status=="completed" and checkpointed.restart_checkpoint is not None
     resumed=solve_static_nonlinear(model,load,restart_checkpoint=checkpointed.restart_checkpoint,**common)

@@ -6,8 +6,8 @@ from examples.general_contact_beam_s3_transient_directional_tilted import prepar
 
 
 def test_current_public_guard_for_equilibrated_tilted_touch(tmp_path):
-    from anysolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
-    from anysolver.dynamics import TransientConfig
+    from anyfesolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
+    from anyfesolver.dynamics import TransientConfig
     m,d,s,u,v,load,report=prepare()
     assert report['exact_touch'] and report['contact_null_norm']>0
     path=Path(os.environ.get('CONTACT_APP_RESULT_RECORD',str(tmp_path/'actual_result.json')))
@@ -39,11 +39,11 @@ def test_tilted_work_wrench_and_loaded_energy(tmp_path):
     from fractions import Fraction as Q
     from examples.general_contact_beam_s3_transient_directional_tilted import run
     from test_general_contact_beam_s3_directional_coupling import _independent_gap_coefficients,_reference_directional
-    from anysolver.general_contact.beam_s3_directional_rates import EquilibratedDirectionalBeamS3Manager,directional_coefficients,directional_operator
-    from anysolver.assembly import assemble_mass_matrix
-    from anysolver.nonlinear_static import _assemble_nonlinear_system
-    from anysolver.nonlinear_state import discard_active_state_candidate
-    from anysolver.general_contact.runtime import suspend_contact
+    from anyfesolver.general_contact.beam_s3_directional_rates import EquilibratedDirectionalBeamS3Manager,directional_coefficients,directional_operator
+    from anyfesolver.assembly import assemble_mass_matrix
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system
+    from anyfesolver.nonlinear_state import discard_active_state_candidate
+    from anyfesolver.general_contact.runtime import suspend_contact
     m,r,initial=run();_,d,s,u,v,load,_=prepare();manager=EquilibratedDirectionalBeamS3Manager(m,d,s,initial_displacement=u)
     ids={n:m.mesh.dof_manager.get_node_dofs(n) for n in m.mesh.nodes}
     refs={n:tuple(Q(float(x)) for x in m.mesh.nodes[n].coords()) for n in m.mesh.nodes}
@@ -57,9 +57,9 @@ def test_tilted_work_wrench_and_loaded_energy(tmp_path):
         fh,_,_=manager.evaluate(u+h*v);difference=(fh-f0)/h-expectedD
         force_rates.append(dict(h=h,error=float(max(np.max(abs(difference[trans]))/.5,np.max(abs(difference[rot]))/.25))))
     M,_=assemble_mass_matrix(m);external=np.array(initial['load_forces']);energy=[];wrench=[];equilibrium=[];rotational_balance=[];reduced_equilibrium=[];null_equilibrium=[];contact_couples=[]
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
-    from anysolver.assembly import build_constraint_transformation
-    from anysolver.algebraic_dynamics import build_declared_algebraic_basis
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.assembly import build_constraint_transformation
+    from anyfesolver.algebraic_dynamics import build_declared_algebraic_basis
     K0,_=assemble_stiffness_matrix(m);_,_,T,_,independent,_=build_constraint_transformation(K0,np.zeros(len(u)),m)
     basis=build_declared_algebraic_basis(m,M,(T.T@M@T).tocsr(),T,independent,dense_size_limit=512);Z=basis.reduced_basis
     # Actual reducer has class-preserving trace ties; force and couple scales stay separate.
@@ -107,8 +107,8 @@ def test_tilted_work_wrench_and_loaded_energy(tmp_path):
 def test_equilibrated_initial_refusals_and_restart_binding(tmp_path):
     import numpy as np
     from dataclasses import replace
-    from anysolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
-    from anysolver.dynamics import TransientConfig
+    from anyfesolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
+    from anyfesolver.dynamics import TransientConfig
     from examples.general_contact_beam_s3_transient_directional_tilted import run
     m,d,s,u,v,load,initial=prepare();controls=ContactTransientSolverControls(allow_equilibrated_directional_beam_s3_dev=True)
     for bad in (1,None,'yes'):
@@ -121,7 +121,7 @@ def test_equilibrated_initial_refusals_and_restart_binding(tmp_path):
     with pytest.raises(ValueError,match='constant nodal'):attempt(dead=None)
     velocity=v.copy();velocity[m.mesh.dof_manager.get_node_dofs(3)[4]]+=.01;velocity[m.mesh.dof_manager.get_node_dofs(4)[4]]+=.01;velocity[m.mesh.dof_manager.get_node_dofs(5)[4]]+=.01
     with pytest.raises(ValueError,match='algebraic velocity'):attempt(velocity=velocity)
-    from anysolver import LoadCase
+    from anyfesolver import LoadCase
     for node,axis,message in ((1,2,'initial total force'),(3,4,'initial algebraic force')):
         values=np.array(initial['load_forces']);values[m.mesh.dof_manager.get_node_dofs(node)[axis]]+=.001
         unbalanced=LoadCase('unbalanced_'+str(axis))
@@ -129,12 +129,12 @@ def test_equilibrated_initial_refusals_and_restart_binding(tmp_path):
             ids=m.mesh.dof_manager.get_node_dofs(n)
             unbalanced.add_nodal_load(n,forces=tuple(values[ids[:3]]),moments=tuple(values[ids[3:]]))
         with pytest.raises(ValueError,match=message):attempt(dead=unbalanced)
-    from anysolver.general_contact.transient import ContactNodalLoadHistory
+    from anyfesolver.general_contact.transient import ContactNodalLoadHistory
     with pytest.raises(ValueError,match='nodal load history'):
         solve_transient_contact(m,d,TransientConfig(1.e-5,3.e-5,initial_displacement=u,initial_velocity=v),base_load_case=load,
             nodal_load_history=ContactNodalLoadHistory(((0.,1.),(1.e-4,1.))),contact_settings=s,solver_controls=controls)
     _,r,_=run(end=1.e-5)
-    from anysolver import LoadCase
+    from anyfesolver import LoadCase
     changed=LoadCase('changed_equilibrium');changed.add_nodal_load(1,forces=(0,0,.001))
     with pytest.raises(ValueError,match='incompatible'):attempt(dead=changed,restart=r.restart_checkpoint)
     from examples.general_contact_beam_s3_transient_directional import run as oldrun
@@ -146,11 +146,11 @@ def test_equilibrated_initial_refusals_and_restart_binding(tmp_path):
 
 @pytest.mark.parametrize('failure',('cancel','exception','retry'))
 def test_loaded_initial_transaction_boundaries(monkeypatch,tmp_path,failure):
-    import anysolver.general_contact.transient as driver
-    import anysolver.general_contact.beam_s3_transient as path
-    from anysolver.control import CancellationToken,SolveCancelled
-    from anysolver.dynamics import TransientConfig
-    from anysolver.general_contact.runtime import active_contact_manager
+    import anyfesolver.general_contact.transient as driver
+    import anyfesolver.general_contact.beam_s3_transient as path
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.dynamics import TransientConfig
+    from anyfesolver.general_contact.runtime import active_contact_manager
     m,d,s,u,v,load,initial=prepare();bound=path.hermite_gap_bounds;commit=driver.commit_state_candidate;calls=0;commits=[];token=CancellationToken()
     def checked(*args,**kwargs):
         nonlocal calls
@@ -178,11 +178,11 @@ def test_V20_secant_corruption_and_legacy_profile_identity(tmp_path):
     import copy
     import numpy as np
     from examples.general_contact_beam_s3_transient_directional_tilted import run
-    from anysolver.nonlinear_restart import analysis_configuration_fingerprint
-    from anysolver.assembly import build_constraint_transformation
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
-    from anysolver.dynamics import TransientConfig
-    from anysolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
+    from anyfesolver.nonlinear_restart import analysis_configuration_fingerprint
+    from anyfesolver.assembly import build_constraint_transformation
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.dynamics import TransientConfig
+    from anyfesolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
     m,r,initial=run(end=1.e-5);changed=copy.deepcopy(r.restart_checkpoint)
     m.apply_boundary_conditions();K,_=assemble_stiffness_matrix(m);_,_,_,_,ids,_=build_constraint_transformation(K,np.zeros(len(initial['pose'])),m)
     index=list(ids).index(m.mesh.dof_manager.get_node_dofs(3)[3]);changed['state']['acceleration'][index]+=.1
@@ -194,13 +194,13 @@ def test_V20_secant_corruption_and_legacy_profile_identity(tmp_path):
                     reason='archived compatibility needs explicit baseline and execution authority')
 def test_V20_archived_legacy_profile_identity(tmp_path):
     import importlib.util,sys,hashlib
-    from anysolver.dynamics import TransientConfig
-    from anysolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
+    from anyfesolver.dynamics import TransientConfig
+    from anyfesolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
     # Ordinary checks never discover or import a machine-local archived owner.
     # An authorised reference runner supplies its exact baseline explicitly.
     baseline=Path(os.environ['ANYSOLVER_CONTACT_PRE_V20_BASELINE'])
     if not baseline.is_file():raise ValueError('explicit pre-V20 baseline is not a file')
-    name='anysolver.general_contact._pre_V20_transient';spec=importlib.util.spec_from_file_location(name,baseline);old=importlib.util.module_from_spec(spec);sys.modules[name]=old
+    name='anyfesolver.general_contact._pre_V20_transient';spec=importlib.util.spec_from_file_location(name,baseline);old=importlib.util.module_from_spec(spec);sys.modules[name]=old
     rows=[]
     try:
         spec.loader.exec_module(old)

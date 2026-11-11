@@ -4,14 +4,14 @@ from hashlib import sha256
 import numpy as np
 import pytest
 from scipy.linalg import eigh
-from anysolver import _ge_beam3_native_fibre_current_modal as modal
-from anysolver._ge_beam3_native_analysis import NativeBeamAnalysis
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
-from anysolver._ge_beam3_native_fibre_restart import decode_checkpoint,_forces
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver.control import CancellationToken,SolveCancelled
+from anyfesolver import _ge_beam3_native_fibre_current_modal as modal
+from anyfesolver._ge_beam3_native_analysis import NativeBeamAnalysis
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
+from anyfesolver._ge_beam3_native_fibre_restart import decode_checkpoint,_forces
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver.control import CancellationToken,SolveCancelled
 from test_ge_beam3_fibre_line_program import model as source_model
 
 FORCES=((3,.35,-.012,.006),)
@@ -143,7 +143,7 @@ def test_full_custody_mutations_rejected(loaded,mutation):
 
 
 def test_cancellation_and_explicit_bounds_precede_decode(monkeypatch):
-    from anysolver import _ge_beam3_native_fibre_restart as restart
+    from anyfesolver import _ge_beam3_native_fibre_restart as restart
     made=make();token=CancellationToken();token.cancel()
     monkeypatch.setattr(restart,'decode_checkpoint',lambda *a,**kw:pytest.fail('decoded rejected request'))
     with pytest.raises(ValueError,match='explicit spectral bounds'):

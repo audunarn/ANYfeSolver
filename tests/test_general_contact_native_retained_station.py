@@ -4,11 +4,11 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_centered_reference import (
+from anyfesolver._ge_beam3_centered_reference import (
     CenteredCurvedBeam3ReferenceGeometry,
 )
-from anysolver._ge_beam3_fibre_line_work import evaluate as native_line_work
-from anysolver.general_contact.native_retained_station import (
+from anyfesolver._ge_beam3_fibre_line_work import evaluate as native_line_work
+from anyfesolver.general_contact.native_retained_station import (
     NativeRetainedRoundStation,
 )
 
@@ -145,7 +145,7 @@ def test_native_round_station_rejects_ambiguous_or_invalid_geometry():
 @pytest.mark.parametrize('xi,angle',[(-.47,.3),(.63,2*np.pi-2.4)])
 def test_exact_spatial_exponential_variations_match_independent_jet2(curved,xi,angle):
     from scipy.spatial.transform import Rotation
-    from anysolver._ge_beam3_mixed_ad import Jet2,so3_exp,matmul,constant_matrix
+    from anyfesolver._ge_beam3_mixed_ad import Jet2,so3_exp,matmul,constant_matrix
     reference=_reference(curved)
     station=NativeRetainedRoundStation(7,reference,xi,.03,angle)
     positions=reference.coordinates.copy();low=np.zeros((3,3))

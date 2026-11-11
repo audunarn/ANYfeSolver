@@ -117,7 +117,7 @@ def main():
     if not(sys.flags.isolated and sys.flags.no_site and sys.dont_write_bytecode):
         raise ValueError('launch with -I -S -B')
     authority()
-    out=Path(tempfile.mkdtemp(prefix='anysolver-g3c-so3-kernel-'))
+    out=Path(tempfile.mkdtemp(prefix='anyfesolver-g3c-so3-kernel-'))
     print('DIAGNOSTICS '+str(out),flush=True)
     write(out/'lease.json',dict(kind='PRIVATE_KERNEL_DEVELOPMENT_NOT_GRAPH_QUALIFICATION',lane=lane,inventory=INVENTORIES[lane],candidate=clean_identity(),inputs=inputs()))
     lease_hash=sha256((out/'lease.json').read_bytes()).hexdigest()

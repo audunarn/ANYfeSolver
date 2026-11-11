@@ -6,10 +6,10 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import BoundaryCondition, solve_static_nonlinear
-from anysolver.general_contact import ContactPathControl, ContactPathProgram
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.s3_sliding_friction import (
+from anyfesolver import BoundaryCondition, solve_static_nonlinear
+from anyfesolver.general_contact import ContactPathControl, ContactPathProgram
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_sliding_friction import (
     S3SlidingFrictionSettings, S3SlidingFrictionManager,
 )
 from test_general_contact_s3_friction_static import _case, _mode

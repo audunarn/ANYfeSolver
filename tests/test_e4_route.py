@@ -176,7 +176,7 @@ def test_e4_oracles_are_closed_world_standard_library_programs() -> None:
             elif isinstance(node, ast.ImportFrom) and node.module:
                 imports.add(node.module.split(".")[0])
         assert imports <= permitted | {"__future__"}
-        assert "anysolver" not in imports
+        assert "anyfesolver" not in imports
         source = path.read_text(encoding="utf-8")
         assert "BLOCKED_E4_CONTRACT_NONDETERMINISM_OR_REVIEW" in source
         assert "allow_nan=False" in source

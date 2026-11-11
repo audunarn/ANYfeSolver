@@ -1,7 +1,7 @@
 """Experimental fixed physical displacement, restart and physical pad recovery."""
 import json
 import numpy as np
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from stiffened_shell_ge_distributing_finite import definition
 
 

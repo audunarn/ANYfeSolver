@@ -4,12 +4,12 @@ from dataclasses import replace
 import json
 from types import SimpleNamespace
 
-import anysolver
+import anyfesolver
 import numpy as np
 import pytest
-from anysolver import runtime
-from anysolver import anystructure_fem_mode
-from anysolver import arc_length
+from anyfesolver import runtime
+from anyfesolver import anystructure_fem_mode
+from anyfesolver import arc_length
 
 
 def _flat_geometry() -> dict[str, object]:
@@ -244,11 +244,11 @@ def test_root_exports_arc_length_and_generic_generated_geometry_api() -> None:
         "run_generated_geometry_fem",
     }
 
-    assert expected_root_names <= set(anysolver.__all__)
-    assert anysolver.ArcLengthControl is arc_length.ArcLengthControl
-    assert anysolver.ArcLengthResult is arc_length.ArcLengthResult
-    assert anysolver.ArcLengthStep is arc_length.ArcLengthStep
-    assert anysolver.solve_static_arc_length is arc_length.solve_static_arc_length
+    assert expected_root_names <= set(anyfesolver.__all__)
+    assert anyfesolver.ArcLengthControl is arc_length.ArcLengthControl
+    assert anyfesolver.ArcLengthResult is arc_length.ArcLengthResult
+    assert anyfesolver.ArcLengthStep is arc_length.ArcLengthStep
+    assert anyfesolver.solve_static_arc_length is arc_length.solve_static_arc_length
 
 
 def test_generic_generated_geometry_aliases_match_historical_api() -> None:
@@ -259,9 +259,9 @@ def test_generic_generated_geometry_aliases_match_historical_api() -> None:
     }
 
     assert generic_names <= set(anystructure_fem_mode.__all__)
-    assert anysolver.GeneratedGeometryFEMConfig is anysolver.AnyStructureFEMConfig
-    assert anysolver.GeneratedGeometryFEMResult is anysolver.AnyStructureFEMResult
-    assert anysolver.run_generated_geometry_fem is anysolver.run_anystructure_fem_mode
+    assert anyfesolver.GeneratedGeometryFEMConfig is anyfesolver.AnyStructureFEMConfig
+    assert anyfesolver.GeneratedGeometryFEMResult is anyfesolver.AnyStructureFEMResult
+    assert anyfesolver.run_generated_geometry_fem is anyfesolver.run_anystructure_fem_mode
 
     assert (
         anystructure_fem_mode.GeneratedGeometryFEMConfig

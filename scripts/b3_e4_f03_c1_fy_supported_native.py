@@ -13,7 +13,7 @@ from pathlib import Path
 import subprocess
 from time import monotonic
 
-import anysolver
+import anyfesolver
 import numpy as np
 from scipy import sparse
 from threadpoolctl import threadpool_info, threadpool_limits
@@ -117,8 +117,8 @@ def one_case(xs, ys, shell_k, beam_halves: int) -> dict:
 
 def evaluate() -> dict:
     source = Path(__file__).resolve().parents[1]
-    if Path(anysolver.__file__).resolve().parent != (source / "src" / "anysolver").resolve():
-        raise RuntimeError("bounded Fy runner imported another ANYsolver checkout")
+    if Path(anyfesolver.__file__).resolve().parent != (source / "src" / "anyfesolver").resolve():
+        raise RuntimeError("bounded Fy runner imported another ANYfeSolver checkout")
     xs, ys = local_grid(8, transverse_cells=4)
     shell_k, _ = raw_e4_tangent(xs, ys, thickness=.035)
     return {
@@ -126,7 +126,7 @@ def evaluate() -> dict:
         "classification": "loaded native selective-fz line, not physical law or multiplier qualification",
         "source_git": subprocess.check_output(("git", "rev-parse", "HEAD"), text=True).strip(),
         "source_sha256": digest(Path(__file__)),
-        "imported_anysolver": str(Path(anysolver.__file__).resolve()),
+        "imported_anyfesolver": str(Path(anyfesolver.__file__).resolve()),
         "physical_model": "x8/y4 35 mm Q4 plate, square generalized B3 with C1 2 um reference, left shell and B3 root fixed, x=.9-1 m line",
         "load": "+100 N Fy at native beam tip reference axis",
         "cases": [one_case(xs, ys, shell_k, halves) for halves in (18, 14)],

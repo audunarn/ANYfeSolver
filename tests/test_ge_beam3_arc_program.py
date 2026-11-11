@@ -6,10 +6,10 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-import anysolver._ge_beam3_arc_program as driver
-from anysolver._ge_beam3_load_program import ForceProgram, solve_force_program
-from anysolver._ge_beam3_p5_loads.core import canonical, sha
-from anysolver.control import CancellationToken
+import anyfesolver._ge_beam3_arc_program as driver
+from anyfesolver._ge_beam3_load_program import ForceProgram, solve_force_program
+from anyfesolver._ge_beam3_p5_loads.core import canonical, sha
+from anyfesolver.control import CancellationToken
 from test_ge_beam3_native_load_state import problem
 from test_ge_beam3_displacement_program import arch
 
@@ -174,10 +174,10 @@ def test_invalid_arc_json_is_rejected(accepted,kind):
 
 def test_native_arc_is_covariant_under_a_proper_coordinate_frame_change():
     from copy import deepcopy
-    from anysolver.fe_core import FEModel
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
-    from anysolver._ge_beam3_p5_loads import NativeP5BeamElement, DirectedHardeningSection
-    from anysolver._ge_beam3_p5.algebra import rotation
+    from anyfesolver.fe_core import FEModel
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+    from anyfesolver._ge_beam3_p5_loads import NativeP5BeamElement, DirectedHardeningSection
+    from anyfesolver._ge_beam3_p5.algebra import rotation
     original = problem(); rotated = FEModel('rotated-native-arc'); s = rotation(np.array([.7,-.4,.3]))
     for i,node in original.mesh.nodes.items(): rotated.add_node(i,*(s@np.array(node.coords())))
     for i,e in original.mesh.elements.items():

@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     LoadCase,
     RecoveryConfig,
     ResourcePolicyError,
@@ -24,9 +24,9 @@ from anysolver import (
     select_node_displacements,
     solve_transient_newmark,
 )
-from anysolver.boundary import BoundaryCondition, FixedSupport
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
+from anyfesolver.boundary import BoundaryCondition, FixedSupport
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
 
 
 def test_recovery_config_selects_nodes_elements_and_components() -> None:

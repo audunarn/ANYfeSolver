@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from anysolver import _ge_beam3_mixed_ad as ad
-from anysolver.corotational import rotation_matrix_from_vector
+from anyfesolver import _ge_beam3_mixed_ad as ad
+from anyfesolver.corotational import rotation_matrix_from_vector
 
 from scripts._b3_e4_f03_shell_finite_pose_candidate import (
     DirectionalPose, reference_nodes,

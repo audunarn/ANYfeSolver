@@ -5,13 +5,13 @@ from pathlib import Path
 from types import SimpleNamespace
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_retained_translation_control as control
-from anysolver import _ge_beam3_retained_translation_modal as modal
-from anysolver._ge_beam3_retained_generalized_state import _retained_size
-from anysolver._ge_beam3_native_generalized_program import model_identity,retained_model_identity
-from anysolver._ge_beam3_native_generalized_restart import _model
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.control import CancellationToken,SolveCancelled
+from anyfesolver import _ge_beam3_retained_translation_control as control
+from anyfesolver import _ge_beam3_retained_translation_modal as modal
+from anyfesolver._ge_beam3_retained_generalized_state import _retained_size
+from anyfesolver._ge_beam3_native_generalized_program import model_identity,retained_model_identity
+from anyfesolver._ge_beam3_native_generalized_restart import _model
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken,SolveCancelled
 from docs.reference_cases import ge_beam3_refined_controlled_case as case
 from docs.reference_cases import ge_beam3_retained_arch_case as old_case
 from docs.reference_cases.ge_beam3_retained_prestress_protocol import strict_bytes

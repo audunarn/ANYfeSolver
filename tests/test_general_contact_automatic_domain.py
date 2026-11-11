@@ -5,8 +5,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver import FEModel,BoundaryCondition,create_shell_element
-from anysolver.general_contact import (ContactSurface,ContactInteraction,RigidContactBody,ContactSolverSettings,
+from anyfesolver import FEModel,BoundaryCondition,create_shell_element
+from anyfesolver.general_contact import (ContactSurface,ContactInteraction,RigidContactBody,ContactSolverSettings,
     AutomaticContactParticipant as Participant,AutomaticContactDefaults as Defaults,
     AutomaticContactDomain as Domain,AutomaticContactDomainError,
     resolve_automatic_contact_domain as resolve,verify_automatic_contact_resolution as verify)
@@ -77,7 +77,7 @@ def test_coarser_median_reference_role_and_stable_tie():
 
 
 def test_q4_bilinear_area_is_not_diagonal_area():
-    from anysolver.general_contact.automatic_domain import _face_area
+    from anyfesolver.general_contact.automatic_domain import _face_area
     corners=np.array(((0.,0.,0.),(1.,0.,0.),(1.,1.,.3),(0.,1.,0.)))
     # Independent graph z=.3*x*y on unit square, high-order 1D quadrature product.
     nodes,weights=np.polynomial.legendre.leggauss(40);x=(nodes+1)/2
@@ -88,7 +88,7 @@ def test_q4_bilinear_area_is_not_diagonal_area():
 
 
 def test_exact_equal_q4_s3_area_role_and_rigid_transform():
-    from anysolver.general_contact.automatic_domain import _face_area,_coarser_source
+    from anyfesolver.general_contact.automatic_domain import _face_area,_coarser_source
     q4=np.array(((0.,0.,0.),(1.,0.,0.),(1.,1.,0.),(0.,1.,0.)))
     s3=np.array(((0.,0.,0.),(2.,0.,0.),(0.,1.,0.)))
     rotation=np.array(((0.,-1.,0.),(1.,0.,0.),(0.,0.,1.)))
@@ -99,7 +99,7 @@ def test_exact_equal_q4_s3_area_role_and_rigid_transform():
 
 
 def test_reference_fold_nonfinite_and_degenerate_refusal():
-    from anysolver.general_contact.automatic_domain import _face_area
+    from anyfesolver.general_contact.automatic_domain import _face_area
     for corners in (
         ((0.,0.,0.),(1.,1.,0.),(1.,0.,0.),(0.,1.,0.)),
         ((0.,0.,0.),(1.,0.,0.),(2.,0.,0.),(3.,0.,0.)),
@@ -123,7 +123,7 @@ def test_s3_formulation_owned_selected_skin_offset():
 
 
 def test_physical_skin_binding_median_and_persistence():
-    from anysolver.general_contact.automatic_domain import _reference,_coarser_source
+    from anyfesolver.general_contact.automatic_domain import _reference,_coarser_source
     model=FEModel('median-not-total');model.add_material('elastic',1e5,.3,density=1.)
     participants=[];eid=0
     for name,count,area,z in (('many-fine',2,.5,.1),('one-coarse',1,.75,0.)):
@@ -251,7 +251,7 @@ def test_oblique_rigid_component_persistence_is_bit_exact():
 @pytest.mark.skipif(os.environ.get('ANY_RUN_AUTOMATIC_SHELL_PAIR')!='1',
                    reason='bounded ordinary Q4/S3 automatic-domain integration')
 def test_actual_nonmatching_shell_pair_path_parity_and_restart():
-    from anysolver import ContactDefinition,solve_static_nonlinear
+    from anyfesolver import ContactDefinition,solve_static_nonlinear
     from examples.general_contact_automatic_domain import build_shell_pair,solve_shell_pair
     model,domain,settings,resolution,path=build_shell_pair()
     selected=next(row for row in resolution.selections if row.disposition=='resolved')
@@ -273,9 +273,9 @@ def test_actual_nonmatching_shell_pair_path_parity_and_restart():
         if result.restart_checkpoint is not None:report['stages'][name]['checkpoint']=result.to_restart_checkpoint()
         save()
         assert result.status=='completed',result.failure_reason
-    import anysolver,numba
+    import anyfesolver,numba
     from threadpoolctl import threadpool_info
-    report['runtime_before_solve']=dict(anysolver_path=anysolver.__file__,
+    report['runtime_before_solve']=dict(anyfesolver_path=anyfesolver.__file__,
         automatic_domain_path=__import__('inspect').getfile(resolve),
         jit_disabled=bool(numba.config.DISABLE_JIT),numba_threads=int(numba.get_num_threads()),
         pools=threadpool_info())
@@ -342,7 +342,7 @@ def test_actual_nonmatching_shell_pair_path_parity_and_restart():
                    reason='bounded refined projected Q4/S3 automatic-domain press')
 def test_actual_projected_shell_pair_press_and_checkpoint(monkeypatch):
     from examples.general_contact_automatic_domain import build_projected_shell_pair,solve_shell_pair
-    import anysolver,numba
+    import anyfesolver,numba
     from threadpoolctl import threadpool_info
     model,domain,settings,resolution,path=build_projected_shell_pair()
     report=dict(fixture='refined_projected_penalty_separate_from_single_Q4_penalty',
@@ -351,7 +351,7 @@ def test_actual_projected_shell_pair_press_and_checkpoint(monkeypatch):
         criteria=dict(force_scale_n=.02,moment_scale_nm=.02,energy_scale_j=2e-7,
             scale_basis='k1000 * total Q4 area1 * nominal20um penetration; lever1m',
             wrench_normalized_tolerance=1e-6,gap_budget_m=5e-5),
-        runtime_before_solve=dict(anysolver_path=anysolver.__file__,
+        runtime_before_solve=dict(anyfesolver_path=anyfesolver.__file__,
             automatic_domain_path=__import__('inspect').getfile(resolve),
             jit_disabled=bool(numba.config.DISABLE_JIT),numba_threads=int(numba.get_num_threads()),
             pools=threadpool_info()))
@@ -360,7 +360,7 @@ def test_actual_projected_shell_pair_press_and_checkpoint(monkeypatch):
             Path(os.environ['AUTOMATIC_DOMAIN_RESULT']).write_text(json.dumps(report,indent=2,default=lambda x:x.item() if isinstance(x,np.generic) else x.tolist()),encoding='utf-8')
     save()
     if os.environ.get('AUTOMATIC_WORKFLOW_STAGE','').startswith('press-trace'):
-        from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+        from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
         original=GeneralS3PatchManager._swept_admissible
         trace=[];report['proposal_trace']=trace
         def observed(manager,start,end):
@@ -401,10 +401,10 @@ def test_actual_projected_shell_pair_press_and_checkpoint(monkeypatch):
                    reason='bounded installed refined automatic deformable lifecycle')
 def test_actual_projected_shell_pair_lifecycle_and_restart():
     """One guarded stage per invocation, sharing only retained JSON evidence."""
-    import anysolver,numba
+    import anyfesolver,numba
     from threadpoolctl import threadpool_info
-    from anysolver import ContactDefinition,solve_static_nonlinear
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver import ContactDefinition,solve_static_nonlinear
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     from examples.general_contact_automatic_domain import build_projected_shell_pair,solve_shell_pair
     raw_stage=os.environ.get('AUTOMATIC_WORKFLOW_STAGE','full-press-v3')
     press_only='-press' in raw_stage
@@ -419,7 +419,7 @@ def test_actual_projected_shell_pair_lifecycle_and_restart():
             force_moment_normalized_tolerance=1e-6,gap_budget_m=5e-5,
             displacement_parity_rtol=1e-7,displacement_parity_atol_m=1e-9,
             scale_basis='k1000 * area1 * nominal20um penetration; lever1m'),
-        runtime_before_solve=dict(anysolver_path=anysolver.__file__,
+        runtime_before_solve=dict(anyfesolver_path=anyfesolver.__file__,
             automatic_domain_path=__import__('inspect').getfile(resolve),
             jit_disabled=bool(numba.config.DISABLE_JIT),numba_threads=int(numba.get_num_threads()),
             pools=threadpool_info()))
@@ -496,7 +496,7 @@ def test_actual_projected_shell_pair_lifecycle_and_restart():
         assert abs(result.displacements[target_dof])>1e-10
         manager=GeneralS3PatchManager(model,resolution.definition,settings)
         residual,_,contact_result=manager.evaluate(result.displacements,tangent=False)
-        from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+        from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
         structural,_,states=_assemble_nonlinear_system(model,result.displacements,result.element_states,
             5,tangent=False,kinematics='von_karman')
         _discard_nonlinear_state_candidate(states)

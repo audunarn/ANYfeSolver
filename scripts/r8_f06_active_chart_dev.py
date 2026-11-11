@@ -9,7 +9,7 @@ def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def write(p,v):Path(p).write_text(json.dumps(v,indent=2,allow_nan=False)+'\n')
 
 def physical_to_chart(state, physical, shell_count):
-    from anysolver._ge_beam3_pose_joint import _exp_terms
+    from anyfesolver._ge_beam3_pose_joint import _exp_terms
     result=physical.copy()
     for start in range(3,shell_count,6):
         result[start:start+3]=__import__('numpy').linalg.solve(_exp_terms(state.q[start:start+3])[1],physical[start:start+3])
@@ -36,10 +36,10 @@ def run_case(family,out):
     from scipy.sparse.linalg import spsolve
     from scipy.spatial.transform import Rotation
     from anymaterial import DNVC208MaterialCurve
-    from anysolver import stiffened_shell as ss
-    from anysolver._ge_beam3_pose_joint import _exp_terms
-    from anysolver._stiffened_shell_rotation_charts import physical_frames
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver import stiffened_shell as ss
+    from anyfesolver._ge_beam3_pose_joint import _exp_terms
+    from anyfesolver._stiffened_shell_rotation_charts import physical_frames
+    from anyfesolver.control import CancellationToken,SolveCancelled
     from test_stiffened_shell_q4_pullback_owner import _definition
     from test_stiffened_shell_ge_finite_experimental import _actions,_q4_shell_j2_panel
     runtime_before=dict(affinity=psutil.Process().cpu_affinity(),optimize=sys.flags.optimize,numba=dict(disable_jit=bool(numba.config.DISABLE_JIT),num_threads=numba.get_num_threads()),pools=threadpoolctl.threadpool_info())
@@ -138,7 +138,7 @@ def run_case(family,out):
     except SolveCancelled:pass
     else:raise AssertionError('pre-cancel rebase unexpectedly accepted')
     assert owner.checkpoint()==raw_after
-    imports={n:str(Path(m.__file__).resolve()) for n,m in sys.modules.items() if n.startswith('anysolver') and getattr(m,'__file__',None)}
+    imports={n:str(Path(m.__file__).resolve()) for n,m in sys.modules.items() if n.startswith('anyfesolver') and getattr(m,'__file__',None)}
     site=Path(os.environ['F06_SELECTED_SITE']).resolve()
     assert all(Path(path).is_relative_to(site) for path in imports.values())
     for path in imports.values():
@@ -172,7 +172,7 @@ def supervise(family,site,name,cache=None,probe=None):
     env=os.environ.copy();settings=dict(OMP_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',MKL_NUM_THREADS='1',NUMBA_NUM_THREADS='1',VECLIB_MAXIMUM_THREADS='1',NUMBA_DISABLE_JIT='1',PYTHONOPTIMIZE='0',PYTHONDONTWRITEBYTECODE='1',PYTHONNOUSERSITE='1',PYTEST_DISABLE_PLUGIN_AUTOLOAD='1',PYTEST_ADDOPTS='',NUMEXPR_NUM_THREADS='1');env.update(settings)
     if cache:env['F06_PREFIX_CACHE']=str(Path(cache).resolve())
     if probe:env['F06_PROBE']=probe
-    source_hashes={p.relative_to(ROOT/'src').as_posix():sha(p) for p in (ROOT/'src/anysolver').rglob('*.py')}
+    source_hashes={p.relative_to(ROOT/'src').as_posix():sha(p) for p in (ROOT/'src/anyfesolver').rglob('*.py')}
     snapshots=out/'source-snapshots';snapshots.mkdir();(snapshots/'runner.py').write_bytes(Path(__file__).read_bytes())
     fixtures={}
     for rel in ('tests/test_r8_f06_active_chart_dev.py','tests/test_stiffened_shell_q4_pullback_owner.py','tests/test_stiffened_shell_ge_finite_experimental.py','tests/test_stiffened_shell_ge_experimental.py'):

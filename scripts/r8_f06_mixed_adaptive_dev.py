@@ -10,7 +10,7 @@ INPUT=BASE/'coupled-resume-v1/attempt-installed-reload1/anchored.bin'
 INPUT_SHA='0e45fec011a86a0cf80be93d2a311d7eff2604d4dec01b5a3bc846a8b39359ec'
 
 def bindings():
- paths=[ROOT/'src/anysolver'/p for p in (*infra.PRODUCTS,'_stiffened_shell_increment_control.py',
+ paths=[ROOT/'src/anyfesolver'/p for p in (*infra.PRODUCTS,'_stiffened_shell_increment_control.py',
   '_stiffened_shell_staged_load_experimental.py','_stiffened_shell_q4_algorithmic_pullback.py','_stiffened_shell_algorithmic_pullback.py')]
  paths += [ROOT/'scripts'/p for p in ('r8_f06_cyclic_material_dev.py','r8_f06_native_material_breadth_dev.py',
   'r8_f06_coupled_resume_dev.py','r8_f06_fibre_log_domain_dev.py','r8_f06_log_domain_check_dev.py')]

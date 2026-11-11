@@ -1,9 +1,9 @@
 """Small producer/export/reader workflow; no new transient mechanical profile."""
 import numpy as np
-from anysolver import (FEModel,BoundaryCondition,ContactDefinition,ContactSurface,
+from anyfesolver import (FEModel,BoundaryCondition,ContactDefinition,ContactSurface,
     RigidContactBody,ContactInteraction,TransientConfig,ContactTransientSolverControls,
     LoadCase,create_shell_element,solve_transient_contact)
-from anysolver.general_contact import read_transient_contact_results
+from anyfesolver.general_contact import read_transient_contact_results
 
 
 def impact_archive():

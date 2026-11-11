@@ -4,12 +4,12 @@ from math import fsum
 import numpy as np
 import pytest
 from scipy import linalg
-from anysolver.fe_core import FEModel
-from anysolver._ge_beam3_native_line_static_element import NativeLineFibreStaticElement,seal
-from anysolver._ge_beam3_native_line_loading import LinePattern,assemble_line_trial
-from anysolver._ge_beam3_p5.chart import pullback
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver.fe_core import FEModel
+from anyfesolver._ge_beam3_native_line_static_element import NativeLineFibreStaticElement,seal
+from anyfesolver._ge_beam3_native_line_loading import LinePattern,assemble_line_trial
+from anyfesolver._ge_beam3_p5.chart import pullback
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
 from test_ge_beam3_native_fibre_static_element import problem as old_problem,store_for,sample
 from test_ge_beam3_schur_line_program import save
 
@@ -154,15 +154,15 @@ def test_distinct_store_registration_cannot_reuse_load_authority(tmp_path):
 
 @pytest.mark.parametrize('current',[False,True])
 def test_pressure_fallback_stays_closed_for_successor(current):
-    from anysolver.boundary import LoadCase
+    from anyfesolver.boundary import LoadCase
     m,_=problem();load=LoadCase('unsupported-shell-pressure',follower_pressure=current);load.add_pressure_load(1,1.)
     with pytest.raises(ValueError,match='not qualified'):
         load.get_load_vector(m.mesh,m.mesh.dof_manager,m.get_material,displacements=np.zeros(18))
 
 
 def test_post_assembly_authority_failure_discards_trial(monkeypatch,tmp_path):
-    from anysolver import nonlinear_static
-    from anysolver import _ge_beam3_native_line_loading as loads
+    from anyfesolver import nonlinear_static
+    from anyfesolver import _ge_beam3_native_line_loading as loads
     m,e=problem();store=store_for(m,e);before=canonical(store.materialize());original=nonlinear_static._assemble_nonlinear_system
     def corrupt_after(*a,**k):
         result=original(*a,**k)

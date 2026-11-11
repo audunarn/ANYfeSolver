@@ -3,8 +3,8 @@ import json
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver.sestra_structure_benchmarks import prepare_suite,read_manifest,admit,native_solution,frame_oracle
-from anysolver.sestra_verification import Unsupported
+from anyfesolver.sestra_structure_benchmarks import prepare_suite,read_manifest,admit,native_solution,frame_oracle
+from anyfesolver.sestra_verification import Unsupported
 
 @pytest.fixture(scope='module')
 def suite(tmp_path_factory):return prepare_suite(tmp_path_factory.mktemp('structures')/'cases')
@@ -44,7 +44,7 @@ def test_no_existing_case_overwrite(suite):
 
 def test_load_result_serialization_is_bounded_and_does_not_mutate_source(suite):
     from dataclasses import replace
-    from anysolver.sestra_structure_benchmarks import assert_structure_reference_identity
+    from anyfesolver.sestra_structure_benchmarks import assert_structure_reference_identity
     m=read_manifest(suite['cases']['inclined_frame_4']['manifest']);imp,_=admit(m);d=imp.document;r=next(x for x in d.load_records if x.record_name=='BNLOAD');rounded=tuple(r.raw_values[:6])+tuple(float(np.float32(v)) for v in r.raw_values[6:])
     def changed(v):return replace(d,load_records=tuple(replace(x,raw_values=tuple(v)) if x is r else x for x in d.load_records))
     evidence=assert_structure_reference_identity(d,changed(rounded),m)

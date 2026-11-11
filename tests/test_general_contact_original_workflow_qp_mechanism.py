@@ -34,9 +34,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver import solve_static_nonlinear
-from anysolver.control import SolveCancelled
-from anysolver.general_contact import initial_contact_seed, semismooth_path
+from anyfesolver import solve_static_nonlinear
+from anyfesolver.control import SolveCancelled
+from anyfesolver.general_contact import initial_contact_seed, semismooth_path
 
 FIXTURE_DIR = Path("C:/ANYworkspaceWork/contact_joint_dual_full8_20261010")
 DESCRIPTOR_PATH = FIXTURE_DIR / "force-full.json"

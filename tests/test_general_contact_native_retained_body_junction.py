@@ -14,7 +14,7 @@ def test_first_newton_trial_descriptor():
     candidate=owner.context.advance(state,step)
     report={'mechanical':candidate.descriptor(),'initial_metrics':metrics,
             'step_norm':float(np.linalg.norm(step)),'correction':float(correction)}
-    from anysolver.general_contact.native_retained_pair_static import _gap_limited_fraction
+    from anyfesolver.general_contact.native_retained_pair_static import _gap_limited_fraction
     fraction=1.
     for _ in range(2):
         candidate=owner.context.advance(state,fraction*step)
@@ -34,7 +34,7 @@ def test_first_newton_trial_descriptor():
 
 @pytest.mark.skipif(os.environ.get("CONTACT_NATIVE_BODY_DIAGNOSTIC")!="1",reason="explicit bounded evidence selector")
 def test_saved_trial_junction_stationarity_inventory():
-    from anysolver.general_contact.native_curved_pair_partition import _exact_curve,_dot
+    from anyfesolver.general_contact.native_curved_pair_partition import _exact_curve,_dot
     owner=analysis()
     raw=json.loads(((Path(__file__).parent/'data/general_contact_native_retained_body_trial_v1.json')).read_text())
     pose=owner.context.make(raw['mechanical']);states=owner.contact._states(pose)
@@ -53,8 +53,8 @@ def test_saved_trial_junction_stationarity_inventory():
 
 @pytest.mark.skipif(os.environ.get("CONTACT_NATIVE_BODY_DIAGNOSTIC")!="1",reason="explicit bounded evidence selector")
 def test_saved_candidate_independent_projection_and_bounds():
-    from anysolver.general_contact.native_retained_whole_pair import _active_gap_correspondence_upper,_exact_tiny_cell_omission_bound
-    from anysolver.general_contact.beam_curve_pair import _source_interval_target_gap_lower
+    from anyfesolver.general_contact.native_retained_whole_pair import _active_gap_correspondence_upper,_exact_tiny_cell_omission_bound
+    from anyfesolver.general_contact.beam_curve_pair import _source_interval_target_gap_lower
     owner=analysis();raw=json.loads((Path(__file__).parent/'data/general_contact_native_retained_body_trial_v1.json').read_text())
     pose=owner.context.make(raw['mechanical']);states=owner.contact._states(pose)
     source=states[owner.contact.chains[0][0]].positions;target=states[owner.contact.chains[1][0]].positions
@@ -102,8 +102,8 @@ def test_saved_trial_complete_contact_after_open_proof():
 
 @pytest.mark.skipif(os.environ.get('CONTACT_NATIVE_BODY_DIAGNOSTIC')!='1',reason='explicit bounded evidence selector')
 def test_saved_front_exact_gap_resolution():
-    from anysolver.general_contact.native_curved_pair_partition import _exact_curve,_dot,_convexity_lower
-    from anysolver.general_contact.beam_curve_pair import b3_distance_jet,closest_on_b3,_curve,_bezier_controls
+    from anyfesolver.general_contact.native_curved_pair_partition import _exact_curve,_dot,_convexity_lower
+    from anyfesolver.general_contact.beam_curve_pair import b3_distance_jet,closest_on_b3,_curve,_bezier_controls
     from fractions import Fraction
     owner=analysis();raw=json.loads((Path(__file__).parent/'data/general_contact_native_retained_body_trial_v1.json').read_text())
     pose=owner.context.make(raw['mechanical']);states=owner.contact._states(pose)
@@ -120,13 +120,13 @@ def test_saved_front_exact_gap_resolution():
         rows.append(dict(station=s,float_gap=b3_distance_jet(source,target,s,.1,source_is_a=True).gap,robust_feasible_gap=robust,stationarity_distance_surplus=surplus))
     Path(os.environ['CONTACT_APP_RESULT_RECORD']).write_text(json.dumps(rows,indent=2))
     assert all(row['stationarity_distance_surplus']<1e-27 for row in rows)
-    from anysolver.general_contact.native_retained_whole_pair import _private_interval_open
+    from anyfesolver.general_contact.native_retained_whole_pair import _private_interval_open
     assert all(_private_interval_open(source,states[cell].positions,.4456420884005717,.44564208840057173,.1) for cell in owner.contact.chains[1][:2])
 
 
 @pytest.mark.skipif(os.environ.get('CONTACT_NATIVE_BODY_DIAGNOSTIC')!='1',reason='explicit bounded evidence selector')
 def test_factored_gap_independent_straight_law():
-    from anysolver.general_contact.native_retained_whole_pair import _private_factored_gap
+    from anyfesolver.general_contact.native_retained_whole_pair import _private_factored_gap
     source=np.array(((0.,0.,0.),(.5,0.,0.),(1.,0.,0.)))
     for delta in (-2e-5,-1e-10,1e-10,2e-5):
         target=source.copy();target[:,1]=.1+delta
@@ -137,7 +137,7 @@ def test_factored_gap_independent_straight_law():
 
 
 def test_factored_offstation_lower_encloses_true_minimum():
-    from anysolver.general_contact.native_retained_whole_pair import _private_factored_gap
+    from anyfesolver.general_contact.native_retained_whole_pair import _private_factored_gap
     source=np.array(((0.,0.,0.),(.5,0.,0.),(1.,0.,0.)))
     target=source.copy();target[:,1]=.09998
     lower,upper,_=_private_factored_gap(source,target,.37,.1,target_station=.3701)

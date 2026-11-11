@@ -14,7 +14,7 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver.corotational import rotation_matrix_from_vector
+from anyfesolver.corotational import rotation_matrix_from_vector
 from scripts._b3_e4_f03_native_fixture import build
 from scripts.b3_e4_f03_distributed_surface_finite import FiniteSurfaceLineHybrid
 from scripts.b3_e4_f03_plate_patch_work import local_grid, raw_e4_tangent

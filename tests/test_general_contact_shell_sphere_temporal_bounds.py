@@ -8,12 +8,12 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver.general_contact.beam_temporal_bounds import BeamHermiteGapBoundsError
-from anysolver.general_contact.shell_sphere_temporal_bounds import (
+from anyfesolver.general_contact.beam_temporal_bounds import BeamHermiteGapBoundsError
+from anyfesolver.general_contact.shell_sphere_temporal_bounds import (
     _face_controls, _split_tensor, _squared_controls,
     q4_sphere_hermite_gap_bounds,
 )
-from anysolver.general_contact.sphere import _SphereFace
+from anyfesolver.general_contact.sphere import _SphereFace
 
 
 def _shape(r, s):
@@ -287,10 +287,10 @@ def test_unsupported_or_invalid_geometry_is_rejected(invalid):
 
 
 def test_real_q4_sphere_manager_physical_skin_agrees_with_analytic_gap():
-    from anysolver import (ContactDefinition, ContactInteraction, ContactSolverSettings,
+    from anyfesolver import (ContactDefinition, ContactInteraction, ContactSolverSettings,
                            ContactSurface, RigidContactBody, create_shell_element)
-    from anysolver.fe_core import FEModel
-    from anysolver.general_contact.sphere import _SphereShellManager
+    from anyfesolver.fe_core import FEModel
+    from anyfesolver.general_contact.sphere import _SphereShellManager
     model = FEModel("represented_q4_sphere")
     model.add_material("elastic", 1.e5, .3, density=1.)
     for node, (x, y) in enumerate(((-1., -1.), (1., -1.), (1., 1.), (-1., 1.)), 1):

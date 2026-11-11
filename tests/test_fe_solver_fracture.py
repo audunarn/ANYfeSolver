@@ -6,18 +6,18 @@ import hashlib
 import numpy as np
 import pytest
 
-from anysolver.boundary import BoundaryCondition, FixedSupport, LoadCase
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.fracture import (
+from anyfesolver.boundary import BoundaryCondition, FixedSupport, LoadCase
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.fracture import (
     FractureConfig,
     deleted_pressure_load_resultant,
     filtered_load_case_for_deleted_elements,
 )
-from anysolver.material_curves import DNVC208MaterialCurve
-from anysolver.matrix_assembly import assemble_load_vector
-from anysolver.nonlinear_static import _assemble_nonlinear_system, solve_static_nonlinear
-from anysolver.nonlinear_restart import canonical_checkpoint_json_bytes
+from anyfesolver.material_curves import DNVC208MaterialCurve
+from anyfesolver.matrix_assembly import assemble_load_vector
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system, solve_static_nonlinear
+from anyfesolver.nonlinear_restart import canonical_checkpoint_json_bytes
 
 
 E = 210.0e9
@@ -162,7 +162,7 @@ def test_max_deleted_fraction_stops_after_converged_deletion() -> None:
 
 
 def test_fracture_displacement_control_is_explicitly_unsupported() -> None:
-    from anysolver.nonlinear_static import DisplacementControl
+    from anyfesolver.nonlinear_static import DisplacementControl
 
     model = _one_shell_model()
     with pytest.raises(ValueError, match="force control"):

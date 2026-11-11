@@ -8,8 +8,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from anysolver._ge_beam3_g1_elastic import canonical
-from anysolver._ge_beam3_g3b_owner import MixedReferenceOwner
+from anyfesolver._ge_beam3_g1_elastic import canonical
+from anyfesolver._ge_beam3_g3b_owner import MixedReferenceOwner
 
 ROOT=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location("g3b_owner_baseline",ROOT/"tests/test_ge_beam3_g3b_owner.py")
@@ -103,7 +103,7 @@ def test_complete_journal_schema_precedes_owner_construction(lane,kind,request):
 @pytest.mark.parametrize("lane",LANES)
 @pytest.mark.parametrize("failure",("raising_view","forged_view"))
 def test_entry_bookkeeping_rejection_releases_lock(lane,failure,request):
-    from anysolver._ge_beam3_g3b_owner import _Bundle
+    from anyfesolver._ge_beam3_g3b_owner import _Bundle
     module,p,owner,f=baseline.setup(lane); owner.solve((f,))
     before=owner.checkpoint(); factor=owner._factor
     fake_data=canonical(dict(forged=True)); fake=_Bundle(fake_data,sha256(fake_data).hexdigest())

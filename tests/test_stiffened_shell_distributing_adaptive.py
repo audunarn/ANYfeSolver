@@ -4,10 +4,10 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
-from anysolver._stiffened_shell_increment_control import decode_control, encode_control
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver._stiffened_shell_increment_control import decode_control, encode_control
 from test_stiffened_shell_ge_distributing_finite_public import definition as elastic_definition, actions as elastic_actions
 from test_stiffened_shell_ge_distributing_material import definition as material_definition, actions as material_actions
 

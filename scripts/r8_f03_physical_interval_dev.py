@@ -170,9 +170,9 @@ def source_stored(reference):
     """
     import numpy as np
     from scipy import sparse
-    from anysolver import b3_ge
-    from anysolver import _stiffened_shell_ge_experimental as compiler
-    from anysolver._stiffened_shell_l1_assembly_experimental import ExperimentalBL5Line, compile_lines
+    from anyfesolver import b3_ge
+    from anyfesolver import _stiffened_shell_ge_experimental as compiler
+    from anyfesolver._stiffened_shell_l1_assembly_experimental import ExperimentalBL5Line, compile_lines
     p = reference['inputs']; ell = float(p.ell)
     length = float(2*p.a*p.cells)
     coordinates = tuple((float(2*p.a*column), float(2*p.b*side), 0.)
@@ -286,7 +286,7 @@ def endpoint_intervals(reference, stored, j, t, caps):
 
 
 def assess(inputs=Inputs()):
-    from anysolver.linalg import SparseSolverBackend, MatrixClass
+    from anyfesolver.linalg import SparseSolverBackend, MatrixClass
     reference = exact_reference(inputs)
     stored = source_stored(reference)
     j = congruence(reference)

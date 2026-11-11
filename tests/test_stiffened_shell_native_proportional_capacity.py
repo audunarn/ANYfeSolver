@@ -11,8 +11,8 @@ import os
 
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import SolveCancelled
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import SolveCancelled
 from examples import stiffened_shell_native_capacity as capacity
 
 

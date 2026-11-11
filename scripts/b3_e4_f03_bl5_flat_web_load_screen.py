@@ -13,8 +13,8 @@ import json
 from pathlib import Path
 import subprocess
 
-import anysolver
-from anysolver import stiffened_shell
+import anyfesolver
+from anyfesolver import stiffened_shell
 import numpy as np
 from threadpoolctl import threadpool_info, threadpool_limits
 
@@ -127,7 +127,7 @@ def analyze():
         "status": "BL5_FLAT_WEB_SAME_GEOMETRY_DEVELOPMENT_ONLY",
         "source_git": subprocess.check_output(
             ("git", "rev-parse", "HEAD"), text=True).strip(),
-        "imported_anysolver": str(Path(anysolver.__file__).resolve()),
+        "imported_anyfesolver": str(Path(anyfesolver.__file__).resolve()),
         "geometry": {"plate_length_m": 1., "plate_width_m": .2,
                      "plate_thickness_m": base.shell.thickness_m,
                      "beam_axis_offset_m": base.shell.thickness_m/2+WEB_H_M/2,

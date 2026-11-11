@@ -7,13 +7,13 @@ import pytest
 from numpy.polynomial.legendre import leggauss
 from scipy.spatial.transform import Rotation
 
-from anysolver import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.s3_skin_work import S3SkinWorkAdapter
-from anysolver.general_contact.native_material_s3 import NativeMaterialS3Patch
-from anysolver.general_contact.native_curved_s3_work import NativeCurvedMaterialS3Work,PROFILE
-from anysolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
-from anysolver.general_contact.native_surface_normal import StraightNormalIntegrationSettings
+from anyfesolver import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.s3_skin_work import S3SkinWorkAdapter
+from anyfesolver.general_contact.native_material_s3 import NativeMaterialS3Patch
+from anyfesolver.general_contact.native_curved_s3_work import NativeCurvedMaterialS3Work,PROFILE
+from anyfesolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
+from anyfesolver.general_contact.native_surface_normal import StraightNormalIntegrationSettings
 from test_general_contact_native_retained_station import _reference
 from test_general_contact_native_surface_bounds import _independent_point
 
@@ -119,8 +119,8 @@ def test_curved_s3_rejects_rim_inversion_mutation_and_unadmitted_path():
 
 
 def test_curved_s3_whole_moving_path_and_endpoint_safe_hidden_target_collapse():
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
-    from anysolver.general_contact.native_surface_path import material_path_pose
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_path import material_path_pose
     work,p,low,U,u=_case();start=NativeS3MaterialConfiguration(p,low,U,u)
     move=np.tile((.001,-.002,.001),(3,1));spin=np.array(((.002,-.001,.001),(-.001,.001,-.002)))
     du=np.linspace(.001,-.002,len(u))
@@ -142,8 +142,8 @@ def test_curved_s3_whole_moving_path_and_endpoint_safe_hidden_target_collapse():
 
 
 def test_curved_s3_hidden_rim_crossing_gap_failure_caps_and_cancellation():
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
-    from anysolver.control import CancellationToken
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.control import CancellationToken
     work,p,low,U,u=_case();start=NativeS3MaterialConfiguration(p,low,U,u)
     move=np.tile((0.,10.,0.),(3,1))
     value=work.certify_path(start,move,np.zeros((2,3)),np.zeros_like(u),
@@ -159,7 +159,7 @@ def test_curved_s3_hidden_rim_crossing_gap_failure_caps_and_cancellation():
 
 
 def test_curved_s3_moving_normal_lever_preserves_exact_partition_at_large_origin():
-    from anysolver.general_contact.native_curved_s3_work import _relative_center,_S3CandidateIntegration
+    from anyfesolver.general_contact.native_curved_s3_work import _relative_center,_S3CandidateIntegration
     work,p,low,U,u=_case();corners=work.shell.reference_positions.copy()
     candidate=_S3CandidateIntegration(work,corners)
     p=np.array(((0.,0.,-.06),(0.,0.,-.06),(1.,0.,-.06)))
@@ -201,10 +201,10 @@ def test_curved_s3_axial_front_complete_target_work_and_independent_partition():
 
 
 def test_curved_s3_complete_scaled_root_enclosure_with_large_tangential_lever():
-    from anysolver.general_contact.native_curved_s3_work import _S3CandidateIntegration
-    from anysolver.general_contact.native_curved_geometry import curved_patch_geometry_control
-    from anysolver.general_contact.native_curved_plane_work import _projected_gap
-    from anysolver.general_contact.native_surface_quadrature import _prepare_reference_area
+    from anyfesolver.general_contact.native_curved_s3_work import _S3CandidateIntegration
+    from anyfesolver.general_contact.native_curved_geometry import curved_patch_geometry_control
+    from anyfesolver.general_contact.native_curved_plane_work import _projected_gap
+    from anyfesolver.general_contact.native_surface_quadrature import _prepare_reference_area
     work,p,low,U,u=_case()
     # Algebraic enclosure stress, deliberately OUTSIDE the finite facet. This
     # does not admit such a contact; its complete normal work must still bound.
@@ -242,7 +242,7 @@ def test_curved_s3_complete_scaled_root_enclosure_with_large_tangential_lever():
 
 
 def test_declared_arc_gradient_enclosure_endpoints_interior_and_cancellation():
-    from anysolver.general_contact.native_curved_s3_work import _declared_arc_gradient_bound
+    from anyfesolver.general_contact.native_curved_s3_work import _declared_arc_gradient_bound
     # Independent scalar maximum: cancellation at the arc midpoint.
     delta=.3
     bound=_declared_arc_gradient_bound(np.array([1.]),np.array([[1.,0.]]),(pi-delta,pi+delta))
@@ -265,7 +265,7 @@ def test_declared_arc_gradient_enclosure_endpoints_interior_and_cancellation():
 
 
 def test_psd_difference_enclosure_noncommuting_and_general_remainder():
-    from anysolver.general_contact.native_curved_s3_work import _psd_root_tangent_difference_bound
+    from anyfesolver.general_contact.native_curved_s3_work import _psd_root_tangent_difference_bound
     # Rank-one projections do not commute. Both are bounded by I, but their
     # difference is indefinite; eigenvalue order proves the common norm bound.
     A=np.array(((1.,0.),(0.,0.)))
@@ -290,8 +290,8 @@ def test_psd_difference_enclosure_noncommuting_and_general_remainder():
 
 def test_exact_axial_candidate_reuse_preserves_cancellation_and_cleanup(monkeypatch):
     from fractions import Fraction as F
-    from anysolver.general_contact.native_curved_s3_work import _S3CandidateIntegration
-    from anysolver.general_contact.native_curved_plane_work import NativeCurvedMaterialPlaneWork
+    from anyfesolver.general_contact.native_curved_s3_work import _S3CandidateIntegration
+    from anyfesolver.general_contact.native_curved_plane_work import NativeCurvedMaterialPlaneWork
     work,p,low,U,u=_case();candidate=_S3CandidateIntegration(work,work.shell.reference_positions)
     p+=np.array((1e12,-2e12,3e12));candidate.origin=np.array((1e12,-2e12,3e12))
     low[:]=np.array((2e-9,-3e-8,7e-10))
@@ -318,7 +318,7 @@ def test_exact_axial_candidate_reuse_preserves_cancellation_and_cleanup(monkeypa
 
 
 def test_candidate_exact_reuse_bitwise_full_work_and_tangent_parity(monkeypatch):
-    from anysolver.general_contact.native_curved_s3_work import _S3CandidateIntegration,_relative_center
+    from anyfesolver.general_contact.native_curved_s3_work import _S3CandidateIntegration,_relative_center
     work,p,low,U,u=_case()
     cached=work.evaluate(p,low,U,u)
     monkeypatch.setattr(_S3CandidateIntegration,'_candidate_relative_center',

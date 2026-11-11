@@ -4,11 +4,11 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell as ss
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
-from anysolver._stiffened_shell_q4_algorithmic_pullback import response
-from anysolver.e4_pl_s3_state import canonical_json_bytes
-from anysolver.e4_pl_element import _lookup_prepared_q4_correction
+from anyfesolver import stiffened_shell as ss
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver._stiffened_shell_q4_algorithmic_pullback import response
+from anyfesolver.e4_pl_s3_state import canonical_json_bytes
+from anyfesolver.e4_pl_element import _lookup_prepared_q4_correction
 from scripts.experimental_stiffened_ge_multi_member_panel import make_definition, actions_for
 from test_corotational import _single_shell_model
 from test_stiffened_shell_q4_algorithmic_pullback import yielded

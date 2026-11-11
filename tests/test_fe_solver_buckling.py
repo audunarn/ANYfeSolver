@@ -2,13 +2,13 @@ import numpy as np
 import pytest
 from scipy import linalg, sparse
 
-import anysolver.buckling as buckling_module
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.buckling import solve_eigenvalue_buckling
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
-from anysolver.linalg import FactorizationCache
-from anysolver.matrix_assembly import (
+import anyfesolver.buckling as buckling_module
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.buckling import solve_eigenvalue_buckling
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.linalg import FactorizationCache
+from anyfesolver.matrix_assembly import (
     _pack_owned_geometric_states,
     assemble_geometric_stiffness_matrix,
 )
@@ -681,9 +681,9 @@ def test_repeated_buckling_mode_groups_are_reported_for_symmetric_column():
 
 def test_torsional_column_buckling_matches_wagner_analytic_load():
     """Axial compression + weak St. Venant torsion: P_cr = G*J*A/Ip (no warping)."""
-    from anysolver.boundary import BoundaryCondition
-    from anysolver.elements import BeamElement, QuadraticBeamElement
-    from anysolver.fe_core import FEModel
+    from anyfesolver.boundary import BoundaryCondition
+    from anyfesolver.elements import BeamElement, QuadraticBeamElement
+    from anyfesolver.fe_core import FEModel
 
     section = {"area": 1.0e-2, "Iy": 1.0e-5, "Iz": 1.0e-5, "J": 1.0e-9}
 

@@ -2,9 +2,9 @@
 from math import acos,sin,cos,fsum
 import numpy as np
 import pytest
-from anysolver.general_contact.native_surface_history import NativeSurfaceMotionSegment
-from anysolver.general_contact.native_surface_support import classify_history_panel,SupportIntervalBudget
-from anysolver.general_contact.native_surface_friction_integral import integrate_material_friction
+from anyfesolver.general_contact.native_surface_history import NativeSurfaceMotionSegment
+from anyfesolver.general_contact.native_surface_support import classify_history_panel,SupportIntervalBudget
+from anyfesolver.general_contact.native_surface_friction_integral import integrate_material_friction
 from test_general_contact_native_surface_support import _field
 from test_general_contact_native_surface_friction_integral import _settings
 
@@ -46,8 +46,8 @@ def test_integrated_hidden_pulse_retains_independent_discrete_work():
 def test_saved_two_event_neighborhood_has_complete_support(tmp_path):
     import json,os
     from pathlib import Path
-    from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
     from test_general_contact_native_surface_replay_owner import _patch,normal_settings,friction_settings
     _,bridge=_patch(activation_policy='transverse_event_sequence',gap_check='straight_patch',
         normal_integration='straight_segmented',normal_integration_settings=normal_settings(),
@@ -71,10 +71,10 @@ def test_saved_full_patch_endpoint_scope_discriminator(tmp_path):
     """Classify the first exhausted rectangle; no refinement or coupled retry."""
     import json,os
     from pathlib import Path
-    from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
-    from anysolver.general_contact.native_surface_path import material_path_pose
-    from anysolver.general_contact.native_surface_support import _minimum,segment_gap_slab_enclosure
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_path import material_path_pose
+    from anyfesolver.general_contact.native_surface_support import _minimum,segment_gap_slab_enclosure
     from test_general_contact_native_surface_replay_owner import _replay_patch
     folder=Path(__file__).parents[1]/'docs/d1_review_support/contact_c5_native_surface_point_20261002'
     saved=json.loads((folder/'replay_owner_second_load_rejected_path.json').read_text())
@@ -107,8 +107,8 @@ def test_saved_full_patch_endpoint_scope_discriminator(tmp_path):
 def test_moving_front_integral_across_pulse_appearance(tmp_path):
     from dataclasses import replace
     from scipy.integrate import quad
-    from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField
-    from anysolver.general_contact.native_surface_friction_integral import integrate_open_event_friction_fronts
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField
+    from anyfesolver.general_contact.native_surface_friction_integral import integrate_open_event_friction_fronts
     value=field(.035)
     positions=value.initial.positions.copy();positions[:,2]+=.01*positions[:,0]
     value=NativeSurfaceHistoryField(value.patch,replace(value.initial,positions=positions),value.segments)
@@ -138,8 +138,8 @@ def test_moving_front_integral_across_pulse_appearance(tmp_path):
 
 def test_front_strip_bound_contains_independent_discrete_work():
     from dataclasses import replace
-    from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField
-    from anysolver.general_contact.native_surface_front_work import open_front_strip_work_bound
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField
+    from anyfesolver.general_contact.native_surface_front_work import open_front_strip_work_bound
     value=field(.035);positions=value.initial.positions.copy();positions[:,2]+=.01*positions[:,0]
     value=NativeSurfaceHistoryField(value.patch,replace(value.initial,positions=positions),value.segments)
     width=1e-7;bounds=open_front_strip_work_bound(value,0,width)

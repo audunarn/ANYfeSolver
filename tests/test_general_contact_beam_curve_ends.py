@@ -8,12 +8,12 @@ import numpy as np
 import pytest
 from scipy.optimize import minimize_scalar, root
 
-from anysolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, DisplacementControl, LoadCase,
     solve_static_nonlinear, validate_general_contact)
-from anysolver.elements import BeamElement, QuadraticBeamElement
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.beam_curve_ends import BeamCurveEndManager
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.beam_curve_ends import BeamCurveEndManager
 
 
 def fixture(points, *, kinds=(3, 3), ke=50., kl=1000., radius=.05, tol=.008):
@@ -186,7 +186,7 @@ def test_exact_oblique_cap_activation_retains_spring_tangent():
 
 
 def test_projection_certificate_uses_actual_end_tangent_and_rejects_competing_minima():
-    from anysolver.general_contact.beam_curve_end_geometry import endpoint_interval
+    from anyfesolver.general_contact.beam_curve_end_geometry import endpoint_interval
     source=np.array(((-1.,.09,0.),(-.1,.1,0.),(-.02,.09,0.)))
     target=np.array(((0.,-.5,0.),(0.,0.,0.),(0.,.5,0.)))
     proof=endpoint_interval(source,source,target,target,2,.05)
@@ -254,7 +254,7 @@ def test_displacement_control_split_restart_and_incompatible_definitions():
 
 @pytest.mark.parametrize('cancel',(False,True))
 def test_actual_trial_exception_or_cancel_restores_origin_and_checkpoint(cancel,monkeypatch):
-    from anysolver import CancellationToken,SolveCancelled
+    from anyfesolver import CancellationToken,SolveCancelled
     model,definition,settings,nodes,load=bars()
     common=dict(contact=definition,contact_settings=settings,num_steps=4,max_iterations=25,
                 tolerance=1e-10,emit_restart_checkpoint=True)
@@ -325,7 +325,7 @@ def test_open_checkpoint_and_public_example():
 
 
 def test_exact_full_curve_gap_enclosure_and_resource_rejection():
-    from anysolver.general_contact.beam_curve_end_geometry import certify_curve_pair_gap
+    from anyfesolver.general_contact.beam_curve_end_geometry import certify_curve_pair_gap
     model,definition,settings,nodes,manager,u=curved()
     a,b=manager._positions(u)
     def position(p,t):return (1-t)*(1-2*t)*p[0]+4*t*(1-t)*p[1]+t*(2*t-1)*p[2]
@@ -347,8 +347,8 @@ def test_exact_full_curve_gap_enclosure_and_resource_rejection():
 
 
 def test_capability_and_invalid_public_contract_preserve_admission_boundaries():
-    from anysolver.general_contact import report_general_contact_capability
-    from anysolver.general_contact.beam_curve_ends import PROFILE
+    from anyfesolver.general_contact import report_general_contact_capability
+    from anyfesolver.general_contact.beam_curve_ends import PROFILE
     model,definition,settings,nodes,load=bars()
     capability=report_general_contact_capability(model,definition,settings)
     assert capability.validation.profile==PROFILE and capability.implemented

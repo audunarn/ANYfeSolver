@@ -5,15 +5,15 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver.beam_sections import (
+from anyfesolver.beam_sections import (
     GENERALIZED_BEAM_RESULTANT_ORDER,
     GENERALIZED_BEAM_STRAIN_ORDER,
     GeneralizedBeamSection,
     GeneralizedBeamSectionContract,
     coerce_generalized_beam_section,
 )
-from anysolver.elements import BeamElement, QuadraticBeamElement
-from anysolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
 
 
 def _stiffness() -> np.ndarray:

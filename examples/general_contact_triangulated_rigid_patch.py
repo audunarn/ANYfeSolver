@@ -1,5 +1,5 @@
 """Connected two-S3 physical patch against a nonmatching finite rigid tool."""
-from anysolver import (BoundaryCondition,ContactDefinition,ContactSurface,ContactInteraction,
+from anyfesolver import (BoundaryCondition,ContactDefinition,ContactSurface,ContactInteraction,
     LoadCase,create_shell_element,solve_static_nonlinear)
 from examples.general_contact_triangulated_rigid import case as single_case
 

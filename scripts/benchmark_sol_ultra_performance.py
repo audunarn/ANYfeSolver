@@ -33,39 +33,39 @@ if str(SRC) not in sys.path:
 import numpy as np
 from scipy import sparse
 
-from anysolver import nonlinear_performance, nonlinear_static
-from anysolver.arc_length import ArcLengthControl, solve_static_arc_length
-from anysolver.benchmarks import BENCHMARK_CASES
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.corotational import rotation_matrix_from_vector
-from anysolver.dynamics import TransientConfig, solve_transient_newmark
-from anysolver.elements import BeamElement, Element, create_element
-from anysolver.fe_core import FEModel
-from anysolver.materials import Hill48Yield, OrthotropicMaterial
-from anysolver.matrix_assembly import (
+from anyfesolver import nonlinear_performance, nonlinear_static
+from anyfesolver.arc_length import ArcLengthControl, solve_static_arc_length
+from anyfesolver.benchmarks import BENCHMARK_CASES
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.corotational import rotation_matrix_from_vector
+from anyfesolver.dynamics import TransientConfig, solve_transient_newmark
+from anyfesolver.elements import BeamElement, Element, create_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.materials import Hill48Yield, OrthotropicMaterial
+from anyfesolver.matrix_assembly import (
     assemble_mass_matrix,
     assemble_stiffness_matrix,
 )
-from anysolver.mesh_gen import generate_beam_mesh, generate_simple_panel_mesh
-from anysolver.nonlinear_performance_batch_c import (
+from anyfesolver.mesh_gen import generate_beam_mesh, generate_simple_panel_mesh
+from anyfesolver.nonlinear_performance_batch_c import (
     assemble_reduced_system,
     build_reduced_assembly_plan,
 )
-from anysolver.nonlinear_performance_bootstrap import (
+from anyfesolver.nonlinear_performance_bootstrap import (
     clear_nonlinear_assembly_cache,
     get_nonlinear_assembly_plan,
     install_nonlinear_performance_optimizations,
     nonlinear_performance_status,
 )
-from anysolver.recovery import (
+from anyfesolver.recovery import (
     RecoveryConfig,
     ResourceConfig,
     recover_element_stresses_with_report,
 )
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
-SCHEMA_NAME = "anysolver.sol_ultra.benchmark"
+SCHEMA_NAME = "anyfesolver.sol_ultra.benchmark"
 SCHEMA_VERSION = 1
 DEFAULT_REPORT_DIRECTORY = ROOT / "reports" / "performance"
 
@@ -316,7 +316,7 @@ def collect_environment() -> Dict[str, Any]:
     except ImportError:
         native_pools = []
     try:
-        from anysolver.jit_compiler import jit_diagnostics
+        from anyfesolver.jit_compiler import jit_diagnostics
 
         jit = jit_diagnostics()
     except Exception as exc:  # diagnostics should not block benchmark execution
@@ -326,7 +326,7 @@ def collect_environment() -> Dict[str, Any]:
     origin_main = _git("rev-parse", "origin/main")
     merge_base = _git("merge-base", "HEAD", "origin/main") if origin_main else None
     return {
-        "schema_name": "anysolver.sol_ultra.environment",
+        "schema_name": "anyfesolver.sol_ultra.environment",
         "schema_version": SCHEMA_VERSION,
         "generated_at_utc": _utc_now(),
         "revision": {
@@ -358,7 +358,7 @@ def collect_environment() -> Dict[str, Any]:
                 "mkl",
                 "threadpoolctl",
                 "pytest",
-                "ANYsolver",
+                "ANYfeSolver",
                 "ANYmaterial",
                 "ANYmesher",
                 "ANYgeometry",
@@ -1292,7 +1292,7 @@ def render_markdown(report: Mapping[str, Any]) -> str:
     summary = report.get("summary", {})
     environment = report.get("environment", {}).get("runtime", {})
     lines = [
-        "# ANYsolver Sol Ultra Performance Report",
+        "# ANYfeSolver Sol Ultra Performance Report",
         "",
         f"- Report kind: `{report.get('report_kind', 'unknown')}`",
         f"- Generated: {report.get('generated_at_utc', 'unknown')}",

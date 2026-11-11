@@ -11,11 +11,11 @@ import math
 
 import numpy as np
 
-from anysolver import _ge_beam3_mixed_ad as ad
-from anysolver._ge_beam3_retained_generalized_state import Mechanical
-from anysolver._ge_beam3_p5.compensated_coordinates import split_sum
-from anysolver._stiffened_shell_l1_local_experimental import NativeHalfCellPort
-from anysolver._ge_beam3_p5.algebra import rotation as retained_rotation
+from anyfesolver import _ge_beam3_mixed_ad as ad
+from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
+from anyfesolver._ge_beam3_p5.compensated_coordinates import split_sum
+from anyfesolver._stiffened_shell_l1_local_experimental import NativeHalfCellPort
+from anyfesolver._ge_beam3_p5.algebra import rotation as retained_rotation
 from scripts import r8_e01_objective_polar_trace as polar
 
 
@@ -27,8 +27,8 @@ def native_chord_kinematics(reference, mechanical):
     Chord entries are length-valued; divide by each reference chord length
     for the straight-cell engineering strain used in the homogeneous controls.
     """
-    from anysolver._ge_beam3_p5.compensated import compensated_strain
-    from anysolver._ge_beam3_p5.algebra import HALVES
+    from anyfesolver._ge_beam3_p5.compensated import compensated_strain
+    from anyfesolver._ge_beam3_p5.algebra import HALVES
     variables = [ad.Jet2.constant(0., 1) for _ in range(24)]
     chord, endpoints = [], []
     for cell, (left, right) in enumerate(HALVES):
@@ -55,9 +55,9 @@ def homogeneous_frame_comparison(deformation, *, cell=0, weight=.4,
     section offset is minus eccentricity, so both reference distances match.
     Resultants and all 42 retained coordinates remain explicit.
     """
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-    from anysolver._stiffened_shell_l1_local_experimental import L1LocalOperator
-    from anysolver._ge_beam3_p5.algebra import log_rotation
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+    from anyfesolver._stiffened_shell_l1_local_experimental import L1LocalOperator
+    from anyfesolver._ge_beam3_p5.algebra import log_rotation
     f = polar._owned(deformation, (3, 3), "homogeneous deformation")
     dr = np.eye(3) if director_rotation is None else polar._rotation(director_rotation)
     if not np.isfinite(thickness) or thickness <= 0 or not np.isfinite(eccentricity):

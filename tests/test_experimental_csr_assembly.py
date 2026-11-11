@@ -2,13 +2,13 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver.experimental_csr_assembly import (
+from anyfesolver.experimental_csr_assembly import (
     CSRPromotionGates,
     ExperimentalCSRAssemblyPlan,
     benchmark_experimental_csr_assembly,
 )
-from anysolver.mesh_gen import generate_beam_mesh, generate_simple_panel_mesh
-from anysolver.matrix_assembly import _get_cached_sparsity_pattern
+from anyfesolver.mesh_gen import generate_beam_mesh, generate_simple_panel_mesh
+from anyfesolver.matrix_assembly import _get_cached_sparsity_pattern
 
 
 @pytest.mark.parametrize(

@@ -1,9 +1,9 @@
 from time import perf_counter
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_compliance_snapshot_guard as policy
-from anysolver._ge_beam3_native_generalized_factor_modal import compliance_factor
-from anysolver.control import CancellationToken,SolveCancelled
+from anyfesolver import _ge_beam3_compliance_snapshot_guard as policy
+from anyfesolver._ge_beam3_native_generalized_factor_modal import compliance_factor
+from anyfesolver.control import CancellationToken,SolveCancelled
 
 @pytest.mark.parametrize('scale',(1e-8,1.,1e8))
 def test_exact_factor_and_error_equality_with_fewer_full_checks(scale):
@@ -49,7 +49,7 @@ def test_original_deadline_not_extended(monkeypatch):
     policy.deadline_checkpoint(10.)
     with pytest.raises(RuntimeError,match='context deadline'):policy.deadline_checkpoint(9.999)
 def test_unknown_policy_rejects_before_native_owner(monkeypatch):
-    from anysolver import _ge_beam3_elastic_seed_modal as modal
+    from anyfesolver import _ge_beam3_elastic_seed_modal as modal
     def forbidden(*a,**kw):raise AssertionError('owner must not run')
     monkeypatch.setattr(modal.control,'Context',forbidden)
     for invalid in ('unregistered',True,1):

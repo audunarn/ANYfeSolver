@@ -2,9 +2,9 @@
 from importlib.util import find_spec
 import types
 import pytest
-from anysolver.boundary import _callable_authority, _callable_authority_matches
-from anysolver._native_authority_dag import intern_facts, matches
-from anysolver import prepared_static_loads as loads
+from anyfesolver.boundary import _callable_authority, _callable_authority_matches
+from anyfesolver._native_authority_dag import intern_facts, matches
+from anyfesolver import prepared_static_loads as loads
 
 
 def fact(f):
@@ -67,7 +67,7 @@ def test_cycles_and_descriptor_predicates():
 def test_generation_counter_exception_matches_literal_type_rule():
     accepted_generation=1
     def require():return accepted_generation
-    require=types.FunctionType(require.__code__,{'__name__':'anysolver._qualified_authority_epoch'},closure=require.__closure__)
+    require=types.FunctionType(require.__code__,{'__name__':'anyfesolver._qualified_authority_epoch'},closure=require.__closure__)
     require.__qualname__='_AuthorityEpochManager.bind.<locals>.require'
     captured=fact(require)
     cell=require.__closure__[0]
@@ -77,7 +77,7 @@ def test_generation_counter_exception_matches_literal_type_rule():
 
 @pytest.mark.parametrize('change',['alias','code','globals'])
 def test_optimized_matcher_is_validated_before_use(monkeypatch,change):
-    import anysolver._native_authority_dag as dag
+    import anyfesolver._native_authority_dag as dag
     if change=='alias':monkeypatch.setattr(loads,'_native_authority_matches',lambda *a:True)
     elif change=='code':
         def forged(member,authority,memo):return True
@@ -87,14 +87,14 @@ def test_optimized_matcher_is_validated_before_use(monkeypatch,change):
 
 
 def test_class_and_descriptor_mutation_is_still_checked(monkeypatch):
-    from anysolver.elements import BeamElement
+    from anyfesolver.elements import BeamElement
     loads.require_native_source_authority()
     monkeypatch.setattr(BeamElement,'native_dag_probe',property(lambda self:0),raising=False)
     with pytest.raises(loads.PreparedStaticCapabilityError,match='class executable'):loads.require_native_source_authority()
 
 
 def test_plan_replacement_refused_by_existing_response_binding(monkeypatch):
-    from anysolver.prepared_static_response import PreparedStaticResponseEvaluator,_require_response_authority
+    from anyfesolver.prepared_static_response import PreparedStaticResponseEvaluator,_require_response_authority
     owner=object.__new__(PreparedStaticResponseEvaluator)
     owner._numerical_affinity_fallback=owner._native_affinity_mode_binding=False
     owner._native_affinity_binding=None
@@ -112,7 +112,7 @@ def test_globals_still_checked_each_guard(monkeypatch):
 
 @pytest.mark.parametrize('name',['id','type','all','len','zip','any'])
 def test_absent_builtin_shadow_refused_before_memo_use(monkeypatch,name):
-    import anysolver._native_authority_dag as dag
+    import anyfesolver._native_authority_dag as dag
     function=next(row[0] for row in loads._NATIVE_HELPER_FACTS[1:] if not row[0].__closure__)
     def forged(*args,**kwargs):return True
     monkeypatch.setattr(dag,name,lambda *args:0,raising=False)
@@ -123,7 +123,7 @@ def test_absent_builtin_shadow_refused_before_memo_use(monkeypatch,name):
 
 @pytest.mark.parametrize('name',['id','type','all','len','zip','any'])
 def test_absent_builtin_shadow_alone_rejected_with_unchanged_function(monkeypatch,name):
-    import anysolver._native_authority_dag as dag
+    import anyfesolver._native_authority_dag as dag
     function,authority,_=loads._NATIVE_HELPER_FACTS[0]
     monkeypatch.setattr(dag,name,lambda *args:0,raising=False)
     assert _callable_authority_matches(function,authority)
@@ -143,8 +143,8 @@ def test_callback_builtin_shadow_observed_at_original_guard(tmp_path,monkeypatch
     if find_spec("anypost") is None:
         pytest.importorskip("anypost")
     import anypost
-    import anysolver._native_authority_dag as dag
-    from anysolver import PatternCase,export_recovery_capsule_to_sink
+    import anyfesolver._native_authority_dag as dag
+    from anyfesolver import PatternCase,export_recovery_capsule_to_sink
     from test_native_affinity_fallback import prepare
     function=next(row[0] for row in loads._NATIVE_HELPER_FACTS[1:] if not row[0].__closure__)
     original_code=function.__code__

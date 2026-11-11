@@ -7,7 +7,7 @@ import pytest
 from dataclasses import replace
 from pathlib import Path
 
-from anysolver.general_contact import (
+from anyfesolver.general_contact import (
     AutomaticContactDomain, AutomaticContactDomainError, AutomaticContactParticipant,
     AutomaticContactResolution, ContactInteraction, RigidContactBody,
     resolve_automatic_contact_domain, verify_automatic_contact_resolution,

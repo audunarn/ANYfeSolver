@@ -7,8 +7,8 @@ import pytest
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 
-from anysolver import solve_static_nonlinear
-from anysolver.general_contact.semismooth_block import prepare_frozen_block_response
+from anyfesolver import solve_static_nonlinear
+from anyfesolver.general_contact.semismooth_block import prepare_frozen_block_response
 from scripts.general_contact_d1_mixed_mesh_jet2_schur_press import build_case
 
 

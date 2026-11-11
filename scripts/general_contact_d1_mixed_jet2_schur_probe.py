@@ -9,9 +9,9 @@ import sys
 import time
 
 import anymaterial
-import anysolver
+import anyfesolver
 
-from anysolver import solve_static_nonlinear, validate_general_contact
+from anyfesolver import solve_static_nonlinear, validate_general_contact
 from examples.general_contact_refined_q4_s3_mixed_path import make_case
 
 
@@ -89,7 +89,7 @@ def main(output: Path) -> None:
         } for row in history],
         "runtime_identity": {
             "python": sys.version.split()[0],
-            "anysolver_module": str(Path(anysolver.__file__).resolve()),
+            "anyfesolver_module": str(Path(anyfesolver.__file__).resolve()),
             "anymaterial_module": str(Path(anymaterial.__file__).resolve()),
         },
     }

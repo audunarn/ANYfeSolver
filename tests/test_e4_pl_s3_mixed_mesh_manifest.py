@@ -29,7 +29,7 @@ QUALIFICATION_CONTRACT = (
 QUALIFICATION_CONTRACT_SHA256 = (
     "3F933786A334A876C1B53EF90891237F18C0970DE6B95F885CF5B775791E0A99"
 )
-QUALIFIED_Q4_MECHANICS = ROOT / "src" / "anysolver" / "e4_pl_element.py"
+QUALIFIED_Q4_MECHANICS = ROOT / "src" / "anyfesolver" / "e4_pl_element.py"
 Q4_REPLAY_HOTFIX = (
     ROOT
     / "docs"
@@ -475,9 +475,9 @@ def _require_prospective_q4_source_binding(
     }
     inventory = _mechanics_nodes(source)
     expected_external = {
-        '_elastic_increment_module': 'src/anysolver/vectorized_nonlinear.py',
-        '_local_contractions': 'src/anysolver/_compensated_contractions.py',
-        '_elements_module': 'src/anysolver/elements.py',
+        '_elastic_increment_module': 'src/anyfesolver/vectorized_nonlinear.py',
+        '_local_contractions': 'src/anyfesolver/_compensated_contractions.py',
+        '_elements_module': 'src/anyfesolver/elements.py',
     }
     assert set(record['external_arithmetic_dependencies']) == set(expected_external)
     for alias, relative in expected_external.items():
@@ -496,7 +496,7 @@ def _require_prospective_q4_source_binding(
     assert observed['status'] == 'PASS'
     assert observed['case_count'] == 41 and observed['phase_count'] == 123
     assert set(observed['all_source_symbol_delta']['files']) == {
-        'src/anysolver/e4_pl_element.py',
+        'src/anyfesolver/e4_pl_element.py',
         'tests/test_e4_pl_s3_mixed_mesh_manifest.py',
         'tests/test_general_contact_c5_elastic_increment.py',
         'tests/test_general_contact_c5_numpy_coordinate_admission.py',
@@ -651,7 +651,7 @@ def test_prospective_q4_source_binding_rejects_external_dependency_drift(monkeyp
         path=authority["path"], required_symbols=set(authority["symbols"]),
     )
     record = Q4_SOURCE_BINDING.read_bytes()
-    dependency = ROOT / "src" / "anysolver" / "vectorized_nonlinear.py"
+    dependency = ROOT / "src" / "anyfesolver" / "vectorized_nonlinear.py"
     original = Path.read_bytes
     def changed_bytes(path):
         value = original(path)

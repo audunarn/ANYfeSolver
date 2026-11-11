@@ -5,22 +5,22 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.corotational import (
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.corotational import (
     corotational_element_response,
     rotation_matrix_from_vector,
     rotation_vector_from_matrix,
 )
-from anysolver.elements import (
+from anyfesolver.elements import (
     BeamElement,
     LegacyShellElement,
     LegacyQ4DeprecationWarning,
     QuadraticBeamElement,
     create_shell_element,
 )
-from anysolver.fe_core import FEModel
-from anysolver.material_curves import dnv_c208_steel_curve
-from anysolver.nonlinear_static import _assemble_nonlinear_system, solve_static_nonlinear
+from anyfesolver.fe_core import FEModel
+from anyfesolver.material_curves import dnv_c208_steel_curve
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system, solve_static_nonlinear
 
 E_STEEL = 2.1e11
 
@@ -263,7 +263,7 @@ def test_legacy_corotational_matches_von_karman_for_registered_small_displacemen
     # Note the realistic load scale: the corotational pull-back has an
     # intrinsic residual floor of about eps * ||K|| * L per element, so
     # convergence tolerances must sit above that floor (documented in
-    # anysolver.corotational).
+    # anyfesolver.corotational).
     model = _single_legacy_shell_model()
     model.add_boundary_condition(BoundaryCondition("clamp", [1, 4], {"ux": 0, "uy": 0, "uz": 0, "rx": 0, "ry": 0, "rz": 0}))
     # ~0.5% of span deflection: small-displacement regime, but the residual
@@ -283,7 +283,7 @@ def test_legacy_corotational_matches_von_karman_for_registered_small_displacemen
 
 
 def test_corotational_scope_rejects_bad_kinematics_and_fracture() -> None:
-    from anysolver.fracture import FractureConfig
+    from anyfesolver.fracture import FractureConfig
 
     model = _single_beam_model()
     load_case = LoadCase("f")
@@ -464,7 +464,7 @@ def test_corotational_shell_strip_rolls_to_quarter_circle_efficiently() -> None:
     the necessary corotational frame-rotation excursion (grinding thousands of
     assemblies), and geometric tangent terms destabilize the shell Newton map.
     """
-    import anysolver.nonlinear_static as ns
+    import anyfesolver.nonlinear_static as ns
 
     n, width, thickness = 8, 0.1, 0.005
     model = FEModel("shell_rollup")

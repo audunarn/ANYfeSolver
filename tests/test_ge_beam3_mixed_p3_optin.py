@@ -11,33 +11,33 @@ from typing import Any
 import numpy as np
 import pytest
 
-import anysolver
-from anysolver._native_rotation_state import create_native_rotation_state_store
-from anysolver.assembly import solve_linear
-from anysolver.beam_sections import GeneralizedBeamSection
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.elements import (
+import anyfesolver
+from anyfesolver._native_rotation_state import create_native_rotation_state_store
+from anyfesolver.assembly import solve_linear
+from anyfesolver.beam_sections import GeneralizedBeamSection
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.elements import (
     ELEMENT_TYPES,
     CoupledBeamShellElement,
     QuadraticBeamElement,
     create_element,
 )
-from anysolver.fe_core import FEModel
-from anysolver.ge_beam3_element import (
+from anyfesolver.fe_core import FEModel
+from anyfesolver.ge_beam3_element import (
     GE_BEAM3_QUALIFIED_FORMULATION_ID,
     GeBeam3IntegrationError,
     GeometricallyExactBeam3D3NElement,
     deserialize_ge_beam3_element,
     serialize_ge_beam3_element,
 )
-from anysolver.ge_beam3_mixed_element import (
+from anyfesolver.ge_beam3_mixed_element import (
     GeBeam3MixedStateError,
     GeometricallyExactBeam3D3NElement as CandidateGeBeam3,
 )
-from anysolver.ge_beam3_mixed_state import (
+from anyfesolver.ge_beam3_mixed_state import (
     serialize_ge_beam3_mixed_state,
 )
-from anysolver.ge_beam3_state import (
+from anyfesolver.ge_beam3_state import (
     STATE_LAYOUT_ID,
     STATE_SCHEMA,
     STATE_VERSION,
@@ -45,11 +45,11 @@ from anysolver.ge_beam3_state import (
     deserialize_ge_beam3_state,
     serialize_ge_beam3_state,
 )
-from anysolver.matrix_assembly import assemble_stiffness_matrix
-from anysolver.modal import solve_free_vibration
-from anysolver.mesh_gen import InterpolatedBeamShellMPCElement
-from anysolver.nonlinear_state import create_model_native_rotation_store
-from anysolver.nonlinear_static import solve_static_nonlinear
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.modal import solve_free_vibration
+from anyfesolver.mesh_gen import InterpolatedBeamShellMPCElement
+from anyfesolver.nonlinear_state import create_model_native_rotation_store
+from anyfesolver.nonlinear_static import solve_static_nonlinear
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -114,13 +114,13 @@ def test_exact_selector_and_public_exports_are_additive() -> None:
     selected = _element(via_factory=True)
     assert type(selected) is GeometricallyExactBeam3D3NElement
     assert selected.formulation_id == GE_BEAM3_QUALIFIED_FORMULATION_ID
-    assert anysolver.GeometricallyExactBeam3D3NElement is GeometricallyExactBeam3D3NElement
+    assert anyfesolver.GeometricallyExactBeam3D3NElement is GeometricallyExactBeam3D3NElement
     assert (
-        anysolver.GE_BEAM3_QUALIFIED_FORMULATION_ID
+        anyfesolver.GE_BEAM3_QUALIFIED_FORMULATION_ID
         == GE_BEAM3_QUALIFIED_FORMULATION_ID
     )
-    assert "GE_BEAM3_QUALIFIED_FORMULATION_ID" in anysolver.__all__
-    assert "GeometricallyExactBeam3D3NElement" in anysolver.__all__
+    assert "GE_BEAM3_QUALIFIED_FORMULATION_ID" in anyfesolver.__all__
+    assert "GeometricallyExactBeam3D3NElement" in anyfesolver.__all__
     assert "ge-beam3" not in ELEMENT_TYPES
     assert QuadraticBeamElement not in GeometricallyExactBeam3D3NElement.__mro__
 
@@ -563,10 +563,10 @@ def test_frozen_mechanics_defaults_and_package_metadata_are_unchanged() -> None:
         for record in baseline["production_snapshot"]
         if record["path"]
         in {
-            "src/anysolver/e4_pl_element.py",
-            "src/anysolver/e4_pl_s3_v2d_element.py",
-            "src/anysolver/ge_beam3_mixed_element.py",
-            "src/anysolver/ge_beam3_mixed_state.py",
+            "src/anyfesolver/e4_pl_element.py",
+            "src/anyfesolver/e4_pl_s3_v2d_element.py",
+            "src/anyfesolver/ge_beam3_mixed_element.py",
+            "src/anyfesolver/ge_beam3_mixed_state.py",
             "pyproject.toml",
         }
     }

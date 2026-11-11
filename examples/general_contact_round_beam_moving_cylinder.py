@@ -1,17 +1,17 @@
 """A prescribed infinite cylinder presses a declared round B2 centreline.
 
-Run after installing ANYsolver:
+Run after installing ANYfeSolver:
 python examples/general_contact_round_beam_moving_cylinder.py
 All values use SI units. This is a development example, not qualification.
 """
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, LoadCase, RigidContactBody,
     solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
 
 
 def main() -> None:

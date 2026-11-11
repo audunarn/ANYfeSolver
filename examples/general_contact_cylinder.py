@@ -1,17 +1,17 @@
 """Force-controlled Q4 shell contact with a fixed infinite cylinder.
 
-Run with ANYsolver installed: python examples/general_contact_cylinder.py
+Run with ANYfeSolver installed: python examples/general_contact_cylinder.py
 The declared 4 mm gap budget is for development smoke, not qualification.
 """
 
 import json
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, LoadCase, RigidContactBody,
     create_shell_element, solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.fe_core import FEModel
+from anyfesolver.fe_core import FEModel
 
 
 def main() -> None:

@@ -1,17 +1,17 @@
 """Small explicit-policy spectra; no plastic vibration/buckling qualification."""
 import numpy as np
 import pytest
-from anysolver._ge_beam3_retained_plastic_program import solve_force_program
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._native_factor_chain_modes import solve_factor_chain_modes
+from anyfesolver._ge_beam3_retained_plastic_program import solve_force_program
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._native_factor_chain_modes import solve_factor_chain_modes
 from docs.reference_cases.ge_beam3_paired_plastic_modal_probe import prepare, FROZEN, ALGORITHMIC
 from test_ge_beam3_retained_plastic_state import program
 from test_ge_beam3_retained_plastic_force_probe import model_with_plasticity
 from test_ge_beam3_curved_contrast_probe import make_curved, ROTATION
 from test_ge_beam3_complementary_section import section
-from anysolver._ge_beam3_p5_seeded import NativeP5BeamElement
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._ge_beam3_seeded_load_program import ForceProgram
+from anyfesolver._ge_beam3_p5_seeded import NativeP5BeamElement
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram
 
 
 @pytest.fixture(scope='module', params=[1., 1000000000000.])

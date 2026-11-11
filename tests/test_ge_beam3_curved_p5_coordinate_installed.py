@@ -28,8 +28,8 @@ def test_coordinate_wheel_two_fresh_process_checks(tmp_path):
     shutil.copytree(root/'src',build/'src',ignore=shutil.ignore_patterns('__pycache__','*.egg-info'))
     # Exercise the Windows checkout transform in the disposable snapshot.
     # Canonical source hashes and actual installed byte hashes are distinct.
-    for path in [*(build/'src/anysolver/_ge_beam3_p5').glob('*.py'),
-                 *(build/'src/anysolver/_ge_beam3_p5_coordinates').glob('*.py')]:
+    for path in [*(build/'src/anyfesolver/_ge_beam3_p5').glob('*.py'),
+                 *(build/'src/anyfesolver/_ge_beam3_p5_coordinates').glob('*.py')]:
         raw = path.read_bytes().replace(b'\r\n',b'\n')
         path.write_bytes(raw.replace(b'\n',b'\r\n'))
     for name in ('pyproject.toml','README.md','LICENSE','COPYRIGHT','THIRD_PARTY_NOTICES.md'):
@@ -49,8 +49,8 @@ def test_coordinate_wheel_two_fresh_process_checks(tmp_path):
     wheel = candidates[0]
     with zipfile.ZipFile(wheel) as archive:
         assert not any(name.startswith(('docs/','tests/')) for name in archive.namelist())
-        assert 'anysolver/_ge_beam3_p5/element.py' in archive.namelist()
-        assert 'anysolver/_ge_beam3_p5_coordinates/element.py' in archive.namelist()
+        assert 'anyfesolver/_ge_beam3_p5/element.py' in archive.namelist()
+        assert 'anyfesolver/_ge_beam3_p5_coordinates/element.py' in archive.namelist()
     environment = tmp_path/'environment'
     command([sys.executable,'-I','-B','-m','venv',str(environment)],tmp_path)
     python = environment/('Scripts/python.exe' if os.name == 'nt' else 'bin/python')

@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     AnyStructureFEMConfig,
     FEModel,
     QualifiedE4PLS3ShellElement,
@@ -14,14 +14,14 @@ from anysolver import (
     recover_prestress_from_static_result,
     run_anystructure_fem_mode,
 )
-from anysolver.assembly import solve_linear
-from anysolver.e4_pl_s3_element import (
+from anyfesolver.assembly import solve_linear
+from anyfesolver.e4_pl_s3_element import (
     HOMOGENEOUS_ELASTIC_STRESS_PROFILE_ID,
     REFERENCE_ELASTIC_BUBBLE_LINEARIZATION_ID,
     RESULTANT_SUMMARY_POLICY_ID,
 )
-from anysolver.elements import BeamElement, ShellElement
-from anysolver.matrix_assembly import assemble_geometric_stiffness_matrix
+from anyfesolver.elements import BeamElement, ShellElement
+from anyfesolver.matrix_assembly import assemble_geometric_stiffness_matrix
 
 
 class _Part:
@@ -376,7 +376,7 @@ def test_shell_prestress_consumer_rejects_wrong_or_nonfinite_station_fields(
         stress["bending_resultants"] = bending
 
     monkeypatch.setattr(
-        "anysolver.anystructure_fem_mode.compute_stresses",
+        "anyfesolver.anystructure_fem_mode.compute_stresses",
         lambda *_args, **_kwargs: {1: stress},
     )
     with pytest.raises(
@@ -400,7 +400,7 @@ def test_shell_prestress_consumer_prefers_native_resultants_over_stress_fallback
     membrane = np.arange(21, dtype=float).reshape(7, 3) - 9.0
     bending = 0.1 * membrane
     monkeypatch.setattr(
-        "anysolver.anystructure_fem_mode.compute_stresses",
+        "anyfesolver.anystructure_fem_mode.compute_stresses",
         lambda *_args, **_kwargs: {
             1: {
                 "membrane_resultants": membrane,

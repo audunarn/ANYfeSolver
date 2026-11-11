@@ -4,10 +4,10 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 from scipy import sparse
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver, _State
-from anysolver._stiffened_shell_arc_trial import path_row
-from anysolver._stiffened_shell_arc_metric import PhysicalChordMetric
-from anysolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver, _State
+from anyfesolver._stiffened_shell_arc_trial import path_row
+from anyfesolver._stiffened_shell_arc_metric import PhysicalChordMetric
+from anyfesolver._ge_beam3_p5.algebra import rotation
 
 
 @pytest.mark.parametrize('plane',(False,True))
@@ -32,7 +32,7 @@ def test_actual_shell_anchor_and_beam_multiplicative_row(plane):
     assert (plus-minus)/(2*h)==pytest.approx(row@direction,rel=1e-8)
     assert np.count_nonzero(row[12:])==0
     # A genuine shell chart rebase preserves physical distance, not q rotations.
-    from anysolver._stiffened_shell_rotation_charts import physical_frames
+    from anyfesolver._stiffened_shell_rotation_charts import physical_frames
     rebased=state.q.copy();rebased[3:6]=0.
     state2=replace(state,q=rebased,shell_anchors=physical_frames(state.q[:6],anchors))
     assert path_row(driver,state2,parent,metric,normal)[0]==pytest.approx(value,rel=1e-13)
@@ -40,7 +40,7 @@ def test_actual_shell_anchor_and_beam_multiplicative_row(plane):
 
 def test_stale_owner_and_unrepresentable_radius_rejected():
     from threading import RLock
-    from anysolver._stiffened_shell_arc_trial import correct
+    from anyfesolver._stiffened_shell_arc_trial import correct
     owner=SimpleNamespace(_K=sparse.eye(12),_shell_count=6,_beam_ids=(1,),
         _bl5_shell_material=True,_free=np.arange(12),_commit_lock=RLock(),
         _finite_driver=object())

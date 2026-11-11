@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 
 from test_stiffened_shell_native_plastic_chart import (
     PREFIX, definition, has_flow, programme,

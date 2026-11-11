@@ -5,12 +5,12 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver.marine_mooring import (
+from anyfesolver.marine_mooring import (
     DynamicLineNodeEndpoint as Node, FixedEndpoint as Anchor,
     RigidBodyAttachmentEndpoint as Fairlead, MooringLine, MooringLineAssembler,
     MooringLineError, MooringNodeState,
 )
-from anysolver.marine_rigid import RigidBody6D, CHART_BRANCH_MARGIN
+from anyfesolver.marine_rigid import RigidBody6D, CHART_BRANCH_MARGIN
 
 
 def line(endpoints, *, rest=.8, ea=100., damping=4., mass=2., area=.001):

@@ -2,11 +2,11 @@
 
 import numpy as np
 
-from anysolver.general_contact import static_path
-from anysolver.general_contact.q4_s3_overlap_derivatives import UnsupportedQ4S3Branch
+from anyfesolver.general_contact import static_path
+from anyfesolver.general_contact.q4_s3_overlap_derivatives import UnsupportedQ4S3Branch
 from scripts.general_contact_d1_coupled_refinement import build_case
 
-from anysolver import solve_static_nonlinear, validate_general_contact
+from anyfesolver import solve_static_nonlinear, validate_general_contact
 
 
 def test_refined_projected_patch_press_slide_open_recontact_with_tight_gap():

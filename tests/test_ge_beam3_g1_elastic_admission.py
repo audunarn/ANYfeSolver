@@ -12,7 +12,7 @@ RECORD = ROOT / "docs/reference_cases/ge_beam3_g1_elastic_admission_v1.json"
 
 
 def source(name):
-    return (ROOT / "src/anysolver" / name).read_text(encoding="utf-8")
+    return (ROOT / "src/anyfesolver" / name).read_text(encoding="utf-8")
 
 
 def has_exact_type_guard(name, argument, required_type):

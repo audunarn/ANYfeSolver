@@ -4,8 +4,8 @@ from dataclasses import replace
 
 import numpy as np
 
-from anysolver.general_contact.q4_source_overlap import q4_source_overlap_integrals
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.q4_source_overlap import q4_source_overlap_integrals
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 from test_general_contact_q4_q4_augmented import _augmented_case
 
 

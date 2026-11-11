@@ -44,6 +44,6 @@ def test_saved_input_and_no_solver_calls():
     for name in ('ge_beam3_modal_work_diagnostic.py','ge_beam3_modal_work_worker.py'):
         tree=ast.parse((root/name).read_text())
         imports=[n.module or '' for n in ast.walk(tree) if isinstance(n,ast.ImportFrom)]
-        assert not any(x.startswith('anysolver') for x in imports)
+        assert not any(x.startswith('anyfesolver') for x in imports)
         calls=[n.func.attr for n in ast.walk(tree) if isinstance(n,ast.Call) and isinstance(n.func,ast.Attribute)]
         assert not set(calls)&{'eigh','eig','solve_bvp','prepare'}

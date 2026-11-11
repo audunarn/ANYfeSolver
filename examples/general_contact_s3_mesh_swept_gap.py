@@ -4,7 +4,7 @@ import argparse,json
 from pathlib import Path
 from examples.general_contact_s3_mesh_weak_pressure_friction import build_case as _endpoint_case
 from examples.general_contact_s3_mesh_moving_friction import solve_case
-from anysolver.general_contact import S3MeshWholeChordGapFrictionSettings
+from anyfesolver.general_contact import S3MeshWholeChordGapFrictionSettings
 
 def build_case():
     case=list(_endpoint_case());case[3]=S3MeshWholeChordGapFrictionSettings(**asdict(case[3]))

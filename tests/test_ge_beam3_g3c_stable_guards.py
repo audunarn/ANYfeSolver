@@ -5,11 +5,11 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver import _ge_beam3_g3c_so3_numerics as kernel
-from anysolver import _ge_beam3_mixed_ad as shared
-from anysolver import _native_material_protocol as protocol
-from anysolver._ge_beam3_g3c_stable import authority, owner, element, operator
-from anysolver._ge_beam3_g3c_stable import beam, shell, joint, chart, boundary, line_work, fit, compensated
+from anyfesolver import _ge_beam3_g3c_so3_numerics as kernel
+from anyfesolver import _ge_beam3_mixed_ad as shared
+from anyfesolver import _native_material_protocol as protocol
+from anyfesolver._ge_beam3_g3c_stable import authority, owner, element, operator
+from anyfesolver._ge_beam3_g3c_stable import beam, shell, joint, chart, boundary, line_work, fit, compensated
 
 
 def load():
@@ -93,7 +93,7 @@ def test_leased_runtime_hash_mutation_rejected_without_writes():
 
 
 def test_foreign_predecessor_native_identity_rejected():
-    from anysolver._ge_beam3_g1_element import ElasticElement as OldElement
+    from anyfesolver._ge_beam3_g1_element import ElasticElement as OldElement
     graph = owner.MixedGraphOwner()
     model, elements, states = graph._native_model(None)
     native = elements[0]
@@ -114,13 +114,13 @@ def test_authoritative_native_rotations_not_reconstructed():
         assert row['payload']['epoch'] == 1
         assert np.array_equal(row['payload']['committed_nodal_rotation_matrices'],
                               np.tile(np.eye(3), (3, 1, 1)))
-    from anysolver import _native_rotation_state as original_rotation
+    from anyfesolver import _native_rotation_state as original_rotation
     assert owner.rotation_module is original_rotation
 
 
 def test_nonzero_curved_line_work_directional_derivatives():
     # A load-only analytic regression, not a new graph qualification fixture.
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
     coordinates = np.array([[0., 0., 0.], [.5, .1, 0.], [1., 0., 0.]])
     frames = []
     for xi in (-1., 0., 1.):

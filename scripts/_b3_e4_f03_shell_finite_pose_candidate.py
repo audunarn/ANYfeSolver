@@ -12,8 +12,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from anysolver import _ge_beam3_mixed_ad as ad
-from anysolver.corotational import rotation_matrix_from_vector
+from anyfesolver import _ge_beam3_mixed_ad as ad
+from anyfesolver.corotational import rotation_matrix_from_vector
 
 from scripts._b3_e4_f03_shell_spatial_linear_port import reference_spatial_trace
 from scripts._b3_e4_f03_shell_trace import ShellPanel, _SAMPLE_OFFSETS

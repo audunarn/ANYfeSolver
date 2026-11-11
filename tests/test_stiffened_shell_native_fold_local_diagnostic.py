@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._ge_beam3_mixed_ad import Jet2, so3_exp, so3_log
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._ge_beam3_mixed_ad import Jet2, so3_exp, so3_log
 from examples import stiffened_shell_native_fold_local_diagnostic as local
 
 

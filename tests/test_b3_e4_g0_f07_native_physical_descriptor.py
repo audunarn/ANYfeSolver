@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 from scipy import linalg
 
-from anysolver._ge_beam3_coupled_modes import capture, modes
+from anyfesolver._ge_beam3_coupled_modes import capture, modes
 from test_ge_beam3_coupled_modes import arguments, fixture
 
 

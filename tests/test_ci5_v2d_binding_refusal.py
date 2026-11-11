@@ -14,7 +14,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver.e4_pl_s3_v2d_state import (
+from anyfesolver.e4_pl_s3_v2d_state import (
     V2DStateError,
     canonical_json_bytes,
     initialize_v2d_state,

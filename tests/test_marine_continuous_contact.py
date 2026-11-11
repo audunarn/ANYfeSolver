@@ -5,12 +5,12 @@ import copy
 import numpy as np
 import pytest
 
-from anysolver.marine_seabed import (SeabedContact, SeabedContactError,
+from anyfesolver.marine_seabed import (SeabedContact, SeabedContactError,
     seabed_contact_force, API_VERSION, CONTINUOUS_API_VERSION)
-from anysolver.marine_rigid import RigidBody6D
-from anysolver.marine_mooring import (FixedEndpoint, DynamicLineNodeEndpoint,
+from anyfesolver.marine_rigid import RigidBody6D
+from anyfesolver.marine_mooring import (FixedEndpoint, DynamicLineNodeEndpoint,
     MooringNodeState, MooringLine, MooringLineAssembler)
-from anysolver.marine_mechanical import (MarineMechanicalModel,
+from anyfesolver.marine_mechanical import (MarineMechanicalModel,
     MarineMechanicalRunSpec, solve_marine_mechanical, model_to_dict, model_from_dict)
 
 

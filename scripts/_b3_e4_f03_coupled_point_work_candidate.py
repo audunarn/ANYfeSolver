@@ -11,8 +11,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from anysolver._ge_beam3_pose_joint import RigidPoseJoint
-from anysolver._ge_beam3_retained_generalized_state import Mechanical
+from anyfesolver._ge_beam3_pose_joint import RigidPoseJoint
+from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
 
 from scripts._b3_e4_f03_native_spatial_port import (
     NativeHalfCellSpatialPort, NativeNodalSpatialPort)

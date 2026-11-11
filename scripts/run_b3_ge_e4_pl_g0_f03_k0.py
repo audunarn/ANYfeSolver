@@ -21,7 +21,7 @@ import threading
 import time
 import traceback
 
-import anysolver
+import anyfesolver
 import numpy
 import psutil
 import scipy
@@ -39,15 +39,15 @@ SOURCES = (
     'scripts/probe_b3_ge_e4_pl_g0_f03_kkt.py',
     'scripts/_b3_e4_f03_native_fixture.py',
     'scripts/_b3_e4_f03_shell_trace.py',
-    'src/anysolver/_ge_beam3_retained_generalized.py',
-    'src/anysolver/_ge_beam3_retained_generalized_state.py',
-    'src/anysolver/_ge_beam3_generalized_static_boundary.py',
-    'src/anysolver/_ge_beam3_native_generalized_element.py',
-    'src/anysolver/_ge_beam3_centered_reference.py',
-    'src/anysolver/e4_pl_element.py',
-    'src/anysolver/e4_pl_s3_element.py',
-    'src/anysolver/e4_pl_s3_v2d_element.py',
-    'src/anysolver/elements.py',
+    'src/anyfesolver/_ge_beam3_retained_generalized.py',
+    'src/anyfesolver/_ge_beam3_retained_generalized_state.py',
+    'src/anyfesolver/_ge_beam3_generalized_static_boundary.py',
+    'src/anyfesolver/_ge_beam3_native_generalized_element.py',
+    'src/anyfesolver/_ge_beam3_centered_reference.py',
+    'src/anyfesolver/e4_pl_element.py',
+    'src/anyfesolver/e4_pl_s3_element.py',
+    'src/anyfesolver/e4_pl_s3_v2d_element.py',
+    'src/anyfesolver/elements.py',
 )
 THREADS = ('OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS',
            'NUMEXPR_NUM_THREADS','BLIS_NUM_THREADS','GOTO_NUM_THREADS',
@@ -62,9 +62,9 @@ def actual_identity() -> dict:
     numpy.linalg.svd(numpy.eye(2))
     scipy.linalg.svd(numpy.eye(2))
     pools = threadpoolctl.threadpool_info()
-    imported = Path(anysolver.__file__).resolve()
+    imported = Path(anyfesolver.__file__).resolve()
     if not imported.is_relative_to(ROOT / 'src'):
-        raise RuntimeError('anysolver import is not from the candidate checkout')
+        raise RuntimeError('anyfesolver import is not from the candidate checkout')
     head = subprocess.check_output(('git','rev-parse','HEAD'),cwd=ROOT,
                                    text=True).strip()
     dirty = subprocess.check_output(
@@ -74,20 +74,20 @@ def actual_identity() -> dict:
         raise RuntimeError('F03-K0 execution requires a clean source checkout')
     source_hashes = {name:sha256(ROOT / name) for name in SOURCES}
     tracked = subprocess.check_output(
-        ('git','ls-files','-z','--','src/anysolver'),cwd=ROOT).split(b'\0')
+        ('git','ls-files','-z','--','src/anyfesolver'),cwd=ROOT).split(b'\0')
     source_tree = hashlib.sha256()
     for raw_name in filter(None,tracked):
         name = os.fsdecode(raw_name)
         source_tree.update(raw_name+b'\0'+bytes.fromhex(sha256(ROOT/name)))
     return {'candidate_commit':head,'source_sha256':source_hashes,
             'tracked_solver_source_tree_sha256':source_tree.hexdigest(),
-            'imported_anysolver':str(imported),
-            'source_anysolver_version':anysolver.__version__,
+            'imported_anyfesolver':str(imported),
+            'source_anyfesolver_version':anyfesolver.__version__,
             'numba_cache_directory':os.environ.get('NUMBA_CACHE_DIR'),
             'pythonpath':os.environ.get('PYTHONPATH'),
             'python_executable':str(Path(sys.executable).resolve()),
             'python_version':platform.python_version(),
-            'packages':{'anysolver':importlib.metadata.version('anysolver'),
+            'packages':{'anyfesolver':importlib.metadata.version('anyfesolver'),
                         'numpy':numpy.__version__,
                         'scipy':scipy.__version__,
                         'numba':importlib.metadata.version('numba'),

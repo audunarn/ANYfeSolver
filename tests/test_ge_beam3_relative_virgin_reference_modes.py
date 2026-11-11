@@ -3,12 +3,12 @@
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_relative_virgin_reference_modes import solve_relative_virgin_reference_modes
-from anysolver._ge_beam3_p5_loads import NativeP5BeamElement, DirectedHardeningSection
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-from anysolver._ge_beam3_p5_loads.core import canonical
-from anysolver.fe_core import FEModel
-from anysolver.boundary import BoundaryCondition
+from anyfesolver._ge_beam3_relative_virgin_reference_modes import solve_relative_virgin_reference_modes
+from anyfesolver._ge_beam3_p5_loads import NativeP5BeamElement, DirectedHardeningSection
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+from anyfesolver._ge_beam3_p5_loads.core import canonical
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import BoundaryCondition
 from test_ge_beam3_native_load_state import problem
 
 
@@ -55,7 +55,7 @@ def test_curved_coupled_reference_keeps_six_rigid_modes():
 
 @pytest.mark.parametrize('kind', ['displaced', 'loaded_state', 'missing_state', 'bad_inertia'])
 def test_nonvirgin_or_invalid_inputs_cannot_enter_reference_kernel(kind, monkeypatch):
-    import anysolver._ge_beam3_relative_virgin_reference_modes as adapter
+    import anyfesolver._ge_beam3_relative_virgin_reference_modes as adapter
     from test_ge_beam3_loaded_modal import accepted
     model = problem(); states = initial(model); total = np.zeros(18)
     inertias = {1: np.eye(6)}
@@ -71,7 +71,7 @@ def test_nonvirgin_or_invalid_inputs_cannot_enter_reference_kernel(kind, monkeyp
 
 
 def test_model_changed_inside_reference_solver_is_rejected_after_return(monkeypatch):
-    import anysolver._ge_beam3_relative_virgin_reference_modes as adapter
+    import anyfesolver._ge_beam3_relative_virgin_reference_modes as adapter
     model = problem(); states = initial(model); solve = adapter.solve_relative_reference_factor_spectrum
     def changed(*args, **kwargs):
         result = solve(*args, **kwargs)

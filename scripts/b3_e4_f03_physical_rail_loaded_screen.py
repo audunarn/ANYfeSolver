@@ -13,7 +13,7 @@ from pathlib import Path
 
 import numpy as np
 from scipy import sparse
-import anysolver
+import anyfesolver
 
 from scripts._b3_e4_f03_native_fixture import build
 from scripts._b3_e4_f03_native_spatial_port import NativeHalfCellSpatialPort
@@ -58,10 +58,10 @@ def fixture_identity(xs, ys, bond_start, thickness, beam_offset, beam,
 
 def evaluate() -> dict:
     expected_package = (Path(__file__).resolve().parents[1]
-                        / "src" / "anysolver").resolve()
-    actual_package = Path(anysolver.__file__).resolve().parent
+                        / "src" / "anyfesolver").resolve()
+    actual_package = Path(anyfesolver.__file__).resolve().parent
     if actual_package != expected_package:
-        raise RuntimeError("loaded screen imported another ANYsolver checkout")
+        raise RuntimeError("loaded screen imported another ANYfeSolver checkout")
     xs = np.linspace(0., 1., 9)
     ys = np.array((-.1, 0., .1))
     bond_start = 4
@@ -200,7 +200,7 @@ def evaluate() -> dict:
         "beam_axis_z_m": .0675,
         "native_beam_root": "free",
         "shell_x0_edge": "fixed",
-        "imported_anysolver": str(actual_package),
+        "imported_anyfesolver": str(actual_package),
         "integrated_reference_map_error": map_error,
         "cases": cases,
         "limitations": [

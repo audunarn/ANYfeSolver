@@ -13,14 +13,14 @@ import numpy as np
 import pytest
 from scipy.optimize import root
 from scipy.integrate import solve_ivp
-from anysolver import TransientConfig, ContactTransientSolverControls, solve_transient_contact
-from anysolver.assembly import assemble_mass_matrix
-from anysolver.matrix_assembly import assemble_stiffness_matrix
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.normal_s3_skin_path import prepare_normal_s3_skin_path
-from anysolver.general_contact.shell_pair_hermite_sweep import shell_pair_hermite_lower
-from anysolver.general_contact.runtime import active_contact_manager
-from anysolver.nonlinear_restart import analysis_configuration_fingerprint, model_configuration_fingerprint
+from anyfesolver import TransientConfig, ContactTransientSolverControls, solve_transient_contact
+from anyfesolver.assembly import assemble_mass_matrix
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.normal_s3_skin_path import prepare_normal_s3_skin_path
+from anyfesolver.general_contact.shell_pair_hermite_sweep import shell_pair_hermite_lower
+from anyfesolver.general_contact.runtime import active_contact_manager
+from anyfesolver.nonlinear_restart import analysis_configuration_fingerprint, model_configuration_fingerprint
 
 example = runpy.run_path(str(Path(__file__).parents[1]/'examples/general_contact_nonuniform_s3_impact_dev.py'))
 GAP,KN,SUPPORT = (example[key] for key in ('GAP','KN','SUPPORT'))
@@ -116,7 +116,7 @@ def test_actual_source_deformation_has_independent_pressure_work_and_tangent(q):
     np.testing.assert_allclose(np.array(result.integration_moment)+result.target_moment,0.,atol=1.e-7)
     path.require_motion(modes@q)
     with pytest.raises(ValueError,match='uniform'):
-        from anysolver.general_contact.fixed_projection_s3_events import prepare_fixed_projection_s3_events
+        from anyfesolver.general_contact.fixed_projection_s3_events import prepare_fixed_projection_s3_events
         prepare_fixed_projection_s3_events(model,manager,modes)
 
 
@@ -317,7 +317,7 @@ def test_normal_v15_active_restart_binds_method_features_and_physical_budgets():
 
 
 def test_normal_unresolved_matched_physical_proof_cuts_back_before_commit(monkeypatch):
-    from anysolver.general_contact import normal_s3_skin_path as module
+    from anyfesolver.general_contact import normal_s3_skin_path as module
     original = module.NormalS3SkinPath.overlap_sweep
     calls = 0
     def failed(self,*args,**kwargs):
@@ -348,7 +348,7 @@ def test_normal_v15_open_restart_continues_after_contact_release():
 
 
 def test_normal_unresolved_pressure_proof_cuts_back_before_commit(monkeypatch):
-    from anysolver.general_contact import normal_s3_skin_path as module
+    from anyfesolver.general_contact import normal_s3_skin_path as module
     original=module.NormalS3SkinPath.pressure_sweep
     calls=0
     def failed(self,*args,**kwargs):
@@ -366,7 +366,7 @@ def test_normal_unresolved_pressure_proof_cuts_back_before_commit(monkeypatch):
 
 
 def test_normal_cutback_reports_rejected_endpoint_and_stage_work(monkeypatch):
-    from anysolver.general_contact import normal_s3_skin_path as module
+    from anyfesolver.general_contact import normal_s3_skin_path as module
     original=module.NormalS3SkinPath.pressure_sweep
     injected=False
     def failed(self,manager,start,end,v0,v1,dt,**kwargs):
@@ -388,8 +388,8 @@ def test_normal_cutback_reports_rejected_endpoint_and_stage_work(monkeypatch):
 
 
 def test_normal_pressure_proof_cancellation_restores_context(monkeypatch):
-    from anysolver.control import CancellationToken,SolveCancelled
-    from anysolver.general_contact import normal_s3_skin_path as module
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.general_contact import normal_s3_skin_path as module
     token=CancellationToken()
     original=module.NormalS3SkinPath.pressure_sweep
     def cancelled(self,*args,**kwargs):
@@ -441,8 +441,8 @@ def test_event_tolerance_refinement_improves_localized_energy_balance():
 
 
 def test_normal_cancellation_inside_physical_proof_restores_model_and_owner(monkeypatch):
-    from anysolver.control import CancellationToken,SolveCancelled
-    from anysolver.general_contact import normal_s3_skin_path as module
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.general_contact import normal_s3_skin_path as module
     model,definition,modes = build()
     fingerprint = model_configuration_fingerprint(model)
     token = CancellationToken();original = module.s3_overlap_hermite_gap_bounds

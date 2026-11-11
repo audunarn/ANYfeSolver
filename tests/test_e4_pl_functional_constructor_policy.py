@@ -386,12 +386,12 @@ def test_functional_lane_legacy_q4_calls_are_explicit_and_closed_world() -> None
 
 
 def test_production_constructor_calls_are_confined_to_central_factory() -> None:
-    paths = sorted((ROOT / "src" / "anysolver").rglob("*.py"))
+    paths = sorted((ROOT / "src" / "anyfesolver").rglob("*.py"))
     calls = _constructor_calls(paths)
     assert calls["ShellElement"] == Counter()
     assert calls["LegacyShellElement"] == Counter(
-        {("src/anysolver/elements.py", "create_shell_element"): 1}
+        {("src/anyfesolver/elements.py", "create_shell_element"): 1}
     )
     assert calls["QualifiedE4PLShellElement"] == Counter(
-        {("src/anysolver/elements.py", "create_shell_element"): 1}
+        {("src/anyfesolver/elements.py", "create_shell_element"): 1}
     )

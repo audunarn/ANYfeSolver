@@ -3,19 +3,19 @@ from dataclasses import replace
 from importlib.util import find_spec
 import numpy as np
 import pytest
-from anysolver.marine_rigid import RigidBody6D
-from anysolver.marine_hydro_coordinates import EquilibriumHydroFrame
-from anysolver.marine_potential_flow import (PotentialFlowDevelopmentData,
+from anyfesolver.marine_rigid import RigidBody6D
+from anyfesolver.marine_hydro_coordinates import EquilibriumHydroFrame
+from anyfesolver.marine_potential_flow import (PotentialFlowDevelopmentData,
     PotentialFlowDevelopmentContribution,equilibrium_geometry_hash)
-from anysolver.marine_contributions import (BodyLayout,CommittedHistory,WorldWrenchContribution,
+from anyfesolver.marine_contributions import (BodyLayout,CommittedHistory,WorldWrenchContribution,
     DynamicContribution,ContributionResult)
-from anysolver.marine_mechanical import MarineMechanicalModel
-from anysolver.marine_link import MechanicalLink6D
-from anysolver.marine_mooring import (MooringLine,MooringLineAssembler,FixedEndpoint as Anchor,
+from anyfesolver.marine_mechanical import MarineMechanicalModel
+from anyfesolver.marine_link import MechanicalLink6D
+from anyfesolver.marine_mooring import (MooringLine,MooringLineAssembler,FixedEndpoint as Anchor,
     DynamicLineNodeEndpoint as Node,RigidBodyAttachmentEndpoint as Fairlead)
-from anysolver.marine_coupled_equilibrium import (CoupledStaticSpec,
+from anyfesolver.marine_coupled_equilibrium import (CoupledStaticSpec,
     solve_coupled_marine_equilibrium,evaluate_marine_static)
-from anysolver.marine_equilibrium import MooringEquilibriumError,initialize_mooring_catenaries
+from anyfesolver.marine_equilibrium import MooringEquilibriumError,initialize_mooring_catenaries
 
 
 def fixture(*, lines=False, members=False, finite=False, preload=True):
@@ -50,7 +50,7 @@ def fixture(*, lines=False, members=False, finite=False, preload=True):
         if find_spec('anyloads') is None:
             pytest.importorskip('anyloads', reason='optional marine-morison provider is not installed')
         from anyloads.marine import AiryEnvironment,CurrentProfile,MorisonSection,HydrodynamicOwnership
-        from anysolver.marine_morison import MorisonMemberSetContribution,MorisonMember,MemberEndpoint
+        from anyfesolver.marine_morison import MorisonMemberSetContribution,MorisonMember,MemberEndpoint
         rods=tuple(MorisonMember('brace'+str(j),MemberEndpoint('a',(0.,0.,-.2-j*.1)),
             MemberEndpoint('b',(0.,0.,-.2-j*.1)),MorisonSection(.1,1.,1.),
             HydrodynamicOwnership(bem_included=False,buoyancy_owner='morison')) for j in range(2))
@@ -216,8 +216,8 @@ def test_malformed_static_state_model_and_nonstationary_rates_are_refused():
 
 @pytest.mark.parametrize('bad',[None,{}, {'a':object(),'b':object()}])
 def test_direct_public_static_methods_preserve_typed_admission(bad):
-    from anysolver.marine_potential_flow import MarinePotentialFlowError
-    from anysolver.marine_morison import MarineMorisonError
+    from anyfesolver.marine_potential_flow import MarinePotentialFlowError
+    from anyfesolver.marine_morison import MarineMorisonError
     model,states,_=fixture(members=True);layout=BodyLayout(model.body_ids)
     for c,error in ((model.contributions[0],MarinePotentialFlowError),(model.contributions[-1],MarineMorisonError)):
         with pytest.raises(error):c.evaluate_static(bad,layout)

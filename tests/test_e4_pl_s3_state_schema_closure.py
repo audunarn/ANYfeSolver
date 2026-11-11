@@ -9,8 +9,8 @@ import numpy as np
 import pytest
 
 from anymaterial import Hill48Yield, OrthotropicMaterial
-import anysolver.e4_pl_s3_state as state_module
-from anysolver.e4_pl_s3_state import (
+import anyfesolver.e4_pl_s3_state as state_module
+from anyfesolver.e4_pl_s3_state import (
     BUBBLE_PREDICTOR_COMMIT_POLICY_ID,
     GENERALIZED_RESULTANT_COMPONENT_ORDER,
     GENERALIZED_STRAIN_COMPONENT_ORDER,
@@ -38,7 +38,7 @@ from anysolver.e4_pl_s3_state import (
     stiffness_station_table_fingerprint,
     validate_committed_s3_state,
 )
-from anysolver.fe_core import Material
+from anyfesolver.fe_core import Material
 
 
 ELEMENT_ID = 41

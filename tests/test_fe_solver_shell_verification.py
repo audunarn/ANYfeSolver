@@ -11,7 +11,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver import assemble_stiffness_matrix, generate_simple_panel_mesh, shell_element_patch_summary
+from anyfesolver import assemble_stiffness_matrix, generate_simple_panel_mesh, shell_element_patch_summary
 
 
 @pytest.mark.parametrize("use_8node_elements", [False, True])

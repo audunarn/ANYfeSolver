@@ -1,8 +1,8 @@
 from types import MethodType
 import numpy as np
 import pytest
-from anysolver import FEModel,Material,ShellElement,RecoveryConfig,recover_stress_result
-from anysolver.recovery_shell_frames import native_recovery_frames
+from anyfesolver import FEModel,Material,ShellElement,RecoveryConfig,recover_stress_result
+from anyfesolver.recovery_shell_frames import native_recovery_frames
 
 
 def model8(warp=False):
@@ -26,7 +26,7 @@ def same(actual,expected):
 @pytest.mark.parametrize('warp',[False,True])
 @pytest.mark.parametrize('global_output',[False,True])
 def test_q8_recovery_complete_scalar_oracle_and_mutations(monkeypatch,warp,global_output):
-    import anysolver.recovery_shell_frames as frames
+    import anyfesolver.recovery_shell_frames as frames
     model,element,u=model8(warp)
     batch=frames.native_recovery_frames
     for change in ('initial','material','node','displacement','thickness'):

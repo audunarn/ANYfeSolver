@@ -6,11 +6,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
-from anysolver import stiffened_shell
-from anysolver._stiffened_shell_ge_experimental import FixedCoordinate
-from anysolver._stiffened_shell_ge_checkpoint_binary import decode_chart,encode_chart
-from anysolver.control import CancellationToken,SolveCancelled
-from anysolver._stiffened_shell_q4_algorithmic_pullback import POLICY as Q4_POLICY
+from anyfesolver import stiffened_shell
+from anyfesolver._stiffened_shell_ge_experimental import FixedCoordinate
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode_chart,encode_chart
+from anyfesolver.control import CancellationToken,SolveCancelled
+from anyfesolver._stiffened_shell_q4_algorithmic_pullback import POLICY as Q4_POLICY
 from test_stiffened_shell_ge_experimental import _panel
 from test_stiffened_shell_ge_finite_experimental import _actions
 from test_stiffened_shell_ge_owned_rebase import _poses
@@ -159,8 +159,8 @@ def test_unsupported_dispatchers_refuse_flag_before_work(loaded,monkeypatch,kind
 
 
 def test_main_capability_metadata_does_not_modify_spectral_delegates(monkeypatch):
-    from anysolver import _stiffened_shell_ge_reference_modal as modal
-    from anysolver import _stiffened_shell_ge_point_buckling as buckling
+    from anyfesolver import _stiffened_shell_ge_reference_modal as modal
+    from anyfesolver import _stiffened_shell_ge_point_buckling as buckling
     owner=stiffened_shell.create_analysis(definition=replace(_panel(),q4_pullback_policy=Q4_POLICY))
     calls=[]
     def delegated(target,**kwargs):calls.append((target,kwargs));return {'delegated':kwargs}

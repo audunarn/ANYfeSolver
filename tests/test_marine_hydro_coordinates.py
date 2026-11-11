@@ -5,8 +5,8 @@ import numpy as np
 import pytest
 from scipy.linalg import expm
 from scipy.spatial.transform import Rotation
-from anysolver.marine_rigid import RigidBodyState
-from anysolver.marine_hydro_coordinates import (
+from anyfesolver.marine_rigid import RigidBodyState
+from anyfesolver.marine_hydro_coordinates import (
     EquilibriumHydroFrame, MarineHydroCoordinatesError, evaluate_coupled,
     ForcePullback, InertiaPullback, CoupledHydroEvaluation)
 

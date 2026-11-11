@@ -49,7 +49,7 @@ def full_work(model,system,definitions,u,z,force,*,cancel=lambda:False,progress=
         orders=[]
         for order in ORDERS:
             if cancel():
-                from anysolver.control import SolveCancelled
+                from anyfesolver.control import SolveCancelled
                 raise SolveCancelled('independent full path work cancelled')
             oracle=None if reuse is None else reuse.get((h,order))
             if oracle is None:oracle=ContactOracle(model,definitions,u,z,order,cancel=cancel)
@@ -62,12 +62,12 @@ def full_work(model,system,definitions,u,z,force,*,cancel=lambda:False,progress=
             sampled=[]
             for i in range(n):
                 if cancel():
-                    from anysolver.control import SolveCancelled
+                    from anyfesolver.control import SolveCancelled
                     raise SolveCancelled('independent path work cancelled')
                 p,m=np.array(u,copy=True),np.array(u,copy=True);p[i]+=h;m[i]-=h
                 plus=oracle.evaluate(p)
                 if cancel():
-                    from anysolver.control import SolveCancelled
+                    from anyfesolver.control import SolveCancelled
                     raise SolveCancelled('independent path work cancelled')
                 minus=oracle.evaluate(m)
                 central[i]=(plus['work']-minus['work'])/(2*h)
@@ -105,7 +105,7 @@ def gap_gradient(oracle,u,h=3e-6,cancel=lambda:False):
     g=np.empty((len(oracle.z),len(u)))
     for i in range(len(u)):
         if cancel():
-            from anysolver.control import SolveCancelled
+            from anyfesolver.control import SolveCancelled
             raise SolveCancelled('independent path reference cancelled')
         p,m=np.array(u,copy=True),np.array(u,copy=True);p[i]+=h;m[i]-=h
         g[:,i]=(oracle.evaluate(p)['gap']-oracle.evaluate(m)['gap'])/(2*h)

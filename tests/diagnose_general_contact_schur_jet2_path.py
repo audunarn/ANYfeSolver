@@ -6,7 +6,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/"src"))
 
-from anysolver import ContactPathControl, solve_static_nonlinear
+from anyfesolver import ContactPathControl, solve_static_nonlinear
 from test_general_contact_supported_schur_path import _case
 
 

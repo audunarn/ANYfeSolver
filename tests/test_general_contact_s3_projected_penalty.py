@@ -14,8 +14,8 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import BoundaryCondition, create_shell_element, validate_general_contact
-from anysolver.general_contact.s3_patch_static import (
+from anyfesolver import BoundaryCondition, create_shell_element, validate_general_contact
+from anyfesolver.general_contact.s3_patch_static import (
     GeneralS3PatchManager, S3_PROJECTED_PENALTY_PROFILE,
 )
 from test_general_contact_s3_patch_static import _case
@@ -255,8 +255,8 @@ def test_unsupported_enforcement_and_geometry_fail_closed(change):
 
 
 def test_admission_rejects_single_pair_wrong_formulation_and_control():
-    from anysolver.general_contact.core import contact_scope
-    from anysolver import solve_static_nonlinear
+    from anyfesolver.general_contact.core import contact_scope
+    from anyfesolver import solve_static_nonlinear
     model, definition, settings = _candidate()
     single = replace(definition, surfaces=(replace(definition.surfaces[0], element_ids=(1,)),
         replace(definition.surfaces[1], element_ids=(3,))))
@@ -292,7 +292,7 @@ def test_refined_four_s3_source_two_s3_target_uses_same_profile_and_resource_cap
 
 
 def test_inherited_exact_clipping_vertex_branch_fails_closed():
-    from anysolver.general_contact.s3_overlap_derivatives import UnsupportedOverlapBranch
+    from anyfesolver.general_contact.s3_overlap_derivatives import UnsupportedOverlapBranch
     model, definition, settings = _case()
     definition = replace(definition, interactions=(replace(
         definition.interactions[0], normal_law="projected_penalty"),))
@@ -328,7 +328,7 @@ def _roundoff_10nm_candidate():
 
 
 def test_s3_roundoff_positive_perrow_budget_is_coordinate_scaled_not_gap_scaled():
-    from anysolver.general_contact.s3_patch_augmented import _s3_gap_operand_roundoff
+    from anyfesolver.general_contact.s3_patch_augmented import _s3_gap_operand_roundoff
     source = np.array([[.1, .1, .015-1e-8], [1.1, .1, .015-1e-8], [.1, 1.1, .015-1e-8]])
     target = np.array([[0., 0., .015], [1., 0., .015], [0., 1., .015]])
     support = np.array([.03, .12, .21])
@@ -368,7 +368,7 @@ def test_s3_roundoff_10nm_translated_full_projected_work():
 
 
 def test_s3_roundoff_admitted_perrow_value_budget_propagates_to_shared_assembly(monkeypatch):
-    import anysolver.general_contact.s3_patch_augmented as kernel
+    import anyfesolver.general_contact.s3_patch_augmented as kernel
     _, manager, u = _roundoff_10nm_candidate()
     original_derivatives, original_bound = kernel.s3_overlap_derivatives, kernel._s3_gap_operand_roundoff
     admitted, retries = [], []
@@ -395,7 +395,7 @@ def test_s3_roundoff_admitted_perrow_value_budget_propagates_to_shared_assembly(
 
 
 def test_s3_roundoff_material_weighted_gap_error_still_rejects(monkeypatch):
-    import anysolver.general_contact.s3_patch_augmented as kernel
+    import anyfesolver.general_contact.s3_patch_augmented as kernel
     _, manager, u = _roundoff_10nm_candidate()
     original_derivatives, original_bound = kernel.s3_overlap_derivatives, kernel._s3_gap_operand_roundoff
     retries = []
@@ -417,8 +417,8 @@ def test_s3_roundoff_material_weighted_gap_error_still_rejects(monkeypatch):
 
 @pytest.mark.parametrize("case", ["far_origin", "ill_source", "ill_target", "degenerate_source", "degenerate_target"])
 def test_s3_roundoff_unresolved_origin_or_frame_rejects_directly(case):
-    from anysolver.general_contact.s3_patch_augmented import _s3_gap_operand_roundoff
-    from anysolver.general_contact.s3_overlap_derivatives import UnsupportedOverlapBranch
+    from anyfesolver.general_contact.s3_patch_augmented import _s3_gap_operand_roundoff
+    from anyfesolver.general_contact.s3_overlap_derivatives import UnsupportedOverlapBranch
     source = np.array([[.1, .1, .015-1e-8], [1.1, .1, .015-1e-8], [.1, 1.1, .015-1e-8]])
     target = np.array([[0., 0., .015], [1., 0., .015], [0., 1., .015]])
     if case == "far_origin":

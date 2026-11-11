@@ -26,7 +26,7 @@ def run_args(tmp_path, *, run_profile="source_dev", size="large", cases=1,
 
 def make_site(tmp_path):
     site = tmp_path / "site"
-    package = site / "anysolver"
+    package = site / "anyfesolver"
     package.mkdir(parents=True)
     for name in ("__init__.py", "stiffened_shell.py",
                  "_stiffened_shell_b2_q4_panel_experimental.py",
@@ -39,7 +39,7 @@ def make_site(tmp_path):
     for file in package.iterdir():
         data = file.read_bytes()
         encoded = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(b"=").decode()
-        rows.append(f"anysolver/{file.name},sha256={encoded},{len(data)}")
+        rows.append(f"anyfesolver/{file.name},sha256={encoded},{len(data)}")
     rows.append("anysolver-0.4.7.dist-info/RECORD,,")
     (metadata / "RECORD").write_text("\n".join(rows) + "\n")
     return site
@@ -48,8 +48,8 @@ def make_site(tmp_path):
 def bind_fake_wheel(tmp_path, site, monkeypatch, *, run_profile="installed_large_dev"):
     wheel = tmp_path / "frozen.whl"
     with ZipFile(wheel, "w") as archive:
-        for file in (site / "anysolver").iterdir():
-            archive.write(file, f"anysolver/{file.name}")
+        for file in (site / "anyfesolver").iterdir():
+            archive.write(file, f"anyfesolver/{file.name}")
         archive.write(site / "anysolver-0.4.7.dist-info/RECORD",
                       "anysolver-0.4.7.dist-info/RECORD")
     if run_profile in ("installed_large_refinement_dev", "installed_beam_rich_dev"):
@@ -118,7 +118,7 @@ def test_refinement_profile_requires_bound_site_budget_and_wheel(tmp_path, monke
     identity = runner.installed_site_identity(site, run_profile=name)
     assert identity["installed_wheel"] == str(wheel)
     assert identity["installed_wheel_sha256"] == runner.digest(wheel)
-    elsewhere = tmp_path / "elsewhere/anysolver"
+    elsewhere = tmp_path / "elsewhere/anyfesolver"
     elsewhere.mkdir(parents=True)
     (elsewhere / "__init__.py").write_text("# other site\n")
     for changes, message in (
@@ -131,7 +131,7 @@ def test_refinement_profile_requires_bound_site_budget_and_wheel(tmp_path, monke
     ):
         with pytest.raises(ValueError, match=message):
             runner.resolve_run(SimpleNamespace(**(vars(args) | changes)))
-    (site / "anysolver/dependency.py").write_text("tampered\n")
+    (site / "anyfesolver/dependency.py").write_text("tampered\n")
     with pytest.raises(ValueError, match="differs from frozen wheel"):
         runner.installed_site_identity(site, run_profile=name)
 
@@ -158,9 +158,9 @@ def test_refinement_large_budget_is_distinct_from_focused_installed_checks():
 def test_installed_site_identity_and_import_origin_guard(tmp_path, monkeypatch):
     site = make_site(tmp_path)
     wheel = bind_fake_wheel(tmp_path, site, monkeypatch)
-    package = site / "anysolver"
+    package = site / "anyfesolver"
     assert runner.verify_installed_import_origin(package / "__init__.py", site) == (package / "__init__.py")
-    source_package = tmp_path / "source/anysolver"
+    source_package = tmp_path / "source/anyfesolver"
     source_package.mkdir(parents=True)
     (source_package / "__init__.py").write_text("# source\n")
     with pytest.raises(RuntimeError, match="outside installed site"):
@@ -238,8 +238,8 @@ def test_installed_zero_exit_needs_bound_child_record(tmp_path, monkeypatch):
     runtime = dict(python_optimize=0, affinity=[0], NUMBA_DISABLE_JIT="1",
         thread_env={name: "1" for name in runner.THREAD_ENV},
         threadpools=[{"num_threads": 1}],
-        anysolver_file=str(site / "anysolver/__init__.py"),
-        anysolver_sha256=runner.digest(site / "anysolver/__init__.py"))
+        anyfesolver_file=str(site / "anyfesolver/__init__.py"),
+        anyfesolver_sha256=runner.digest(site / "anyfesolver/__init__.py"))
     record = dict(status="passed_development_probe",
         config=json.loads(json.dumps(config)),
         inventory=dict(runner.INSTALLED_EXPECTED_COUNTS),
@@ -450,8 +450,8 @@ def test_beam_rich_child_receipt_requires_recovery_and_work(tmp_path, monkeypatc
     runtime = dict(python_optimize=0, affinity=[0], NUMBA_DISABLE_JIT="1",
         thread_env={name: "1" for name in runner.THREAD_ENV},
         threadpools=[{"num_threads": 1}],
-        anysolver_file=str(site / "anysolver/__init__.py"),
-        anysolver_sha256=runner.digest(site / "anysolver/__init__.py"))
+        anyfesolver_file=str(site / "anyfesolver/__init__.py"),
+        anyfesolver_sha256=runner.digest(site / "anyfesolver/__init__.py"))
     record = dict(status="passed_development_probe",
         run_profile="installed_beam_rich_dev", config=json.loads(json.dumps(config)),
         inventory=dict(runner.BEAM_RICH_EXPECTED_COUNTS),
@@ -479,9 +479,9 @@ def test_beam_rich_child_receipt_requires_recovery_and_work(tmp_path, monkeypatc
 
 def test_finite_response_accepts_real_physical_footprint_result_types(monkeypatch):
     monkeypatch.syspath_prepend(str(runner.ROOT / "src"))
-    from anysolver._stiffened_shell_b2_physical_rigid_footprint import (
+    from anyfesolver._stiffened_shell_b2_physical_rigid_footprint import (
         B2PhysicalRigidFootprintWrench, PhysicalFootprintNodeAction)
-    from anysolver._stiffened_shell_b2_q4_panel_experimental import (
+    from anyfesolver._stiffened_shell_b2_q4_panel_experimental import (
         B2PhysicalRigidFootprintBatchResult, B2PhysicalRigidFootprintSelectedCase,
         ExperimentalB2Q4PanelResponseEnvelope,
         ExperimentalB2Q4PanelMemberResultantEnvelope)
@@ -527,8 +527,8 @@ def test_refinement_child_record_rejects_unaccounted_work(tmp_path, monkeypatch)
     runtime = dict(python_optimize=0, affinity=[0], NUMBA_DISABLE_JIT="1",
         thread_env={name: "1" for name in runner.THREAD_ENV},
         threadpools=[{"num_threads": 1}],
-        anysolver_file=str(site / "anysolver/__init__.py"),
-        anysolver_sha256=runner.digest(site / "anysolver/__init__.py"))
+        anyfesolver_file=str(site / "anyfesolver/__init__.py"),
+        anyfesolver_sha256=runner.digest(site / "anyfesolver/__init__.py"))
     record = dict(status="passed_development_probe",
         run_profile="installed_large_refinement_dev",
         config=json.loads(json.dumps(config)),
@@ -758,7 +758,7 @@ def test_corrective_capture_is_bounded_and_keeps_latest_attempt():
 def test_failed_case_accurate_kkt_row_uses_unscaled_production_rhs(monkeypatch):
     from scipy import sparse
     monkeypatch.syspath_prepend(str(runner.ROOT / "src"))
-    from anysolver._stiffened_shell_b2_q4_panel_experimental import _bounded_accurate_residual
+    from anyfesolver._stiffened_shell_b2_q4_panel_experimental import _bounded_accurate_residual
 
     selector = sparse.csr_matrix(([1.], ([0], [0])), shape=(6, 1))
     constraint = sparse.csr_matrix(([1.], ([0], [0])), shape=(1, 6))

@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from scipy import linalg, sparse
 
-from anysolver.algebraic_dynamics import (
+from anyfesolver.algebraic_dynamics import (
     AlgebraicDynamicsError,
     DESCRIPTOR_RAYLEIGH_REFINEMENT_POLICY_ID,
     _deterministic_block,

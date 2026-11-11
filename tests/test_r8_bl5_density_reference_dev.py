@@ -31,7 +31,7 @@ from types import SimpleNamespace
 sys.path.insert(0, sys.argv[1])
 from scripts import r8_bl5_density_reference_dev as reference
 
-FORBIDDEN_ROOTS = ('anysolver', 'openseespy', 'openseespywin')
+FORBIDDEN_ROOTS = ('anyfesolver', 'openseespy', 'openseespywin')
 
 
 class ForbiddenImport(importlib.abc.MetaPathFinder):

@@ -1,9 +1,9 @@
 """No generic pressure or couple fallback for the private beam candidate."""
 import numpy as np
 import pytest
-from anysolver.boundary import LoadCase
-from anysolver.matrix_assembly import assemble_load_vector,assemble_external_load_tangent
-from anysolver.nonlinear_static import solve_static_nonlinear
+from anyfesolver.boundary import LoadCase
+from anyfesolver.matrix_assembly import assemble_load_vector,assemble_external_load_tangent
+from anyfesolver.nonlinear_static import solve_static_nonlinear
 from test_ge_beam3_native_fibre_connected_restart import make
 from test_ge_beam3_schur_line_program import save
 

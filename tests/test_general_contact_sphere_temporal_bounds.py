@@ -8,9 +8,9 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver.general_contact.beam_temporal_bounds import BeamHermiteGapBoundsError
-from anysolver.general_contact.sphere_temporal_bounds import beam_sphere_hermite_gap_bounds
-from anysolver.general_contact.sphere_temporal_bounds import _squared_controls
+from anyfesolver.general_contact.beam_temporal_bounds import BeamHermiteGapBoundsError
+from anyfesolver.general_contact.sphere_temporal_bounds import beam_sphere_hermite_gap_bounds
+from anyfesolver.general_contact.sphere_temporal_bounds import _squared_controls
 
 
 def _manager(points, radius=.25):

@@ -7,7 +7,7 @@ from time import perf_counter
 import numpy as np
 import pytest
 
-from anysolver.general_contact.native_surface_transaction import NativeS3MaterialTransaction
+from anyfesolver.general_contact.native_surface_transaction import NativeS3MaterialTransaction
 from test_general_contact_native_surface_patch import _patch
 
 

@@ -3,7 +3,7 @@ import json,os,runpy
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver.general_contact.native_multi_s3_static import CURVED_MATERIAL_PROFILE
+from anyfesolver.general_contact.native_multi_s3_static import CURVED_MATERIAL_PROFILE
 
 
 def _analysis(**kwargs):
@@ -46,7 +46,7 @@ def test_curved_s3_active_checkpoint_for_bounded_three_target_continuation():
 
 
 def test_curved_s3_driver_forwards_cancellation_and_preserves_initial_prefix():
-    from anysolver.control import CancellationToken
+    from anyfesolver.control import CancellationToken
     owner=_analysis(targets=(1.,));token=CancellationToken()
     initial=owner._checkpoint(())
     owner._assemble=lambda *args:(np.zeros(owner.context.count+len(owner.initial.shell_displacement)),
@@ -63,7 +63,7 @@ def test_curved_s3_driver_forwards_cancellation_and_preserves_initial_prefix():
 
 
 def test_curved_s3_owner_uses_authoritative_path_increment_columns():
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.control import CancellationToken,SolveCancelled
     owner=_analysis(targets=(1.,));start=owner.initial.mechanical;u=owner.initial.shell_displacement
     step=np.zeros(owner.context.count+len(u));step[12:15]=(.001,-.002,.001)
     step[owner.context.count:]=np.linspace(.001,-.002,len(u))
@@ -82,7 +82,7 @@ def test_curved_s3_owner_uses_authoritative_path_increment_columns():
 
 
 def test_shared_swept_wrapper_preserves_historical_subclass_dispatch():
-    from anysolver.general_contact.native_multi_s3_static import NativeRetainedMultiS3Analysis
+    from anyfesolver.general_contact.native_multi_s3_static import NativeRetainedMultiS3Analysis
     # Exact wrapper contract check; historical subclass need not accept a token.
     class Historical:
         _curved_mode=False
@@ -94,8 +94,8 @@ def test_shared_swept_wrapper_preserves_historical_subclass_dispatch():
 
 def test_curved_s3_checkpoint_binding_field_classification_and_valid_restore():
     from hashlib import sha256
-    from anysolver._ge_beam3_p5_seeded.core import canonical, sha
-    from anysolver._ge_beam3_p5_seeded.codec import _load
+    from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
+    from anyfesolver._ge_beam3_p5_seeded.codec import _load
     owner=_analysis(targets=(1.,));initial=owner._checkpoint(())
     # Matching valid checkpoint restore through the real caller: no target
     # trajectory is needed, the initial checkpoint already suffices.

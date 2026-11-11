@@ -92,7 +92,7 @@ def test_authority_commit_and_production_boundary_are_exact() -> None:
         text=True,
     ).splitlines()
     assert paths == contract["authority"]["exact_paths"]
-    source = (ROOT / "src/anysolver/elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src/anyfesolver/elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source
     changed = subprocess.check_output(
@@ -100,4 +100,4 @@ def test_authority_commit_and_production_boundary_are_exact() -> None:
         cwd=ROOT,
         text=True,
     ).splitlines()
-    assert "src/anysolver/e4_pl_element.py" not in changed
+    assert "src/anyfesolver/e4_pl_element.py" not in changed

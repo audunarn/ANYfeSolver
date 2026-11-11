@@ -41,16 +41,16 @@ def common_mass_mac(native, reference, mass):
 
 
 def run(reference: Path, manifest: Path, output: Path, site: Path):
-    import anysolver, numba, threadpoolctl
-    from anysolver import stiffened_shell as api
-    from anysolver._stiffened_shell_ge_experimental import _shell_reference, _assemble_shell
-    from anysolver._stiffened_shell_b2_q4_panel_experimental import _modal_scaled_residual
-    from anysolver._stiffened_shell_q4_algorithmic_pullback import POLICY as Q4_ALGORITHM
-    from anysolver._stiffened_shell_physical_q4_mass import physical_mass
-    from anysolver.linalg import MatrixClass, factorize_cached
-    from anysolver.e4_pl_element import FORMULATION_ID, IMPLEMENTATION_ID
+    import anyfesolver, numba, threadpoolctl
+    from anyfesolver import stiffened_shell as api
+    from anyfesolver._stiffened_shell_ge_experimental import _shell_reference, _assemble_shell
+    from anyfesolver._stiffened_shell_b2_q4_panel_experimental import _modal_scaled_residual
+    from anyfesolver._stiffened_shell_q4_algorithmic_pullback import POLICY as Q4_ALGORITHM
+    from anyfesolver._stiffened_shell_physical_q4_mass import physical_mass
+    from anyfesolver.linalg import MatrixClass, factorize_cached
+    from anyfesolver.e4_pl_element import FORMULATION_ID, IMPLEMENTATION_ID
 
-    if not Path(anysolver.__file__).resolve().is_relative_to(site.resolve()):
+    if not Path(anyfesolver.__file__).resolve().is_relative_to(site.resolve()):
         raise ValueError('selected installed solver site required')
     if not numba.config.DISABLE_JIT or numba.get_num_threads() != 1:
         raise ValueError('declared one-thread JIT-off settings required')
@@ -232,10 +232,10 @@ def run(reference: Path, manifest: Path, output: Path, site: Path):
         native_equation_residuals=[row[2] for row in recovered], pairs=pairs, counts=counts,
         reference_eigen_residual='NOT_VERIFIED', refinement_convergence='NOT_ASSESSED',
         metric='common physical Q4 nodal reconstruction; excludes massless rz; scalar MAC not clustered-subspace acceptance',
-        runtime=dict(anysolver=anysolver.__file__, pools=pools, jit_disabled=bool(numba.config.DISABLE_JIT),
+        runtime=dict(anyfesolver=anyfesolver.__file__, pools=pools, jit_disabled=bool(numba.config.DISABLE_JIT),
                      numba_threads=numba.get_num_threads(), installed_modules=len(module_hashes),
                      module_manifest_sha256=sha(module_manifest),
-                     dependencies={name:metadata.version(name) for name in ('ANYsolver','ANYmaterial','numpy','scipy','numba')}),
+                     dependencies={name:metadata.version(name) for name in ('ANYfeSolver','ANYmaterial','numpy','scipy','numba')}),
         elapsed_seconds=time.perf_counter()-start, runner_sha256=sha(Path(__file__)),
         protected_reference_inputs={name:inventory[name] for name in inputs})
     (output/'result.json').write_text(json.dumps(result, indent=2)+'\n')

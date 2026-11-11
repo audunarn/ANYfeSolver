@@ -1,11 +1,11 @@
 """Bounded fixed-plane S3 physical-rim replay; no C5 engineering acceptance."""
 import argparse,json
 from pathlib import Path
-from anysolver import BoundaryCondition,create_shell_element,solve_static_nonlinear
-from anysolver.fe_core import FEModel
-from anysolver.general_contact import ContactDefinition,ContactInteraction,ContactSurface,ContactSolverSettings,ContactPathControl,ContactPathProgram
-from anysolver.general_contact.s3_sliding_friction import S3SlidingFrictionSettings
-from anysolver.general_contact.s3_friction_replay import S3RimReplayFrictionSettings
+from anyfesolver import BoundaryCondition,create_shell_element,solve_static_nonlinear
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact import ContactDefinition,ContactInteraction,ContactSurface,ContactSolverSettings,ContactPathControl,ContactPathProgram
+from anyfesolver.general_contact.s3_sliding_friction import S3SlidingFrictionSettings
+from anyfesolver.general_contact.s3_friction_replay import S3RimReplayFrictionSettings
 
 def build_case():
     m=FEModel('S3 fixed-plane physical-rim replay development')

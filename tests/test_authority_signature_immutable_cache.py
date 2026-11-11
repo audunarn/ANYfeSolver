@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 import pytest
 
-from anysolver import e4_pl_s3_state as state
+from anyfesolver import e4_pl_s3_state as state
 
 
 def fresh_signer():
@@ -138,7 +138,7 @@ def test_cache_is_bounded_owns_identity_and_rejects_large_aggregates():
 
 
 def test_live_authority_tables_match_their_frozen_signatures():
-    from anysolver.current_state_tangent import _QUALIFIED_PROFILES
+    from anyfesolver.current_state_tangent import _QUALIFIED_PROFILES
     signer, _, _ = fresh_signer()
     checked = 0
     for profile in _QUALIFIED_PROFILES.values():

@@ -12,7 +12,7 @@ import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import splu
 
-from anysolver._b2_physical_flexibility_linear import LinearSection
+from anyfesolver._b2_physical_flexibility_linear import LinearSection
 from scripts import probe_b3_ge_e4_pl_g0_f09_mixed_elbow_conditioning as elbow
 
 

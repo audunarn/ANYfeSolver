@@ -21,7 +21,7 @@ def save(data):
 
 
 def hard_reference(model,load):
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
     K=assemble_stiffness_matrix(model)[0].toarray();free=free_dofs(model);kf=K[np.ix_(free,free)]
     s,g,g0=independent_linear_contact(model);gf=g[:,free];f=load.get_load_vector(model.mesh,model.mesh.dof_manager)
     A=gf@np.linalg.solve(kf,gf.T);q=g0+gf@np.linalg.solve(kf,f[free]);solutions=[]
@@ -37,9 +37,9 @@ def hard_reference(model,load):
 
 
 def test_independent_reference_and_full_coupled_directional_jacobian():
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager,REFINED_Q4_Q4_MONOLITHIC_AUGMENTED_PROFILE
-    from anysolver.general_contact.semismooth import linearize,complementarity,reference_nodal_support
-    from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager,REFINED_Q4_Q4_MONOLITHIC_AUGMENTED_PROFILE
+    from anyfesolver.general_contact.semismooth import linearize,complementarity,reference_nodal_support
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
     model,domain,settings,res,load=build();reference=hard_reference(model,load);manager=GeneralS3PatchManager(model,res.definition,settings)
     assert manager.profile==REFINED_Q4_Q4_MONOLITHIC_AUGMENTED_PROFILE
     zero=np.zeros(manager.n_dof);raw0=linearize(manager,zero,np.zeros(6),tangent=True)
@@ -80,9 +80,9 @@ def test_independent_reference_and_full_coupled_directional_jacobian():
 @pytest.mark.skipif(not os.environ.get('MONOLITHIC_STAGE'),
     reason='installed monolithic stage input MONOLITHIC_STAGE absent: staged monolithic solve requires the original workflow stage selection')
 def test_installed_force_bending_stage():
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.semismooth import linearize,complementarity,reference_nodal_support
-    from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.semismooth import linearize,complementarity,reference_nodal_support
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
     stage=os.environ['MONOLITHIC_STAGE'];evidence=Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE']);kwargs={}
     model,domain,settings,res,load=build(regularization=2000. if stage=='alternate-c' else 1000.)
     if stage=='prefix':kwargs['max_load_factor']=.5
@@ -115,9 +115,9 @@ def test_installed_force_bending_stage():
 
 
 def test_actual_restart_enforcement_and_route_refusal(monkeypatch):
-    from anysolver import CancellationToken,SolveCancelled,solve_static_nonlinear,solve_static_arc_length,ArcLengthControl,validate_general_contact
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    import anysolver.general_contact.static_path as path_owner
+    from anyfesolver import CancellationToken,SolveCancelled,solve_static_nonlinear,solve_static_arc_length,ArcLengthControl,validate_general_contact
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    import anyfesolver.general_contact.static_path as path_owner
     model,domain,settings,res,load=build();before=repr(model)
     token=CancellationToken();token.cancel('monolithic public precancel')
     with pytest.raises(SolveCancelled):solve(model,settings,res,load,cancellation_token=token)
@@ -140,9 +140,9 @@ def test_actual_restart_enforcement_and_route_refusal(monkeypatch):
     if rejected.restart_checkpoint is not None:assert rejected.restart_checkpoint['path_state']['accepted_step']==0
     assert repr(model)==before
     from examples.general_contact_multiple_beam_s3_transient import build as transient_build
-    from anysolver.dynamics import TransientConfig
-    from anysolver.general_contact.transient import solve_transient_contact,_admit,ContactTransientSolverControls
-    import anysolver.general_contact.multiple_beam_s3_transient as transient_owner
+    from anyfesolver.dynamics import TransientConfig
+    from anyfesolver.general_contact.transient import solve_transient_contact,_admit,ContactTransientSolverControls
+    import anyfesolver.general_contact.multiple_beam_s3_transient as transient_owner
     tm,td,ts,velocity=transient_build();controls=ContactTransientSolverControls(allow_multiple_deformable_beam_s3_dev=True);assert _admit(tm,td,ts,controls)==transient_owner.PROFILE
     prior=repr(tm);allocation=[]
     def allocate(*args,**kwargs):allocation.append(True);raise AssertionError('transient allocation before selector refusal')
@@ -156,8 +156,8 @@ def test_actual_restart_enforcement_and_route_refusal(monkeypatch):
 @pytest.mark.skipif(not os.environ.get('AUTOMATIC_WORKFLOW_EVIDENCE') or not (Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])/'prefix.json').is_file(),
     reason='archived monolithic input AUTOMATIC_WORKFLOW_EVIDENCE/prefix.json absent: restart-enforcement replay requires the original staged checkpoint')
 def test_actual_archive_checkpoint_restart_enforcement():
-    from anysolver import solve_static_nonlinear
-    from anysolver.general_contact.automatic_domain import resolve_automatic_contact_domain
+    from anyfesolver import solve_static_nonlinear
+    from anyfesolver.general_contact.automatic_domain import resolve_automatic_contact_domain
     evidence=Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE']);prefix=json.loads((evidence/'prefix.json').read_text());assert prefix['verified']
     model,domain,settings,res,load=build();before=repr(model)
     changed=replace(domain,name='monolithic-changed-provenance');changed_res=resolve_automatic_contact_domain(model,changed,settings,analysis_control='force')

@@ -39,9 +39,9 @@ import tempfile
 import numpy as np
 import pytest
 
-from anysolver.control import SolveCancelled
-from anysolver.general_contact import s3_patch_static, semismooth_path
-from anysolver.general_contact.core import _contact_settings_contract
+from anyfesolver.control import SolveCancelled
+from anyfesolver.general_contact import s3_patch_static, semismooth_path
+from anyfesolver.general_contact.core import _contact_settings_contract
 
 from test_general_contact_admission_globalization_driver_small_patch import (
     _case,

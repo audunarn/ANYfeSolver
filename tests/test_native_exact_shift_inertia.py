@@ -2,8 +2,8 @@
 from fractions import Fraction
 import numpy as np
 import pytest
-from anysolver._native_exact_shift_inertia import exact_inertia
-from anysolver._native_exact_shift_chain_modes import inertia, brackets
+from anyfesolver._native_exact_shift_inertia import exact_inertia
+from anyfesolver._native_exact_shift_chain_modes import inertia, brackets
 
 
 @pytest.mark.parametrize('diagonal', [

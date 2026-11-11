@@ -6,9 +6,9 @@ from dataclasses import asdict
 import numpy as np
 import pytest
 from examples.general_contact_s3_mesh_history_events import build_case
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.s3_friction_static import create_s3_friction_manager
-from anysolver.general_contact.material_work_diagnostics import sliding_pressure_ramp_reference,reconstruct_material_history,diagnose_work_bundle,SCHEMA
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_friction_static import create_s3_friction_manager
+from anyfesolver.general_contact.material_work_diagnostics import sliding_pressure_ramp_reference,reconstruct_material_history,diagnose_work_bundle,SCHEMA
 
 OLD=Path('C:/ANYworkspaceWork/contact_s3_mesh_nontrivial_work_20261009')
 CUTS={2:(2,4,6,8,10,12),4:(4,8,10,12,16,20,24)}

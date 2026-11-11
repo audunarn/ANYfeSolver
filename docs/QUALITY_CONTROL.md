@@ -1,6 +1,6 @@
 # FE solver verification and quality control
 
-This is the maintained verification guide for `anysolver`. Source code and
+This is the maintained verification guide for `anyfesolver`. Source code and
 tests are authoritative; generated reports are evidence for the commit and
 environment recorded in them.
 
@@ -23,12 +23,12 @@ reproducible handoff artifacts, not numerical validation.
 
 ## Current verification policy
 
-Since version 0.2, ANYsolver delegates material behavior, neutral meshing,
+Since version 0.2, ANYfeSolver delegates material behavior, neutral meshing,
 and interchange syntax to ANYmaterial, ANYmesher, and ANYfileio. A qualifying
 ecosystem run
 therefore installs those sibling packages, runs their own tests, and then runs
-the ANYsolver suite and ecosystem-wiring tests. Compatibility tests must cover
-both the historical ANYsolver imports and the canonical package imports.
+the ANYfeSolver suite and ecosystem-wiring tests. Compatibility tests must cover
+both the historical ANYfeSolver imports and the canonical package imports.
 
 Pass counts and timings are deliberately not embedded here: they become stale
 as tests move to their owning repositories. The generated report under
@@ -62,7 +62,7 @@ qualification package is required for routine development.
 
 Default focused settings are one numerical thread, JIT off, plugin autoload off,
 and a 600-second timeout. Use `--jit on` for changed compiled execution; JIT-off
-checks cannot replace required compiled parity. Imported ANYsolver modules must
+checks cannot replace required compiled parity. Imported ANYfeSolver modules must
 come from this checkout. Observed pools/Numba settings are recorded once after
 the run, checked when loaded, and otherwise reported unavailable. The optional
 memory ceiling requires `psutil` and samples the owned child process tree;

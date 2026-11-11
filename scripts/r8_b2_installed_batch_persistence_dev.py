@@ -108,9 +108,9 @@ def prepare(solver,consumer):
     require(sha(solver)==SOLVER_SHA and sha(consumer)==CONSUMER_SHA,'adopted wheel identity')
     require(sha(BUILDER)==json.loads((BUILDER.parent/'preflight.json').read_text())['builder_sha256'],
         'original builder drift')
-    packages=package(solver,'anysolver')|package(consumer,'anyfem')
+    packages=package(solver,'anyfesolver')|package(consumer,'anyfem')
     for name in prior.B2_FILES:
-        require(sha(ROOT/'src/anysolver'/name)==packages['anysolver/'+name],'B2 current-source drift '+name)
+        require(sha(ROOT/'src/anyfesolver'/name)==packages['anyfesolver/'+name],'B2 current-source drift '+name)
     closure=json.loads((BASE/'CONSUMER_SOURCE_CLOSURE.json').read_text())
     require(closure['wheel_sha256']==CONSUMER_SHA and closure['mismatches']==['anyfem/solve/stiffened_shell.py'],
         'consumer closure changed; root artifact decision needed')
@@ -123,7 +123,7 @@ def prepare(solver,consumer):
     p=dict(status='PREPARED_SLOT_HELD',solver_wheel=str(Path(solver).resolve()),consumer_wheel=str(Path(consumer).resolve()),
         solver_sha256=SOLVER_SHA,consumer_sha256=CONSUMER_SHA,package=packages,
         site=str(BASE/'package/site'),source={str(p.relative_to(ROOT)):sha(p) for p in paths},
-        current_b2_sources={name:sha(ROOT/'src/anysolver'/name) for name in prior.B2_FILES},
+        current_b2_sources={name:sha(ROOT/'src/anyfesolver'/name) for name in prior.B2_FILES},
         consumer_choice_required='frozen84b738-B2-route-GE-delta-explicit',consumer_source_delta=closure['mismatches'],
         matrix_sha256=prior.EXPECTED_MATRICES,
         full=dict(nx=100,ny=100,shells=10000,members=1000,pads=100,incidences=400,rows=2000,
@@ -159,7 +159,7 @@ def prepare(solver,consumer):
 def assert_prepared(p):
     require(sha(p['solver_wheel'])==p['solver_sha256'] and sha(p['consumer_wheel'])==p['consumer_sha256'],'wheel drift')
     for name,value in p['source'].items():require(sha(ROOT/name)==value,'prepared source drift '+name)
-    for name,value in p['current_b2_sources'].items():require(sha(ROOT/'src/anysolver'/name)==value,'B2 source drift '+name)
+    for name,value in p['current_b2_sources'].items():require(sha(ROOT/'src/anyfesolver'/name)==value,'B2 source drift '+name)
     if 'reused_install' in p:
         require(sha(BASE/'attempt-install-01/receipt.json')==p['reused_install']['receipt_sha256']
             and sha(BASE/'attempt-install-01/result.json')==p['reused_install']['result_sha256']
@@ -178,7 +178,7 @@ def runtime(p):
     from threadpoolctl import threadpool_info
     site=Path(p['site']).resolve();imports={}
     for name,m in tuple(sys.modules.items()):
-        if name.split('.')[0] in ('anysolver','anyfem') and getattr(m,'__file__',None):
+        if name.split('.')[0] in ('anyfesolver','anyfem') and getattr(m,'__file__',None):
             file=Path(m.__file__).resolve();require(file.is_relative_to(site),'source import '+name)
             relative=file.relative_to(site).as_posix()
             require(relative in p['package'] and sha(file)==p['package'][relative],'actual installed hash '+name)
@@ -205,12 +205,12 @@ def execute_installed(phase,attempt,p):
     site=Path(p['site']).resolve()
     sys.path[:]=[str(site)]+[s for s in sys.path if Path(s or '.').resolve()!=site
         and not Path(s or '.').resolve().is_relative_to(ROOT/'src')
-        and not Path(s or '.').resolve().is_relative_to(Path('C:/Github/ANYsolver/src'))]
+        and not Path(s or '.').resolve().is_relative_to(Path('C:/Github/ANYfeSolver/src'))]
     for name,h in p['package'].items():require(sha(site/name)==h,'combined site mismatch '+name)
     import numpy as np
     import scipy
-    from anysolver import stiffened_shell as api
-    from anysolver.linalg import backend_operation_counts
+    from anyfesolver import stiffened_shell as api
+    from anyfesolver.linalg import backend_operation_counts
     from anyfem.solve.stiffened_shell_b2 import (ExperimentalB2PhysicalRigidFootprintPanel,
         SCHEMA_PHYSICAL_FOOTPRINT_SPARSE_V2,save_case,load_case)
     from anyfem.solve.stiffened_shell_project import point_panel_from_analysis

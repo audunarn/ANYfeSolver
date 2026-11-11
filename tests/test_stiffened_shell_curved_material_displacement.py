@@ -3,8 +3,8 @@ from dataclasses import replace
 import json
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken,SolveCancelled
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken,SolveCancelled
 from test_stiffened_shell_curved_material import (
     curved_material_panel,make_owner,_actions,assert_generalized_records_equal)
 
@@ -20,8 +20,8 @@ def material_equal(a,b):
 
 @pytest.mark.parametrize('sign',[-1,1])
 def test_curved_displacement_active_prefix_restart_and_force_parity(request,monkeypatch,tmp_path,sign):
-    from anysolver._stiffened_shell_displacement_checkpoint import decode_snapshot,encode_snapshot
-    from anysolver import _stiffened_shell_displacement_control as publication
+    from anyfesolver._stiffened_shell_displacement_checkpoint import decode_snapshot,encode_snapshot
+    from anyfesolver import _stiffened_shell_displacement_control as publication
     d=replace(curved_material_panel(),retained_scale_policy='native_force_moment_roles_v1')
     owner=make_owner(request,d)
     seed=owner.solve(_actions(),(.5,1.),max_iterations=20,max_backtracks=12)
@@ -87,7 +87,7 @@ def test_curved_displacement_active_prefix_restart_and_force_parity(request,monk
 
 
 def test_curved_displacement_elastic_shell_event_and_chart_restart(request):
-    from anysolver._stiffened_shell_displacement_checkpoint import decode_snapshot
+    from anyfesolver._stiffened_shell_displacement_checkpoint import decode_snapshot
     d=curved_material_panel();d=replace(d,shell=replace(d.shell,j2_curve=None))
     owner=make_owner(request,d);owner.solve(_actions(),(.5,1.),max_iterations=20,max_backtracks=12)
     dof=owner._shell_count+6*owner._beam_index[105]+2

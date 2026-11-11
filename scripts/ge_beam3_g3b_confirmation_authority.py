@@ -1,7 +1,7 @@
 """Inert G3b confirmation authority checks; never execute mechanics or publish GO.
 
 The future coordinator must authenticate all inputs before importing pytest or
-ANYsolver. Passing these validators alone is not formal confirmation.
+ANYfeSolver. Passing these validators alone is not formal confirmation.
 """
 from hashlib import sha256
 import json

@@ -5,7 +5,7 @@ from dataclasses import FrozenInstanceError
 import numpy as np
 import pytest
 
-from anysolver.general_contact.pressure_basis import (
+from anyfesolver.general_contact.pressure_basis import (
     MACRO_Q1_PAIR_VERSION,
     SELECTED_Q1_KNOTS_VERSION,
     PressureBasis,

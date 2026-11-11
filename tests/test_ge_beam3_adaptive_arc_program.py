@@ -5,10 +5,10 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import _ge_beam3_adaptive_arc_program as driver
-from anysolver._ge_beam3_arc_program import ArcProgram, solve_arc_program
-from anysolver._ge_beam3_p5_loads.core import canonical, sha
-from anysolver.control import CancellationToken
+from anyfesolver import _ge_beam3_adaptive_arc_program as driver
+from anyfesolver._ge_beam3_arc_program import ArcProgram, solve_arc_program
+from anyfesolver._ge_beam3_p5_loads.core import canonical, sha
+from anyfesolver.control import CancellationToken
 from test_ge_beam3_native_load_state import problem
 
 

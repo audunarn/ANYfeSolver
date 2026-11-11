@@ -6,15 +6,15 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-import anysolver.threading_policy as policy_module
-import anysolver.linalg as linalg_module
-from anysolver.jit_compiler import JIT_ENABLED, numba_thread_scope
-from anysolver.linalg import MatrixClass, factorize
-from anysolver.assembly import solve_linear
-from anysolver.boundary import LoadCase
-from anysolver.mesh_gen import generate_beam_mesh
-from anysolver.recovery import ResourceConfig
-from anysolver.threading_policy import native_thread_scope
+import anyfesolver.threading_policy as policy_module
+import anyfesolver.linalg as linalg_module
+from anyfesolver.jit_compiler import JIT_ENABLED, numba_thread_scope
+from anyfesolver.linalg import MatrixClass, factorize
+from anyfesolver.assembly import solve_linear
+from anyfesolver.boundary import LoadCase
+from anyfesolver.mesh_gen import generate_beam_mesh
+from anyfesolver.recovery import ResourceConfig
+from anyfesolver.threading_policy import native_thread_scope
 
 
 def pool_counts(pools):

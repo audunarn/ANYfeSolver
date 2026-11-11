@@ -71,8 +71,8 @@ def prepare():
 def connected(out):
     import numpy as np
     from scipy import sparse
-    from anysolver import stiffened_shell as ss
-    from anysolver._stiffened_shell_ge_finite_experimental import _State
+    from anyfesolver import stiffened_shell as ss
+    from anyfesolver._stiffened_shell_ge_finite_experimental import _State
     from scripts.r8_f06_cyclic_material_dev import definition
     from scripts import r8_f06_paired_active_tangent_dev as original
     if out!=DOC/'attempt-installed-derivative1':raise ValueError('sole owned installed output required')

@@ -119,7 +119,7 @@ def test_candidate_c_oracle_is_stdlib_only_and_byte_repeatable() -> None:
         if isinstance(node, (ast.Import, ast.ImportFrom))
         for alias in node.names
     }
-    forbidden = ("anysolver", "numpy", "scipy", "mpmath", "sympy")
+    forbidden = ("anyfesolver", "numpy", "scipy", "mpmath", "sympy")
     assert not any(
         name == item or name.startswith(item + ".")
         for name in imported

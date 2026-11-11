@@ -17,14 +17,14 @@ import warnings
 ROOT=Path(__file__).resolve().parents[1]
 sys.path[:0]=[str(ROOT),str(ROOT/"src")]
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 import psutil
 from scipy import sparse
 from scipy.sparse.linalg import MatrixRankWarning, spsolve
 from threadpoolctl import threadpool_info
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from scripts import r8_bl5_ccx_weak_p0_run_dev as previous
 from scripts import r8_bl5_ccx_weak_p0_dev as deck
 from scripts import r8_bl5_weak_continuum_reference as continuum
@@ -213,7 +213,7 @@ def main():
         if (psutil.Process().cpu_affinity()!=[0] or numba.config.DISABLE_JIT!=1 or
                 numba.get_num_threads()!=1 or not pools or
                 any(item["num_threads"]!=1 for item in pools) or
-                not Path(anysolver.__file__).resolve().is_relative_to(ROOT/"src")):
+                not Path(anyfesolver.__file__).resolve().is_relative_to(ROOT/"src")):
             raise ValueError("effective source/runtime differs from bounded development setting")
         model,load,checked=checked_saved(args.saved_mx,args.comparison)
         k,_=continuum.assemble_body(model)

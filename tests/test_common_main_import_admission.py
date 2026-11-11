@@ -1,11 +1,11 @@
 """The combined public entry points retain ordinary load-vector admission."""
 def test_combined_public_namespaces_preserve_builtin_gravity():
-    import anysolver
-    from anysolver import stiffened_shell, general_contact
+    import anyfesolver
+    from anyfesolver import stiffened_shell, general_contact
     from test_static_batch_coupled_acceleration_guards import _model, _gravity, _owned, _public
     assert stiffened_shell.create_analysis is not None
     assert general_contact.report_general_contact_capability is not None
-    assert anysolver.iter_linear_batches is not None
+    assert anyfesolver.iter_linear_batches is not None
     model = _model()
     case = _gravity()
     owned = _owned(model, case)
@@ -14,7 +14,7 @@ def test_combined_public_namespaces_preserve_builtin_gravity():
 
 
 def test_foreign_warning_facade_is_refused_without_observation():
-    from anysolver import boundary
+    from anyfesolver import boundary
     import warnings
     import pytest
     if boundary._WARNING_IMPLEMENTATION is warnings:
@@ -32,7 +32,7 @@ def test_foreign_warning_facade_is_refused_without_observation():
 
 
 def test_foreign_warning_context_getter_is_refused(monkeypatch):
-    from anysolver import boundary
+    from anyfesolver import boundary
     import warnings
     import pytest
     if boundary._WARNING_IMPLEMENTATION is warnings:
@@ -44,7 +44,7 @@ def test_foreign_warning_context_getter_is_refused(monkeypatch):
 
 
 def test_missing_or_foreign_warning_context_is_refused(monkeypatch):
-    from anysolver import boundary
+    from anyfesolver import boundary
     import warnings
     import pytest
     if boundary._WARNING_IMPLEMENTATION is warnings:
@@ -71,7 +71,7 @@ def foreign():
     seen.append('foreign')
     return original()
 warnings._get_context = foreign
-import anysolver.boundary as boundary
+import anyfesolver.boundary as boundary
 seen.clear()
 assert not boundary._numpy_error_routes_are_builtin()
 assert not seen
@@ -83,7 +83,7 @@ assert not seen
 
 def test_ordinary_warning_writer_and_context_refusal(monkeypatch, tmp_path):
     import io, sys, warnings
-    from anysolver import boundary
+    from anyfesolver import boundary
     if boundary._WARNING_IMPLEMENTATION is warnings:
         import pytest
         pytest.skip('This stdlib does not split its warnings implementation')
@@ -106,7 +106,7 @@ def test_preimport_warning_context_descriptor_is_not_authorized():
     code = '''import _py_warnings
 seen = []
 _py_warnings._GlobalContext.log = property(lambda self: seen.append('foreign'))
-import anysolver.boundary as boundary
+import anyfesolver.boundary as boundary
 seen.clear()
 assert not boundary._numpy_error_routes_are_builtin()
 assert not seen

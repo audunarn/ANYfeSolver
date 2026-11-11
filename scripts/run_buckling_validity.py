@@ -13,7 +13,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from anysolver.buckling_validity import DEFAULT_BUCKLING_VALIDITY_PATH, write_buckling_validity_report  # noqa: E402
+from anyfesolver.buckling_validity import DEFAULT_BUCKLING_VALIDITY_PATH, write_buckling_validity_report  # noqa: E402
 
 
 def _markdown(report: Dict[str, Any]) -> str:

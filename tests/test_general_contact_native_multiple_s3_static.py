@@ -9,11 +9,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 from scipy.integrate import quad
-from anysolver._ge_beam3_p5_seeded.core import sha
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver.general_contact import create_native_contact_analysis
-from anysolver.general_contact.native_s3_swept import native_s3_swept_admissible
-from anysolver.control import CancellationToken
+from anyfesolver._ge_beam3_p5_seeded.core import sha
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver.general_contact import create_native_contact_analysis
+from anyfesolver.general_contact.native_s3_swept import native_s3_swept_admissible
+from anyfesolver.control import CancellationToken
 
 _path = Path(__file__).resolve().parents[1]/'examples/general_contact_native_multiple_s3_static.py'
 _spec = importlib.util.spec_from_file_location('native_multiple_s3_example', _path)
@@ -157,7 +157,7 @@ def test_consumed_map_and_resources_are_bound():
 
 
 def test_new_factory_lazy_public_exports():
-    from anysolver.general_contact import NativeS3ContactPair
+    from anyfesolver.general_contact import NativeS3ContactPair
     assert NativeS3ContactPair is type(_example.analysis().pairs[0])
 
 
@@ -245,19 +245,19 @@ def test_runnable_two_beam_example(capsys):
 def test_ordinary_static_route_keeps_new_native_owner_unloaded():
     code='''import os, sys
 from pathlib import Path
-import anysolver
-assert Path(anysolver.__file__).resolve().is_relative_to(Path(os.environ['CONTACT_SOLVER_EXPECTED_ROOT']))
-assert 'anysolver.general_contact' not in sys.modules
-from anysolver.boundary import LoadCase
-from anysolver.mesh_gen import generate_beam_mesh
+import anyfesolver
+assert Path(anyfesolver.__file__).resolve().is_relative_to(Path(os.environ['CONTACT_SOLVER_EXPECTED_ROOT']))
+assert 'anyfesolver.general_contact' not in sys.modules
+from anyfesolver.boundary import LoadCase
+from anyfesolver.mesh_gen import generate_beam_mesh
 model=generate_beam_mesh(1.,num_divisions=1)
 load=LoadCase('axial');load.add_nodal_load(2,[10.,0.,0.,0.,0.,0.])
-run=anysolver.solve_static_nonlinear(model,load,num_steps=1,max_iterations=5)
+run=anyfesolver.solve_static_nonlinear(model,load,num_steps=1,max_iterations=5)
 assert run.status=='completed',run.failure_reason
-assert 'anysolver.general_contact.native_multi_s3_static' not in sys.modules
+assert 'anyfesolver.general_contact.native_multi_s3_static' not in sys.modules
 '''
     env=os.environ.copy()
-    env.setdefault('CONTACT_SOLVER_EXPECTED_ROOT',str(Path(__file__).resolve().parents[1]/'src/anysolver'))
+    env.setdefault('CONTACT_SOLVER_EXPECTED_ROOT',str(Path(__file__).resolve().parents[1]/'src/anyfesolver'))
     env.setdefault('PYTHONPATH',str(Path(__file__).resolve().parents[1]/'src'))
     run=subprocess.run([sys.executable,'-c',code],env=env,capture_output=True,text=True,timeout=30)
     assert run.returncode==0,run.stdout+run.stderr

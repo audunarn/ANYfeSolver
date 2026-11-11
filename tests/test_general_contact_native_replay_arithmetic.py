@@ -5,7 +5,7 @@ import math
 import numpy as np
 import pytest
 
-from anysolver.general_contact import native_replay_arithmetic as arithmetic
+from anyfesolver.general_contact import native_replay_arithmetic as arithmetic
 
 
 @pytest.mark.parametrize('fallback', [False, True])
@@ -78,7 +78,7 @@ def test_missing_runtime_symbol_keeps_exact_fallback(monkeypatch):
 
 @pytest.mark.parametrize('station', [0., .37, 1.])
 def test_curve_position_and_derivatives_use_fixed_fused_chain(station):
-    from anysolver.general_contact.beam_curve_pair import _curve
+    from anyfesolver.general_contact.beam_curve_pair import _curve
     epsilon = 2.**-27
     positions = np.array(((1.+epsilon, -1., 0.),
                           (-1., 1.-epsilon, 2.**-1022),
@@ -103,7 +103,7 @@ def test_curve_position_and_derivatives_use_fixed_fused_chain(station):
 
 def test_endpoint_projection_cuts_use_fixed_coefficient_reductions():
     from decimal import Decimal, localcontext
-    from anysolver.general_contact.beam_curve_pair import _curve, _endpoint_projection_cuts
+    from anyfesolver.general_contact.beam_curve_pair import _curve, _endpoint_projection_cuts
     source = np.array(((0., .11, .01), (1., .1101, .011), (2., .11, .01)))
     target = np.array(((1., 0., 0.), (2., .01, .002), (3., 0., 0.)))
     linear = -3*source[0]+4*source[1]-source[2]

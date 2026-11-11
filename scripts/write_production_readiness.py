@@ -11,7 +11,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from anysolver.production_readiness import DEFAULT_PRODUCTION_READINESS_DIR, write_production_readiness_artifacts
+from anyfesolver.production_readiness import DEFAULT_PRODUCTION_READINESS_DIR, write_production_readiness_artifacts
 
 
 def main() -> int:

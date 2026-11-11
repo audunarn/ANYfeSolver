@@ -5,7 +5,7 @@ from decimal import Decimal, ROUND_DOWN, localcontext
 import numpy as np
 import pytest
 
-from anysolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
+from anyfesolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
 from docs.reference_cases.ge_beam3_curved_p5_algebra_probe import HALVES, metrics
 from docs.reference_cases.ge_beam3_curved_p5_chain_probe import ReferenceChainProbe, ChainSolveError, add_expansion
 from docs.reference_cases.ge_beam3_curved_p5_precise_reference_probe import PreciseReferenceAction

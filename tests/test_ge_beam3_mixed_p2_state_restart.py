@@ -9,10 +9,10 @@ import json
 import numpy as np
 import pytest
 
-from anysolver.beam_sections import GeneralizedBeamSection
-from anysolver.fe_core import FEModel
-from anysolver.ge_beam3_mixed_element import GeometricallyExactBeam3D3NElement
-from anysolver.ge_beam3_mixed_state import (
+from anyfesolver.beam_sections import GeneralizedBeamSection
+from anyfesolver.fe_core import FEModel
+from anyfesolver.ge_beam3_mixed_element import GeometricallyExactBeam3D3NElement
+from anyfesolver.ge_beam3_mixed_state import (
     GE_BEAM3_MIXED_CANDIDATE_ID,
     SECTION_SCHEMA,
     STATE_INTEGRITY_ID,

@@ -4,7 +4,7 @@ from pathlib import Path
 import json, os
 import numpy as np
 import pytest
-from anysolver.general_contact.q4_q4_swept_bound import q4_q4_whole_pair_swept_lower as lower
+from anyfesolver.general_contact.q4_q4_swept_bound import q4_q4_whole_pair_swept_lower as lower
 
 
 def sub(a,b):return tuple(x-y for x,y in zip(a,b))
@@ -79,13 +79,13 @@ def test_exact_whole_time_controls_and_errors():
     ref=np.array([[0.,0.,0.],[1.+eps,1.,0.],[2.,2.,0.],[1.,1.-eps,0.]])
     refaxis=cross(sub(exact(ref)[1],exact(ref)[0]),sub(exact(ref)[3],exact(ref)[0]))
     assert refaxis[2]==-F(eps)**2
-    from anysolver.general_contact.q4_overlap_local_bound import _normal_controls_interval
+    from anyfesolver.general_contact.q4_overlap_local_bound import _normal_controls_interval
     enclosure=_normal_controls_interval(ref,ref,0)
     assert F(enclosure[0][0,2])<=refaxis[2]<=F(enclosure[1][0,2])
-    from anysolver.general_contact.q4_q4_overlap_derivatives import q4_q4_swept_chart_admissible
+    from anyfesolver.general_contact.q4_q4_overlap_derivatives import q4_q4_swept_chart_admissible
     assert not q4_q4_swept_chart_admissible(quad(),quad(),quad(),quad(),ref,reference)
     # Rounded midpoint encloses original exact binary arithmetic, not a chord reset.
-    from anysolver.general_contact.s3_patch_static import _affine_midpoint_with_error
+    from anyfesolver.general_contact.s3_patch_static import _affine_midpoint_with_error
     left=(np.array([[2.**30,1.,-1.]]),);right=(np.nextafter(left[0],np.inf),)
     error=(np.full((1,3),2.**-24),)
     middle,me=_affine_midpoint_with_error(left,right,error,error)
@@ -98,9 +98,9 @@ def test_exact_whole_time_controls_and_errors():
 
 
 def test_actual_manager_errors_cutback_and_endpoint_guard(monkeypatch):
-    import anysolver.general_contact.q4_q4_swept_bound as module
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact import resolve_automatic_contact_domain
+    import anyfesolver.general_contact.q4_q4_swept_bound as module
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact import resolve_automatic_contact_domain
     from examples.general_contact_automatic_q4_pair import build
     model,domain,settings,resolution,program=build()
     manager=GeneralS3PatchManager(model,resolution.definition,settings)
@@ -118,7 +118,7 @@ def test_actual_manager_errors_cutback_and_endpoint_guard(monkeypatch):
     fraction=manager.admissible_step_fraction(zero,unsafe);assert 0<fraction<1
     with pytest.raises(ValueError,match='committed Q4/Q4 gap'):manager._swept_admissible(unsafe,unsafe)
     # Endpoints/chart cannot route acceptance through the historic float cone.
-    import anysolver.general_contact.s3_patch_static as controller
+    import anyfesolver.general_contact.s3_patch_static as controller
     def trap(*args,**kwargs):raise AssertionError('old Q4 gap branch used')
     monkeypatch.setattr(controller,'q4_source_swept_gap_lower',trap)
     monkeypatch.setattr(controller,'q4_source_gap_lower',trap)

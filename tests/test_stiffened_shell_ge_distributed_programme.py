@@ -4,10 +4,10 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_ge_distributed_programme import decode_checkpoint
-from anysolver._stiffened_shell_increment_control import FiniteIncrementFailure
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_ge_distributed_programme import decode_checkpoint
+from anyfesolver._stiffened_shell_increment_control import FiniteIncrementFailure
 from test_stiffened_shell_ge_distributed_load import owner, balance, load
 
 
@@ -22,7 +22,7 @@ def test_descriptor_and_density_interpolation(request,monkeypatch):
     assert ss.GEBeamDistributedProgramme.deserialize(p.serialize())==p
     c=p.compile(a)
     state=SimpleNamespace(q=np.zeros(c.template.count),cells=np.tile(np.eye(3),(c.template.beam_count,2,1,1)))
-    import anysolver._stiffened_shell_native_distributed_load as native
+    import anyfesolver._stiffened_shell_native_distributed_load as native
     def forbidden(*args,**kwargs):raise AssertionError('recompiled load geometry')
     monkeypatch.setattr(native,'compile_native_distributed',forbidden)
     for at,density in ((0,0),(.5,50),(1,100),(1.5,50),(2,0),(2.5,-50),(3,-100)):

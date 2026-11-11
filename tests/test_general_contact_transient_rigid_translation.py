@@ -4,12 +4,12 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import BoundaryCondition, LoadCase
-from anysolver.dynamics import TransientConfig
-from anysolver.general_contact.beam_plane import _BeamPlaneManager
-from anysolver.general_contact.core import active_contact_manager
-from anysolver.general_contact.rigid_translation import ContactRigidTranslationHistory, _PlaneTranslations
-from anysolver.general_contact.transient import (
+from anyfesolver import BoundaryCondition, LoadCase
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.general_contact.beam_plane import _BeamPlaneManager
+from anyfesolver.general_contact.core import active_contact_manager
+from anyfesolver.general_contact.rigid_translation import ContactRigidTranslationHistory, _PlaneTranslations
+from anyfesolver.general_contact.transient import (
     ContactNodalLoadHistory, ContactTransientSolverControls, solve_transient_contact,
 )
 from test_general_contact_beam_plane import _model
@@ -221,7 +221,7 @@ def test_deforming_b3_translation_preserves_normal_momentum_and_curved_gap():
 
 def test_translation_admission_and_restart_history_binding():
     import copy
-    from anysolver.nonlinear_restart import analysis_configuration_fingerprint
+    from anyfesolver.nonlinear_restart import analysis_configuration_fingerprint
     _, prefix, _ = impact(end=.0102, emit=True)
     with pytest.raises(ValueError, match="checkpoint analysis is incompatible"):
         impact(checkpoint=prefix.restart_checkpoint,
@@ -243,7 +243,7 @@ def test_translation_admission_and_restart_history_binding():
 
 
 def test_translating_plane_bounds_reproduce_relative_polynomial_extrema():
-    from anysolver.general_contact.beam_temporal_bounds import beam_hermite_gap_bounds
+    from anyfesolver.general_contact.beam_temporal_bounds import beam_hermite_gap_bounds
     model, definition, settings = _model(quadratic=True)
     manager = _BeamPlaneManager(model, definition, settings)
     q0, q1, v0, v1 = [np.zeros(model.mesh.dof_manager.total_dofs) for _ in range(4)]
@@ -303,8 +303,8 @@ def test_nearest_combined_knot_cannot_be_overridden_by_roundoff_snapping(near_te
 
 @pytest.mark.parametrize("cancel", [False, True])
 def test_tool_work_failure_keeps_committed_state_and_cleans_scope(monkeypatch, cancel):
-    import anysolver.general_contact.transient as driver
-    from anysolver.control import CancellationToken, SolveCancelled
+    import anyfesolver.general_contact.transient as driver
+    from anyfesolver.control import CancellationToken, SolveCancelled
     token = CancellationToken()
     commits = []
     commit = driver.commit_state_candidate

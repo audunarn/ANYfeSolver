@@ -1,8 +1,8 @@
 """New positive-clearance Q4/Q4 force cycle, with free two-body bending."""
 from dataclasses import replace
-from anysolver import FEModel,create_shell_element,BoundaryCondition,solve_static_nonlinear
-from anysolver.general_contact import resolve_automatic_contact_domain
-from anysolver.general_contact.static_path import ContactPathProgram,ContactPathNodalForce
+from anyfesolver import FEModel,create_shell_element,BoundaryCondition,solve_static_nonlinear
+from anyfesolver.general_contact import resolve_automatic_contact_domain
+from anyfesolver.general_contact.static_path import ContactPathProgram,ContactPathNodalForce
 from examples.general_contact_automatic_q4_pair import build as declarations
 
 

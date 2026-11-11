@@ -1,7 +1,7 @@
 """Actual ordinary S3 finite-tool contact result export and detached read."""
 from examples.general_contact_triangulated_rigid import case
-from anysolver import LoadCase, solve_static_nonlinear
-from anysolver.general_contact import read_static_contact_results
+from anyfesolver import LoadCase, solve_static_nonlinear
+from anyfesolver.general_contact import read_static_contact_results
 
 
 def analysis():

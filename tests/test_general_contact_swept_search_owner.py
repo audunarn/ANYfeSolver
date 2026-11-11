@@ -1,8 +1,8 @@
 """The owner must preserve swept rejection, exhaustive fallback and identity."""
 import numpy as np
 import pytest
-from anysolver.general_contact import swept_patch_broadphase as search
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact import swept_patch_broadphase as search
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 from test_general_contact_preparation_reuse import gap_fixture
 
 
@@ -58,8 +58,8 @@ def test_prior_swept_revision_checkpoint_rejected_before_continuation():
     import json
     from dataclasses import replace
     from pathlib import Path
-    from anysolver import solve_static_nonlinear
-    from anysolver.nonlinear_restart import NonlinearCheckpointError
+    from anyfesolver import solve_static_nonlinear
+    from anyfesolver.nonlinear_restart import NonlinearCheckpointError
     from scripts.general_contact_d1_interior_press_dev import build_interior_press
     path=Path(__file__).resolve().parents[1]/'docs/d1_review_support/d1_pressure_family4_moving_edge_cycle_v4_20260929.json'
     checkpoint=json.loads(path.read_text(encoding='utf-8'))['restart_checkpoint']

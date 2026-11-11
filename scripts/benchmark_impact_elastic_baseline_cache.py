@@ -3,9 +3,9 @@ import argparse,hashlib,json,os,pathlib,platform,statistics,time
 from contextlib import nullcontext
 import numpy as np
 from threadpoolctl import threadpool_info
-from anysolver import FEModel,e4_pl_element
-from anysolver.elements import create_shell_element
-from anysolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver import FEModel,e4_pl_element
+from anyfesolver.elements import create_shell_element
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
 
 def model():
     m=FEModel('impact-baseline-reuse-assembly');m.add_material('soft',1e5,.3,density=20.)
@@ -19,7 +19,7 @@ def model():
 
 def run(out):
     root=pathlib.Path(__file__).resolve().parents[1]
-    sources=[pathlib.Path(__file__),root/'src/anysolver/e4_pl_element.py',root/'src/anysolver/contact.py',root/'src/anysolver/elements.py']
+    sources=[pathlib.Path(__file__),root/'src/anyfesolver/e4_pl_element.py',root/'src/anyfesolver/contact.py',root/'src/anyfesolver/elements.py']
     result={'scope':'assembly only, 2x2 Q4, three hot assemblies per sample; identical current code with vs without solve-local scope','python':platform.python_version(),'numpy':np.__version__,'module':e4_pl_element.__file__,'environment':{k:os.environ.get(k) for k in ['OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','NUMBA_NUM_THREADS']},'source_hashes':{str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources},'samples':[]}
     def save():out.write_text(json.dumps(result,indent=2))
     m=model();u=np.zeros(m.mesh.dof_manager.total_dofs);u[2::6]=.003*np.sin(np.arange(9))

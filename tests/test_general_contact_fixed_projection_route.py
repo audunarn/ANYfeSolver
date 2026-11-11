@@ -6,14 +6,14 @@ import os
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactPathControl, ContactPathProgram,
     solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.general_contact.s3_patch_static import (
+from anyfesolver.general_contact.s3_patch_static import (
     GeneralS3PatchManager, REFINED_Q4_S3_GRAPH_AUGMENTED_PROFILE,
 )
-from anysolver.general_contact.static_path import (
+from anyfesolver.general_contact.static_path import (
     GENERAL_Q4_S3_PATCH_REFINED_GRAPH_AUGMENTED_PROFILE,
 )
 from test_general_contact_skew_partial_work import _case

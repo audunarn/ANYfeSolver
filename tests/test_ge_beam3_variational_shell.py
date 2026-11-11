@@ -5,11 +5,11 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_variational_shell import deformation, rotation_jets, response
-from anysolver._ge_beam3_pose_joint import _exp_terms
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_shell_joint_trial import ShellBeamTrialAssembly
-from anysolver._ge_beam3_shell_joint_state import CoupledShellBeamAnalysis
+from anyfesolver._ge_beam3_variational_shell import deformation, rotation_jets, response
+from anyfesolver._ge_beam3_pose_joint import _exp_terms
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_shell_joint_trial import ShellBeamTrialAssembly
+from anyfesolver._ge_beam3_shell_joint_state import CoupledShellBeamAnalysis
 from test_ge_beam3_coupled_free_beam import build
 from test_ge_beam3_shell_joint_trial import specimen, norm_error
 

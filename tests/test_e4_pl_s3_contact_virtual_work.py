@@ -5,7 +5,7 @@ import itertools
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     FEModel,
     FixedSupport,
@@ -13,20 +13,20 @@ from anysolver import (
     TransientConfig,
     solve_transient_sphere_impact,
 )
-from anysolver._native_rotation_state import (
+from anyfesolver._native_rotation_state import (
     create_native_rotation_state_store,
     rotation_exponential,
 )
-from anysolver.contact import (
+from anyfesolver.contact import (
     NonlinearTransientConfig,
     RigidSphereImpact,
     SphereContactConfig,
     assemble_sphere_contact_load_vector,
 )
-from anysolver.elements import create_shell_element
-from anysolver.nonlinear_state import NonlinearStateStore
-from anysolver.shell_sections import GeneralizedShellSection
-from anysolver.validation import load_vector_resultant
+from anyfesolver.elements import create_shell_element
+from anyfesolver.nonlinear_state import NonlinearStateStore
+from anyfesolver.shell_sections import GeneralizedShellSection
+from anyfesolver.validation import load_vector_resultant
 
 
 _THICKNESS = 0.2
@@ -733,7 +733,7 @@ def test_unconstrained_drill_matches_explicit_projected_contact_reference() -> N
 def test_top_level_native_contact_cutbacks_do_not_commit_rejected_rotations(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import anysolver.nonlinear_static as nonlinear_static
+    import anyfesolver.nonlinear_static as nonlinear_static
 
     captured: list[NonlinearStateStore] = []
     original_activate = nonlinear_static._activate_nonlinear_state_storage

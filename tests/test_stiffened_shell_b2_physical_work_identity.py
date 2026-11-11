@@ -9,8 +9,8 @@ import psutil
 import pytest
 from threadpoolctl import threadpool_info
 
-from anysolver import stiffened_shell as api
-from anysolver.control import CancellationToken
+from anyfesolver import stiffened_shell as api
+from anyfesolver.control import CancellationToken
 from examples.stiffened_shell_b2_physical_rigid_footprint import definition, preload
 
 

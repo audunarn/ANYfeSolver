@@ -7,14 +7,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver import BoundaryCondition, create_shell_element, solve_static_nonlinear
-from anysolver.assembly import build_constraint_transformation
-from anysolver.control import SolveCancelled
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact import semismooth_path
-from anysolver.general_contact.semismooth import linearize
-from anysolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver import BoundaryCondition, create_shell_element, solve_static_nonlinear
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.control import SolveCancelled
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact import semismooth_path
+from anyfesolver.general_contact.semismooth import linearize
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
 from examples.general_contact_d1_interior_controls_dev import (
     _independent_projected_gap_bound,
 )

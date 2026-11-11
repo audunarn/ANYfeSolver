@@ -6,10 +6,10 @@ from pathlib import Path
 from unittest.mock import patch
 import numpy as np
 import pytest
-from anysolver._ge_beam3_g1_elastic import canonical
-from anysolver._ge_beam3_g1_element import ElasticElement
-from anysolver._ge_beam3_g1_analysis import ElasticAnalysis
-from anysolver.nonlinear_state import StaleStateTokenError
+from anyfesolver._ge_beam3_g1_elastic import canonical
+from anyfesolver._ge_beam3_g1_element import ElasticElement
+from anyfesolver._ge_beam3_g1_analysis import ElasticAnalysis
+from anyfesolver.nonlinear_state import StaleStateTokenError
 from test_ge_beam3_g1_elastic import reference, section
 
 
@@ -116,7 +116,7 @@ def test_S08_restart_and_atomic_publication(tmp_path):
     with pytest.raises(ValueError): resumed.publish(target)
     assert target.read_bytes() == old
     failed = tmp_path / "failed.json"
-    with patch("anysolver._ge_beam3_g1_analysis.os.link", side_effect=OSError("injected publication fault")):
+    with patch("anyfesolver._ge_beam3_g1_analysis.os.link", side_effect=OSError("injected publication fault")):
         with pytest.raises(OSError): resumed.publish(failed)
     assert not failed.exists() and target.read_bytes() == old
 
@@ -246,7 +246,7 @@ def test_final_callback_mutation_preserves_accepted_prefix(accepted, mutation):
             elif mutation == "node": owner.model.add_node(6, 3., 0., 0.)
             elif mutation == "manager_support": owner.model.mesh.dof_manager.constrain_dof(owner.size-1)
             elif mutation == "model_load":
-                from anysolver.boundary import LoadCase
+                from anyfesolver.boundary import LoadCase
                 owner.model.add_load_case(LoadCase("unsupported model load"))
             else: owner.model.materials[owner.elements[0].material_name] = section(True)
         return False

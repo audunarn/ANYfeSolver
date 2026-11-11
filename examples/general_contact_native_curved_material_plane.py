@@ -2,24 +2,24 @@
 
 One elastic B3-GE beam and one fixed plane; selected interior skin only.
 No caps, friction, dynamics, unselected collisions or engineering admission.
-Run with an installed ANYsolver package on PYTHONPATH.
+Run with an installed ANYfeSolver package on PYTHONPATH.
 """
 import json
 from math import hypot,pi
 import numpy as np
 
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-from anysolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_retained_nodal_loading import NodalDeadForces,Program
-from anysolver.boundary import BoundaryCondition
-from anysolver.general_contact.native_curved_plane_work import NativeCurvedMaterialPlaneWork
-from anysolver.general_contact.native_retained_static import NativeRetainedRoundPlaneAnalysis
-from anysolver.general_contact.native_surface_normal import StraightNormalIntegrationSettings
-from anysolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+from anyfesolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_retained_nodal_loading import NodalDeadForces,Program
+from anyfesolver.boundary import BoundaryCondition
+from anyfesolver.general_contact.native_curved_plane_work import NativeCurvedMaterialPlaneWork
+from anyfesolver.general_contact.native_retained_static import NativeRetainedRoundPlaneAnalysis
+from anyfesolver.general_contact.native_surface_normal import StraightNormalIntegrationSettings
+from anyfesolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
 
 
 def analysis(targets=(1.,0.,1.),*,normal_stiffness_Pa_per_m=1e7,max_iterations=24):

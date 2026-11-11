@@ -3,7 +3,7 @@
 import numpy as np
 from scipy.optimize import least_squares
 
-from anysolver.general_contact.q4_source_overlap import (
+from anyfesolver.general_contact.q4_source_overlap import (
     q4_source_gap_lower, q4_source_projected_gap_lower,
     q4_source_projected_swept_gap_lower, q4_source_swept_gap_lower,
 )

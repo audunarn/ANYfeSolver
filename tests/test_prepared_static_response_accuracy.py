@@ -1,8 +1,8 @@
 """Historical recovery arithmetic counterexamples on the source-response route."""
 import numpy as np
-from anysolver import PatternCase, RecoveryConfig, prepare_static_response_evaluator
-from anysolver.recovery import recover_stress_result
-from anysolver.prepared_static_measures import shell_surface_tensor
+from anyfesolver import PatternCase, RecoveryConfig, prepare_static_response_evaluator
+from anyfesolver.recovery import recover_stress_result
+from anyfesolver.prepared_static_measures import shell_surface_tensor
 from test_prepared_static_evaluator import _shell_model, _shell_case
 
 
@@ -30,7 +30,7 @@ def test_response_mixed_historical_roundoff_diagnostic():
     from pathlib import Path
     sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
     from benchmark_static_batches import mixed_free_model,free_cases,numeric_leaves
-    from anysolver.prepared_static import PreparedStaticEvaluator
+    from anyfesolver.prepared_static import PreparedStaticEvaluator
     model,groups,balancing = mixed_free_model()
     patterns = {name:load for name,time,load in free_cases(model,groups,balancing,[0,48,576])}
     config = RecoveryConfig(element_ids=[1,4,5,6],include_stresses=True,include_reactions=False)

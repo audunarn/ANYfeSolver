@@ -110,8 +110,8 @@ def worker(output):
     import pytest
     from contextlib import ExitStack
     from unittest.mock import patch
-    from anysolver._ge_beam3_g1_analysis import ElasticAnalysis
-    from anysolver import _ge_beam3_g1_element as element
+    from anyfesolver._ge_beam3_g1_analysis import ElasticAnalysis
+    from anyfesolver import _ge_beam3_g1_element as element
     phases = set()
     def mark(phase):
         phases.add(phase)

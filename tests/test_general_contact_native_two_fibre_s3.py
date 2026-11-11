@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from test_general_contact_native_curved_s3_static import _analysis
 from test_general_contact_native_fibre_s3 import _independent_material_history
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 
 
 def _owner(two_facets=False):
@@ -61,7 +61,7 @@ def test_two_fibre_beams_shared_target_complete_local_work(two_facets):
     assert sha256(raw).hexdigest()=='98d22bd2aff840df5d7b1034298891b179ed438ec9246a9f76b89445a7a15347'
     source=json.loads(raw)['records'][0];saved=source['mechanical']
     data={key:np.array(value,copy=True) for key,value in owner.initial.mechanical.descriptor().items()}
-    from anysolver._ge_beam3_p5.compensated_coordinates import split_sum
+    from anyfesolver._ge_beam3_p5.compensated_coordinates import split_sum
     for i,nodes in enumerate(owner.context.nodes):
         for local,node in enumerate(nodes):
             for axis in range(3):

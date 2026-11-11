@@ -5,8 +5,8 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import solve_static_nonlinear
-from anysolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver import solve_static_nonlinear
+from anyfesolver.boundary import BoundaryCondition, LoadCase
 from scripts.general_contact_d1_free_target_press_probe import build_free_target_case
 from scripts.general_contact_d1_mixed_mesh_jet2_schur_press import build_case
 

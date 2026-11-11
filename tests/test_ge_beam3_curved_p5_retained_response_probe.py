@@ -13,7 +13,7 @@ from test_ge_beam3_curved_p5_spin_split_probe import coupled_state
 
 
 def test_retained_straight_limit_matches_accepted_p3_potential_and_derivatives():
-    from anysolver.ge_beam3_mixed_element import GeometricallyExactBeam3D3NElement as P3
+    from anyfesolver.ge_beam3_mixed_element import GeometricallyExactBeam3D3NElement as P3
     ref = reference(0.)
     x, q, _ = perturbed(ref)
     made = RetainedFiniteResponseProbe(ref, section(), x, q).evaluate()

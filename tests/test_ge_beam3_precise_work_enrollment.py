@@ -1,10 +1,10 @@
 from hashlib import sha256
 import json
 import pytest
-from anysolver import _ge_beam3_elastic_seed_continuation as owner
-from anysolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement as Element
-from anysolver._ge_beam3_precise_geometric_work import POLICY
-from anysolver._ge_beam3_p5_seeded.core import canonical,sha
+from anyfesolver import _ge_beam3_elastic_seed_continuation as owner
+from anyfesolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement as Element
+from anyfesolver._ge_beam3_precise_geometric_work import POLICY
+from anyfesolver._ge_beam3_p5_seeded.core import canonical,sha
 from docs.reference_cases.ge_beam3_precise_work_enrollment import enroll
 from test_ge_beam3_elastic_seed_continuation import seed,model,programme
 

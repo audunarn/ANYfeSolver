@@ -6,14 +6,14 @@ import numpy as np
 import pytest
 
 from anymaterial import DNVC208MaterialCurve
-from anysolver import stiffened_shell as ss
-from anysolver import _stiffened_shell_ge_experimental as ge
-from anysolver._stiffened_shell_q4_reference import elastic_reference_response
-from anysolver.corotational import corotational_element_response
-from anysolver.corotational_performance import (
+from anyfesolver import stiffened_shell as ss
+from anyfesolver import _stiffened_shell_ge_experimental as ge
+from anyfesolver._stiffened_shell_q4_reference import elastic_reference_response
+from anyfesolver.corotational import corotational_element_response
+from anyfesolver.corotational_performance import (
     corotational_performance_status, reset_corotational_performance_status,
 )
-from anysolver.fe_core import FEMesh
+from anyfesolver.fe_core import FEMesh
 from test_stiffened_shell_ge_experimental import _panel
 
 
@@ -249,7 +249,7 @@ def _check_owner_history(monkeypatch, cleanup):
 def test_other_shell_routes_do_not_use_reference_reuse(monkeypatch, policy):
     definition = _panel()
     if policy == "algorithmic":
-        from anysolver._stiffened_shell_q4_algorithmic_pullback import POLICY
+        from anyfesolver._stiffened_shell_q4_algorithmic_pullback import POLICY
         definition = replace(definition, q4_pullback_policy=POLICY)
     else:
         definition = replace(definition, shell=replace(definition.shell,

@@ -5,9 +5,9 @@ import math
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_arc_geometry import frame_chord_terms, constraint
-from anysolver._ge_beam3_p5.algebra import rotation, skew
-from anysolver._ge_beam3_p5.chart import exp_chart_terms
+from anyfesolver._ge_beam3_arc_geometry import frame_chord_terms, constraint
+from anyfesolver._ge_beam3_p5.algebra import rotation, skew
+from anyfesolver._ge_beam3_p5.chart import exp_chart_terms
 
 
 def direct(v,w,q0):
@@ -16,7 +16,7 @@ def direct(v,w,q0):
 
 @pytest.mark.parametrize('magnitude',[0.,2.**-54,1e-8,1e-4,.000999999,.001000001,.1,1.3,2.7])
 def test_chord_and_chart_row_match_independent_exp_jet(magnitude):
-    from anysolver._ge_beam3_mixed_ad import Jet2, so3_exp
+    from anyfesolver._ge_beam3_mixed_ad import Jet2, so3_exp
     axis = np.array([1.,-2.,3.]); axis /= np.linalg.norm(axis)
     v = magnitude*axis; w = np.array([.2,.6,-.5])
     q = so3_exp([Jet2.variable(float(x),i,3) for i,x in enumerate(v)])

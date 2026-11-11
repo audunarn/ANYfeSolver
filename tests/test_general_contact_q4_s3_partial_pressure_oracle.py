@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.pressure_space import supported_pressure_gram
-from anysolver.general_contact.s3_patch_mortar_energy import (
+from anyfesolver.general_contact.pressure_space import supported_pressure_gram
+from anyfesolver.general_contact.s3_patch_mortar_energy import (
     MovingS3PatchPrimalMortarPenalty, S3PatchFace,
 )
 

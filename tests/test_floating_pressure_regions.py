@@ -2,10 +2,10 @@
 import numpy as np
 import pytest
 
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.floating_pressure_regions import full_element_vectors, region_nodal_vectors
-from anysolver.pressure_regions import PressureRegionError, region_wrench, wet_region_load
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.floating_pressure_regions import full_element_vectors, region_nodal_vectors
+from anyfesolver.pressure_regions import PressureRegionError, region_wrench, wet_region_load
 
 RHO_G = 1000.0
 
@@ -76,7 +76,7 @@ def test_regions_tiling_the_element_reproduce_the_whole_element_load():
 
 
 def test_owner_kernel_equivalence_proof_gates_the_region_integration_and_is_reused_only_for_identical_elements(monkeypatch):
-    import anysolver.floating_pressure_regions as module
+    import anyfesolver.floating_pressure_regions as module
     corners = [(0., 0., 0.), (2., 0., 0.), (2., 0., 2.), (0., 0., 2.)]
     mesh, element = build(corners)
     tri = np.array([[(0, 0, 0), (1, 0, 0), (0, 0, 1)]], float)
@@ -99,7 +99,7 @@ def test_owner_kernel_equivalence_proof_gates_the_region_integration_and_is_reus
 
 
 def test_a_failed_owner_equivalence_proof_refuses_the_region_load(monkeypatch):
-    import anysolver.floating_pressure_regions as module
+    import anyfesolver.floating_pressure_regions as module
     corners = [(0., 0., 0.), (2., 0., 0.), (2., 0., 2.), (0., 0., 2.)]
     mesh, element = build(corners)
     tri = np.array([[(0, 0, 0), (1, 0, 0), (0, 0, 1)]], float)

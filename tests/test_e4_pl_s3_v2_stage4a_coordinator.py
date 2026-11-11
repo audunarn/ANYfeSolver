@@ -2146,28 +2146,28 @@ def test_registered_resource_command_isolated_and_supplies_only_bound_dependenci
         (
             "ANYmaterial",
             Path(
-                r"C:\Github\ANYsolver\.perf2-worktrees"
+                r"C:\Github\ANYfeSolver\.perf2-worktrees"
                 r"\s3-v2-stage4a-anymaterial-dependency"
             ),
         ),
         (
             "ANYgeometry",
             Path(
-                r"C:\Github\ANYsolver\.perf2-worktrees"
+                r"C:\Github\ANYfeSolver\.perf2-worktrees"
                 r"\s3-v2-stage4a-anygeometry-dependency"
             ),
         ),
         (
             "ANYmesh",
             Path(
-                r"C:\Github\ANYsolver\.perf2-worktrees"
+                r"C:\Github\ANYfeSolver\.perf2-worktrees"
                 r"\s3-v2-stage4a-anymesh-dependency"
             ),
         ),
         (
             "ANYfileIO",
             Path(
-                r"C:\Github\ANYsolver\.perf2-worktrees"
+                r"C:\Github\ANYfeSolver\.perf2-worktrees"
                 r"\s3-v2-stage4a-anyfileio-dependency"
             ),
         ),
@@ -2915,22 +2915,22 @@ def test_candidate_archive_extraction_rejects_escape_and_is_exclusive(
     safe_root.mkdir()
     safe_archive = safe_root / "candidate.tar"
     with tarfile.open(safe_archive, "w") as bundle:
-        directory = tarfile.TarInfo("src/anysolver/")
+        directory = tarfile.TarInfo("src/anyfesolver/")
         directory.type = tarfile.DIRTYPE
         bundle.addfile(directory)
         payload = b"# exact candidate\n"
-        member = tarfile.TarInfo("src/anysolver/__init__.py")
+        member = tarfile.TarInfo("src/anyfesolver/__init__.py")
         member.size = len(payload)
         bundle.addfile(member, io.BytesIO(payload))
     extracted = module._extract_candidate_archive(safe_archive, safe_root)
-    assert (extracted / "src" / "anysolver" / "__init__.py").read_bytes() == payload
+    assert (extracted / "src" / "anyfesolver" / "__init__.py").read_bytes() == payload
     fresh_child = subprocess.run(
         [
             sys.executable,
             "-I",
             "-c",
             "from pathlib import Path; import sys; print(Path(sys.argv[1]).read_text())",
-            str(extracted / "src" / "anysolver" / "__init__.py"),
+            str(extracted / "src" / "anyfesolver" / "__init__.py"),
         ],
         check=True,
         capture_output=True,
@@ -3434,7 +3434,7 @@ def _correction4_success_receipt(module, tmp_path, monkeypatch):
             "request_id": request_id,
             "requested_at": f"2026-08-31T12:{wave_index:02d}:00+02:00",
             "status": "PENDING",
-            "task": f"ANYsolver S3 V2A Stage 4A bounded leaf wave {wave_index:02d}",
+            "task": f"ANYfeSolver S3 V2A Stage 4A bounded leaf wave {wave_index:02d}",
         }
         request_raw = module.canonical_bytes(request)
         request_path = resource_root / "requests" / f"{request_id}.json"

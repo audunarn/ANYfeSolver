@@ -9,9 +9,9 @@ import numpy as np
 import pytest
 
 from examples.general_contact_enriched_patch import build
-from anysolver.control import SolveCancelled
-from anysolver.e4_pl_enriched import EnrichedProfileError
-from anysolver.general_contact.enriched_static import MixedCriteria, IterationControl
+from anyfesolver.control import SolveCancelled
+from anyfesolver.e4_pl_enriched import EnrichedProfileError
+from anyfesolver.general_contact.enriched_static import MixedCriteria, IterationControl
 
 
 @pytest.fixture(scope="module")

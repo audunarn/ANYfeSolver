@@ -3,8 +3,8 @@ import numpy as np
 import pytest
 from dataclasses import replace
 
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_stiffened_shell_bl5_finite import _model, _action
 
 

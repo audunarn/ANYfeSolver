@@ -8,27 +8,27 @@ from typing import Any
 import numpy as np
 import pytest
 
-import anysolver.arc_length as arc_length_module
-import anysolver.e4_pl_element as q4_element_module
-import anysolver.nonlinear_static as nonlinear_static
-from anysolver.activity import ElementActivity
-from anysolver.arc_length import ArcLengthControl, solve_static_arc_length
-from anysolver.boundary import BoundaryCondition, FixedSupport, LoadCase
-from anysolver.control import CancellationToken
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.e4_pl_s3_state import canonical_json_bytes
-from anysolver.element_capabilities import ElementCapabilityError
-from anysolver.elements import ShellElement
-from anysolver.fe_core import FEModel
-from anysolver.material_curves import DNVC208MaterialCurve
-from anysolver.matrix_assembly import AssemblyError
-from anysolver.nonlinear_restart import (
+import anyfesolver.arc_length as arc_length_module
+import anyfesolver.e4_pl_element as q4_element_module
+import anyfesolver.nonlinear_static as nonlinear_static
+from anyfesolver.activity import ElementActivity
+from anyfesolver.arc_length import ArcLengthControl, solve_static_arc_length
+from anyfesolver.boundary import BoundaryCondition, FixedSupport, LoadCase
+from anyfesolver.control import CancellationToken
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.e4_pl_s3_state import canonical_json_bytes
+from anyfesolver.element_capabilities import ElementCapabilityError
+from anyfesolver.elements import ShellElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.material_curves import DNVC208MaterialCurve
+from anyfesolver.matrix_assembly import AssemblyError
+from anyfesolver.nonlinear_restart import (
     NonlinearCheckpointError,
     canonical_checkpoint_json_bytes,
     create_nonlinear_checkpoint,
 )
-from anysolver.nonlinear_static import ShellInitialField
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.nonlinear_static import ShellInitialField
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 def _cache_tree_snapshot(value: Any) -> tuple[Any, ...]:
@@ -176,7 +176,7 @@ def test_solver_seals_scalar_and_batched_layered_q4_results_deterministically(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     nonlinear_static._ensure_nonlinear_acceleration()
-    from anysolver import nonlinear_performance
+    from anyfesolver import nonlinear_performance
 
     batched_model, batched_load = _loaded_q4_model()
     batched = nonlinear_static.solve_static_nonlinear(
@@ -1017,7 +1017,7 @@ def test_fully_constrained_plastic_q4_with_initial_field_keeps_true_origin() -> 
     # Owner decision 2026-10-23: plastic qualified Q4 outside the assumed-strain
     # route scope is refused (the compatible-strain plastic route with the
     # qualified correction is unstable once layers yield).
-    from anysolver._q4_assumed_strain_plasticity import UnsupportedQ4PlasticRouteError
+    from anyfesolver._q4_assumed_strain_plasticity import UnsupportedQ4PlasticRouteError
     with pytest.raises(UnsupportedQ4PlasticRouteError, match="active initial"):
         nonlinear_static.solve_static_nonlinear(
             model,

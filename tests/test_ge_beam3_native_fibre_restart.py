@@ -3,13 +3,13 @@ import json
 from hashlib import sha256
 import numpy as np
 import pytest
-from anysolver.boundary import LoadCase,BoundaryCondition
-from anysolver.fe_core import FEModel
-from anysolver.nonlinear_static import solve_static_nonlinear
-from anysolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
-from anysolver._ge_beam3_native_fibre_restart import encode_checkpoint,decode_checkpoint,capture_solver_state,supported_solver_coordinates
-from anysolver._ge_beam3_native_fibre_recovery import recover_native_fields
-from anysolver._ge_beam3_p5_seeded.core import canonical,sha
+from anyfesolver.boundary import LoadCase,BoundaryCondition
+from anyfesolver.fe_core import FEModel
+from anyfesolver.nonlinear_static import solve_static_nonlinear
+from anyfesolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
+from anyfesolver._ge_beam3_native_fibre_restart import encode_checkpoint,decode_checkpoint,capture_solver_state,supported_solver_coordinates
+from anyfesolver._ge_beam3_native_fibre_recovery import recover_native_fields
+from anyfesolver._ge_beam3_p5_seeded.core import canonical,sha
 from test_ge_beam3_native_fibre_static_element import problem
 from test_ge_beam3_schur_line_program import save,numerical_difference
 from test_ge_beam3_equilibrium_multielement import inputs as connected_inputs
@@ -146,7 +146,7 @@ def test_exact_supported_coordinate_map_and_mutation_rejection(packets):
 
 def test_existing_generic_copier_still_rejects_arbitrary_dataclass():
     from dataclasses import dataclass
-    from anysolver.current_state_tangent import _guarded_owned_input_snapshot
+    from anyfesolver.current_state_tangent import _guarded_owned_input_snapshot
     @dataclass
     class Unregistered:
         value: float=0.

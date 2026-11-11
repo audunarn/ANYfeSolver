@@ -5,15 +5,15 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField, NativeSurfaceMotionSegment
-from anysolver.general_contact.native_surface_patch import NativeS3MaterialSurfacePatch
-from anysolver.general_contact.native_surface_path import material_path_pose
-from anysolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
-from anysolver.general_contact.native_surface_support import (
+from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField, NativeSurfaceMotionSegment
+from anyfesolver.general_contact.native_surface_patch import NativeS3MaterialSurfacePatch
+from anyfesolver.general_contact.native_surface_path import material_path_pose
+from anyfesolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
+from anyfesolver.general_contact.native_surface_support import (
     SupportIntervalBudget, history_endpoint_support_certified, panel_open_over_history,
     history_target_ownership_certified, history_endpoint_support_cover_certified,
 )
-from anysolver.general_contact.s3_friction_point import S3SkinMaterialPoint
+from anyfesolver.general_contact.s3_friction_point import S3SkinMaterialPoint
 from test_general_contact_native_surface_s3_friction import _case
 
 
@@ -235,7 +235,7 @@ def test_curvature_certificate_resolves_shallow_rotating_open_arc_in_one_interva
 
 
 def test_panel_support_distinguishes_persistent_contact_from_hidden_pulse():
-    from anysolver.general_contact.native_surface_support import classify_history_panel,panel_closed_over_history
+    from anyfesolver.general_contact.native_surface_support import classify_history_panel,panel_closed_over_history
     translations=np.zeros((3,3));translations[:,0]=.0001
     translations[:,2]=(-.05,-.019,-.019)
     press=NativeSurfaceMotionSegment(translations,np.zeros((2,3)),np.zeros(18))
@@ -260,9 +260,9 @@ def test_panel_support_distinguishes_persistent_contact_from_hidden_pulse():
 
 
 def test_unresolved_nonzero_panel_cannot_be_accepted(monkeypatch):
-    from anysolver.general_contact.native_surface_support import HistoryPanelSupport
-    import anysolver.general_contact.native_surface_support as support
-    from anysolver.general_contact.native_surface_friction_integral import integrate_material_friction
+    from anyfesolver.general_contact.native_surface_support import HistoryPanelSupport
+    import anyfesolver.general_contact.native_surface_support as support
+    from anyfesolver.general_contact.native_surface_friction_integral import integrate_material_friction
     from test_general_contact_native_surface_friction_integral import _field as integral_field,_settings
     field=integral_field();calls=[]
     def unresolved(field,cell,xis,angles,*,budget):
@@ -290,14 +290,14 @@ def test_unresolved_nonzero_panel_cannot_be_accepted(monkeypatch):
     (0,(-.8,.2),(4.70,4.72)),(0,(-.8,-.2),(float('nan'),4.72)),
     (2,(-.8,-.2),(4.70,4.72)),(0,(-.2,-.2),(4.70,4.72))])
 def test_panel_classifier_rejects_mismatched_cell_rectangle(cell,xis,angles):
-    from anysolver.general_contact.native_surface_support import classify_history_panel
+    from anyfesolver.general_contact.native_surface_support import classify_history_panel
     with pytest.raises(ValueError,match='half-cell'):
         classify_history_panel(_field(),cell,xis,angles,budget=SupportIntervalBudget(128))
 
 
 def test_support_exhaustion_preserves_region_and_named_recovery_contract(monkeypatch):
-    import anysolver.general_contact.native_surface_support as support
-    from anysolver.general_contact.native_surface_friction_integral import (
+    import anyfesolver.general_contact.native_surface_support as support
+    from anyfesolver.general_contact.native_surface_friction_integral import (
         integrate_material_friction, NativeFrictionIntegrationLimit)
     from test_general_contact_native_surface_friction_integral import _field as integral_field,_settings
     field=integral_field();regions=[]
@@ -328,7 +328,7 @@ def test_closed_endpoints_allow_transverse_release_and_recontact_cover(monkeypat
     # g(t) = -t**2+t-3/16. Closed endpoints; simple roots at1/4,3/4.
     # Positive/negative root rates are both necessary in a complete cover.
     from types import SimpleNamespace
-    import anysolver.general_contact.native_surface_support as module
+    import anyfesolver.general_contact.native_surface_support as module
     def enclosure(left,right):
         values=[-left*left+left-3/16,-right*right+right-3/16]
         if left<=.5<=right:values.append(1/16)
@@ -346,7 +346,7 @@ def test_closed_endpoints_allow_transverse_release_and_recontact_cover(monkeypat
 
 def test_zero_rate_tangency_is_not_admitted_by_transverse_cover(monkeypatch):
     from types import SimpleNamespace
-    import anysolver.general_contact.native_surface_support as module
+    import anyfesolver.general_contact.native_surface_support as module
     # g(t)=(t-1/2)**2 has a double root; enclosing q includes0 on every
     # root slab. Exact spatial certainty does not certify transverse motion.
     def enclosure(left,right):

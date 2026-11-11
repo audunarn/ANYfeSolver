@@ -2,9 +2,9 @@ from hashlib import sha256
 from time import monotonic
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_operator_validation_scope as scope
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import _ge_beam3_operator_validation_scope as scope
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_ge_beam3_elastic_seed_continuation import seed, model, programme, solve, context
 from test_ge_beam3_elastic_seed_continuation import test_owner_mutations as owner_mutation
 from test_ge_beam3_elastic_seed_continuation import test_rehashed_checkpoint_mutations as checkpoint_mutation
@@ -71,7 +71,7 @@ def test_real_failure_does_not_return_result(seed,monkeypatch,kind):
     token=CancellationToken(); calls=[]
     def full(): calls.append(1); owner.guard()
     if kind=='deadline':
-        from anysolver._ge_beam3_effective_deadline import effective_deadline_seconds
+        from anyfesolver._ge_beam3_effective_deadline import effective_deadline_seconds
         monkeypatch.setattr(scope,'monotonic',lambda:p.started+effective_deadline_seconds(120.)+.01)
     if kind=='cancellation': token.cancel()
     if kind=='model':

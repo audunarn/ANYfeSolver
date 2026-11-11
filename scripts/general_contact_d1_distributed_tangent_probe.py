@@ -10,8 +10,8 @@ import time
 
 import numpy as np
 
-from anysolver.general_contact.q4_s3_overlap_derivatives import q4_s3_overlap_derivatives
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.q4_s3_overlap_derivatives import q4_s3_overlap_derivatives
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 from scripts.general_contact_d1_mixed_mesh_jet2_schur_press import build_case
 
 

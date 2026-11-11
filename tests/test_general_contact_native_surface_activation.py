@@ -6,7 +6,7 @@ import pytest
 from scipy.optimize import brentq
 from scipy.spatial.transform import Rotation
 
-from anysolver.general_contact.native_surface_activation import evaluate_first_touch
+from anyfesolver.general_contact.native_surface_activation import evaluate_first_touch
 from test_general_contact_native_surface_s3_friction import _case
 
 
@@ -100,8 +100,8 @@ def test_first_touch_rejects_changed_bound_definition_before_history_evaluation(
 
 @pytest.mark.parametrize('size',(16,30))
 def test_prepared_event_rotation_derivatives_match_uncached_jet_algebra(size):
-    import anysolver.general_contact.native_surface_activation as module
-    from anysolver._ge_beam3_mixed_ad import Jet2,so3_exp,so3_log,matmul,constant_matrix
+    import anyfesolver.general_contact.native_surface_activation as module
+    from anyfesolver._ge_beam3_mixed_ad import Jet2,so3_exp,so3_log,matmul,constant_matrix
     for vector in ((0.,0.,0.),(.03,-.02,.01),(-.2,.1,.3)):
         rotation=Rotation.from_rotvec(vector).as_matrix()
         entries=tuple(rotation.ravel())
@@ -118,8 +118,8 @@ def test_prepared_event_rotation_derivatives_match_uncached_jet_algebra(size):
 
 
 def test_prepared_mixed_rotation_matches_uncached_virtual_work_map():
-    import anysolver.general_contact.native_surface_activation as module
-    from anysolver._ge_beam3_mixed_ad import Jet2,so3_exp,matmul
+    import anyfesolver.general_contact.native_surface_activation as module
+    from anyfesolver._ge_beam3_mixed_ad import Jet2,so3_exp,matmul
     q=[Jet2.variable(0.,3+i,30) for i in range(3)]
     v=[Jet2.variable(0.,18+i,30) for i in range(3)]
     exact=matmul(so3_exp(v),so3_exp(q))

@@ -86,7 +86,7 @@ class IntegrationBoundaryTests(unittest.TestCase):
     def test_no_mechanics_imported_in_standalone_run(self):
         # Under a wider pytest session unrelated tests may have imported these.
         if __name__ == '__main__':
-            for prefix in ('anysolver', 'numpy', 'scipy', 'sympy'):
+            for prefix in ('anyfesolver', 'numpy', 'scipy', 'sympy'):
                 self.assertFalse(any(n == prefix or n.startswith(prefix+'.') for n in sys.modules))
 
 

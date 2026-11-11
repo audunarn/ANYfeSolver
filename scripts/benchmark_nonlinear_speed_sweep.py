@@ -18,14 +18,14 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from benchmark_nonlinear_static_improvements import _physical_digest
-import anysolver
+import anyfesolver
 import numpy as np
 import scipy
 from threadpoolctl import threadpool_info
-from anysolver import nonlinear_static as ns
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.mesh_gen import generate_simple_panel_mesh
-from anysolver.jit_compiler import JIT_ENABLED
+from anyfesolver import nonlinear_static as ns
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.mesh_gen import generate_simple_panel_mesh
+from anyfesolver.jit_compiler import JIT_ENABLED
 
 
 def runtime():
@@ -38,7 +38,7 @@ def runtime():
     return dict(threadpools=threadpool_info(), numba_threads=numba_threads,
                 dependencies=dict(numpy=np.__version__, scipy=scipy.__version__,
                                   numba=numba_version),
-                anysolver_module=str(Path(anysolver.__file__).resolve()))
+                anyfesolver_module=str(Path(anyfesolver.__file__).resolve()))
 
 
 def case(divisions, steps):
@@ -95,7 +95,7 @@ def main():
                       "OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
                       "NUMBA_NUM_THREADS", "FE_SOLVER_DISABLE_NONLINEAR_ACCELERATION")},
                   source_sha256=hashlib.sha256(
-                      (ROOT / "src/anysolver/nonlinear_static.py").read_bytes()).hexdigest(),
+                      (ROOT / "src/anyfesolver/nonlinear_static.py").read_bytes()).hexdigest(),
                   command=sys.argv, cases=[])
     variants = ("every_conversion_guard", "inert_builtin_guard")
     for divisions, steps in ((2, 5), (2, 40), (8, 5)):

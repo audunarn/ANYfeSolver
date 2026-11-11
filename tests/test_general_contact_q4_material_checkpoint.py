@@ -6,15 +6,15 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import FEModel, create_shell_element
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.e4_pl_s3_state import canonical_sha256
-from anysolver.element_capabilities import ElementCapabilityError
-from anysolver.general_contact.q4_material_checkpoint import (
+from anyfesolver import FEModel, create_shell_element
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.e4_pl_s3_state import canonical_sha256
+from anyfesolver.element_capabilities import ElementCapabilityError
+from anyfesolver.general_contact.q4_material_checkpoint import (
     prepare_q4_material_checkpoint, restore_q4_material_checkpoint,
 )
-from anysolver.material_curves import DNVC208MaterialCurve
-from anysolver.nonlinear_restart import (
+from anyfesolver.material_curves import DNVC208MaterialCurve
+from anyfesolver.nonlinear_restart import (
     analysis_configuration_fingerprint, canonical_checkpoint_json_bytes,
 )
 
@@ -111,7 +111,7 @@ def test_restored_history_produces_same_next_constitutive_update():
 
 
 def test_actual_assembler_compact_candidate_keeps_accepted_algorithmic_parent():
-    from anysolver.nonlinear_static import _assemble_nonlinear_system
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system
     model, full, parents = _yielded()
     next_pose = full*1.1
     _, _, candidate = _assemble_nonlinear_system(model, next_pose, parents, 3, tangent=True)
@@ -264,7 +264,7 @@ def test_nonfinite_coordinates_and_activity_state_are_rejected():
     for invalid in (np.full(24, np.inf), np.zeros((4, 6)), np.zeros(23)):
         with pytest.raises(ValueError):
             prepare_q4_material_checkpoint(model, invalid, states)
-    from anysolver.activity import ElementActivity
+    from anyfesolver.activity import ElementActivity
     model.set_element_activity(ElementActivity([1]))
     with pytest.raises(ValueError, match="activity"):
         prepare_q4_material_checkpoint(model, full, states)
@@ -293,7 +293,7 @@ def test_only_exact_q4_and_finite_reference_geometry_are_admitted():
     model.mesh.nodes[2].x = float("nan")
     with pytest.raises(ValueError):
         prepare_q4_material_checkpoint(model, full, states)
-    from anysolver.elements import ShellElement
+    from anyfesolver.elements import ShellElement
     model, full, states = _yielded()
     model.add_element(1, ShellElement(1, (1, 2, 3, 4), "plastic", thickness=.02))
     with pytest.raises(ValueError, match="exact qualified Q4"):

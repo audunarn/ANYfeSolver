@@ -4,14 +4,14 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-import anysolver as fs
-from anysolver import impact_reduced_assembly as impact_reduced_module
-from anysolver import nonlinear_performance_bootstrap
-from anysolver.contact import _verification_contact_panel
-from anysolver.elements import BeamElement, QuadraticBeamElement
-from anysolver.impact_reduced_assembly import prepare_impact_reduced_assembly
-from anysolver.jit_compiler import JIT_DISABLED_REASON, JIT_ENABLED
-from anysolver.nonlinear_reduced_assembly import ReducedAssemblyPlanLimit
+import anyfesolver as fs
+from anyfesolver import impact_reduced_assembly as impact_reduced_module
+from anyfesolver import nonlinear_performance_bootstrap
+from anyfesolver.contact import _verification_contact_panel
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver.impact_reduced_assembly import prepare_impact_reduced_assembly
+from anyfesolver.jit_compiler import JIT_DISABLED_REASON, JIT_ENABLED
+from anyfesolver.nonlinear_reduced_assembly import ReducedAssemblyPlanLimit
 
 
 def _weighted_mpc_panel():

@@ -40,7 +40,7 @@ class LocalControls(unittest.TestCase):
         cls.work = cls.inventory['shell_work']
 
     def test_01_source_stationary_and_completion(self):
-        from anysolver import e4_pl_element as source
+        from anyfesolver import e4_pl_element as source
         xyz = floating([[-self.a, -self.b], [self.a, -self.b], [self.a, self.b], [-self.a, self.b]])
         coefficients = source._coefficients(xyz)
         station, coupling, gram = source._stationary_blocks(xyz, coefficients, floating(self.c))
@@ -128,11 +128,11 @@ class LocalControls(unittest.TestCase):
         with self.assertRaises(local.Unresolved): local.rectangle_work(self.a, self.b, self.ell, self.c, self.drill, self.budget, pl=F())
 
     def test_06_native_actual_kinematics_and_LOCAL18(self):
-        from anysolver._ge_beam3_mixed_ad import Jet2, constant_matrix, so3_exp
-        from anysolver._ge_beam3_p5.compensated import compensated_strain
-        from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-        from anysolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
-        from anysolver._ge_beam3_retained_generalized import RetainedGeneralizedOperator
+        from anyfesolver._ge_beam3_mixed_ad import Jet2, constant_matrix, so3_exp
+        from anyfesolver._ge_beam3_p5.compensated import compensated_strain
+        from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+        from anyfesolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
+        from anyfesolver._ge_beam3_retained_generalized import RetainedGeneralizedOperator
         length = F(1); rows = local.native_member_rows(length, self.ell, self.budget)
         xyz = np.array(((0., 0., .0675), (.5, 0., .0675), (1., 0., .0675)))
         variables = [Jet2.variable(0., i, 24) for i in range(24)]
@@ -176,10 +176,10 @@ class LocalControls(unittest.TestCase):
         MEASUREMENTS['native_source_negative_complementary_block'] = '-D retained; exact resultant-only stationary identity'
 
     def test_07_actual_BL5_P0_yaw_row_with_reference_lifts(self):
-        from anysolver._stiffened_shell_l1_local_experimental import NativeHalfCellPort
-        from anysolver._stiffened_shell_bl5_local_experimental import BL5LocalOperator
-        from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-        from anysolver._ge_beam3_retained_generalized_state import Mechanical
+        from anyfesolver._stiffened_shell_l1_local_experimental import NativeHalfCellPort
+        from anyfesolver._stiffened_shell_bl5_local_experimental import BL5LocalOperator
+        from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+        from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
         xyz = np.array(((0., 0., .0675), (.5, 0., .0675), (1., 0., .0675)))
         triads = np.tile(np.eye(3), (3, 1, 1))
         ref = CenteredCurvedBeam3ReferenceGeometry(xyz, triads)
@@ -221,7 +221,7 @@ class LocalControls(unittest.TestCase):
     def test_17_fixed_GX_sparse_source_norm_parity(self):
         from scripts.r8_bl5_mixed_shell_h1_dev import scalar_mixed_h1
         from scripts.b3_e4_bl5_riesz_controls_dev import beam_norm
-        from anysolver import e4_pl_element as source
+        from anyfesolver import e4_pl_element as source
         nodes = np.array([(x, y) for x in (0., .5, 1.) for y in (0., .2)])
         cells = ((0, 2, 3, 1), (2, 4, 5, 3))
         scalar, area = scalar_mixed_h1(nodes, cells, float(self.ell))

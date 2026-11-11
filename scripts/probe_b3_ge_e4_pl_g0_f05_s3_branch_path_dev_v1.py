@@ -15,18 +15,18 @@ import numpy as np
 import scipy
 
 from probe_b3_ge_e4_pl_g0_f05_s3_pose_pullback_dev_v1 import _fixture, _material
-from anysolver.e4_pl_s3_v2d_state import canonical_json_bytes
+from anyfesolver.e4_pl_s3_v2d_state import canonical_json_bytes
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_PATHS = (
     "scripts/probe_b3_ge_e4_pl_g0_f05_s3_branch_path_dev_v1.py",
     "scripts/probe_b3_ge_e4_pl_g0_f05_s3_pose_pullback_dev_v1.py",
-    "src/anysolver/e4_pl_s3_v2d_element.py",
-    "src/anysolver/e4_pl_s3_v2d_state.py",
-    "src/anysolver/plasticity.py",
-    "src/anysolver/material_curves.py",
-    "src/anysolver/_ge_beam3_variational_shell.py",
+    "src/anyfesolver/e4_pl_s3_v2d_element.py",
+    "src/anyfesolver/e4_pl_s3_v2d_state.py",
+    "src/anyfesolver/plasticity.py",
+    "src/anyfesolver/material_curves.py",
+    "src/anyfesolver/_ge_beam3_variational_shell.py",
 )
 HALF_WIDTH = 2e-6
 STEPS = (2e-6, 2e-7)

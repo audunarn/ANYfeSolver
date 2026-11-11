@@ -4,9 +4,9 @@ from math import acos,sin
 import numpy as np
 import pytest
 
-from anysolver.general_contact.native_surface_friction_integral import (
+from anyfesolver.general_contact.native_surface_friction_integral import (
     NativeSurfaceFrictionIntegrationSettings,integrate_material_friction)
-from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField
+from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField
 from test_general_contact_native_surface_history import _origin,_segment
 from test_general_contact_native_surface_patch import _patch
 
@@ -52,9 +52,9 @@ def test_integral_enforces_aggregate_query_and_memory_caps():
 
 def test_integral_rejects_hidden_temporal_pulse_before_quadrature():
     from dataclasses import replace
-    from anysolver.general_contact.native_surface_history import NativeSurfaceMotionSegment
-    from anysolver.general_contact.native_surface_friction_integral import NativeFrictionIntegrationLimit
-    from anysolver._ge_beam3_p5_seeded.core import sha
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceMotionSegment
+    from anyfesolver.general_contact.native_surface_friction_integral import NativeFrictionIntegrationLimit
+    from anyfesolver._ge_beam3_p5_seeded.core import sha
     from test_general_contact_native_surface_support import _field as support_field
     segment=NativeSurfaceMotionSegment(np.zeros((3,3)),np.array(((1.6,0.,0.),(0.,0.,0.))),np.zeros(18))
     field=support_field(height=.025,rotation=-.8,segments=(segment,))
@@ -78,7 +78,7 @@ def test_integral_rejects_hidden_temporal_pulse_before_quadrature():
 
 def test_resolved_hidden_temporal_pulse_preserves_independent_release_work():
     from math import cos, fsum
-    from anysolver.general_contact.native_surface_history import NativeSurfaceMotionSegment
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceMotionSegment
     from test_general_contact_native_surface_support import _field as support_field
     segment=NativeSurfaceMotionSegment(np.zeros((3,3)),np.array(((1.6,0.,0.),(0.,0.,0.))),np.zeros(18))
     field=support_field(height=.025,rotation=-.8,segments=(segment,))

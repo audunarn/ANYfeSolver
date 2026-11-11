@@ -7,10 +7,10 @@ import time
 
 import numpy as np
 
-from anysolver.general_contact.core import contact_scope
-from anysolver.general_contact.pressure_overlay import subdivide_q4_pressure_faces
-from anysolver.general_contact.s3_patch_augmented import MovingS3PatchProjectedNormal
-from anysolver.general_contact.s3_patch_mortar_energy import (
+from anyfesolver.general_contact.core import contact_scope
+from anyfesolver.general_contact.pressure_overlay import subdivide_q4_pressure_faces
+from anyfesolver.general_contact.s3_patch_augmented import MovingS3PatchProjectedNormal
+from anyfesolver.general_contact.s3_patch_mortar_energy import (
     MovingS3PatchPrimalMortarPenalty,
 )
 from scripts.general_contact_d1_finite_area_load import build_case

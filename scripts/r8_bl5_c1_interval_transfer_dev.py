@@ -11,7 +11,7 @@ from hashlib import sha256
 import json
 from pathlib import Path
 
-import anysolver
+import anyfesolver
 import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import splu
@@ -213,8 +213,8 @@ def _solid() -> dict:
 
 
 def evaluate() -> dict:
-    if Path(anysolver.__file__).resolve().parent != (ROOT / "src" / "anysolver").resolve():
-        raise RuntimeError("wrong ANYsolver source checkout")
+    if Path(anyfesolver.__file__).resolve().parent != (ROOT / "src" / "anyfesolver").resolve():
+        raise RuntimeError("wrong ANYfeSolver source checkout")
     native, solid = _native(), _solid()
     comparison = {}
     for name in ("fy", "mx"):

@@ -3,11 +3,11 @@ import sys
 from collections import Counter
 import numpy as np
 import pytest
-from anysolver import (LoadCase, StaticCase, RecoveryConfig, prepare_static_evaluator,
+from anyfesolver import (LoadCase, StaticCase, RecoveryConfig, prepare_static_evaluator,
     PreparedStaticCapabilityError, CancellationToken, SolveCancelled)
-from anysolver.elements import BeamElement, CoupledBeamShellElement
-from anysolver.matrix_assembly import assemble_load_vector
-from anysolver.prepared_static_loads import compile_canonical_load_maps, ingest_static_case, evaluate_load_vector
+from anyfesolver.elements import BeamElement, CoupledBeamShellElement
+from anyfesolver.matrix_assembly import assemble_load_vector
+from anyfesolver.prepared_static_loads import compile_canonical_load_maps, ingest_static_case, evaluate_load_vector
 from test_prepared_static_evaluator import _bar, _case, _shell_model
 
 
@@ -34,7 +34,7 @@ def test_acceleration_capture_has_two_native_mass_passes_and_one_oracle_assembly
 
 @pytest.mark.parametrize('factory', [_bar, _shell_model])
 def test_full_F_exact_axes_general_added_mass_activity_and_snapshot_isolation(factory):
-    from anysolver.activity import ElementActivity, ElementActivityPolicy
+    from anyfesolver.activity import ElementActivity, ElementActivityPolicy
     model = factory()
     ids = tuple(model.mesh.elements)
     activity = ElementActivity(ids, .375, policy=ElementActivityPolicy(load='activity', mass='delete_only'))

@@ -20,10 +20,10 @@ def sha(stage):return hashlib.sha256((Path(os.environ['AUTOMATIC_WORKFLOW_EVIDEN
 def label_signs(label):return tuple(1 if c=='p' else -1 for c in label)
 
 def test_independent_q4_atlas_work_and_coupled_directional():
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager,_adapters,_selected
-    from anysolver.general_contact.semismooth import linearize,complementarity,reference_nodal_support
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
-    from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager,_adapters,_selected
+    from anyfesolver.general_contact.semismooth import linearize,complementarity,reference_nodal_support
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
     base=build();m0=GeneralS3PatchManager(base[0],base[3].definition,base[2]);K0=assemble_stiffness_matrix(base[0])[0].toarray()
     a0=_adapters(base[0],_selected(base[3].definition)[:2],orientation=base[2].shell_pair_orientation)
     rng=np.random.default_rng(61);u=rng.normal(size=m0.n_dof)*1e-7;u[np.setdiff1d(np.arange(m0.n_dof),_cycle.free_dofs(base[0]))]=0.
@@ -103,8 +103,8 @@ def test_saved_orientation_physical_proof(monkeypatch):
     _cycle.test_saved_cycle_mechanical_proof()
 
 def test_public_orientation_restart_and_unused_route_refusals(monkeypatch):
-    from anysolver import CancellationToken,SolveCancelled,validate_general_contact
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver import CancellationToken,SolveCancelled,validate_general_contact
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     model,domain,settings,res,program=build(signs=(-1,-1));before=repr(model)
     wrong=replace(settings,enforcement_solver='nested_augmented',complementarity_force_scale_n=None)
     with pytest.raises(ValueError,match='physical_sides_dev'):GeneralS3PatchManager(model,res.definition,wrong)
@@ -123,12 +123,12 @@ def test_public_orientation_restart_and_unused_route_refusals(monkeypatch):
     or not Path(os.environ['Q4_ORIENTATION_LEGACY_FULL']).is_file(),
     reason='archived orientation inputs AUTOMATIC_WORKFLOW_EVIDENCE/{prefix-mm,proof-prefix-mm,prefix-pp}.json and Q4_ORIENTATION_LEGACY_FULL absent: restart-binding replay requires the original evidence root')
 def test_public_orientation_archive_restart_binding_and_legacy_identity(monkeypatch):
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.core import _contact_settings_contract
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.core import _contact_settings_contract
     model,domain,settings,res,program=build(signs=(-1,-1));prefix=read('prefix-mm');proof=read('proof-prefix-mm');assert proof['verified'] and proof['opening_verified'] and proof['source_sha256']==sha('prefix-mm');before=repr(model)
     pm,pd,ps,pr,pp=build();plusprefix=read('prefix-pp')
     with pytest.raises(ValueError,match='incompatible'):solve(pm,replace(ps,shell_pair_orientation='legacy'),pr,pp,restart_checkpoint=plusprefix['checkpoint'])
-    from anysolver.general_contact import resolve_automatic_contact_domain
+    from anyfesolver.general_contact import resolve_automatic_contact_domain
     changed=resolve_automatic_contact_domain(model,replace(domain,name='changed-coherent-q4-orientation'),settings,analysis_control='contact_path')
     with pytest.raises(ValueError,match='incompatible'):solve(model,settings,changed,program,restart_checkpoint=prefix['checkpoint'])
     damaged=copy.deepcopy(prefix['checkpoint']);damaged['path_state']['normal_forces'][0]+=1e-6
@@ -146,9 +146,9 @@ def test_public_orientation_archive_restart_binding_and_legacy_identity(monkeypa
 
 
 def test_actual_ordinary_force_selector_refusal(monkeypatch):
-    from anysolver import LoadCase,solve_static_nonlinear
-    import anysolver.general_contact.static_path as path_owner
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver import LoadCase,solve_static_nonlinear
+    import anyfesolver.general_contact.static_path as path_owner
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     model,domain,settings,res,program=build(signs=(-1,-1));load=LoadCase('same first-press forces')
     for node in (3,6):load.add_nodal_load(node,forces=(0.,0.,-5e-5))
     before=repr(model);calls=[]

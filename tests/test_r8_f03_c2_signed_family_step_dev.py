@@ -5,14 +5,14 @@ import numpy as np
 import pytest
 from scipy import linalg, sparse
 from pathlib import Path
-import anysolver
+import anyfesolver
 
 from scripts.b3_e4_bl5_coherent_aggregation_dev import model
 from scripts import r8_f03_c2_signed_family_step_dev as step
 
 
 def test_current_worktree_product_import():
-    assert Path(anysolver.__file__).resolve().is_relative_to((step.WORKTREE/'src').resolve())
+    assert Path(anyfesolver.__file__).resolve().is_relative_to((step.WORKTREE/'src').resolve())
     provenance = step.product_provenance()
     assert all(Path(item['path']).is_file() for item in provenance.values())
     assert all(len(item['sha256'])==64 for item in provenance.values())

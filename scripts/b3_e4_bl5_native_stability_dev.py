@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 import time
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 from scipy import linalg, sparse
@@ -42,7 +42,7 @@ def evaluate(nx, ny, cells, frozen, reference_start=8, preparation_path=None):
         raise ValueError('case outside frozen c2 finite family')
     scalar_case = entry[0]
     definition, policy = model(nx, ny, cells, 2)
-    owner = anysolver.stiffened_shell.create_analysis(definition=definition)
+    owner = anyfesolver.stiffened_shell.create_analysis(definition=definition)
     try:
         local = owner._line_samples[0][0]
         frame = local.port.frame
@@ -143,7 +143,7 @@ def evaluate(nx, ny, cells, frozen, reference_start=8, preparation_path=None):
             reference_subdivision_schedule=schedule,
             all_generalized_eigenvalues=values.tolist(), beta=beta, safe_case_floor=float(safe_floor),
             frozen_scalar_sha256=hashlib.sha256(frozen.read_bytes()).hexdigest(),
-            imported_anysolver=anysolver.__file__, elapsed_seconds=time.monotonic()-start,
+            imported_anyfesolver=anyfesolver.__file__, elapsed_seconds=time.monotonic()-start,
             limitation='finite reference inf-sup development only; actual indefinite KKT, locking, physical accuracy and F03/M2 acceptance remain open')
     finally:
         owner.close()

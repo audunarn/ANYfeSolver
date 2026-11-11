@@ -7,17 +7,17 @@ import time
 import numpy as np
 import pytest
 
-from anysolver.elements import LegacyShellElement, create_element
-from anysolver.fe_core import FEModel
-from anysolver.jit_compiler import JIT_DISABLED_REASON, JIT_ENABLED
-from anysolver.kernel_warmup import warm_fe_solver_kernels
-from anysolver.matrix_assembly import (
+from anyfesolver.elements import LegacyShellElement, create_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.jit_compiler import JIT_DISABLED_REASON, JIT_ENABLED
+from anyfesolver.kernel_warmup import warm_fe_solver_kernels
+from anyfesolver.matrix_assembly import (
     assemble_geometric_stiffness_matrix,
     assemble_stiffness_matrix,
 )
-from anysolver.mesh_gen import generate_simple_panel_mesh
-from anysolver.vectorized_stiffness import compute_shell_stiffness_matrices_jit
-import anysolver.kernel_warmup as kernel_warmup
+from anyfesolver.mesh_gen import generate_simple_panel_mesh
+from anyfesolver.vectorized_stiffness import compute_shell_stiffness_matrices_jit
+import anyfesolver.kernel_warmup as kernel_warmup
 
 
 def test_batched_s4_geometric_stiffness_matches_warped_scalar_and_reuses_geometry():
@@ -385,8 +385,8 @@ def test_vectorized_mass_matches_sequential_and_assembly_uses_batch():
     """Batched shell mass kernel matches element.compute_mass_matrix and drives assemble_mass_matrix."""
     from scipy import sparse
 
-    from anysolver.matrix_assembly import assemble_mass_matrix
-    from anysolver.vectorized_stiffness import compute_shell_mass_matrices_jit
+    from anyfesolver.matrix_assembly import assemble_mass_matrix
+    from anyfesolver.vectorized_stiffness import compute_shell_mass_matrices_jit
 
     model = FEModel("mass_test")
     model.add_material("steel", 210.0e9, 0.3, density=7850.0)
@@ -450,7 +450,7 @@ def test_vectorized_mass_matches_sequential_and_assembly_uses_batch():
 
 def test_q8r_mass_assembly_keeps_scalar_lumped_path():
     """Reduced-integration S8R shells stay on the scalar lumped mass path."""
-    from anysolver.matrix_assembly import assemble_mass_matrix
+    from anyfesolver.matrix_assembly import assemble_mass_matrix
 
     model = FEModel("q8r_mass_test")
     model.add_material("steel", 210.0e9, 0.3, density=7850.0)

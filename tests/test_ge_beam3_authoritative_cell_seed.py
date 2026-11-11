@@ -3,14 +3,14 @@
 import json
 import numpy as np
 import pytest
-from anysolver._ge_beam3_authoritative_cell_seed import cell_initial_rotations
-from anysolver._ge_beam3_p5.algebra import rotation, log_rotation
-from anysolver._ge_beam3_p5_loads import NativeP5BeamElement as V4
-from anysolver._ge_beam3_p5_seeded import NativeP5BeamElement as V5
-from anysolver._ge_beam3_p5_loads.core import canonical
-from anysolver._ge_beam3_signed_loaded_modes import solve_signed_loaded_modes as old_modes
-from anysolver._ge_beam3_seeded_signed_modes import solve_signed_loaded_modes
-from anysolver._ge_beam3_seeded_load_program import ForceProgram, solve_force_program
+from anyfesolver._ge_beam3_authoritative_cell_seed import cell_initial_rotations
+from anyfesolver._ge_beam3_p5.algebra import rotation, log_rotation
+from anyfesolver._ge_beam3_p5_loads import NativeP5BeamElement as V4
+from anyfesolver._ge_beam3_p5_seeded import NativeP5BeamElement as V5
+from anyfesolver._ge_beam3_p5_loads.core import canonical
+from anyfesolver._ge_beam3_signed_loaded_modes import solve_signed_loaded_modes as old_modes
+from anyfesolver._ge_beam3_seeded_signed_modes import solve_signed_loaded_modes
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram, solve_force_program
 from test_ge_beam3_curved_contrast_probe import make_curved
 
 
@@ -48,7 +48,7 @@ def test_preserved_v4_reference_defect_is_not_reclassified_as_qualification(slen
     with pytest.raises(ValueError, match='loaded free equilibrium required'):
         old_modes(model, states, np.zeros(30), inertias, np.zeros(30),
             load_parameter=0., bounds=(-10000., 100000000.), num_modes=6)
-    from anysolver._ge_beam3_loaded_modal import prepare
+    from anyfesolver._ge_beam3_loaded_modal import prepare
     packet, _ = prepare(model, states, np.zeros(30), inertias, load_parameter=0.)
     assert np.linalg.norm(packet.net_residual[list(packet.free_dofs)]) > 1e-11
     assert canonical(states) == before
@@ -85,7 +85,7 @@ def test_v5_finite_loaded_equilibrium_and_serialized_replay(tmp_path, monkeypatc
     model, inertias = make_curved(100.)
     program = ForceProgram((.5, 1.), ((5, .05, -.001, 0.),))
     with (tmp_path/'progress.jsonl').open('x') as log:
-        from anysolver import _ge_beam3_seeded_load_program as driver
+        from anyfesolver import _ge_beam3_seeded_load_program as driver
         original = driver._physical_force
         def measured(*args):
             force = original(*args)

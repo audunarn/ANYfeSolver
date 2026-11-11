@@ -8,14 +8,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell as ss
-from anysolver._stiffened_shell_displacement_adaptive import decode
-from anysolver._stiffened_shell_displacement_checkpoint import decode_snapshot
-from anysolver._stiffened_shell_beam_history import (
+from anyfesolver import stiffened_shell as ss
+from anyfesolver._stiffened_shell_displacement_adaptive import decode
+from anyfesolver._stiffened_shell_displacement_checkpoint import decode_snapshot
+from anyfesolver._stiffened_shell_beam_history import (
     arrays as native_history_arrays, histories as native_histories,
 )
-from anysolver._stiffened_shell_ge_experimental import NodalAction
-from anysolver._ge_beam3_fibre_section import PhysicalFibreSection
+from anyfesolver._stiffened_shell_ge_experimental import NodalAction
+from anyfesolver._ge_beam3_fibre_section import PhysicalFibreSection
 from examples.stiffened_shell_coupled_s3_adaptive_history import (
     CONTROL, DIRECTION, OPTIONS, definition,
 )

@@ -3,10 +3,10 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-from anysolver.general_contact.native_surface_bounds import native_round_patch_bounds
-from anysolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
-from anysolver.general_contact.contact_search import ContactAABBIndex
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+from anyfesolver.general_contact.native_surface_bounds import native_round_patch_bounds
+from anyfesolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
+from anyfesolver.general_contact.contact_search import ContactAABBIndex
 from test_general_contact_native_retained_station import _reference
 
 
@@ -81,7 +81,7 @@ def test_restricted_curved_box_transform_and_compensated_low_parts():
     G=Rotation.from_rotvec((.3,-.4,.2)).as_matrix()
     offset=np.array((2.**30,-2.**29,2.**28))
     # Preserve the given binary values through normalized high/low pairs.
-    from anysolver._ge_beam3_p5.compensated_coordinates import split_sum
+    from anyfesolver._ge_beam3_p5.compensated_coordinates import split_sum
     actual=p@G.T
     high=np.empty_like(p);small=np.empty_like(p)
     for i in range(3):
@@ -152,7 +152,7 @@ def test_swept_search_detects_hidden_interior_rotation_and_keeps_path_limit():
 
 @pytest.mark.parametrize('stretch',(-2e-12,2e-12))
 def test_reference_transport_gain_covers_admitted_nonorthogonal_nodes(stretch):
-    from anysolver.general_contact.native_surface_bounds import _reference_radial_gain
+    from anyfesolver.general_contact.native_surface_bounds import _reference_radial_gain
     reference=_reference(True)
     frames=reference.nodal_triads.copy()
     frames[:,:,0]*=1+stretch
@@ -165,7 +165,7 @@ def test_reference_transport_gain_covers_admitted_nonorthogonal_nodes(stretch):
 
 @pytest.mark.parametrize('stretch',(-1e-13,1e-13))
 def test_transport_gain_near_frozen_turn_with_nonorthogonal_nodes(stretch):
-    from anysolver.general_contact.native_surface_bounds import _reference_radial_gain
+    from anyfesolver.general_contact.native_surface_bounds import _reference_radial_gain
     reference=_near_turn_reference(stretch)
     gain=_reference_radial_gain(reference)
     for xi in np.linspace(-1,1,2001):
@@ -188,14 +188,14 @@ def _near_turn_reference(stretch):
 
 @pytest.mark.parametrize('stretch',(-2e-12,2e-12))
 def test_near_turn_distorted_frames_keep_original_owner_rejection(stretch):
-    from anysolver.ge_beam3_curved_reference import GeBeam3CurvedFrameError
+    from anyfesolver.ge_beam3_curved_reference import GeBeam3CurvedFrameError
     with pytest.raises(GeBeam3CurvedFrameError,match='frozen shortest-transport roll map'):
         _near_turn_reference(stretch)
 
 
 def test_q2_restriction_retains_sub_ulp_material_parameter_shift():
     from fractions import Fraction as F
-    from anysolver.general_contact.native_surface_bounds import _restrict_q2
+    from anyfesolver.general_contact.native_surface_bounds import _restrict_q2
     # xi near zero maps to t just below one; float(xi+1) would erase the shift.
     left=1-F(1,2**60);right=1-F(1,2**61)
     restricted=_restrict_q2(((F(0),F(1),F(2)),),left,right)[0]

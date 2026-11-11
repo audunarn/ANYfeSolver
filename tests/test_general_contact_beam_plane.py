@@ -5,14 +5,14 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, DisplacementControl, LoadCase,
     RigidContactBody, solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.elements import BeamElement, QuadraticBeamElement
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.beam_plane import _BeamPlaneManager
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.beam_plane import _BeamPlaneManager
 
 
 def _model(*, quadratic=False, vertical=False, end_caps="none"):

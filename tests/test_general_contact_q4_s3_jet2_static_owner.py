@@ -6,11 +6,11 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactPathControl, ContactPathProgram,
     solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 from test_general_contact_q4_s3_refined_patch import _two_q4_two_s3
 
 

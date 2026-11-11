@@ -5,11 +5,11 @@ import math
 import numpy as np
 import pytest
 
-from anysolver.arc_length import ArcLengthControl, solve_static_arc_length
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.elements import Element
-from anysolver.fe_core import FEModel
-from anysolver.nonlinear_static import (
+from anyfesolver.arc_length import ArcLengthControl, solve_static_arc_length
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.elements import Element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.nonlinear_static import (
     _support_reaction_resultants,
     _support_reaction_resultants_from_forces,
 )
@@ -369,7 +369,7 @@ def test_arc_length_control_validates_post_buckling_fields():
 
 
 def test_force_control_nonlinear_static_streams_progress_dicts():
-    from anysolver.nonlinear_static import solve_static_nonlinear
+    from anyfesolver.nonlinear_static import solve_static_nonlinear
 
     model, load = _spring_model(k=1.0, c=1.0)
     progress: list[dict] = []

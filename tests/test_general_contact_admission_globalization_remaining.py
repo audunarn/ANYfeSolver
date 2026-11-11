@@ -15,7 +15,7 @@ from fractions import Fraction
 
 import numpy as np
 
-from anysolver.general_contact.q4_overlap_local_bound import (
+from anyfesolver.general_contact.q4_overlap_local_bound import (
     overlap_violating_point_witness,
 )
 from test_general_contact_admission_globalization_witness_public import (

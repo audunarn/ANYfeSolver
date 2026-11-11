@@ -4,12 +4,12 @@ This covers energy/recovery ownership, not complete coupled material acceptance.
 """
 from decimal import Decimal as D, localcontext
 
-import anysolver
+import anyfesolver
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_fibre_section import canonical
-from anysolver._stiffened_shell_ge_experimental import NodalAction
+from anyfesolver._ge_beam3_fibre_section import canonical
+from anyfesolver._stiffened_shell_ge_experimental import NodalAction
 from test_ge_beam3_fibre_cell import model
 from test_ge_beam3_retained_fibre import make_model
 from test_ge_beam3_retained_plastic import args
@@ -84,8 +84,8 @@ def test_legacy_station_recovery_and_new_material_recovery_agree():
 @pytest.mark.parametrize('mixed', (False,True))
 def test_material_energy_survives_atomic_restore_and_unload(mixed):
     definition = _yielding_definition(mixed)
-    owner = anysolver.stiffened_shell.create_analysis(definition=definition)
-    resumed = anysolver.stiffened_shell.create_analysis(definition=definition)
+    owner = anyfesolver.stiffened_shell.create_analysis(definition=definition)
+    resumed = anyfesolver.stiffened_shell.create_analysis(definition=definition)
     try:
         actions = (NodalAction('beam',105,(0.,0.,1000.,0.,0.,0.)),)
         first = owner.solve(actions,targets=(.5,1.),max_iterations=18)

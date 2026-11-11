@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import stiffened_shell as api
+from anyfesolver import stiffened_shell as api
 from scripts.b3_e4_bl5_coherent_aggregation_dev import model as coherent_model
 from scripts.b3_e4_bl5_riesz_controls_dev import beam_norm, shell_scalar
 from scripts.r8_bl5_actual_mref_dev import (

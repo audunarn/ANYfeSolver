@@ -12,13 +12,13 @@ from typing import Callable, Mapping
 import numpy as np
 import pytest
 
-import anysolver.e4_pl_s3_v2_element as candidate_module
-from anysolver.e4_pl_s3_v2_element import (
+import anyfesolver.e4_pl_s3_v2_element as candidate_module
+from anyfesolver.e4_pl_s3_v2_element import (
     StrictFlatLinearCapabilityError,
     StrictFlatLinearE4PLS3V2ShellElement,
 )
-from anysolver.elements import ShellElement
-from anysolver.fe_core import FEMesh, Material
+from anyfesolver.elements import ShellElement
+from anyfesolver.fe_core import FEMesh, Material
 
 
 NORMAL = np.asarray((0.0, 0.0, 1.0), dtype=np.float64)
@@ -259,8 +259,8 @@ import hashlib
 import json
 import sys
 import numpy as np
-from anysolver.e4_pl_s3_v2_element import StrictFlatLinearE4PLS3V2ShellElement
-from anysolver.fe_core import FEMesh, Material
+from anyfesolver.e4_pl_s3_v2_element import StrictFlatLinearE4PLS3V2ShellElement
+from anyfesolver.fe_core import FEMesh, Material
 
 mesh = FEMesh()
 for node_id, coordinate in enumerate(((0.0, 0.0, 0.0), (1.8125, 0.0625, 0.0), (0.3125, 1.5625, 0.0)), 1):
@@ -313,8 +313,8 @@ import hashlib
 import inspect
 import json
 import sys
-from anysolver.e4_pl_s3_v2_element import StrictFlatLinearE4PLS3V2ShellElement
-from anysolver.fe_core import FEMesh, Material
+from anyfesolver.e4_pl_s3_v2_element import StrictFlatLinearE4PLS3V2ShellElement
+from anyfesolver.fe_core import FEMesh, Material
 
 order = range(514) if sys.argv[1] == "forward" else range(513, -1, -1)
 material = Material("steel", 210.0e9, 0.3, density=7850.0)

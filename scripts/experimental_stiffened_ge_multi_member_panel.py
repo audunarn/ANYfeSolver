@@ -11,7 +11,7 @@ import json
 import time
 
 import numpy as np
-from anysolver import b3_ge, stiffened_shell as ss
+from anyfesolver import b3_ge, stiffened_shell as ss
 
 
 def make_definition(cells_per_stiffener=8, stiffeners=4, *,

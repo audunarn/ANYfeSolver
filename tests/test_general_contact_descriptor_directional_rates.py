@@ -8,13 +8,13 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import (
+from anyfesolver import (
     ContactNodalLoadHistory, ContactTransientSolverControls, LoadCase,
     TransientConfig, solve_transient_contact,
 )
-from anysolver.general_contact.descriptor_rates import directional_descriptor_rate
-from anysolver.general_contact.core import active_contact_manager
-import anysolver.general_contact.transient as driver
+from anyfesolver.general_contact.descriptor_rates import directional_descriptor_rate
+from anyfesolver.general_contact.core import active_contact_manager
+import anyfesolver.general_contact.transient as driver
 from test_general_contact_transient_plane import _guided_s3_descriptor_impact, _uniform_s3_normal_load
 
 

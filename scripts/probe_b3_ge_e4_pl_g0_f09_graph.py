@@ -10,7 +10,7 @@ import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import splu
 
-from anysolver._b2_physical_flexibility_linear import LinearOperator, LinearSection
+from anyfesolver._b2_physical_flexibility_linear import LinearOperator, LinearSection
 
 
 def screen(members: int, area: float) -> dict:

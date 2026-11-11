@@ -18,7 +18,7 @@ sys.path.insert(0,str(PARENT.parent/'src'))
 import numpy as np
 import psutil
 import scipy
-import anysolver
+import anyfesolver
 
 import probe_b3_ge_e4_pl_g0_f03_variational_line_v1 as probe
 
@@ -147,7 +147,7 @@ def main():
     manifest={'purpose':'EXPLORATORY_CLASSICAL_VARIATIONAL_LINE_NOT_F03_ACCEPTANCE',
               'revision':revision,'source_sha256':hashes,'cases':CASES,
               'independent_membrane_import':imported,
-              'anysolver_import':str(Path(anysolver.__file__).resolve()),
+              'anyfesolver_import':str(Path(anyfesolver.__file__).resolve()),
               'memory_limit_bytes':MAX_RSS,'case_wall_seconds':MAX_CASE_SECONDS,
               'total_wall_seconds':MAX_TOTAL_SECONDS,'rss_sampling_seconds':.5,
               'blas_threads':1,'python':platform.python_version(),

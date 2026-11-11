@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from anysolver.fe_core import FEModel, Node
-from anysolver import nonlinear_restart as restart
+from anyfesolver.fe_core import FEModel, Node
+from anyfesolver import nonlinear_restart as restart
 
 
 def model_and_node():

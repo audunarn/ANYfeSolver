@@ -7,9 +7,9 @@ from dataclasses import dataclass
 import numpy as np
 import pytest
 
-from anysolver.material_curves import DNVC208MaterialCurve
-from anysolver.materials import Hill48Yield
-from anysolver.plasticity import (
+from anyfesolver.material_curves import DNVC208MaterialCurve
+from anyfesolver.materials import Hill48Yield
+from anyfesolver.plasticity import (
     PlaneStressConvergenceError,
     hill48_plane_stress_equivalent_stress,
     hill48_plane_stress_numerical_tangent,

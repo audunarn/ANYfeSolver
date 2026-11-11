@@ -8,7 +8,7 @@ import argparse,json
 from pathlib import Path
 from examples.general_contact_s3_mesh_control_lift import build_case as _original_case
 from examples.general_contact_s3_mesh_moving_friction import solve_case
-from anysolver.general_contact import S3MeshWeakPressureFrictionSettings
+from anyfesolver.general_contact import S3MeshWeakPressureFrictionSettings
 
 
 def build_case():

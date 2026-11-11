@@ -122,7 +122,7 @@ def test_checker_is_standard_library_only_and_mechanics_independent():
         elif isinstance(node, ast.ImportFrom):
             imports.add((node.module or "").split(".")[0])
     assert imports <= {"hashlib", "json"}
-    assert imports.isdisjoint({"anysolver", "numpy", "scipy", "sympy"})
+    assert imports.isdisjoint({"anyfesolver", "numpy", "scipy", "sympy"})
 
 
 def test_manifest_is_deterministic():
@@ -275,7 +275,7 @@ def test_shared_runner_renews_only_a_drained_wave():
 
 def test_physical_owner_backtracks_only_the_typed_chart_cutback():
     """Freeze the successor's narrow line-search exception boundary."""
-    owner_path = ROOT / "src" / "anysolver" / "_ge_beam3_g3c_physical_owner.py"
+    owner_path = ROOT / "src" / "anyfesolver" / "_ge_beam3_g3c_physical_owner.py"
     tree = ast.parse(owner_path.read_text(encoding="utf-8"))
     run = next(node for node in ast.walk(tree)
                if isinstance(node, ast.FunctionDef) and node.name == "_run")

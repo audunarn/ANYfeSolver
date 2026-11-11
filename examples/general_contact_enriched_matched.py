@@ -10,9 +10,9 @@ import json
 from pathlib import Path
 import numpy as np
 
-from anysolver.e4_pl_enriched import EnrichedProfileError
-from anysolver.general_contact.enriched_overlap import QuadraturePolicy
-from anysolver.general_contact.enriched_nonlinear import (
+from anyfesolver.e4_pl_enriched import EnrichedProfileError
+from anyfesolver.general_contact.enriched_overlap import QuadraturePolicy
+from anyfesolver.general_contact.enriched_nonlinear import (
     NonlinearEnrichedSystem,PairDefinition,MixedCriteria,IterationControl,
 )
 
@@ -99,8 +99,8 @@ def sampled_physical_gap(model,system,coordinates):
     quantities are explicitly labelled, rather than replacing them by target
     plane distance. The old target-plane sample is separate diagnostic data.
     """
-    from anysolver.general_contact.q4_skin_work import Q4SkinWorkAdapter
-    from anysolver.general_contact.s3_skin_work import S3SkinWorkAdapter
+    from anyfesolver.general_contact.q4_skin_work import Q4SkinWorkAdapter
+    from anyfesolver.general_contact.s3_skin_work import S3SkinWorkAdapter
     u=np.asarray(coordinates,dtype=float)
     if u.shape!=system.offset.shape or not np.all(np.isfinite(u)):
         raise EnrichedProfileError('finite complete sampled physical pose required')

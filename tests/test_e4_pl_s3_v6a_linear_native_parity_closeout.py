@@ -80,9 +80,9 @@ def test_v6a_authority_commit_has_exact_six_path_extent() -> None:
     assert sorted(paths) == sorted(
         [
             "docs/reference_cases/e4_pl_s3_v6a_v2d_linear_native_parity_contract.json",
-            "src/anysolver/__init__.py",
-            "src/anysolver/e4_pl_s3_v2d_element.py",
-            "src/anysolver/elements.py",
+            "src/anyfesolver/__init__.py",
+            "src/anyfesolver/e4_pl_s3_v2d_element.py",
+            "src/anyfesolver/elements.py",
             "tests/test_e4_pl_s3_v2d_linear_native_parity.py",
             "tests/test_e4_pl_s3_v6a_linear_native_parity_contract.py",
         ]

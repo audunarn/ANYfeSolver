@@ -13,7 +13,7 @@ import json
 from pathlib import Path
 import warnings
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 import psutil
@@ -144,7 +144,7 @@ def evaluate(saved: Path, earlier: Path) -> dict:
     if (psutil.Process().cpu_affinity() != [0] or numba.config.DISABLE_JIT != 1 or
             numba.get_num_threads() != 1 or not pools or
             any(p["num_threads"] != 1 for p in pools) or
-            Path(anysolver.__file__).resolve().parent != ROOT / "src" / "anysolver"):
+            Path(anyfesolver.__file__).resolve().parent != ROOT / "src" / "anyfesolver"):
         raise ValueError("effective CPU/thread/JIT/source route changed")
     metadata = json.loads((saved / "metadata.json").read_text(encoding="utf-8"))
     deck_bytes, expected = deck.deck("mx")
@@ -199,7 +199,7 @@ def evaluate(saved: Path, earlier: Path) -> dict:
                                   "numba_disable_jit": int(numba.config.DISABLE_JIT),
                                   "numba_threads": int(numba.get_num_threads()),
                                   "threadpools": pools,
-                                  "anysolver_import": str(Path(anysolver.__file__).resolve())},
+                                  "anyfesolver_import": str(Path(anyfesolver.__file__).resolve())},
             "root_port": root_meta, "tip_port": tip_meta,
             "saved_traction_wrench": old_wrench.tolist(),
             "section_dual_wrench": port_wrench.tolist(),

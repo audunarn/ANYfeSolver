@@ -4,11 +4,11 @@ from dataclasses import replace
 
 import numpy as np
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactPathControl, ContactPathProgram,
     DisplacementControl, solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 from test_general_contact_q4_q4_augmented import _augmented_case, _ordinary_case
 from test_general_contact_q4_s3_patch_static import _case as q4_s3_case
 

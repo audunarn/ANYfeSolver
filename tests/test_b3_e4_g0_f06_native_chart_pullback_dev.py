@@ -6,18 +6,18 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_p5.chart import exp_chart_terms
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_retained_fibre_program import solve_force_program
-from anysolver._ge_beam3_retained_fibre_state import Context as FibreContext
-from anysolver._ge_beam3_retained_generalized_state import (
+from anyfesolver._ge_beam3_p5.chart import exp_chart_terms
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_retained_fibre_program import solve_force_program
+from anyfesolver._ge_beam3_retained_fibre_state import Context as FibreContext
+from anyfesolver._ge_beam3_retained_generalized_state import (
     Context as GeneralizedContext, Program as GeneralizedProgram,
 )
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_seeded_load_program import ForceProgram
-from anysolver._stiffened_shell_b3_chart import pullback_sparse_trial
-from anysolver._stiffened_shell_b3_local_adapter import evaluate_sparse_trial
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram
+from anyfesolver._stiffened_shell_b3_chart import pullback_sparse_trial
+from anyfesolver._stiffened_shell_b3_local_adapter import evaluate_sparse_trial
 from scripts._b3_e4_f03_native_fixture import build
 from scripts.b3_e4_f03_square_section_control import square_torsion_constant
 from test_ge_beam3_retained_fibre import make_model

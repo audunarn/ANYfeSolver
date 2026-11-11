@@ -14,7 +14,7 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver.general_contact.curved_s3_q4_work import (
+from anyfesolver.general_contact.curved_s3_q4_work import (
     CurvedS3Q4WorkProbe, INTEGRATION_CONTROLS, PROBE_PRESSURE_PA,
 )
 from examples.elastic_sphere_panel_contact_skins import (
@@ -174,7 +174,7 @@ def report_contact_work(case=None):
             or not _states_equal(states_before, case.result.element_states)):
         raise RuntimeError("contact geometry probe mutated model/preload/material state")
     payload = dict(
-        schema="anysolver.elastic-sphere-panel-contact-work-v1", status=STATUS,
+        schema="anyfesolver.elastic-sphere-panel-contact-work-v1", status=STATUS,
         contact_response="unsupported", impact="unsupported", is_checkpoint=False,
         numerical_acceptance="local_windows_only; paired_host_pending",
         interpretation="1 Pa derivative of reference-area integrated gap; no contact reaction or pressure law",

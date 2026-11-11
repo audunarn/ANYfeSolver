@@ -7,12 +7,12 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import (
+from anyfesolver import (
     ContactDefinition, ContactInteraction, ContactSolverSettings, ContactSurface,
     FEModel, RigidContactBody, create_shell_element, validate_general_contact,
 )
-from anysolver.general_contact.core import contact_scope
-from anysolver.general_contact.multiple_shell_planes import (
+from anyfesolver.general_contact.core import contact_scope
+from anyfesolver.general_contact.multiple_shell_planes import (
     PROFILE, MultipleShellPlaneManager, validate_multiple_shell_planes,
 )
 

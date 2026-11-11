@@ -3,16 +3,16 @@ from dataclasses import replace
 import json
 import warnings
 
-import anysolver
+import anyfesolver
 import numpy as np
 import pytest
 
-from anysolver import b3_ge
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_increment_control import FiniteIncrementFailure
-from anysolver._stiffened_shell_ge_experimental import NodalAction
-from anysolver._stiffened_shell_ge_checkpoint_binary import decode, encode, SCHEMAS
-from anysolver._stiffened_shell_beam_history import arrays, histories, shapes
+from anyfesolver import b3_ge
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_increment_control import FiniteIncrementFailure
+from anyfesolver._stiffened_shell_ge_experimental import NodalAction
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode, encode, SCHEMAS
+from anyfesolver._stiffened_shell_beam_history import arrays, histories, shapes
 from test_stiffened_shell_ge_physical_fibre_linear import _definition
 
 
@@ -38,7 +38,7 @@ def _yielding_definition(mixed=False, triangles=False):
 @pytest.mark.parametrize('mixed,triangles', ((False,False),(True,False),(True,True)))
 def test_finite_native_response_restart_and_predecessor(mixed, triangles):
     definition = _definition(mixed, triangles)
-    owner = anysolver.stiffened_shell.create_analysis(definition=definition)
+    owner = anyfesolver.stiffened_shell.create_analysis(definition=definition)
     actions = (NodalAction('beam',105,(0.,0.,1000.,0.,0.,0.)),)
     first = owner.solve(actions, targets=(.5,1.))
     assert first.generation == 2
@@ -47,7 +47,7 @@ def test_finite_native_response_restart_and_predecessor(mixed, triangles):
     assert all(not record.strain.flags.writeable for record in first.beam_fibre_material)
     driver = owner._finite_driver
     saved = owner.checkpoint()
-    resumed = anysolver.stiffened_shell.create_analysis(definition=definition)
+    resumed = anyfesolver.stiffened_shell.create_analysis(definition=definition)
     restored = resumed.restore(saved)
     assert resumed.checkpoint() == saved
     for name in ('beam_positions','beam_frames','cell_frames','cell_resultants',
@@ -69,7 +69,7 @@ def test_finite_native_response_restart_and_predecessor(mixed, triangles):
     json_payload = json.dumps({'schema': SCHEMAS[kind],
         'model': owner._identity, 'generation': generation,
         **{name:value.tolist() for name,value in values.items()}}).encode()
-    json_owner = anysolver.stiffened_shell.create_analysis(definition=definition)
+    json_owner = anyfesolver.stiffened_shell.create_analysis(definition=definition)
     with pytest.raises(ValueError,match='requires binary framing'):
         json_owner.restore(json_payload)
     assert json_owner._generation == 0
@@ -77,7 +77,7 @@ def test_finite_native_response_restart_and_predecessor(mixed, triangles):
     changed = {name: np.array(value,copy=True) for name,value in values.items()}
     changed['accepted_fibres'][0,2] += 1e-6
     corrupt = encode(kind,owner._identity,generation,tuple(changed.items()))
-    untouched = anysolver.stiffened_shell.create_analysis(definition=definition)
+    untouched = anyfesolver.stiffened_shell.create_analysis(definition=definition)
     with pytest.raises(ValueError,match='update disagrees with accepted history'):
         untouched.restore(corrupt)
     assert untouched._generation == 0 and untouched._finite_driver is None
@@ -85,7 +85,7 @@ def test_finite_native_response_restart_and_predecessor(mixed, triangles):
     if not triangles:
         forged = encode('finite_native_material_stable',owner._identity,
                         generation,tuple(values.items()))
-        ineligible = anysolver.stiffened_shell.create_analysis(definition=definition)
+        ineligible = anyfesolver.stiffened_shell.create_analysis(definition=definition)
         try:
             with pytest.raises(ValueError,match='requires S3 elements'):
                 ineligible.restore(forged)
@@ -106,7 +106,7 @@ def test_finite_native_response_restart_and_predecessor(mixed, triangles):
     if triangles:
         rebased = owner.rebase_rotations(expected_generation=oracle.generation)
         charted = owner.checkpoint()
-        chart_owner = anysolver.stiffened_shell.create_analysis(definition=definition)
+        chart_owner = anyfesolver.stiffened_shell.create_analysis(definition=definition)
         try:
             chart_result = chart_owner.restore(charted)
             assert chart_owner._finite_driver._stable_s3
@@ -121,7 +121,7 @@ def test_finite_native_response_restart_and_predecessor(mixed, triangles):
 @pytest.mark.parametrize('mixed,triangles', ((False,False),(True,False)))
 def test_native_yield_unload_reject_cancel_and_restore(mixed,triangles):
     definition = _yielding_definition(mixed,triangles)
-    owner = anysolver.stiffened_shell.create_analysis(definition=definition)
+    owner = anyfesolver.stiffened_shell.create_analysis(definition=definition)
     actions = (NodalAction('beam',105,(0.,0.,1000.,0.,0.,0.)),)
     first = owner.solve(actions,targets=(.5,1.),
                         max_iterations=18,max_backtracks=8)
@@ -136,7 +136,7 @@ def test_native_yield_unload_reject_cancel_and_restore(mixed,triangles):
     with pytest.raises(SolveCancelled):
         owner.solve(actions,targets=(1.5,),cancellation_token=token)
     assert owner.checkpoint() == saved
-    resumed = anysolver.stiffened_shell.create_analysis(definition=definition)
+    resumed = anyfesolver.stiffened_shell.create_analysis(definition=definition)
     restored = resumed.restore(saved)
     assert resumed.checkpoint() == saved
     assert any(sum(f.plastic_increment) != 0. for record in restored.beam_fibre_material
@@ -150,8 +150,8 @@ def test_native_yield_unload_reject_cancel_and_restore(mixed,triangles):
 
 
 def test_native_cancel_after_material_recovery_preserves_accepted_state(monkeypatch):
-    from anysolver import _stiffened_shell_ge_finite_experimental as finite
-    owner = anysolver.stiffened_shell.create_analysis(definition=_yielding_definition())
+    from anyfesolver import _stiffened_shell_ge_finite_experimental as finite
+    owner = anyfesolver.stiffened_shell.create_analysis(definition=_yielding_definition())
     actions = (NodalAction('beam',105,(0.,0.,1000.,0.,0.,0.)),)
     first = owner.solve(actions,targets=(.5,))
     saved = owner.checkpoint()
@@ -178,7 +178,7 @@ def test_pure_fibre_s3_monotonic_completion_and_restart(yielding, monkeypatch):
     Earlier failures stay in immutable evidence; full G3 remains unqualified.
     """
     definition = (_yielding_definition(False,True) if yielding else _definition(False,True))
-    owner = anysolver.stiffened_shell.create_analysis(definition=definition)
+    owner = anyfesolver.stiffened_shell.create_analysis(definition=definition)
     actions = (NodalAction('beam',105,(0.,0.,1000.,0.,0.,0.)),)
     try:
         result = owner.solve(actions,targets=(.5,1.))
@@ -197,7 +197,7 @@ def test_pure_fibre_s3_monotonic_completion_and_restart(yielding, monkeypatch):
         assert np.linalg.norm(moment+np.cross(result.beam_positions[-1],applied))/(
             np.linalg.norm(applied)*owner._reference_length)<1e-8
         saved = owner.checkpoint()
-        resumed = anysolver.stiffened_shell.create_analysis(definition=definition)
+        resumed = anyfesolver.stiffened_shell.create_analysis(definition=definition)
         try:
             restored = resumed.restore(saved)
             assert resumed.checkpoint() == saved

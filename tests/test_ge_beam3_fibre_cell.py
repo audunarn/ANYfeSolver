@@ -6,8 +6,8 @@ from decimal import Decimal as D, localcontext
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_fibre_cell import FibreCellConjugate, CellHistory
-from anysolver._ge_beam3_fibre_section import PhysicalFibreSection, FlowCurve, canonical
+from anyfesolver._ge_beam3_fibre_cell import FibreCellConjugate, CellHistory
+from anyfesolver._ge_beam3_fibre_section import PhysicalFibreSection, FlowCurve, canonical
 from test_ge_beam3_fibre_section import section, scalar_law
 from test_ge_beam3_curved_contrast_probe import make_curved
 
@@ -173,7 +173,7 @@ def test_cancellation_and_timeout_never_advance_history(monkeypatch):
     with pytest.raises(RuntimeError, match='cancelled coupled fixture'):
         cell.response(np.linspace(-.3, .5, 18).tolist(), origin, check=cancel)
     assert origin == cell.virgin()
-    import anysolver._ge_beam3_fibre_cell as module
+    import anyfesolver._ge_beam3_fibre_cell as module
     ticks = 0
     def clock():
         nonlocal ticks

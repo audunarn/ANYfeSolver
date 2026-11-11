@@ -217,7 +217,7 @@ def test_open_oracle_recomputes_both_exact_certificates_independently() -> None:
         if isinstance(node, (ast.Import, ast.ImportFrom))
         for alias in node.names
     }
-    forbidden = ("anysolver", "numpy", "scipy", "mpmath")
+    forbidden = ("anyfesolver", "numpy", "scipy", "mpmath")
     assert not any(name == item or name.startswith(item + ".") for name in imported for item in forbidden)
 
 

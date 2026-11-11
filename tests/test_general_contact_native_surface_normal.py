@@ -6,9 +6,9 @@ import json,zipfile
 import numpy as np
 import pytest
 
-from anysolver.general_contact.native_surface_normal import StraightNormalIntegrationSettings,integrate_straight_normal
-from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration,NativeS3MaterialPointFriction
-from anysolver.general_contact.native_surface_activation import evaluate_first_touch
+from anyfesolver.general_contact.native_surface_normal import StraightNormalIntegrationSettings,integrate_straight_normal
+from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration,NativeS3MaterialPointFriction
+from anyfesolver.general_contact.native_surface_activation import evaluate_first_touch
 from test_general_contact_native_surface_patch import _patch
 from test_general_contact_native_surface_s3_friction import _case,_moved
 from test_general_contact_native_surface_activation import _approach
@@ -78,7 +78,7 @@ def test_point_normal_extraction_preserves_persistent_and_activation_work():
 
 def test_segmented_profile_coupled_friction_and_restart():
     from hashlib import sha256
-    from anysolver.general_contact.native_surface_transaction import NativeS3MaterialTransaction
+    from anyfesolver.general_contact.native_surface_transaction import NativeS3MaterialTransaction
     owner,bridge=_patch(activation_policy='transverse_events',axial_order=8,angular_order=8,
         normal_stiffness=1e5,gap_check='straight_patch',normal_integration='straight_segmented',
         normal_integration_settings=_settings())
@@ -101,7 +101,7 @@ def test_segmented_profile_coupled_friction_and_restart():
 
 def test_segmented_settings_and_budget_do_not_fallback():
     from hashlib import sha256
-    from anysolver.general_contact.native_surface_transaction import NativeS3MaterialTransaction
+    from anyfesolver.general_contact.native_surface_transaction import NativeS3MaterialTransaction
     pair,pose,_=_saved(1e5)
     with pytest.raises(MemoryError,match='interval budget'):
         integrate_straight_normal(pair.rule,pair.target,pose,1e5,replace(_settings(),max_intervals=1))
@@ -116,7 +116,7 @@ def test_segmented_frictionless_enforcement_screen(tmp_path):
     """Bounded development discriminator, not a qualification gap claim."""
     import os
     from dataclasses import asdict
-    from anysolver.general_contact.native_surface_transaction import NativeS3MaterialTransaction
+    from anyfesolver.general_contact.native_surface_transaction import NativeS3MaterialTransaction
     rows=[]
     output=Path(os.environ.get('RUNNER_TEMP',str(tmp_path)))/'enforcement_results.json'
     for stiffness in (1e5,1e6):

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.5.0 - release candidate
+
+- Rename the solver distribution and import to `ANYfeSolver` and `anyfesolver`.
+  The separately installable results runtime is `ANYfeSolver-results` 2.2.0,
+  imported as `anyfesolver_results`. See [the migration guide](MIGRATION.md)
+  for consumer upgrades, supported historical archives and restart files.
+
 - Remove 22,552 historical development/qualification files from the checkout
   after verified external archival; retain regression inputs, authority records,
   source, tests and tools. See `docs/DEVELOPMENT_ARCHIVE.md` for recovery.

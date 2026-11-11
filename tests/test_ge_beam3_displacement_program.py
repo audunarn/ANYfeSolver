@@ -6,10 +6,10 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-import anysolver._ge_beam3_displacement_program as driver
-from anysolver._ge_beam3_load_program import ForceProgram, solve_force_program
-from anysolver._ge_beam3_p5_loads.core import canonical, sha
-from anysolver.control import CancellationToken
+import anyfesolver._ge_beam3_displacement_program as driver
+from anyfesolver._ge_beam3_load_program import ForceProgram, solve_force_program
+from anyfesolver._ge_beam3_p5_loads.core import canonical, sha
+from anyfesolver.control import CancellationToken
 from test_ge_beam3_native_load_state import problem, store_for, assemble
 
 
@@ -137,10 +137,10 @@ def arch():
     Reconstruct directly with native elements, not the old research mechanics.
     No claim that this coarse branch is an engineering/stability certificate.
     """
-    from anysolver.fe_core import FEModel
-    from anysolver.boundary import BoundaryCondition
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
-    from anysolver._ge_beam3_p5_loads import NativeP5BeamElement, DirectedHardeningSection
+    from anyfesolver.fe_core import FEModel
+    from anyfesolver.boundary import BoundaryCondition
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+    from anyfesolver._ge_beam3_p5_loads import NativeP5BeamElement, DirectedHardeningSection
     made = FEModel('native-displacement-arch'); ids = (7,23,55,81,103)
     x = np.linspace(-1.,1.,5); points = np.array([[s,.1*(1-s*s),0.] for s in x])
     frames = []

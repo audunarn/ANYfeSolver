@@ -1,18 +1,18 @@
 """A translating plane and prescribed shell displacement share one static path.
 
-Run with ANYsolver installed: python examples/general_contact_moving_plane_displacement.py
+Run with ANYfeSolver installed: python examples/general_contact_moving_plane_displacement.py
 The 20 µm gap budget is 10^-3 of shell thickness; this is development smoke.
 """
 
 import json
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, DisplacementControl, LoadCase,
     RigidContactBody, create_shell_element, solve_static_nonlinear,
     validate_general_contact,
 )
-from anysolver.fe_core import FEModel
+from anyfesolver.fe_core import FEModel
 
 
 def main() -> None:

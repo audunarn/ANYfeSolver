@@ -7,11 +7,11 @@ is a distinct solve of the same original reference operator.
 import numpy as np
 import pytest
 
-from anysolver.assembly import solve_linear
-from anysolver.boundary import LoadCase
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver.elements import BeamElement, QuadraticBeamElement
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.assembly import solve_linear
+from anyfesolver.boundary import LoadCase
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_native_analysis import analysis
 from test_ge_beam3_native_generalized import problem as generalized
 from test_ge_beam3_native_fibre_static_element import problem as fibre

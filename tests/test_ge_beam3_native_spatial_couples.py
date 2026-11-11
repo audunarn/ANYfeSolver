@@ -2,13 +2,13 @@
 from copy import deepcopy
 import numpy as np
 import pytest
-from anysolver.fe_core import FEModel
-from anysolver._ge_beam3_native_line_static_element import NativeLineFibreStaticElement
-from anysolver._ge_beam3_native_line_loading import LinePattern,assemble_line_trial
-from anysolver._ge_beam3_native_spatial_couples import solve_spatial_static,external_at,_Run,_RUN
-from anysolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
-from anysolver._ge_beam3_p5.algebra import rotation,skew,log_rotation
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.fe_core import FEModel
+from anyfesolver._ge_beam3_native_line_static_element import NativeLineFibreStaticElement
+from anyfesolver._ge_beam3_native_line_loading import LinePattern,assemble_line_trial
+from anyfesolver._ge_beam3_native_spatial_couples import solve_spatial_static,external_at,_Run,_RUN
+from anyfesolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
+from anyfesolver._ge_beam3_p5.algebra import rotation,skew,log_rotation
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_spatial_nodal_moments import model as source_model
 from test_ge_beam3_native_line_loading import problem
 from test_ge_beam3_native_fibre_static_element import store_for,sample
@@ -67,7 +67,7 @@ def test_external_work_and_combined_directional_tangent(plastic,tmp_path):
 
 
 def test_actual_large_torsion_and_general_solver(monkeypatch,tmp_path):
-    import anysolver.nonlinear_static as solver
+    import anyfesolver.nonlinear_static as solver
     model,e=make();calls=[];original=solver.factorize
     def record(matrix,kind,*args,**kwargs):
         if str(kwargs.get('signature','')).startswith('nonlinear.static_newton'):
@@ -82,7 +82,7 @@ def test_actual_large_torsion_and_general_solver(monkeypatch,tmp_path):
         np.testing.assert_allclose(state['committed_nodal_rotation_matrices'][-1],rotation([angle,0.,0.]),atol=1e-11,rtol=0.)
         np.testing.assert_allclose(state['positions'],e.operator.reference.coordinates,atol=1e-11,rtol=0.)
         np.testing.assert_allclose(step.support_reactions['root'][3:],[-2.4*snapshot.load_factor,0.,0.],atol=1e-11,rtol=0.)
-    from anysolver.linalg import MatrixClass
+    from anyfesolver.linalg import MatrixClass
     assert calls and all(c['kind']==MatrixClass.GENERAL.value for c in calls)
     assert max(c['asymmetry'] for c in calls)>1e-3
     assert not evidence['program']['conservative_potential'] and _RUN.get() is None
@@ -126,7 +126,7 @@ def test_direct_support_moment_is_external_reaction(tmp_path):
 
 @pytest.mark.parametrize('kind',['absent-node','wrong-type','mutated-pattern'])
 def test_authority_preflight(kind,monkeypatch,tmp_path):
-    import anysolver._ge_beam3_native_spatial_couples as module
+    import anyfesolver._ge_beam3_native_spatial_couples as module
     model,_=make();moment=SpatialNodalMoments(((3,.1,.2,.3),))
     if kind=='absent-node':moment=SpatialNodalMoments(((9,.1,.2,.3),))
     elif kind=='wrong-type':moment=moment.rows
@@ -161,7 +161,7 @@ def test_connected_junction_couple_is_counted_once(tmp_path):
 
 @pytest.mark.parametrize('mutation',['pattern','foreign-store','unissued-pose'])
 def test_live_external_authority_and_cleanup(mutation,monkeypatch,tmp_path):
-    import anysolver._ge_beam3_native_spatial_couples as module
+    import anyfesolver._ge_beam3_native_spatial_couples as module
     model,e=problem(True,True);store=store_for(model,e);before=canonical(store.materialize());u=sample()
     run=_Run(model,SpatialNodalMoments(((3,.1,.2,.3),)));token=_RUN.set(run)
     try:

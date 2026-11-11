@@ -6,9 +6,9 @@ Evidence: solver-finish-12, with 3/21 mismatches up to 5.39444e-11.
 """
 import numpy as np
 from test_prepared_static_evaluator import _shell_model, _shell_case
-from anysolver import RecoveryConfig, prepare_static_evaluator
-from anysolver.recovery import recover_stress_result
-from anysolver.prepared_static_measures import shell_surface_tensor
+from anyfesolver import RecoveryConfig, prepare_static_evaluator
+from anyfesolver.recovery import recover_stress_result
+from anyfesolver.prepared_static_measures import shell_surface_tensor
 
 
 def test_canonical_principal_recovery_qualification():

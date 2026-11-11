@@ -4,10 +4,10 @@ from hashlib import sha256
 import json
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_native_arc as arc
-from anysolver import _ge_beam3_native_arc_adaptive as adaptive
-from anysolver._ge_beam3_p5_seeded.core import canonical,sha
-from anysolver.control import CancellationToken
+from anyfesolver import _ge_beam3_native_arc as arc
+from anyfesolver import _ge_beam3_native_arc_adaptive as adaptive
+from anyfesolver._ge_beam3_p5_seeded.core import canonical,sha
+from anyfesolver.control import CancellationToken
 from test_ge_beam3_native_arc import bar
 from test_ge_beam3_schur_line_program import save
 
@@ -151,9 +151,9 @@ def test_fatal_preserves_prefix(kind,monkeypatch,tmp_path):
 
 
 def test_physical_convergence_cutback(tmp_path):
-    from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-    from anysolver._ge_beam3_native_line_loading import LinePattern
-    from anysolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
+    from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+    from anyfesolver._ge_beam3_native_line_loading import LinePattern
+    from anyfesolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
     m,p=make()
     base=replace(p.prototype,steps=(.2,),max_iterations=1,
         distributed=DistributedPattern(LinePattern(((1,.4,-.1,.15),)),()),
@@ -170,10 +170,10 @@ def test_physical_convergence_cutback(tmp_path):
 
 def test_curved_plastic_source(tmp_path):
     from test_ge_beam3_native_generalized_restart import make as curved,pattern
-    from anysolver._ge_beam3_native_translation import TranslationProgram,solve_translation
-    from anysolver._ge_beam3_native_arc_source import TranslationArcSource
-    from anysolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
-    from anysolver._ge_beam3_native_generalized_recovery import recover_native_fields
+    from anyfesolver._ge_beam3_native_translation import TranslationProgram,solve_translation
+    from anyfesolver._ge_beam3_native_arc_source import TranslationArcSource
+    from anyfesolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
+    from anyfesolver._ge_beam3_native_generalized_recovery import recover_native_fields
     model=curved('curved-plastic');translation=TranslationProgram((.03,),3,'ux',pattern(model),SpatialNodalMoments(((3,.015,-.01,.008),)))
     source=solve_translation(model,translation);save(tmp_path/'source.json',source.checkpoint);assert source.status=='completed',source.failure
     prototype=arc.ArcProgram((.04,),1.,translation.distributed,translation.nodal_moments,
@@ -192,13 +192,13 @@ def test_curved_plastic_source(tmp_path):
 
 
 def test_adaptive_rigid_covariance(tmp_path):
-    from anysolver.fe_core import FEModel
-    from anysolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
-    from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-    from anysolver._ge_beam3_native_line_loading import LinePattern
-    from anysolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
-    from anysolver._ge_beam3_p5.algebra import rotation
+    from anyfesolver.fe_core import FEModel
+    from anyfesolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+    from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+    from anyfesolver._ge_beam3_native_line_loading import LinePattern
+    from anyfesolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
+    from anyfesolver._ge_beam3_p5.algebra import rotation
     m,p=make();force=np.array([.4,-.1,.15]);moment=np.array([.1,.15,-.12])
     p=replace(p,prototype=replace(p.prototype,distributed=DistributedPattern(LinePattern(((1,*map(float,force)),)),()),
         nodal_moments=SpatialNodalMoments(((3,*map(float,moment)),))))
@@ -223,9 +223,9 @@ def test_adaptive_rigid_covariance(tmp_path):
 
 def test_curved_plastic_rejection(monkeypatch,tmp_path):
     from test_ge_beam3_native_generalized_restart import make as curved,pattern
-    from anysolver._ge_beam3_native_translation import TranslationProgram,solve_translation
-    from anysolver._ge_beam3_native_arc_source import TranslationArcSource
-    from anysolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
+    from anyfesolver._ge_beam3_native_translation import TranslationProgram,solve_translation
+    from anyfesolver._ge_beam3_native_arc_source import TranslationArcSource
+    from anyfesolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
     model=curved('curved-plastic');translation=TranslationProgram((.03,),3,'ux',pattern(model),SpatialNodalMoments(((3,.015,-.01,.008),)))
     source=solve_translation(model,translation);save(tmp_path/'source.json',source.checkpoint);assert source.status=='completed',source.failure
     prototype=arc.ArcProgram((.04,),1.,translation.distributed,translation.nodal_moments,

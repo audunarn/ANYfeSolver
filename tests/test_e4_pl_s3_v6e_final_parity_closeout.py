@@ -87,7 +87,7 @@ def test_v6e_authority_commit_is_reachable_and_exact() -> None:
     assert subject == "feat: close S3 V2D final production parity"
     assert paths == [
         "docs/reference_cases/e4_pl_s3_v6e_v2d_final_parity_contract.json",
-        "src/anysolver/e4_pl_s3_v2d_element.py",
+        "src/anyfesolver/e4_pl_s3_v2d_element.py",
         "tests/test_e4_pl_s3_v6d_activity_contact_batch_contract.py",
         "tests/test_e4_pl_s3_v6e_final_parity.py",
     ]

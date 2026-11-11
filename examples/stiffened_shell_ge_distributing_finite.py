@@ -7,7 +7,7 @@ accuracy, yielding, spectral, chart-rebase or controller claim.
 from dataclasses import replace
 import json
 import numpy as np
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from stiffened_shell_ge_distributing_reference import definition as reference_definition
 
 

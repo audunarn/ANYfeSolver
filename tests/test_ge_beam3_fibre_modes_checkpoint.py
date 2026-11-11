@@ -47,7 +47,7 @@ def test_final_tested_source_hashes(index):
 
 
 def test_native_fibre_spectra_does_not_import_old_material_or_research_operators():
-    tree = ast.parse((ROOT/'src/anysolver/_ge_beam3_retained_fibre_modes.py').read_text())
+    tree = ast.parse((ROOT/'src/anyfesolver/_ge_beam3_retained_fibre_modes.py').read_text())
     names = [node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)]
     assert not any(name.startswith(('docs.', 'tests.')) for name in names)
     assert not any('retained_plastic' in name or 'retained_elastic' in name for name in names)

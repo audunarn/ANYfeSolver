@@ -5,12 +5,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-import anysolver.e4_pl_s3_element as s3
-from anysolver._native_rotation_state import (
+import anyfesolver.e4_pl_s3_element as s3
+from anyfesolver._native_rotation_state import (
     create_native_rotation_state_store,
     rotation_exponential,
 )
-from anysolver.e4_pl_s3_state import reconstruct_director_triad
+from anyfesolver.e4_pl_s3_state import reconstruct_director_triad
 from _e4_pl_s3_native_trial import native_trial_for_increment
 
 

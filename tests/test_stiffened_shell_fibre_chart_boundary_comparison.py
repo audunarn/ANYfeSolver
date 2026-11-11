@@ -56,12 +56,12 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_fibre_cell import CellHistory
-from anysolver._ge_beam3_fibre_section import (
+from anyfesolver._ge_beam3_fibre_cell import CellHistory
+from anyfesolver._ge_beam3_fibre_section import (
     Fibre, FibreHistory, FlowCurve, PhysicalFibreSection)
-from anysolver._ge_beam3_retained_fibre import RetainedFibreOperator
-from anysolver._ge_beam3_station_resultant_cell import history_row, pair
-from anysolver._stiffened_shell_ge_finite_experimental import (
+from anyfesolver._ge_beam3_retained_fibre import RetainedFibreOperator
+from anyfesolver._ge_beam3_station_resultant_cell import history_row, pair
+from anyfesolver._stiffened_shell_ge_finite_experimental import (
     BeamFibreEnergyRecovery, BeamFibreStationRecovery)
 from test_stiffened_shell_staged_material_history import _material_close
 

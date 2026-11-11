@@ -58,7 +58,7 @@ class RunnerStaticTests(unittest.TestCase):
         self.assertEqual({r.canonical(p) for p in probes},{r.canonical(p) for p in r.design.expected()['mutation_probes']})
         self.assertEqual(len(r.ASSIGNMENTS),44)
         self.assertNotIn('numpy',sys.modules)
-        self.assertNotIn('anysolver',sys.modules)
+        self.assertNotIn('anyfesolver',sys.modules)
 
     def test_review_scope_and_hash_rejection(self):
         candidate=dict(commit='1'*40,tree='2'*40); inputs={}

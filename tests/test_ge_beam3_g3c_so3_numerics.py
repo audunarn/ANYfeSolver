@@ -17,8 +17,8 @@ import sys
 import numpy as np
 import pytest
 
-from anysolver import _ge_beam3_g3c_so3_numerics as kernel
-from anysolver._ge_beam3_mixed_ad import Jet2, math_cos_limit
+from anyfesolver import _ge_beam3_g3c_so3_numerics as kernel
+from anyfesolver._ge_beam3_mixed_ad import Jet2, math_cos_limit
 import run_ge_beam3_g3c_so3_numerics as runner
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -82,8 +82,8 @@ class TestStaticIsolation:
             status, path = row.split('\t')
             assert status == 'A', path
             if path.startswith('src/'):
-                assert path == 'src/anysolver/_ge_beam3_g3c_so3_numerics.py'
-        tree = ast.parse((ROOT/'src/anysolver/_ge_beam3_g3c_so3_numerics.py').read_text())
+                assert path == 'src/anyfesolver/_ge_beam3_g3c_so3_numerics.py'
+        tree = ast.parse((ROOT/'src/anyfesolver/_ge_beam3_g3c_so3_numerics.py').read_text())
         forbidden = {'_exp_coefficients', '_log_factor', 'so3_exp', 'so3_log', 'rotation_exponential', 'rotation_log'}
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):

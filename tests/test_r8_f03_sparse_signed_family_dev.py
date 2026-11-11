@@ -190,7 +190,7 @@ def test_native_prefix_survives_reduced_failure(monkeypatch,tmp_path,failure_pha
         return NS(status='completed',shell_displacement=np.ones(2),beam_coordinates=np.ones(2),multipliers=np.ones(1))
     owner=NS(_beam_ids=tuple(range(101,118)),solve_linear=mock_solve,close=lambda:closed.append(True),_accepted=(None,np.ones(4)))
     monkeypatch.setitem(sys.modules,'scripts.b3_e4_bl5_coherent_aggregation_dev',NS(model=mock_model))
-    monkeypatch.setitem(sys.modules,'anysolver',NS(stiffened_shell=NS(create_analysis=lambda **kwargs:owner,NodalAction=lambda *args:args)))
+    monkeypatch.setitem(sys.modules,'anyfesolver',NS(stiffened_shell=NS(create_analysis=lambda **kwargs:owner,NodalAction=lambda *args:args)))
     monkeypatch.setattr(module,'construction_provenance',lambda model:dict(mock='no real model/fixture execution'))
     monkeypatch.setattr(module,'extract_owner',lambda *args:snapshot)
     def mock_prepare(s):
@@ -243,7 +243,7 @@ def test_parameterized_construction_failure_preserved_before_physical_work(monke
         return object(),{}
     def create(**kw):raise Refused('MOCK_OWNER_CONSTRUCTION_REFUSAL')
     monkeypatch.setitem(sys.modules,'scripts.b3_e4_bl5_coherent_aggregation_dev',NS(model=model))
-    monkeypatch.setitem(sys.modules,'anysolver',NS(stiffened_shell=NS(create_analysis=create)))
+    monkeypatch.setitem(sys.modules,'anyfesolver',NS(stiffened_shell=NS(create_analysis=create)))
     monkeypatch.setattr(module,'construction_provenance',lambda model:{'mock':'no model/owner execution'})
     out=tmp_path/'failed-construction'
     with pytest.raises(Refused,match='MOCK'):module.family_case(32,out)

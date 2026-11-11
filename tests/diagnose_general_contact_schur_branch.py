@@ -8,8 +8,8 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/"src"))
 
-from anysolver import solve_static_nonlinear
-from anysolver.general_contact import linearized_pivot
+from anyfesolver import solve_static_nonlinear
+from anyfesolver.general_contact import linearized_pivot
 from test_general_contact_supported_schur_path import _case
 
 

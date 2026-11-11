@@ -154,7 +154,7 @@ def test_input_schema_candidate_and_frozen_authorities_are_exact(authorities: An
         common.ALLOWED_EXECUTION_EXTENT
     )
     assert all(line.startswith("A\t") for line in extent)
-    q4 = ROOT / "src" / "anysolver" / "e4_pl_element.py"
+    q4 = ROOT / "src" / "anyfesolver" / "e4_pl_element.py"
     assert hashlib.sha256(q4.read_bytes()).hexdigest().upper() == (
         "EE49BAE1C9439C41EC2D61798A8A8B88CBA9081DCAD2DFDC857FE313C6C0D4D1"
     )

@@ -54,8 +54,8 @@ def test_screen_uses_only_qualified_q4_and_checker_does_not_import_producer() ->
 
     producer_imports = imported(producer)
     checker_imports = imported(checker)
-    assert "anysolver.e4_pl_s3_element" not in producer_imports
-    assert "anysolver.e4_pl_s3_v2_element" not in producer_imports
+    assert "anyfesolver.e4_pl_s3_element" not in producer_imports
+    assert "anyfesolver.e4_pl_s3_v2_element" not in producer_imports
     assert "e4_pl_s3_v4a_screen_producer" not in checker_imports
 
 
@@ -118,7 +118,7 @@ def test_two_bounded_cycles_are_byte_identical_and_stop_at_local_gate(tmp_path: 
 
 
 def test_production_boundary_remains_static() -> None:
-    source = (ROOT / "src" / "anysolver" / "elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src" / "anyfesolver" / "elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source
     assert not any(path.is_file() for path in (ROOT / "src").rglob("*v4a*"))

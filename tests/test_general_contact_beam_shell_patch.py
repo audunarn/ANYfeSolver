@@ -4,18 +4,18 @@ import numpy as np
 import pytest
 from scipy.integrate import quad
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, FEModel, LoadCase, BeamElement, QuadraticBeamElement,
     create_shell_element,
     solve_static_nonlinear,
 )
-from anysolver.general_contact import (
+from anyfesolver.general_contact import (
     ContactDefinition, ContactInteraction, ContactSolverSettings, ContactSurface,
     validate_general_contact,
 )
-from anysolver.general_contact.beam_shell_patch import _BeamShellPatchManager
-from anysolver.general_contact.beam_shell_patch import _patch_windows
-from anysolver.general_contact.overlap import PlanarFace
+from anyfesolver.general_contact.beam_shell_patch import _BeamShellPatchManager
+from anyfesolver.general_contact.beam_shell_patch import _patch_windows
+from anyfesolver.general_contact.overlap import PlanarFace
 
 
 def _patch_model():
@@ -152,7 +152,7 @@ def test_internal_seam_partitions_constant_gap_line_without_double_counting():
 
 def test_exact_seam_line_has_one_stable_owner_and_nonconforming_patch_fails():
     model, definition, _ = _patch_model()
-    from anysolver.general_contact.overlap import reference_shell_face
+    from anyfesolver.general_contact.overlap import reference_shell_face
 
     faces = tuple(reference_shell_face(model, 2, eid, "top") for eid in (2, 3))
     ids = ((3, 4, 5, 6), (4, 7, 8, 5))

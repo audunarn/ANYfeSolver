@@ -10,9 +10,9 @@ def test_controls_admission():
  from dataclasses import replace
  from scripts.r8_f06_cyclic_material_dev import definition,actions
  from scripts.r8_f06_native_material_breadth_dev import definition as breadth
- from anysolver import stiffened_shell as ss
- from anysolver._stiffened_shell_increment_control import AdaptiveIncrementControl
- from anysolver._stiffened_shell_ge_finite_experimental import supports_mixed_material_adaptive,supports_paired_fibre_adaptive
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._stiffened_shell_increment_control import AdaptiveIncrementControl
+ from anyfesolver._stiffened_shell_ge_finite_experimental import supports_mixed_material_adaptive,supports_paired_fibre_adaptive
  models=(definition('coupled'),breadth('mixed'),definition('bend-z'))
  for i,model in enumerate(models):
   o=ss.create_analysis(definition=model)
@@ -35,11 +35,11 @@ def test_controls_framing():
  from dataclasses import replace
  from scripts.r8_f06_mixed_adaptive_dev import INPUT,write
  from scripts.r8_f06_cyclic_material_dev import definition,actions
- from anysolver import stiffened_shell as ss
- from anysolver._stiffened_shell_increment_control import AdaptiveIncrementControl,_AdaptiveState,IncrementAttempt,encode_control,decode_control,validate_control
- from anysolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,encode_compensated,decode_chart,encode_chart,decode,encode
- from anysolver._stiffened_shell_beam_history import shapes
- from anysolver.control import CancellationToken,SolveCancelled
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._stiffened_shell_increment_control import AdaptiveIncrementControl,_AdaptiveState,IncrementAttempt,encode_control,decode_control,validate_control
+ from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,encode_compensated,decode_chart,encode_chart,decode,encode
+ from anyfesolver._stiffened_shell_beam_history import shapes
+ from anyfesolver.control import CancellationToken,SolveCancelled
  out=Path(os.environ['F06_MIXED_ADAPTIVE_OUTPUT']);model=definition('coupled');o=ss.create_analysis(definition=model)
  try:
   o.restore(INPUT.read_bytes());d=o._finite_driver;original=capture(o);key=o._identity
@@ -97,10 +97,10 @@ def test_controls_generated_cache():
  import numpy as np
  from scripts.r8_f06_mixed_adaptive_dev import DOC,write
  from scripts.r8_f06_cyclic_material_dev import definition
- from anysolver import stiffened_shell as ss
- from anysolver._stiffened_shell_ge_checkpoint_binary import decode_compensated
- from anysolver._stiffened_shell_increment_control import MAGIC,decode_control
- from anysolver.control import CancellationToken,SolveCancelled
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode_compensated
+ from anyfesolver._stiffened_shell_increment_control import MAGIC,decode_control
+ from anyfesolver.control import CancellationToken,SolveCancelled
  out=Path(os.environ['F06_MIXED_ADAPTIVE_OUTPUT']);raw=(DOC/'recovered-cached-prefix.bin').read_bytes()
  original=DOC/'attempt-installed-path1';model=definition('coupled');o=ss.create_analysis(definition=model)
  try:
@@ -144,8 +144,8 @@ def test_physical():
  from dataclasses import asdict
  from scripts.r8_f06_mixed_adaptive_dev import DOC,INPUT,write
  from scripts.r8_f06_cyclic_material_dev import definition,actions
- from anysolver import stiffened_shell as ss
- from anysolver._stiffened_shell_increment_control import AdaptiveIncrementControl,AdaptiveIncrementExhausted,FiniteIncrementFailure
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._stiffened_shell_increment_control import AdaptiveIncrementControl,AdaptiveIncrementExhausted,FiniteIncrementFailure
  out=Path(os.environ['F06_MIXED_ADAPTIVE_OUTPUT']);model=definition('coupled');owner=ss.create_analysis(definition=model)
  accepted=[];rejected=[];completed=[];targets=(.41,);request=AdaptiveIncrementControl(4,12);trace=out/'trace.jsonl'
  class AcceptedStop(Exception):pass

@@ -15,25 +15,25 @@ import threading
 import numpy as np
 import pytest
 
-import anysolver.current_state_tangent as current_state_tangent
-import anysolver.e4_pl_s3_v2d_element as v2d_module
-import anysolver.jit_compiler as jit_compiler
-import anysolver.nonlinear_static as nonlinear_static_module
-from anysolver import elements as elements_module
-from anysolver import plasticity, vectorized_nonlinear
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.control import CancellationToken
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.e4_pl_s3_v2d_element import (
+import anyfesolver.current_state_tangent as current_state_tangent
+import anyfesolver.e4_pl_s3_v2d_element as v2d_module
+import anyfesolver.jit_compiler as jit_compiler
+import anyfesolver.nonlinear_static as nonlinear_static_module
+from anyfesolver import elements as elements_module
+from anyfesolver import plasticity, vectorized_nonlinear
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.control import CancellationToken
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.e4_pl_s3_v2d_element import (
     NativeParityCapabilityError,
     NativeParityE4PLS3V2DShellElement,
 )
-from anysolver.element_capabilities import ElementCapabilityError
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.jit_compiler import JIT_ENABLED
-from anysolver.matrix_assembly import AssemblyError
-from anysolver.nonlinear_static import solve_static_nonlinear
+from anyfesolver.element_capabilities import ElementCapabilityError
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.jit_compiler import JIT_ENABLED
+from anyfesolver.matrix_assembly import AssemblyError
+from anyfesolver.nonlinear_static import solve_static_nonlinear
 
 
 NEWTON_LOOP_CONTEXTS = (

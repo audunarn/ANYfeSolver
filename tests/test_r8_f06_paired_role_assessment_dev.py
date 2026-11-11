@@ -160,7 +160,7 @@ def test_source_exact_artifact_delta_adoption_refuses_drift():
     assert a.check_artifact_delta([row],decision)
     with pytest.raises(ValueError,match='drift'):a.check_artifact_delta([{**row,'new_sha256':'c'*64}],decision)
     with pytest.raises(ValueError,match='adoption'):a.check_artifact_delta([row],{**decision,'status':'PROPOSED'})
-    altered={**row,'path':'src/anysolver/_ge_beam3_fibre_cell.py'}
+    altered={**row,'path':'src/anyfesolver/_ge_beam3_fibre_cell.py'}
     with pytest.raises(ValueError,match='B2'):a.check_artifact_delta([altered],{**decision,'current_source_deltas':[altered]})
 
 

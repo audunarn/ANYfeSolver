@@ -6,11 +6,11 @@ from math import fsum
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_p5.algebra import log_rotation
-from anysolver._ge_beam3_p5_seeded.core import canonical, sha
-from anysolver._ge_beam3_p5_seeded.codec import _load
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver.general_contact.native_surface_transaction import NativeS3MaterialTransaction
+from anyfesolver._ge_beam3_p5.algebra import log_rotation
+from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
+from anyfesolver._ge_beam3_p5_seeded.codec import _load
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver.general_contact.native_surface_transaction import NativeS3MaterialTransaction
 from test_general_contact_native_surface_contributor import _contributor
 
 

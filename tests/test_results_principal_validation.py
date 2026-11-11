@@ -3,8 +3,8 @@ from threading import Barrier,Event,current_thread,enumerate as threads
 from concurrent.futures import CancelledError
 import numpy as np
 import pytest
-from anysolver_results import derive_field,DerivationError
-from anysolver_results.formulas import principal_stresses
+from anyfesolver_results import derive_field,DerivationError
+from anyfesolver_results.formulas import principal_stresses
 
 
 def original(tensor):
@@ -33,7 +33,7 @@ def test_exact_symmetric_signed_zero_shortcut_preserves_words_boundary_and_metad
     actual=principal_stresses(tensor,workers=2,execution=execution)
     np.testing.assert_array_equal(actual.view('u8'),expected.view('u8'))
     assert execution=={'workers':2 if count==4096 else 1,'tensors':count}
-    assert not any(t.name.startswith('anysolver-principal') for t in threads())
+    assert not any(t.name.startswith('anyfesolver-principal') for t in threads())
 
 
 @pytest.mark.parametrize('value',[np.inf,np.nan,-np.inf])
@@ -59,7 +59,7 @@ def test_worker_linalg_failure_joins_already_running_peer_and_is_typed(monkeypat
     with pytest.raises(DerivationError,match='principal') as error:derive_field(spec,inputs,workers=2,execution=execution)
     assert isinstance(error.value.__cause__,np.linalg.LinAlgError) and peer_finished.is_set()
     assert execution=={'workers':2,'tensors':4096}
-    assert not any(t.name.startswith('anysolver-principal') for t in threads())
+    assert not any(t.name.startswith('anyfesolver-principal') for t in threads())
 
 
 @pytest.mark.parametrize('workers',[1,2])
@@ -67,12 +67,12 @@ def test_finite_input_overflow_is_typed_and_refusal_metadata_stays_serial(worker
     spec,inputs=spec_inputs(4096);inputs['membrane_xx'].fill(1.7e308);inputs['bending_xx'].fill(1.7e308);execution={}
     with np.errstate(over='ignore'),pytest.raises(DerivationError) as error:derive_field(spec,inputs,workers=workers,execution=execution)
     assert isinstance(error.value.__cause__,ValueError) and execution=={'workers':1}
-    assert not any(t.name.startswith('anysolver-principal') for t in threads())
+    assert not any(t.name.startswith('anyfesolver-principal') for t in threads())
 
 
 @pytest.mark.parametrize('kind',[MemoryError,CancelledError,TypeError])
 def test_resource_cancellation_programmer_errors_keep_original_type(monkeypatch,kind):
     spec,inputs=spec_inputs(1)
     def fail(*_args,**_kwargs):raise kind('original')
-    monkeypatch.setattr('anysolver_results.registry.formulas.shell_principal_stresses',fail)
+    monkeypatch.setattr('anyfesolver_results.registry.formulas.shell_principal_stresses',fail)
     with pytest.raises(kind,match='original'):derive_field(spec,inputs)

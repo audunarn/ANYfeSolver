@@ -3,15 +3,15 @@ from dataclasses import replace
 import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
-from anysolver import stiffened_shell as ss
-from anysolver.fe_core import FEModel
-from anysolver.elements import create_shell_element
-from anysolver.e4_pl_s3_state import canonical_json_bytes
-from anysolver._stiffened_shell_q4_algorithmic_pullback import response,local_coordinates
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import create_shell_element
+from anyfesolver.e4_pl_s3_state import canonical_json_bytes
+from anyfesolver._stiffened_shell_q4_algorithmic_pullback import response,local_coordinates
 from test_stiffened_shell_q4_algorithmic_pullback import yielded,_local,_rigid
 from test_stiffened_shell_ge_finite_experimental import _q4_shell_j2_panel,_actions
 from test_stiffened_shell_curved_reference_seam import curved_panel
-from anysolver.control import CancellationToken,SolveCancelled
+from anyfesolver.control import CancellationToken,SolveCancelled
 
 
 def assert_generalized_records_equal(left,right):
@@ -101,9 +101,9 @@ def test_old_curved_material_guards_and_new_policy_limits(request):
         owner.continue_arc_length(_actions(),control)
     with pytest.raises(ValueError,match='curved material displacement control'):
         owner.solve(_actions(),(.1,),displacement_control=object())
-    from anysolver._stiffened_shell_arc_checkpoint import MAGIC as ARC_MAGIC
-    from anysolver._stiffened_shell_displacement_checkpoint import MAGIC as DISPLACEMENT_MAGIC
-    from anysolver._stiffened_shell_displacement_adaptive import MAGIC as ADAPTIVE_MAGIC,EVENT_MAGIC
+    from anyfesolver._stiffened_shell_arc_checkpoint import MAGIC as ARC_MAGIC
+    from anyfesolver._stiffened_shell_displacement_checkpoint import MAGIC as DISPLACEMENT_MAGIC
+    from anyfesolver._stiffened_shell_displacement_adaptive import MAGIC as ADAPTIVE_MAGIC,EVENT_MAGIC
     with pytest.raises(ValueError,match='arc snapshot'):
         owner.restore(ARC_MAGIC)
     assert cap['displacement_control']=='experimental_curved_material_point_translation_v1'

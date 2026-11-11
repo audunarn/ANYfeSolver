@@ -19,10 +19,10 @@ PATHS = {
     "tests/test_ge_beam3_curved_p4_implementation_review.py",
 }
 PROTECTED = {
-    "src/anysolver/ge_beam3_element.py": "70542da7fea26dcb2da5b5f9da5fc0b0b8d484ab",
-    "src/anysolver/ge_beam3_mixed_element.py": "f49062b55b4bf749a1654100cf3a4ed6ffb61d37",
-    "src/anysolver/ge_beam3_mixed_state.py": "74caa1814448245f907bd3efdb6c8a1cc1d2269d",
-    "src/anysolver/ge_beam3_state.py": "ba8f65761197c62cb2b7ce74bf488e75f2c24818",
+    "src/anyfesolver/ge_beam3_element.py": "70542da7fea26dcb2da5b5f9da5fc0b0b8d484ab",
+    "src/anyfesolver/ge_beam3_mixed_element.py": "f49062b55b4bf749a1654100cf3a4ed6ffb61d37",
+    "src/anyfesolver/ge_beam3_mixed_state.py": "74caa1814448245f907bd3efdb6c8a1cc1d2269d",
+    "src/anyfesolver/ge_beam3_state.py": "ba8f65761197c62cb2b7ce74bf488e75f2c24818",
 }
 
 
@@ -109,11 +109,11 @@ def test_review_accepts_only_the_corrected_two_path_reference_core() -> None:
         "tree": "2235c5f868384f0122ec5eda766cdf01c0923a1f",
     }
     assert set(_git("diff-tree", "--no-commit-id", "--name-only", "-r", INITIAL).splitlines()) == {
-        "src/anysolver/ge_beam3_curved_reference.py",
+        "src/anyfesolver/ge_beam3_curved_reference.py",
         "tests/test_ge_beam3_curved_p4_reference.py",
     }
     assert set(_git("diff-tree", "--no-commit-id", "--name-only", "-r", CORRECTION).splitlines()) == {
-        "src/anysolver/ge_beam3_curved_reference.py",
+        "src/anyfesolver/ge_beam3_curved_reference.py",
         "tests/test_ge_beam3_curved_p4_reference.py",
     }
 

@@ -7,19 +7,19 @@ development, not a continuum buckling or general prestressed-mode gate.
 import numpy as np
 import pytest
 from scipy import linalg
-from anysolver.fe_core import FEModel
-from anysolver.boundary import BoundaryCondition
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-from anysolver._ge_beam3_p5_loads import NativeP5BeamElement, DirectedHardeningSection
-from anysolver._ge_beam3_p5_loads.core import canonical
-from anysolver._ge_beam3_loaded_modal import prepare
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import BoundaryCondition
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+from anyfesolver._ge_beam3_p5_loads import NativeP5BeamElement, DirectedHardeningSection
+from anyfesolver._ge_beam3_p5_loads.core import canonical
+from anyfesolver._ge_beam3_loaded_modal import prepare
 from docs.reference_cases.ge_beam3_loaded_factor_split_probe import split_accepted_elastic_operator
 from docs.reference_cases.ge_beam3_signed_spectrum_probe import reduce_signed_split, bracket_lowest
 from docs.reference_cases.ge_beam3_straight_discrete_signed_reference import bending_roots
 from test_ge_beam3_loaded_modal import accepted
 from test_ge_beam3_native_load_state import problem
 from test_ge_beam3_curved_p5_mass_probe import section_mass
-from anysolver._native_stationary_spectrum import solve_stationary_spectrum
+from anyfesolver._native_stationary_spectrum import solve_stationary_spectrum
 
 
 def make(slenderness):

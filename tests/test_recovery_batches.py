@@ -3,8 +3,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver import RecoveryConfig, ResourceConfig, generate_simple_panel_mesh
-from anysolver.recovery import (
+from anyfesolver import RecoveryConfig, ResourceConfig, generate_simple_panel_mesh
+from anyfesolver.recovery import (
     _compute_one_element_stress,
     recover_element_stresses_with_report,
 )
@@ -42,7 +42,7 @@ def test_chunked_scalar_recovery_preserves_order_and_exact_values(
     recovery = RecoveryConfig(
         components=["von_mises"],
     )
-    monkeypatch.setattr("anysolver.recovery.JIT_ENABLED", False)
+    monkeypatch.setattr("anyfesolver.recovery.JIT_ENABLED", False)
 
     serial, serial_report = recover_element_stresses_with_report(
         model,

@@ -10,16 +10,16 @@ import time
 
 import numpy as np
 
-import anysolver
-from anysolver import (
+import anyfesolver
+from anyfesolver import (
     ContactPathControl, ContactPathProgram, solve_static_nonlinear,
     validate_general_contact,
 )
-from anysolver.assembly import build_constraint_transformation
-from anysolver.general_contact.static_path import (
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.general_contact.static_path import (
     _elastic_displacement_force_predictor,
 )
-from anysolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
 
 from scripts.general_contact_d1_interior_press_dev import build_interior_press
 from scripts.general_contact_d1_mixed_mesh_jet2_schur_press import _json_default
@@ -121,7 +121,7 @@ def main(reference: Path, output: Path, *, full_cycle: bool = False) -> None:
     active_dof = model.mesh.dof_manager.get_node_dofs(_REFERENCE_ACTIVE_NODE)[2]
     payload = {
         "candidate": "d1_open_ring_source_displacement_control_development",
-        "anysolver_module": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_module": str(Path(anyfesolver.__file__).resolve()),
         "reference_pose": str(reference),
         "source_control_nodes": list(_OPEN_RING_NODES),
         "source_control_weights": [0.25]*4,

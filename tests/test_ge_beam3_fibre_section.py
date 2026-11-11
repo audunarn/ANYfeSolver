@@ -6,7 +6,7 @@ import json
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_fibre_section import (
+from anyfesolver._ge_beam3_fibre_section import (
     Fibre, FibreHistory, FlowCurve, PhysicalFibreSection, PARAMETER_CAPTURE, canonical,
 )
 

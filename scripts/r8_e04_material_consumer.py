@@ -1,6 +1,6 @@
 """Reopen a declared E04 material roof and continue an existing accepted path.
 
-Uses installed ANYsolver/ANYfem public interfaces. Run serially under the task's
+Uses installed ANYfeSolver/ANYfem public interfaces. Run serially under the task's
 resource supervisor. Synthetic strengths do not establish physical capacity.
 The source checkpoint must match the explicitly reconstructed definition.
 """
@@ -41,14 +41,14 @@ def main():
     # Capture inputs before writing any output; the definition validates all strengths.
     checkpoint=args.checkpoint.read_bytes()
     from anymaterial import DNVC208MaterialCurve
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
     from anyfem.solve.stiffened_shell import ExperimentalGEPointPanel,save_case,load_case
     from anyfem.io.project_file import save_project,load_project
     from anyfem.model.project import Project
     from anyfem.model.records import AnalysisDefinition
     from docs.reference_cases.stiffened_shell_e04_roof import (
         build,material_definition,crown_reference_perturbations)
-    import anysolver,anyfem,numba,threadpoolctl
+    import anyfesolver,anyfem,numba,threadpoolctl
     pools=threadpoolctl.threadpool_info()
     assert pools and all(p['num_threads']==1 for p in pools)
     assert numba.get_num_threads()==1 and numba.config.DISABLE_JIT
@@ -70,7 +70,7 @@ def main():
     args.output.mkdir(parents=True,exist_ok=False)
     record=dict(status='IN_PROGRESS',input_checkpoint_sha256=hashlib.sha256(checkpoint).hexdigest(),
         inputs={key:(str(value) if isinstance(value,Path) else value) for key,value in vars(args).items()},
-        imported_solver=str(Path(anysolver.__file__).resolve()),
+        imported_solver=str(Path(anyfesolver.__file__).resolve()),
         imported_consumer=str(Path(anyfem.__file__).resolve()),threadpools=pools,
         reference_transport=(None if reference_change is None else dict(
             policy=reference_change.policy,source_identity=reference_change.source_identity,
@@ -135,7 +135,7 @@ def main():
         record.update(status='COMPLETED_DEVELOPMENT_ONLY',each_checkpoint_equal=True,
             final_checkpoint_equal=True,detailed_material_equal=True,history_equal=True)
         imports={name:str(Path(module.__file__).resolve()) for name,module in __import__('sys').modules.items()
-            if name.startswith(('anysolver','anyfem')) and getattr(module,'__file__',None)}
+            if name.startswith(('anyfesolver','anyfem')) and getattr(module,'__file__',None)}
         record['imports']=imports;save()
     except Exception as error:
         record['status']='FAILED';record['failure']=dict(type=type(error).__name__,message=str(error))

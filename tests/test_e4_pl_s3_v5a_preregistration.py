@@ -149,7 +149,7 @@ def test_frozen_inputs_and_external_receipts_are_hash_bound() -> None:
 
 
 def test_production_boundary_sources_remain_unchanged() -> None:
-    source = (ROOT / "src" / "anysolver" / "elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src" / "anyfesolver" / "elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source
     assert not any(path.is_file() for path in (ROOT / "src").rglob("*v5a*"))

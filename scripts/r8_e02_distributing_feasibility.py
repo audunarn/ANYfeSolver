@@ -160,7 +160,7 @@ def native_cases(nx=10, ny=4):
 
 def _native_load_cases(nx, ny, loads, *, geometry_builder=None):
     """Local fixture seam; each bounded caller owns its explicit load inventory."""
-    from anysolver import b3_ge, stiffened_shell as ss
+    from anyfesolver import b3_ge, stiffened_shell as ss
     from scipy.spatial.transform import Rotation
     from scripts.r8_e02_native_rigid_tip import geometry
     if geometry_builder is not None:

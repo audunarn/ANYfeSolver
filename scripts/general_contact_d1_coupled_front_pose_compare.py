@@ -13,8 +13,8 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver.general_contact.q4_skin_work import Q4SkinWorkAdapter
-from anysolver.general_contact.s3_skin_work import S3SkinWorkAdapter
+from anyfesolver.general_contact.q4_skin_work import Q4SkinWorkAdapter
+from anyfesolver.general_contact.s3_skin_work import S3SkinWorkAdapter
 from scripts.general_contact_d1_mixed_mesh_jet2_schur_press import build_case
 
 

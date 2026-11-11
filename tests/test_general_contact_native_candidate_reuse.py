@@ -4,7 +4,7 @@ from hashlib import sha256
 from dataclasses import replace
 import numpy as np
 import pytest
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_general_contact_native_curved_s3_static import _analysis
 
 def fixture():

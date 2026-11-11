@@ -3,8 +3,8 @@ from dataclasses import replace
 import numpy as np
 import pytest
 from scipy import sparse
-from anysolver import stiffened_shell
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver import stiffened_shell
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
 from test_stiffened_shell_l1_assembly_experimental import _bl5_joint_mesh_definition
 
 

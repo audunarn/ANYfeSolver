@@ -3,9 +3,9 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_variational_shell import deformation, response
-from anysolver._ge_beam3_fibre_section import canonical
-from anysolver._stiffened_shell_ge_experimental import ExperimentalGEAnalysis
+from anyfesolver._ge_beam3_variational_shell import deformation, response
+from anyfesolver._ge_beam3_fibre_section import canonical
+from anyfesolver._stiffened_shell_ge_experimental import ExperimentalGEAnalysis
 from test_stiffened_shell_ge_physical_fibre_linear import _definition
 
 

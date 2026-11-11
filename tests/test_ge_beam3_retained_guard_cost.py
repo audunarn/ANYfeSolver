@@ -1,10 +1,10 @@
 """Full input checking without repeated sparse support construction."""
 from dataclasses import replace
 import pytest
-from anysolver import _ge_beam3_retained_generalized_state as retained
-from anysolver import _ge_beam3_native_generalized_restart as restart
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver import _ge_beam3_retained_generalized_state as retained
+from anyfesolver import _ge_beam3_native_generalized_restart as restart
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
 from test_ge_beam3_native_generalized_modal import make
 
 EMPTY=DistributedPattern(LinePattern(()),())
@@ -49,7 +49,7 @@ def test_full_guard_mutations(mutation,monkeypatch):
             dict(slave=12,masters={6:1.},value=0.,label='injected')],raising=False)
     elif mutation=='program':c.program=replace(c.program,targets=(.5,))
     else:
-        from anysolver._ge_beam3_effective_deadline import effective_deadline_seconds
+        from anyfesolver._ge_beam3_effective_deadline import effective_deadline_seconds
         c.started-=effective_deadline_seconds(120)+1
     with pytest.raises((ValueError,RuntimeError)):c.guard()
 

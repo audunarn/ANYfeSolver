@@ -4,12 +4,12 @@ import math
 import numpy as np
 import pytest
 
-from anysolver import (BoundaryCondition, FixedSupport, LoadCase, PatternCase,
+from anyfesolver import (BoundaryCondition, FixedSupport, LoadCase, PatternCase,
                        RecoveryConfig, export_recovery_capsule,
                        export_recovery_capsule_to_sink, prepare_static_response_evaluator)
-from anysolver.elements import QuadraticBeamElement
-from anysolver.fe_core import FEModel
-from anysolver_results import CapsuleValidationError, validate_capsule
+from anyfesolver.elements import QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver_results import CapsuleValidationError, validate_capsule
 from test_prepared_static_evaluator import _bar, _case, _shell_case, _shell_model
 from test_result_capsule_export import _rotated_shell_model
 
@@ -34,7 +34,7 @@ def test_rotated_s3_local_frame_orthonormal_and_source_exact():
         capsule = export_recovery_capsule(evaluator, [PatternCase('a', {'p': 1.25})],
                                           model_identity='rotated-shell',
                                           mesh_identity='rotated-shell-mesh')
-        from anysolver.e4_pl_s3_element import triangle_frame
+        from anyfesolver.e4_pl_s3_element import triangle_frame
         expected = {}
         for element_id in (1, 2):
             element, mesh, _material = _owner_of(evaluator, element_id)
@@ -96,7 +96,7 @@ def test_beam2_frame_and_explicit_section_scalar_rule():
         capsule = export_recovery_capsule(evaluator, cases, model_identity='bar',
                                           mesh_identity='bar-mesh')
         element, mesh, _material = _owner_of(evaluator, 1)
-        from anysolver.elements import _beam_rotation_matrix
+        from anyfesolver.elements import _beam_rotation_matrix
         coordinates = np.asarray(element.get_node_coordinates(mesh), dtype=np.float64)
         axis = coordinates[1] - coordinates[0]
         expected = _beam_rotation_matrix(axis / np.linalg.norm(axis), element._orientation)
@@ -172,8 +172,8 @@ def test_quadratic_beam_local_frame_is_end_chord_source_exact():
 
 
 def test_beam_sampling_rules_match_native_recovery_field_shapes():
-    from anysolver.beam_sections import GeneralizedBeamSection
-    from anysolver.elements import BeamElement
+    from anyfesolver.beam_sections import GeneralizedBeamSection
+    from anyfesolver.elements import BeamElement
     from test_generalized_beam_sections import _stiffness
 
     configurations = [

@@ -73,7 +73,7 @@ def build(structure_report=None,visual_directory=None):
         t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),NAVY),('TEXTCOLOR',(0,0),(-1,0),colors.white),('ROWBACKGROUNDS',(0,1),(-1,-1),[colors.white,PALE]),('VALIGN',(0,0),(-1,-1),'TOP'),('TOPPADDING',(0,0),(-1,-1),7),('BOTTOMPADDING',(0,0),(-1,-1),7),('LEFTPADDING',(0,0),(-1,-1),6),('RIGHTPADDING',(0,0),(-1,-1),6),('LINEBELOW',(0,0),(-1,0),.7,TEAL)]))
         story.append(t);story.append(Spacer(1,9))
     story.append(Spacer(1,22*mm))
-    story.append(Paragraph('ANYsolver<br/>Accuracy evidence',styles['TitleAccuracy']))
+    story.append(Paragraph('ANYfeSolver<br/>Accuracy evidence',styles['TitleAccuracy']))
     p('Linear-static commercial reference comparisons and a synthesis of earlier verification work.')
     p(f'<b>{DATE} | Evidence report, revision 1</b>')
     story.append(Spacer(1,12*mm))
@@ -83,7 +83,7 @@ def build(structure_report=None,visual_directory=None):
     p(f'Current repository HEAD: {commit}. Current comparison source includes uncommitted development work; per-file hashes are retained. Earlier reports apply to their own recorded versions.',small=True)
 
     page('1 | Conclusions and evidence strength')
-    p('The existing evidence supports a useful but bounded conclusion: elementary beam response and selected shell controls are accurate within their declared criteria. Matched shell formulations remove most of the earlier apparent ANYsolver/SESTRA discrepancy. Combined models still require quantity-specific convergence and some comparisons retain failed components.')
+    p('The existing evidence supports a useful but bounded conclusion: elementary beam response and selected shell controls are accurate within their declared criteria. Matched shell formulations remove most of the earlier apparent ANYfeSolver/SESTRA discrepancy. Combined models still require quantity-specific convergence and some comparisons retain failed components.')
     table(['Finding','Evidence and practical meaning'],[
         ['Standalone upright flatbar','Translations and all beam-force/moment stations pass the existing SESTRA criteria; analytical Timoshenko tip displacement agrees.'],
         ['Plate reference formulation','SESTRA originally used FQUS thin shells. THCK=1 replaces them with THQS thick shells; this substantially reduces displacement and beam-force discrepancies.'],
@@ -98,7 +98,7 @@ def build(structure_report=None,visual_directory=None):
 
     page('2 | Method and reproducibility')
     sub('One physical input, two execution routes')
-    p('A parameterised definition sets geometry, materials, sections, local axes, eccentricities, supports and loads. The canonical ANYfileIO writer produces FEM files. SESTRA executes those files directly; ANYsolver imports the same files through its SESAM adapter. This reduces model differences but does not remove the possibility of a shared modelling mistake.')
+    p('A parameterised definition sets geometry, materials, sections, local axes, eccentricities, supports and loads. The canonical ANYfileIO writer produces FEM files. SESTRA executes those files directly; ANYfeSolver imports the same files through its SESAM adapter. This reduces model differences but does not remove the possibility of a shared modelling mistake.')
     p('Independent audits check topology, section orientation, centroids, load resultants, clamped DOFs, physical coordinate systems and source/result identity. Analytical controls and refinement are therefore retained alongside cross-solver agreement. The original reference files remain immutable; modified geometry receives a distinct case identity.')
     sub('Fixed comparison criteria')
     table(['Observable','Development criterion'],[
@@ -114,10 +114,10 @@ def build(structure_report=None,visual_directory=None):
 
     page('3 | Original plate, flatbar and combined model')
     p('The retained GeniE-origin model has a 2 m x 2 m XY plate, 20 mm thickness, 400 quadrilateral shells and an upright 100 mm x 10 mm flatbar along its centreline. The y=0 edge is fully clamped and pressure is -1000 Pa. The section strong-axis inertia is about 8.333333e-7 m4. Its original centroid offset is -50 mm relative to the plate midsurface.')
-    table(['Original model','ANYsolver peak mm','SESTRA thin mm','SESTRA thick mm'],[
+    table(['Original model','ANYfeSolver peak mm','SESTRA thin mm','SESTRA thick mm'],[
         ['Plate','13.424466','13.440851','13.423233'],['Combined, -50 mm','4.428891','4.452274','4.429457'],['Isolated beam, 1000 N tip','15.275238','15.275238','Not applicable']
     ],[56*mm,39*mm,39*mm,40*mm])
-    p('Changing only the SESTRA shell option reduces peak displacement difference from 0.122% to 0.0092% for the plate, and from 0.525% to 0.0128% for the combined model. Original root beam shear changes from SESTRA thin -1404.721 N to thick -665.326 N; ANYsolver gives -669.054 N. Small peak errors do not mean the complete field passes.')
+    p('Changing only the SESTRA shell option reduces peak displacement difference from 0.122% to 0.0092% for the plate, and from 0.525% to 0.0128% for the combined model. Original root beam shear changes from SESTRA thin -1404.721 N to thick -665.326 N; ANYfeSolver gives -669.054 N. Small peak errors do not mean the complete field passes.')
     p('The official SESTRA manual places ELOP WCOR in columns 21-25 and THCK in columns 26-30. The original second field is zero. THCK=1 replaces FQUS with THQS; the actual log override is checked, since the input inventory can still display FQUS names.')
     p('The isolated beam hand check is w_tip = -P L^3/(3 E Iy) - P L/(kz G A), using the actual admitted section shear factor. The result is approximately -15.275238 mm. The flatbar orientation was audited from its actual transformation and inertia, rather than inferred from a schematic drawing.')
     p('For a bar directly below the underside of a 20 mm plate, the correct centroid is -(plate thickness + bar height)/2, approximately -60 mm. A separate under-plate model was generated; the original -50 mm model was not silently changed.')
@@ -208,11 +208,11 @@ def build(structure_report=None,visual_directory=None):
         sub('Literature names are not independent targets')
         p('The historical twisted-cantilever, Scordelis-Lo roof, pinched-cylinder and hemispherical-shell entries explicitly lack their bundled external literature targets. Their checks are internal refinement or symmetry. They must not be presented as completed literature-accuracy validations, even where the stored disposition is PASS. The hemispherical refinement response ratio is about 1.324, so a passed bookkeeping check does not imply mesh convergence.')
     if application:
-        p(f'The separate ANYfem application report is dated {application.get("generated")} and records 21 passing checks. It includes analytical static, modal, buckling and dynamic controls plus meshing/load/project invariants. It belongs to the recorded application version and is supporting ecosystem evidence, not an interchangeable ANYsolver certification.')
+        p(f'The separate ANYfem application report is dated {application.get("generated")} and records 21 passing checks. It includes analytical static, modal, buckling and dynamic controls plus meshing/load/project invariants. It belongs to the recorded application version and is supporting ecosystem evidence, not an interchangeable ANYfeSolver certification.')
 
     page('7 | Earlier external and wider-domain evidence')
     if external:
-        p('A retained CalculiX report records actual execution of pressure-plate, beam-column buckling and cylindrical-shell cases. Its observable comparisons are primarily against analytical targets. Those are external-solver versus analytical checks, not automatically direct current ANYsolver versus CalculiX comparisons.')
+        p('A retained CalculiX report records actual execution of pressure-plate, beam-column buckling and cylindrical-shell cases. Its observable comparisons are primarily against analytical targets. Those are external-solver versus analytical checks, not automatically direct current ANYfeSolver versus CalculiX comparisons.')
         rows=[]
         for c in external['cases']:
             validation=c.get('validation',{})
@@ -248,7 +248,7 @@ def build(structure_report=None,visual_directory=None):
     sub('Claims supported by this evidence')
     p('For the measured standalone beam and analytical strip controls, the specified linear response agrees closely with independent formulas and the matched reference. For the tested coupled models, most of the earlier discrepancy is attributable to reference formulation and nodal response; remaining component failures and local-force mesh sensitivity are explicit.')
     sub('What still prevents a general statement')
-    p('The evidence does not establish a solver-wide error bound. Remaining obligations include converged local beam/shear transfer, pointwise shell bending and membrane resultants in matched frames, broader boundary/load/section orientations, distorted and curved geometry, benchmark targets independent of ANYsolver, and current installed-artifact evidence. New nonlinear/dynamic claims need their own completed studies.')
+    p('The evidence does not establish a solver-wide error bound. Remaining obligations include converged local beam/shear transfer, pointwise shell bending and membrane resultants in matched frames, broader boundary/load/section orientations, distorted and curved geometry, benchmark targets independent of ANYfeSolver, and current installed-artifact evidence. New nonlinear/dynamic claims need their own completed studies.')
     table(['Next evidence slice','Acceptance question'],[
         ['Local force convergence','Do common physical beam cuts converge with independently controlled beam and shell meshes, under matched reference formulations?'],
         ['Shell recovery','Do top/bottom bending and membrane resultants agree at matching stations and layers, instead of averaging bending away?'],
@@ -258,7 +258,7 @@ def build(structure_report=None,visual_directory=None):
     p('The practical regime is plate alone, isolated beam, then combined structures; analytical controls and whole-field/local-force refinements accompany every stage. Neither a commercial solver name nor a large test count removes the need for these checks.')
 
     page('Appendix A | Inputs, software and evidence identities')
-    p('Machine-readable companion: ANYsolver_Accuracy_Report.evidence.json. It contains full SHA-256 values, file sizes, source commit and the input inventory used to generate this PDF. The PDF table uses hash prefixes for readability. Full raw values, commands, failures and logs remain in the referenced evidence directories.')
+    p('Machine-readable companion: ANYfeSolver_Accuracy_Report.evidence.json. It contains full SHA-256 values, file sizes, source commit and the input inventory used to generate this PDF. The PDF table uses hash prefixes for readability. Full raw values, commands, failures and logs remain in the referenced evidence directories.')
     unique={item['path']:item for item in evidence}
     rows=[]
     for item in unique.values():
@@ -267,17 +267,17 @@ def build(structure_report=None,visual_directory=None):
         except ValueError:label=path.as_posix()
         rows.append([label,item['sha256'][:16],str(item['bytes'])])
     table(['Evidence path relative to repository','SHA-256 prefix','Bytes'],rows,[117*mm,37*mm,20*mm])
-    p('SESTRA runs: C:/DNV/Workspaces/ANYsolver_SESTRA_deep_20261008 and C:/DNV/Workspaces/ANYsolver_SESTRA_structures_20261008. Each executed case has its own hashed input/control/output and execution record. Failed comparisons remain evidence; unexecuted decks remain handoff artifacts.')
+    p('SESTRA runs: C:/DNV/Workspaces/ANYfeSolver_SESTRA_deep_20261008 and C:/DNV/Workspaces/ANYfeSolver_SESTRA_structures_20261008. Each executed case has its own hashed input/control/output and execution record. Failed comparisons remain evidence; unexecuted decks remain handoff artifacts.')
     p('References: DNV SESTRA user manual, ELOP control and THQS description; DNV SESAM Input and Results Interface Format for IDs, eccentricities, result cases, stations, frames and physical force conventions.',small=True)
     for label,url in [('SESTRA user manual','https://sesam.dnv.com/download/userdocumentation/sestra-um.pdf'),('SESAM input interface','https://sesam.dnv.com/download/windows64/sesam_input_interface_format.pdf'),('SESAM results interface','https://sesam.dnv.com/download/windows64/sesam_results_interface_format.pdf')]:
         p(f'<link href="{url}" color="#177c80">{label}</link>',small=True)
     manifest={'schema_version':1,'report_date_local':DATE,'report_scope':'linear-static external comparisons plus historical and route-specific evidence synthesis','git_head':commit,'dirty_source':True,'inputs':list(unique.values()),'structure_report':structure_report,'visual_directory':visual_directory,'comparison_loaded_sources':structure.get('loaded_sources') if structure else None,'comparison_runtime':structure.get('runtime') if structure else None,'comparison_harness':structure.get('harness') if structure else None,'report_builder':ident(__file__),'qualification_claim':False}
-    (OUT/'ANYsolver_Accuracy_Report.evidence.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
-    pdf=OUT/'ANYsolver_Accuracy_Report.pdf'
+    (OUT/'ANYfeSolver_Accuracy_Report.evidence.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
+    pdf=OUT/'ANYfeSolver_Accuracy_Report.pdf'
     def footer(canvas,doc):
         canvas.saveState();canvas.setStrokeColor(TEAL);canvas.setLineWidth(.5);canvas.line(18*mm,17*mm,192*mm,17*mm)
-        canvas.setFont('Helvetica',7);canvas.setFillColor(INK);canvas.drawString(18*mm,12*mm,'ANYsolver | Accuracy evidence | '+DATE);canvas.drawRightString(192*mm,12*mm,str(doc.page));canvas.restoreState()
-    doc=SimpleDocTemplate(str(pdf),pagesize=(210*mm,297*mm),rightMargin=18*mm,leftMargin=18*mm,topMargin=20*mm,bottomMargin=23*mm,title='ANYsolver Accuracy Evidence',author='ANYsolver verification',subject='Measured scope, reference comparisons and limitations')
+        canvas.setFont('Helvetica',7);canvas.setFillColor(INK);canvas.drawString(18*mm,12*mm,'ANYfeSolver | Accuracy evidence | '+DATE);canvas.drawRightString(192*mm,12*mm,str(doc.page));canvas.restoreState()
+    doc=SimpleDocTemplate(str(pdf),pagesize=(210*mm,297*mm),rightMargin=18*mm,leftMargin=18*mm,topMargin=20*mm,bottomMargin=23*mm,title='ANYfeSolver Accuracy Evidence',author='ANYfeSolver verification',subject='Measured scope, reference comparisons and limitations')
     doc.build(story,onFirstPage=footer,onLaterPages=footer)
     print(json.dumps({'pdf':str(pdf),'inputs':len(unique),'structure_report':structure_report}))
 

@@ -6,8 +6,8 @@ import numpy as np
 import pytest
 from scipy import linalg
 
-from anysolver._b2_physical_linear_definition import MassMetadata
-from anysolver._stiffened_shell_physical_q4_mass import physical_mass
+from anyfesolver._b2_physical_linear_definition import MassMetadata
+from anyfesolver._stiffened_shell_physical_q4_mass import physical_mass
 from test_b2_f10_f11_point_attachment import VERTICES, specimen
 
 

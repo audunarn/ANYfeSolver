@@ -4,9 +4,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver import FEModel
-from anysolver.elements import BeamElement
-import anysolver.corotational as cr
+from anyfesolver import FEModel
+from anyfesolver.elements import BeamElement
+import anyfesolver.corotational as cr
 
 
 def _beam(origin):

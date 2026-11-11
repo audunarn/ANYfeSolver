@@ -1,18 +1,18 @@
 """Atomic native beam / shell J2 state, not complete G3 qualification."""
 from dataclasses import replace
 
-import anysolver
+import anyfesolver
 from anymaterial import DNVC208MaterialCurve
 import numpy as np
 import pytest
 
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_ge_experimental import NodalAction
-from anysolver._stiffened_shell_ge_checkpoint_binary import (
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_ge_experimental import NodalAction
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import (
     NATIVE_SHELL_MAGIC, decode_s3, encode_s3,
 )
-from anysolver._stiffened_shell_ge_finite_experimental import native_shell_checkpoint_shapes
-from anysolver.e4_pl_s3_v2d_state import seal_v2d_state
+from anyfesolver._stiffened_shell_ge_finite_experimental import native_shell_checkpoint_shapes
+from anyfesolver.e4_pl_s3_v2d_state import seal_v2d_state
 from test_stiffened_shell_ge_physical_fibre_finite import _yielding_definition
 from test_stiffened_shell_ge_physical_fibre_linear import _definition
 
@@ -28,9 +28,9 @@ def definition_for(mixed=False, triangles=False):
 @pytest.mark.parametrize('mixed,triangles', ((False,False),(True,False),(True,True)))
 def test_coupled_material_update_restart_and_rejection(mixed, triangles, monkeypatch):
     definition = definition_for(mixed, triangles)
-    owner = anysolver.stiffened_shell.create_analysis(definition=definition)
-    resumed = anysolver.stiffened_shell.create_analysis(definition=definition)
-    bad = anysolver.stiffened_shell.create_analysis(definition=definition)
+    owner = anyfesolver.stiffened_shell.create_analysis(definition=definition)
+    resumed = anyfesolver.stiffened_shell.create_analysis(definition=definition)
+    bad = anyfesolver.stiffened_shell.create_analysis(definition=definition)
     actions = (NodalAction('beam',105,(0.,0.,1000.,0.,0.,0.)),)
     targets = (.05,) if triangles else (.5,1.)
     following = .055 if triangles else .5
@@ -87,7 +87,7 @@ def test_coupled_material_update_restart_and_rejection(mixed, triangles, monkeyp
         with pytest.raises(RuntimeError):
             owner.solve(actions, targets=(following,), max_iterations=1,max_backtracks=0)
         assert owner.checkpoint() == saved
-        from anysolver import _stiffened_shell_ge_finite_experimental as finite
+        from anyfesolver import _stiffened_shell_ge_finite_experimental as finite
         original = finite.cancellation_safe_point
         token = CancellationToken()
         def cancel(token_value, stage):
@@ -108,7 +108,7 @@ def test_coupled_material_update_restart_and_rejection(mixed, triangles, monkeyp
         if triangles:
             owner.rebase_rotations(expected_generation=direct.generation)
             chart_saved = owner.checkpoint()
-            chart_owner = anysolver.stiffened_shell.create_analysis(definition=definition)
+            chart_owner = anyfesolver.stiffened_shell.create_analysis(definition=definition)
             try:
                 chart_owner.restore(chart_saved)
                 assert chart_owner.checkpoint() == chart_saved

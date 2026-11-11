@@ -11,14 +11,14 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-import anysolver.modal as modal_module
-from anysolver import (
+import anyfesolver.modal as modal_module
+from anyfesolver import (
     BoundaryCondition,
     FEModel,
     FixedSupport,
     solve_free_vibration,
 )
-from anysolver.elements import BeamElement
+from anyfesolver.elements import BeamElement
 
 
 def _free_free_beam_model(density: float = 2.0) -> FEModel:

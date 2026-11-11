@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver.sestra_three_case import prepare_three_cases,read_manifest,solve_case,compare_suite,Unsupported
+from anyfesolver.sestra_three_case import prepare_three_cases,read_manifest,solve_case,compare_suite,Unsupported
 
 BASELINE=Path(__file__).resolve().parent/'fixtures/sestra_three_case/20261008_140714_T1.FEM'
 
@@ -28,7 +28,7 @@ def test_no_reference_is_not_executed_and_source_mutation_refused(tmp_path):
  with pytest.raises(Unsupported,match='criteria'):read_manifest(path)
 
 def test_public_importer_refuses_new_nodal_multi_case_aggregation(tmp_path):
- from anysolver.sesam_fem import import_sesam_fem
+ from anyfesolver.sesam_fem import import_sesam_fem
  from anyfileio.sesam.records import read_raw_records,FemRawRecord,records_to_text
  suite=prepare_three_cases(BASELINE,tmp_path/'cases');path=Path(suite['cases']['flatbar']['fem']['path']);records=list(read_raw_records(path))
  records.insert(-1,FemRawRecord('BNLOAD',(2.,1.,0.,0.,21.,6.,0.,0.,-1000.,0.,0.,0.),(),0,0,()))
@@ -37,7 +37,7 @@ def test_public_importer_refuses_new_nodal_multi_case_aggregation(tmp_path):
 
 @pytest.mark.parametrize('mutation',['orientation','dimension','area'])
 def test_named_flatbar_regime_refuses_changed_axes_and_section(tmp_path,mutation):
- from anysolver.sestra_three_case import admit_case
+ from anyfesolver.sestra_three_case import admit_case
  from anyfileio.sesam.records import read_raw_records,records_to_text
  from dataclasses import replace
  suite=prepare_three_cases(BASELINE,tmp_path/'cases');m=read_manifest(suite['cases']['flatbar']['manifest']);path=Path(m['fem']);records=[]

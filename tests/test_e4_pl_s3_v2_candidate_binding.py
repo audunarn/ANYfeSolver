@@ -8,12 +8,12 @@ import subprocess
 
 import pytest
 
-from anysolver.e4_pl_s3_v2_element import (
+from anyfesolver.e4_pl_s3_v2_element import (
     FORMULATION_ID,
     IMPLEMENTATION_ID,
     SELECTOR,
 )
-from anysolver.elements import DEFAULT_Q4_FORMULATION, DEFAULT_S3_FORMULATION
+from anyfesolver.elements import DEFAULT_Q4_FORMULATION, DEFAULT_S3_FORMULATION
 
 
 ROOT = Path(__file__).resolve().parents[1]

@@ -33,15 +33,15 @@ def main() -> None:
         raise ValueError("exact source commit required")
     sys.path.insert(0, str(site))
 
-    import anysolver
+    import anyfesolver
     import numpy as np
     import scipy
     from threadpoolctl import threadpool_info
-    from anysolver._stiffened_shell_l1_assembly_experimental import SPACE_A, SPACE_B
+    from anyfesolver._stiffened_shell_l1_assembly_experimental import SPACE_A, SPACE_B
 
-    imported = Path(anysolver.__file__).resolve(strict=True)
+    imported = Path(anyfesolver.__file__).resolve(strict=True)
     if site not in imported.parents:
-        raise RuntimeError("installed ANYsolver was not imported")
+        raise RuntimeError("installed ANYfeSolver was not imported")
     test_file = Path(__file__).with_name(
         "test_stiffened_shell_l1_assembly_experimental.py")
     spec = importlib.util.spec_from_file_location("l1_installed_checks", test_file)

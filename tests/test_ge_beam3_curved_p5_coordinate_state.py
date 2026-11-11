@@ -6,19 +6,19 @@ from fractions import Fraction
 import numpy as np
 import pytest
 
-from anysolver.fe_core import FEModel
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
-from anysolver.nonlinear_static import _assemble_nonlinear_system, solve_static_nonlinear
-from anysolver.nonlinear_state import NonlinearStateStore, create_model_native_rotation_store
-from anysolver.nonlinear_restart import canonical_checkpoint_json_bytes
-from anysolver._ge_beam3_p5 import NativeP5BeamElement as V1
-from anysolver._ge_beam3_p5_coordinates import NativeP5BeamElement, DirectedHardeningSection
-from anysolver._ge_beam3_p5_coordinates import codec
-from anysolver._ge_beam3_p5_coordinates.core import canonical, seal
-from anysolver._ge_beam3_p5_coordinates.positions import from_total, validate_total_pair, POLICY, rest_mass
-from anysolver._ge_beam3_p5_coordinates.committed_modal import prepare, solve_elastic_modes
-from anysolver._ge_beam3_p5_coordinates.reference_modal import solve as reference_modes
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system, solve_static_nonlinear
+from anyfesolver.nonlinear_state import NonlinearStateStore, create_model_native_rotation_store
+from anyfesolver.nonlinear_restart import canonical_checkpoint_json_bytes
+from anyfesolver._ge_beam3_p5 import NativeP5BeamElement as V1
+from anyfesolver._ge_beam3_p5_coordinates import NativeP5BeamElement, DirectedHardeningSection
+from anyfesolver._ge_beam3_p5_coordinates import codec
+from anyfesolver._ge_beam3_p5_coordinates.core import canonical, seal
+from anyfesolver._ge_beam3_p5_coordinates.positions import from_total, validate_total_pair, POLICY, rest_mass
+from anyfesolver._ge_beam3_p5_coordinates.committed_modal import prepare, solve_elastic_modes
+from anyfesolver._ge_beam3_p5_coordinates.reference_modal import solve as reference_modes
 from test_ge_beam3_curved_p5_algebra_probe import reference
 from test_ge_beam3_curved_p5_nonlinear_mixed_probe import law
 from test_ge_beam3_curved_p5_mass_probe import section_mass
@@ -326,8 +326,8 @@ def test_successor_source_map_binds_all_modules_and_preserves_v1():
         tree = ast.parse(mapping.source(mapping.TARGET+'/'+name))
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom): assert not (node.module or '').startswith(('docs','tests'))
-    import anysolver
-    assert not hasattr(anysolver,'NativeP5BeamElement')
+    import anyfesolver
+    assert not hasattr(anyfesolver,'NativeP5BeamElement')
 
 
 def test_source_map_rejects_changed_preserved_mechanics(monkeypatch):
@@ -335,7 +335,7 @@ def test_source_map_rejects_changed_preserved_mechanics(monkeypatch):
     read = mapping.source
     def changed(path):
         raw = read(path)
-        return raw+b'\n' if path == 'src/anysolver/_ge_beam3_p5/compensated.py' else raw
+        return raw+b'\n' if path == 'src/anyfesolver/_ge_beam3_p5/compensated.py' else raw
     monkeypatch.setattr(mapping,'source',changed)
     with pytest.raises(ValueError, match='preserved package mechanics'): mapping.build()
 

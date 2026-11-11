@@ -1,7 +1,7 @@
 """Inert private restart preflight. Passing is NOT proof of a numerical state.
 
 The reviewed coordinator must validate its complete source/environment lease
-before calling this module. No anysolver package or numerical library is loaded.
+before calling this module. No anyfesolver package or numerical library is loaded.
 Returned bytes remain untrusted commitments until genuine owner replay succeeds.
 """
 from dataclasses import dataclass
@@ -18,7 +18,7 @@ CONTRACT = 'docs/reference_cases/ge_beam3_g3c_history_restart_contract_v1.json'
 CONTRACT_SHA = '7afe9d79096338c122280c20f83b6e7c5681ea0a382e32cb15e1e9349b9372e6'
 REVIEW = 'docs/reference_cases/ge_beam3_g3c_history_restart_design_review_v1.json'
 REVIEW_SHA = '057fbd280d5dc4c00438387860b2e38d25abcccd4d520970606221b2402589fe'
-DEFINITION = 'src/anysolver/_ge_beam3_g3c_definition.py'
+DEFINITION = 'src/anyfesolver/_ge_beam3_g3c_definition.py'
 DEFINITION_SHA = '4b46b870fec010e3378df83c374d763f858d8f25820c14f9704dc6f0a656f0c2'
 MAP_SHA = '30848dea0530f5a49b44cea184f4ff38d73f7e3449131086d9f2c9f312a51ca8'
 HEX = re.compile('[0-9a-f]{64}')
@@ -73,7 +73,7 @@ def authorities():
     if review['decision'] != 'ACCEPTED_G3C_HISTORY_RESTART_DESIGN_ONLY' or review['findings']:
         raise ValueError('unaccepted restart design')
     # This fixed hash-bound file is itself standard-library-only. Loading it
-    # directly avoids anysolver.__init__ and all numerical/package imports.
+    # directly avoids anyfesolver.__init__ and all numerical/package imports.
     raw = bound(ROOT/DEFINITION, DEFINITION_SHA)
     module = ModuleType('_g3c_inert_definition')
     module.__file__ = str(ROOT/DEFINITION)

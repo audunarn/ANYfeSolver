@@ -7,12 +7,12 @@ import numpy as np
 import pytest
 from scipy import linalg
 
-import anysolver.modal as modal_module
-import anysolver.e4_pl_element as q4_element_module
-import anysolver.e4_pl_s3_element as s3_element_module
-import anysolver.e4_pl_s3_state as s3_state_module
-import anysolver.matrix_assembly as matrix_assembly_module
-from anysolver import (
+import anyfesolver.modal as modal_module
+import anyfesolver.e4_pl_element as q4_element_module
+import anyfesolver.e4_pl_s3_element as s3_element_module
+import anyfesolver.e4_pl_s3_state as s3_state_module
+import anyfesolver.matrix_assembly as matrix_assembly_module
+from anyfesolver import (
     AnalysisSession,
     BoundaryCondition,
     FEModel,
@@ -23,37 +23,37 @@ from anysolver import (
     solve_eigenvalue_buckling,
     solve_free_vibration,
 )
-from anysolver.boundary import LoadCase
-from anysolver.control import CancellationToken
-from anysolver.assembly import build_constraint_transformation
-from anysolver.algebraic_dynamics import (
+from anyfesolver.boundary import LoadCase
+from anyfesolver.control import CancellationToken
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.algebraic_dynamics import (
     DESCRIPTOR_RAYLEIGH_REFINEMENT_POLICY_ID,
 )
-from anysolver.e4_pl_s3_element import (
+from anyfesolver.e4_pl_s3_element import (
     REFERENCE_ELASTIC_BUBBLE_LINEARIZATION_ID,
 )
-from anysolver.e4_pl_s3_state import canonical_json_bytes
-from anysolver.element_capabilities import ElementCapabilityError
-from anysolver.elements import BeamElement, Element, ShellElement
-from anysolver.linalg import FactorizationCache
-from anysolver.matrix_assembly import (
+from anyfesolver.e4_pl_s3_state import canonical_json_bytes
+from anyfesolver.element_capabilities import ElementCapabilityError
+from anyfesolver.elements import BeamElement, Element, ShellElement
+from anyfesolver.linalg import FactorizationCache
+from anyfesolver.matrix_assembly import (
     AssemblyError,
     assemble_geometric_stiffness_matrix,
     assemble_mass_matrix,
     assemble_stiffness_matrix,
 )
-from anysolver.modal import (
+from anyfesolver.modal import (
     CURRENT_STATE_MODAL_POLICY_ID,
     PRESTRESSED_MODAL_POLICY_ID,
     PRESTRESS_INPUT_SCHEMA_ID,
     QUALIFIED_PRESTRESS_OPERATOR_AUTHORITY_POLICY_ID,
 )
-from anysolver.nonlinear_state import (
+from anyfesolver.nonlinear_state import (
     NonlinearStateStore,
     create_model_native_rotation_store,
     discard_active_state_candidate,
 )
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 def _model() -> FEModel:
@@ -711,7 +711,7 @@ def _committed_trial_force(
     assert native is not None
     store.attach_native_rotation_store(native)
     try:
-        from anysolver.nonlinear_static import _assemble_nonlinear_system
+        from anyfesolver.nonlinear_static import _assemble_nonlinear_system
 
         force, _tangent, _candidate = _assemble_nonlinear_system(
             model,

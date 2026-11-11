@@ -5,7 +5,7 @@ include THIRD_PARTY_NOTICES.md
 include dependency-licenses.json
 include README.md
 include setup.py
-include src/anysolver/_native_guard.cpp
+include src/anyfesolver/_native_guard.cpp
 include CHANGELOG.md
 include MIGRATION.md
 prune docs
@@ -21,6 +21,9 @@ include docs/QUALITY_CONTROL.md
 include docs/THEORY.md
 include docs/releases/ANYsolver_0.4.6.md
 include docs/releases/ANYsolver_0.4.7.md
+include docs/releases/ANYfeSolver_0.5.0.md
 prune reports
 prune scripts
 prune tests
+prune packages
+prune artifacts

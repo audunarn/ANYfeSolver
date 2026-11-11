@@ -5,11 +5,11 @@ python examples/general_contact_multiple_round_beam_tools.py
 """
 import json
 
-from anysolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
                        ContactSolverSettings, ContactSurface, LoadCase,
                        RigidContactBody, solve_static_nonlinear, validate_general_contact)
-from anysolver.elements import QuadraticBeamElement
-from anysolver.fe_core import FEModel
+from anyfesolver.elements import QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
 
 
 def main():

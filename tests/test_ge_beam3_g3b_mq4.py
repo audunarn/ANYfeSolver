@@ -6,13 +6,13 @@ from pathlib import Path
 from unittest.mock import patch
 import numpy as np
 import pytest
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.fe_core import FEModel, Material
-from anysolver._ge_beam3_g1_element import ElasticElement
-from anysolver._ge_beam3_g1_elastic import ElasticSection, canonical
-from anysolver._ge_beam3_g1_operator import ElasticOperator
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
-from anysolver._ge_beam3_g3b_q4_reference import Q4TranslationReferenceProblem, POLICY
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.fe_core import FEModel, Material
+from anyfesolver._ge_beam3_g1_element import ElasticElement
+from anyfesolver._ge_beam3_g1_elastic import ElasticSection, canonical
+from anyfesolver._ge_beam3_g1_operator import ElasticOperator
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+from anyfesolver._ge_beam3_g3b_q4_reference import Q4TranslationReferenceProblem, POLICY
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = json.loads((ROOT/'docs/reference_cases/ge_beam3_g3_graph_fixtures_v1.json').read_text())
@@ -151,7 +151,7 @@ def test_rejection_precedes_both_element_operators(case):
         class Unregistered(Q4TranslationReferenceProblem): pass
         cls = Unregistered
     elif case == 'wrong_class':
-        from anysolver.elements import ShellElement
+        from anyfesolver.elements import ShellElement
         shell = ShellElement(2, [201,202,203,204])
     elif case == 'thickness': shell.thickness = .3
     else: object.__setattr__(shell, '_qualified_components', {})
@@ -235,22 +235,22 @@ def test_mq4_extent_and_frozen_parent_bindings():
     parent = 'd1a564857b2b74f8b0d53c4028040a31652b9caa'
     git = ['git','-c','safe.directory='+ROOT.as_posix()]
     allowed = {
-        'src/anysolver/_ge_beam3_g3b_q4_reference.py':'A', 'tests/test_ge_beam3_g3b_mq4.py':'A',
+        'src/anyfesolver/_ge_beam3_g3b_q4_reference.py':'A', 'tests/test_ge_beam3_g3b_mq4.py':'A',
         'docs/GE_BEAM3_G3B_M_Q4_DEVELOPMENT.md':'A',
         'docs/reference_cases/ge_beam3_g3b_mq4_development_v1.json':'A',
         'scripts/run_ge_beam3_g3b.py':'M', 'tests/test_ge_beam3_g3b_mb2.py':'M',
         'tests/test_ge_beam3_g3b_mb3.py':'M',
-        'src/anysolver/_ge_beam3_g3b_s3_reference.py':'A', 'tests/test_ge_beam3_g3b_ms3.py':'A',
+        'src/anyfesolver/_ge_beam3_g3b_s3_reference.py':'A', 'tests/test_ge_beam3_g3b_ms3.py':'A',
         'docs/GE_BEAM3_G3B_M_S3_DEVELOPMENT.md':'A',
         'docs/reference_cases/ge_beam3_g3b_ms3_development_v1.json':'A',
-        'src/anysolver/_ge_beam3_g3b_weighted_reference.py':'A','tests/test_ge_beam3_g3b_weighted.py':'A',
+        'src/anyfesolver/_ge_beam3_g3b_weighted_reference.py':'A','tests/test_ge_beam3_g3b_weighted.py':'A',
         'docs/GE_BEAM3_G3B_WEIGHTED_DEVELOPMENT.md':'A','docs/reference_cases/ge_beam3_g3b_weighted_development_v1.json':'A'}
     allowed.update({p:'A' for p in ["tests/test_ge_beam3_g3b_transport.py","docs/GE_BEAM3_G3B_TRANSPORT_DEVELOPMENT.md","docs/reference_cases/ge_beam3_g3b_transport_development_v1.json"]})
-    allowed.update({p:'A' for p in ["src/anysolver/_ge_beam3_g3b_owner.py","tests/test_ge_beam3_g3b_owner.py","docs/GE_BEAM3_G3B_OWNER_CONTRACT.md","docs/reference_cases/ge_beam3_g3b_owner_development_v1.json"]})
+    allowed.update({p:'A' for p in ["src/anyfesolver/_ge_beam3_g3b_owner.py","tests/test_ge_beam3_g3b_owner.py","docs/GE_BEAM3_G3B_OWNER_CONTRACT.md","docs/reference_cases/ge_beam3_g3b_owner_development_v1.json"]})
     allowed.update({p:"A" for p in ["docs/GE_BEAM3_G3B_ENTRY_SAFETY_STATUS.md","docs/reference_cases/ge_beam3_g3b_confirmation_inventory_v2.json"]})
     allowed.update({p:"A" for p in ["scripts/confirm_ge_beam3_g3b.py","scripts/ge_beam3_g3b_environment.py","tests/test_ge_beam3_g3b_confirmation_runner.py","docs/GE_BEAM3_G3B_CONFIRMATION_RUNNER_STATUS.md"]})
     allowed.update({p:"A" for p in ["scripts/ge_beam3_g3b_confirmation_authority.py","tests/test_ge_beam3_g3b_confirmation_authority.py","docs/GE_BEAM3_G3B_FORMAL_CONFIRMATION_CONTRACT.md","docs/reference_cases/ge_beam3_g3b_confirmation_inventory_v1.json"]})
-    allowed.update({p:"A" for p in ["docs/GE_BEAM3_G3B_LOCAL_REVIEW_STATUS.md","docs/reference_cases/ge_beam3_g3b_local_safety_review_v1.json","src/anysolver/_ge_beam3_g3b_result_schema.py","tests/test_ge_beam3_g3b_owner_corrections.py","docs/GE_BEAM3_G3B_OWNER_CORRECTIONS.md"]})
+    allowed.update({p:"A" for p in ["docs/GE_BEAM3_G3B_LOCAL_REVIEW_STATUS.md","docs/reference_cases/ge_beam3_g3b_local_safety_review_v1.json","src/anyfesolver/_ge_beam3_g3b_result_schema.py","tests/test_ge_beam3_g3b_owner_corrections.py","docs/GE_BEAM3_G3B_OWNER_CORRECTIONS.md"]})
     diff = subprocess.check_output(git+['diff','--name-status',parent,'--'],cwd=ROOT,timeout=20).decode()
     for line in diff.splitlines():
         status,path = line.split('\t'); assert allowed.get(path) == status

@@ -7,9 +7,9 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver.dynamics import TransientConfig
-from anysolver.general_contact.event_subdivision import EventNeedsCutback, localize_branch_event
-from anysolver.general_contact.transient import ContactNodalLoadHistory, ContactTransientSolverControls, solve_transient_contact
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.general_contact.event_subdivision import EventNeedsCutback, localize_branch_event
+from anyfesolver.general_contact.transient import ContactNodalLoadHistory, ContactTransientSolverControls, solve_transient_contact
 from test_general_contact_transient_plane import _guided_s3_descriptor_impact, _uniform_s3_normal_load
 
 
@@ -27,7 +27,7 @@ CONTROLS = ContactTransientSolverControls(
     ((0,),1e-12,2e-10,0),
 ])
 def test_resolved_boundary_requires_membership_and_both_dimensional_budgets(boundary,gap,elapsed,expected):
-    from anysolver.general_contact.transient import _event_continuation_segments
+    from anyfesolver.general_contact.transient import _event_continuation_segments
     first = SimpleNamespace(end=elapsed,active=(False,False))
     second = SimpleNamespace(end=1.,active=(True,False))
     path = SimpleNamespace(segments=(first,second))
@@ -39,8 +39,8 @@ def test_resolved_boundary_requires_membership_and_both_dimensional_budgets(boun
 
 @pytest.mark.parametrize('boundary', [[True],[0,0],[1,0],[-1],[3],'0'])
 def test_restart_rejects_malformed_boundary_even_with_valid_integrity(boundary):
-    from anysolver.general_contact.transient import _new_restart_checkpoint, _read_restart_checkpoint
-    from anysolver.nonlinear_restart import analysis_configuration_fingerprint
+    from anyfesolver.general_contact.transient import _new_restart_checkpoint, _read_restart_checkpoint
+    from anyfesolver.nonlinear_restart import analysis_configuration_fingerprint
     checkpoint = _new_restart_checkpoint('model','analysis',.01,[0.],[0.],[0.],1,
         path_terminal_active=(False,False,False),event_boundary_support=())
     checkpoint['state']['event_boundary_support'] = boundary
@@ -188,7 +188,7 @@ def test_resolved_boundary_restart_preserves_full_trajectory(case):
 
 
 def test_restart_rejects_a_boundary_inconsistent_with_its_restored_geometry():
-    from anysolver.nonlinear_restart import analysis_configuration_fingerprint
+    from anyfesolver.nonlinear_restart import analysis_configuration_fingerprint
     _,direct = _solve(.016)
     _,prefix = _solve(direct.localized_contact_event_times[0],emit=True)
     checkpoint = deepcopy(prefix.restart_checkpoint)
@@ -208,7 +208,7 @@ def test_event_option_requires_path_and_dimensioned_budgets():
 
 
 def test_exact_isolated_point_departure_is_not_discarded(monkeypatch):
-    import anysolver.general_contact.event_subdivision as events
+    import anyfesolver.general_contact.event_subdivision as events
     # Independent cubic roots .5,.75,1; exercise the isolator's exact-point
     # interface without relying on accidental floating-point subdivision ties.
     monkeypatch.setattr(events,'_root_intervals',lambda *a: ((.5,.5),(.75,.75),(1.,1.)))
@@ -287,9 +287,9 @@ def test_public_event_history_preserves_independent_newmark_and_affine_load_work
 
 @pytest.mark.parametrize('cancel',[False,True])
 def test_event_failure_or_cancellation_keeps_pre_event_commit_boundary(monkeypatch,cancel):
-    import anysolver.general_contact.transient as driver
-    from anysolver.control import CancellationToken, SolveCancelled
-    from anysolver.general_contact.core import active_contact_manager
+    import anyfesolver.general_contact.transient as driver
+    from anyfesolver.control import CancellationToken, SolveCancelled
+    from anyfesolver.general_contact.core import active_contact_manager
     commits = []
     original = driver.commit_state_candidate
     def commit(*args,**kwargs):

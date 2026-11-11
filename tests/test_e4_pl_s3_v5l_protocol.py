@@ -29,4 +29,4 @@ def test_v5l_protocol_reviewer_is_standard_library_only() -> None:
     tree = ast.parse(REVIEWER.read_text(encoding="utf-8"))
     roots = {node.names[0].name.split(".")[0] for node in ast.walk(tree) if isinstance(node, ast.Import)}
     roots |= {str(node.module).split(".")[0] for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)}
-    assert not roots & {"anysolver", "numpy", "scipy", "sympy"}
+    assert not roots & {"anyfesolver", "numpy", "scipy", "sympy"}

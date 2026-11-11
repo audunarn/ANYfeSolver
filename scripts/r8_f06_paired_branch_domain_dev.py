@@ -203,12 +203,12 @@ def prepare(out):
             Path(__file__).resolve(),ROOT/'tests/test_r8_f06_paired_branch_domain_dev.py',vector_path,
             SAVED/'base-locals.json',SAVED/'plus-1e-06-locals.json',SAVED/'minus-1e-06-locals.json',SAVED/'assessment.json',
             ROOT/law['source'],SAVED/'source-snapshots'/Path(law['source']).name,
-            ROOT/'src/anysolver/_ge_beam3_fibre_cell.py',ROOT/'src/anysolver/_ge_beam3_fibre_section.py',
-            ROOT/'src/anysolver/_ge_beam3_retained_fibre.py',ROOT/'scripts/r8_f06_paired_active_tangent_dev.py',
+            ROOT/'src/anyfesolver/_ge_beam3_fibre_cell.py',ROOT/'src/anyfesolver/_ge_beam3_fibre_section.py',
+            ROOT/'src/anyfesolver/_ge_beam3_retained_fibre.py',ROOT/'scripts/r8_f06_paired_active_tangent_dev.py',
             TANGENT/'ROOT_PRELAUNCH_BINDINGS.json',TANGENT/'HANDOFF_SELECTED.json',
             TANGENT.parent.parent/'package/snapshot-bindings.json',SAVED/'artifact-before.json',SAVED/'bindings.json',
-            ROOT/'src/anysolver/_ge_beam3_generalized_ellipsoid_section.py',ROOT/'src/anysolver/plasticity.py',
-            ROOT/'src/anysolver/_stiffened_shell_q4_algorithmic_pullback.py')}
+            ROOT/'src/anyfesolver/_ge_beam3_generalized_ellipsoid_section.py',ROOT/'src/anyfesolver/plasticity.py',
+            ROOT/'src/anyfesolver/_stiffened_shell_q4_algorithmic_pullback.py')}
         source_checks={}
         manifest_path=TANGENT.parent.parent/'package/snapshot-bindings.json'
         manifest=json.loads(manifest_path.read_text())
@@ -253,7 +253,7 @@ if __name__=='__main__':
     parser.add_argument('--out',default=str(DOC))
     args=parser.parse_args()
     result=prepare(args.out)
-    forbidden=[name for name in sys.modules if name.split('.')[0] in ('numpy','scipy','numba','anysolver','anymaterial','pytest')]
+    forbidden=[name for name in sys.modules if name.split('.')[0] in ('numpy','scipy','numba','anyfesolver','anymaterial','pytest')]
     if forbidden:
         raise AssertionError('preparation imported numerical modules: '+repr(forbidden))
     print(json.dumps({k:result[k] for k in ('status','radius','uniform_scale','limiting_fibres','component_count','nonzero_before','nonzero_after')}))

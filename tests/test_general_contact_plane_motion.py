@@ -5,15 +5,15 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, DisplacementControl, LoadCase,
     NonlinearConvergenceSettings,
     RigidContactBody, create_shell_element, solve_static_nonlinear,
     validate_general_contact,
 )
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.core import _PlanarQ4PlaneManager
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.core import _PlanarQ4PlaneManager
 
 
 def _moving_plane():

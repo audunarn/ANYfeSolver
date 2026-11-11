@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 from test_prepared_static_evaluator import _bar, _case, _shell_model, _shell_case
-from anysolver import prepare_static_evaluator, RecoveryConfig, StaticCase
-from anysolver.prepared_static_loads import ingest_static_case, evaluate_load_vector
-from anysolver.matrix_assembly import assemble_load_vector
+from anyfesolver import prepare_static_evaluator, RecoveryConfig, StaticCase
+from anyfesolver.prepared_static_loads import ingest_static_case, evaluate_load_vector
+from anyfesolver.matrix_assembly import assemble_load_vector
 
 
 def test_canonical_load_staging_is_bitwise_for_pressure_and_added_mass():
@@ -71,9 +71,9 @@ def test_envelope_principal_associated_fields_are_same_sample():
 
 
 def test_owned_scope_refuses_replaced_numpy_proof(monkeypatch):
-    import anysolver.boundary as boundary
-    from anysolver.prepared_static_recovery import owned_recovery_scope
-    from anysolver import PreparedStaticCapabilityError
+    import anyfesolver.boundary as boundary
+    from anyfesolver.prepared_static_recovery import owned_recovery_scope
+    from anyfesolver import PreparedStaticCapabilityError
     monkeypatch.setattr(boundary, '_numpy_error_routes_are_builtin', lambda: True)
     with pytest.raises(PreparedStaticCapabilityError, match='guard binding authority'):
         with owned_recovery_scope(()):
@@ -115,7 +115,7 @@ def test_original_free_counterexamples_have_exact_load_displacement_and_envelope
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
     from benchmark_static_batches import mixed_free_model, free_cases, numeric_leaves
-    from anysolver import iter_linear_batches, EnvelopeReducer
+    from anyfesolver import iter_linear_batches, EnvelopeReducer
     from dataclasses import replace
     model, groups, balancing = mixed_free_model()
     cases = [StaticCase(name, load, instant) for name, instant, load in free_cases(model, groups, balancing, [0, 48, 576])]
@@ -148,9 +148,9 @@ def test_original_free_counterexamples_have_exact_load_displacement_and_envelope
 @pytest.mark.parametrize('mutation', ['binding', 'code'])
 def test_owned_scope_pins_factories_before_lending_private_elements(monkeypatch, module_name, factory_name, mutation):
     import importlib
-    from anysolver.prepared_static_recovery import owned_recovery_scope
-    from anysolver import PreparedStaticCapabilityError
-    module = importlib.import_module('anysolver.' + module_name)
+    from anyfesolver.prepared_static_recovery import owned_recovery_scope
+    from anyfesolver import PreparedStaticCapabilityError
+    module = importlib.import_module('anyfesolver.' + module_name)
     factory = getattr(module, factory_name)
     observed = []
     if mutation == 'binding':
@@ -166,7 +166,7 @@ def test_owned_scope_pins_factories_before_lending_private_elements(monkeypatch,
 @pytest.mark.parametrize('phase', ['exhaustion', 'cleanup'])
 @pytest.mark.parametrize('action', ['close', 'cancel'])
 def test_envelope_exhaustion_and_cleanup_observations_cannot_certify_closed_or_cancelled(phase, action):
-    from anysolver import CancellationToken, SolveCancelled
+    from anyfesolver import CancellationToken, SolveCancelled
     config = RecoveryConfig(include_displacements=True, include_stresses=False, include_reactions=False)
     token = CancellationToken()
     owner = prepare_static_evaluator(_bar(), envelope_recovery_config=config)
@@ -191,8 +191,8 @@ def test_envelope_exhaustion_and_cleanup_observations_cannot_certify_closed_or_c
 def test_envelope_one_case_policy_counts_transaction_and_tile_before_factor():
     # Replacing a module function after import is outside the supported contract
     # (the response authority check refuses it); the policy refusal is checked directly.
-    from anysolver import ResourceConfig
-    from anysolver.recovery import ResourcePolicyError
+    from anyfesolver import ResourceConfig
+    from anyfesolver.recovery import ResourcePolicyError
     config = RecoveryConfig(components=['axial_stress'], include_displacements=True, include_reactions=True)
     with prepare_static_evaluator(_bar(), envelope_recovery_config=config) as probe:
         snapshot = probe._snapshot

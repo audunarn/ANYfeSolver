@@ -222,7 +222,7 @@ def test_registration_verifies_source_runtime_and_package_bytes(tmp_path):
     runtime_path.write_bytes(b"synthetic python executable\n")
     package_path = Path(value.packages[0].origin)
     package_path.write_bytes(b"x" * value.packages[0].origin_bytes)
-    with pytest.raises(ValueError, match="package ANYsolver byte identity"):
+    with pytest.raises(ValueError, match="package ANYfeSolver byte identity"):
         registration.read_registration(directory)
 
 

@@ -10,12 +10,12 @@ from hashlib import sha256
 
 import numpy as np
 
-from anysolver._ge_beam3_pose_joint import RigidPoseJoint
-from anysolver._ge_beam3_retained_plastic_program import ForceProgram, solve_force_program
-from anysolver.e4_pl_s3_v2d_state import canonical_json_bytes
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.material_curves import DNVC208MaterialCurve
+from anyfesolver._ge_beam3_pose_joint import RigidPoseJoint
+from anyfesolver._ge_beam3_retained_plastic_program import ForceProgram, solve_force_program
+from anyfesolver.e4_pl_s3_v2d_state import canonical_json_bytes
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.material_curves import DNVC208MaterialCurve
 from test_ge_beam3_retained_plastic_force_probe import model_with_plasticity
 
 

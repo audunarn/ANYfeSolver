@@ -4,7 +4,7 @@ from hashlib import sha256
 from decimal import Decimal,localcontext
 from math import fsum
 import numpy as np
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from test_stiffened_shell_bl5_coupled_material import coupled
 from test_stiffened_shell_bl5_material import make
 from test_stiffened_shell_bl5_finite import _action

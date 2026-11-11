@@ -10,7 +10,7 @@ import pytest
 from scipy.sparse import diags
 from scipy.sparse.linalg import splu
 
-from anysolver._b2_physical_flexibility_linear import LinearSection
+from anyfesolver._b2_physical_flexibility_linear import LinearSection
 
 
 PROBE = runpy.run_path(str(Path(__file__).resolve().parents[1] / "scripts"

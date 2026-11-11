@@ -34,13 +34,13 @@ def test_curved_restart(kind,tmp_path):
     inputs.update(kind=kind,source_sha256=sha256(source_raw).hexdigest(),expected_sha256=sha256(expected).hexdigest())
     save(tmp_path/'input.json',inputs)
     import numpy as np
-    from anysolver import _ge_beam3_native_arc_adaptive as adaptive
-    from anysolver import _ge_beam3_native_arc as arc
-    from anysolver._ge_beam3_native_arc_restart import encode_checkpoint as encode_arc
-    from anysolver._ge_beam3_native_arc_source import TranslationArcSource
-    from anysolver._ge_beam3_native_translation import TranslationProgram
-    from anysolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
-    from anysolver._ge_beam3_native_generalized_recovery import recover_native_fields
+    from anyfesolver import _ge_beam3_native_arc_adaptive as adaptive
+    from anyfesolver import _ge_beam3_native_arc as arc
+    from anyfesolver._ge_beam3_native_arc_restart import encode_checkpoint as encode_arc
+    from anyfesolver._ge_beam3_native_arc_source import TranslationArcSource
+    from anyfesolver._ge_beam3_native_translation import TranslationProgram
+    from anyfesolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
+    from anyfesolver._ge_beam3_native_generalized_recovery import recover_native_fields
     from test_ge_beam3_native_generalized_restart import make,pattern
     from test_ge_beam3_native_arc_adaptive import packet
     phase='decode_preserved';print(dict(kind=kind,stage=phase),flush=True)
@@ -91,11 +91,11 @@ def test_adaptive_arch_growth(tmp_path):
     import numpy as np
     from test_ge_beam3_uniform_arch_sixteen import make,SECTION
     from test_ge_beam3_native_arc_adaptive import packet
-    from anysolver._ge_beam3_native_arc import ArcProgram
-    from anysolver._ge_beam3_native_arc_adaptive import AdaptiveArcProgram,solve_adaptive_arc,decode_checkpoint,wrap_checkpoint
-    from anysolver._ge_beam3_native_arc_source import TranslationArcSource
-    from anysolver._ge_beam3_native_history_profile import HISTORY8M,load
-    from anysolver._ge_beam3_native_generalized_recovery import recover_native_fields
+    from anyfesolver._ge_beam3_native_arc import ArcProgram
+    from anyfesolver._ge_beam3_native_arc_adaptive import AdaptiveArcProgram,solve_adaptive_arc,decode_checkpoint,wrap_checkpoint
+    from anyfesolver._ge_beam3_native_arc_source import TranslationArcSource
+    from anyfesolver._ge_beam3_native_history_profile import HISTORY8M,load
+    from anyfesolver._ge_beam3_native_generalized_recovery import recover_native_fields
     from docs.reference_cases.ge_beam3_native_control_slope import accepted_slope
     from docs.reference_cases.ge_beam3_uniform_arch_reference import solve as continuum
     from docs.reference_cases.ge_beam3_uniform_arch_fields import fields

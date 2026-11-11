@@ -2,8 +2,8 @@
 from fractions import Fraction
 import numpy as np
 import pytest
-from anysolver import _native_dyadic_interval_inertia as dyadic
-from anysolver import _native_exact_shift_inertia as exact
+from anyfesolver import _native_dyadic_interval_inertia as dyadic
+from anyfesolver import _native_exact_shift_inertia as exact
 from test_native_fraction_free_inertia import rational_inertia
 
 

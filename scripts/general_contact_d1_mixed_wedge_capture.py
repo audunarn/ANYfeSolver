@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver.general_contact.s3_patch_augmented import (
+from anyfesolver.general_contact.s3_patch_augmented import (
     MovingS3PatchProjectedNormal,
 )
 from scripts.general_contact_d1_mixed_mesh_jet2_schur_press import main

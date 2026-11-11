@@ -4,10 +4,10 @@ import json
 import numpy as np
 import pytest
 from scipy.optimize import brentq
-from anysolver import (BoundaryCondition, LoadCase, solve_static_nonlinear,
+from anyfesolver import (BoundaryCondition, LoadCase, solve_static_nonlinear,
     validate_general_contact, DisplacementControl, CancellationToken, SolveCancelled)
-from anysolver.general_contact.beam_hemisphere_support import hemisphere_plane_work
-from anysolver.general_contact.beam_hemisphere_plane import HemispherePlaneManager, PROFILE
+from anyfesolver.general_contact.beam_hemisphere_support import hemisphere_plane_work
+from anyfesolver.general_contact.beam_hemisphere_plane import HemispherePlaneManager, PROFILE
 from test_general_contact_beam_plane import _model
 
 
@@ -294,9 +294,9 @@ def test_common_rigid_transform_and_connectivity_invariance(quadratic):
 
 def test_runnable_example_capability_and_transient_rejection():
     from examples.general_contact_hemisphere_plane import run
-    from anysolver import report_general_contact_capability
-    from anysolver.dynamics import TransientConfig
-    from anysolver.general_contact.transient import solve_transient_contact, ContactTransientSolverControls
+    from anyfesolver import report_general_contact_capability
+    from anyfesolver.dynamics import TransientConfig
+    from anyfesolver.general_contact.transient import solve_transient_contact, ContactTransientSolverControls
     result=run()
     assert result.status=='completed' and result.info['general_contact']['profile']==PROFILE
     model,definition,settings=_support_model()

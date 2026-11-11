@@ -15,8 +15,8 @@ import pytest
 from numpy.polynomial import Polynomial
 from scipy.optimize import brentq
 
-from anysolver import BoundaryCondition, LoadCase, solve_static_nonlinear
-from anysolver.general_contact.beam_hemisphere_cylinder import HemisphereCylinderManager
+from anyfesolver import BoundaryCondition, LoadCase, solve_static_nonlinear
+from anyfesolver.general_contact.beam_hemisphere_cylinder import HemisphereCylinderManager
 from test_general_contact_hemisphere_cylinder_static import _support_case, _line_reference
 from test_general_contact_hemisphere_cylinder_work import _reference
 
@@ -142,7 +142,7 @@ def test_guided_curved_response_and_wrench(moving):
 
 
 def test_initial_open_interior_minimum_has_nonpenetration_certificate(monkeypatch):
-    from anysolver.general_contact import beam_hemisphere_cylinder as geometry
+    from anyfesolver.general_contact import beam_hemisphere_cylinder as geometry
     model, definition, settings, _ = fixture(False)
     bounds = []
     original = geometry.curve_gap_lower
@@ -268,7 +268,7 @@ def test_moving_curved_active_rim_coupled_response():
         moment+=reaction[3:]+np.cross(positions[node-1],reaction[:3])
     assert np.linalg.norm(force)/FORCE<=1e-6
     assert np.linalg.norm(moment)/(FORCE*L)<=1e-6
-    from anysolver.general_contact.beam_hemisphere_coupled_tool import CoupledHemisphereToolManager
+    from anyfesolver.general_contact.beam_hemisphere_coupled_tool import CoupledHemisphereToolManager
     manager=CoupledHemisphereToolManager(model,definition,settings)
     manager.set_path_factor(1.)
     _,tangent,_=manager.evaluate(result.displacements)

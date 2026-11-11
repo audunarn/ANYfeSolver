@@ -20,8 +20,8 @@ import scipy
 from scipy import linalg, sparse
 from threadpoolctl import threadpool_info, threadpool_limits
 
-from anysolver._b2_physical_flexibility_linear import LinearSection
-from anysolver._b2_physical_linear_definition import MassMetadata, PhysicalB2Member
+from anyfesolver._b2_physical_flexibility_linear import LinearSection
+from anyfesolver._b2_physical_linear_definition import MassMetadata, PhysicalB2Member
 
 
 LENGTH = 2.0
@@ -142,8 +142,8 @@ def evaluate():
                   c["stiffness_symmetry_relative"] < 1e-12 for c in cases) and
               cases[-1]["nodal_z_mode_error"] < 1e-3)
     sources = [Path(__file__),
-        Path("src/anysolver/_b2_physical_flexibility_linear.py"),
-        Path("src/anysolver/_b2_physical_linear_definition.py")]
+        Path("src/anyfesolver/_b2_physical_flexibility_linear.py"),
+        Path("src/anyfesolver/_b2_physical_linear_definition.py")]
     return {"classification": "bounded F12 dynamic interpolation screen, not spectral admission",
             "question": "Does the physical B2 static station trace yield a convergent deformational mass interpolation on a slender cantilever?",
             "geometry": {"length_m": LENGTH, "width_m": WIDTH,

@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver._ge_beam3_g3c_local_beam import LocalBeam
+from anyfesolver._ge_beam3_g3c_local_beam import LocalBeam
 from test_ge_beam3_g3c_local_beam import SECTION, exp, err, equal, state
 
 ROOT=Path(__file__).resolve().parents[1]

@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BeamElement,
     FEModel,
     GeneralizedBeamSection,

@@ -19,17 +19,17 @@ import math
 import numpy as np
 import pytest
 
-from anysolver import BeamElement
-from anysolver.corotational import (
+from anyfesolver import BeamElement
+from anyfesolver.corotational import (
     _rotation_right_jacobian,
     rotation_matrix_from_vector,
 )
-from anysolver.general_contact.curved_shell_skin import (
+from anyfesolver.general_contact.curved_shell_skin import (
     CurvedShellSkinError,
     CurvedShellSkinMap,
     TOTAL_ROTATION_BOUND_RAD,
 )
-from anysolver.mesh_gen import InterpolatedBeamShellMPCElement
+from anyfesolver.mesh_gen import InterpolatedBeamShellMPCElement
 
 from examples.elastic_sphere_stiffened_panel import (
     PLATE_THICKNESS,

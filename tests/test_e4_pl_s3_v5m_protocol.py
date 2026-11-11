@@ -67,6 +67,6 @@ def test_v5m_protocol_reviewer_is_independent_and_empty() -> None:
             imports.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module:
             imports.append(node.module)
-    assert not any(name == "anysolver" or name.startswith("anysolver.") for name in imports)
+    assert not any(name == "anyfesolver" or name.startswith("anyfesolver.") for name in imports)
     reviewer = _load("_v5m_protocol_reviewer_test", REVIEWER)
     assert reviewer.review()["findings"] == []

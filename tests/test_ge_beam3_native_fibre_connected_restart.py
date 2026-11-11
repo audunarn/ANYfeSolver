@@ -3,13 +3,13 @@ from hashlib import sha256
 import json
 import numpy as np
 import pytest
-from anysolver.fe_core import FEModel
-from anysolver.boundary import LoadCase
-from anysolver.nonlinear_static import solve_static_nonlinear
-from anysolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
-from anysolver._ge_beam3_native_fibre_restart import encode_checkpoint,decode_checkpoint
-from anysolver._ge_beam3_native_fibre_recovery import recover_native_fields
-from anysolver._ge_beam3_p5_seeded.core import canonical,sha
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import LoadCase
+from anyfesolver.nonlinear_static import solve_static_nonlinear
+from anyfesolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
+from anyfesolver._ge_beam3_native_fibre_restart import encode_checkpoint,decode_checkpoint
+from anyfesolver._ge_beam3_native_fibre_recovery import recover_native_fields
+from anyfesolver._ge_beam3_p5_seeded.core import canonical,sha
 from test_ge_beam3_equilibrium_multielement import inputs
 from test_ge_beam3_spatial_nodal_moments import model as section_model
 from test_ge_beam3_schur_line_program import save

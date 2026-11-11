@@ -3,8 +3,8 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver.general_contact.native_retained_station import NativeRetainedRoundStation
-from anysolver.general_contact.friction_point import (
+from anyfesolver.general_contact.native_retained_station import NativeRetainedRoundStation
+from anyfesolver.general_contact.friction_point import (
     initial_friction_point, objective_relative_tangent_increment, trial_coulomb_point,
 )
 from test_general_contact_native_retained_station import _reference

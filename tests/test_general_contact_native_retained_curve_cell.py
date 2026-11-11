@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver.general_contact.native_retained_curve_cell import (
+from anyfesolver.general_contact.native_retained_curve_cell import (
     NativeRetainedCurveCell,
 )
 from test_general_contact_native_retained_station import _reference

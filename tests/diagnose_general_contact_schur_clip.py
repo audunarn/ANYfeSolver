@@ -7,9 +7,9 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/"src"))
 
-from anysolver.general_contact.linearized_pivot import _projected_clip_signature
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.q4_source_overlap import projected_q4_source_face
+from anyfesolver.general_contact.linearized_pivot import _projected_clip_signature
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.q4_source_overlap import projected_q4_source_face
 from test_general_contact_q4_s3_refined_patch import _two_q4_two_s3
 
 

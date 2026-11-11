@@ -6,7 +6,7 @@ No aggregate follower-pressure qualification is claimed by this example.
 """
 from contextlib import ExitStack
 import json
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from stiffened_shell_ge_gravity import definition
 
 

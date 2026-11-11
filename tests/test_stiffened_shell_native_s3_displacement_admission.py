@@ -2,7 +2,7 @@
 from dataclasses import fields, replace
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from test_stiffened_shell_native_point_displacement import (
     model, owner, ACTIONS, DIRECTION, CONTROL, OPTIONS, HISTORICAL_POLICY)
 from test_stiffened_shell_ge_finite_experimental import _q4_shell_j2_panel

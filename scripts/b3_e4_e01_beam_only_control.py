@@ -40,7 +40,7 @@ def _balance(root, applied, root_xyz, tip_xyz):
 def native_cases():
     import numpy as np
     from scipy.sparse.linalg import splu
-    from anysolver import _stiffened_shell_ge_experimental as ge
+    from anyfesolver import _stiffened_shell_ge_experimental as ge
     from b3_e4_e01_native_point_refinement_screen import definition
 
     panel, _tip = definition(INTERVALS, 1, 4)

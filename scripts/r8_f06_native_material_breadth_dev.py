@@ -11,7 +11,7 @@ AXIAL_PREFIX=ROOT/'docs/agent_plans/development/r8-f06-log-domain-20261010/fibre
 CASES=('axial','biaxial','mixed','mixed-s3')
 
 def bindings():
- paths=[ROOT/'src/anysolver'/p for p in (*infra.PRODUCTS,'_stiffened_shell_affine_endpoint.py',
+ paths=[ROOT/'src/anyfesolver'/p for p in (*infra.PRODUCTS,'_stiffened_shell_affine_endpoint.py',
   '_ge_beam3_retained_generalized.py','_ge_beam3_native_generalized_element.py')]
  paths += [Path(__file__),ROOT/'scripts/r8_f06_fibre_log_domain_dev.py',ROOT/'scripts/r8_f06_log_domain_check_dev.py',
   ROOT/'tests/test_r8_f06_native_material_breadth_dev.py',ROOT/'tests/test_r8_f06_fibre_log_domain_dev.py',ROOT/'tests/conftest.py']
@@ -21,14 +21,14 @@ def bindings():
 
 def definition(case='biaxial', *, partial=False):
  import numpy as np
- from anysolver import stiffened_shell as ss
- from anysolver._ge_beam3_native_definition import NativeBeamDefinition
- from anysolver._ge_beam3_fibre_section import PhysicalFibreSection,Fibre,FlowCurve
- from anysolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
- from anysolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
- from anysolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
- from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
- from anysolver._stiffened_shell_f06_increment_arithmetic import POLICY
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+ from anyfesolver._ge_beam3_fibre_section import PhysicalFibreSection,Fibre,FlowCurve
+ from anyfesolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
+ from anyfesolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
+ from anyfesolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
+ from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+ from anyfesolver._stiffened_shell_f06_increment_arithmetic import POLICY
  base=infra.definition()
  if case=='axial':return base
  old=infra.element();ref=old.operator.reference
@@ -50,7 +50,7 @@ def definition(case='biaxial', *, partial=False):
  return model
 
 def actions(case):
- from anysolver import stiffened_shell as ss
+ from anyfesolver import stiffened_shell as ss
  result=infra.actions()
  return result+(ss.NodalAction('beam',203,(50.,0.,10.,0.,0.,0.)),) if case in ('mixed','mixed-s3') else result
 

@@ -10,11 +10,11 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactPathControl, ContactPathNodalForce,
     ContactPathProgram, solve_static_nonlinear,
 )
-from anysolver.general_contact import validate_general_contact
+from anyfesolver.general_contact import validate_general_contact
 from scripts.general_contact_d1_mixed_mesh_jet2_schur_press import build_case
 
 

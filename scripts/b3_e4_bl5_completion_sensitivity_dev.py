@@ -42,7 +42,7 @@ def main(site, saved, output, reuse=None, refined=None):
               'limits': 'No finite-removal, drilling independence, causation of external discrepancy, or coefficient tuning'}
     started = time.perf_counter()
     try:
-        require(not any(n.split('.')[0] == 'anysolver' for n in sys.modules), 'fresh product process required')
+        require(not any(n.split('.')[0] == 'anyfesolver' for n in sys.modules), 'fresh product process required')
         identity = json.loads((saved/'identity.json').read_text())
         wheel = Path(identity['wheel_path'])
         require(sha(wheel) == identity['wheel_sha256'], 'saved wheel byte identity required')
@@ -65,10 +65,10 @@ def main(site, saved, output, reuse=None, refined=None):
         from scipy import sparse
         from scipy.sparse.linalg import splu
         from threadpoolctl import threadpool_info
-        from anysolver import stiffened_shell as ss, corotational as cr
-        from anysolver._stiffened_shell_ge_experimental import (
+        from anyfesolver import stiffened_shell as ss, corotational as cr
+        from anyfesolver._stiffened_shell_ge_experimental import (
             _shell_reference, _linear_equilibrium, _scaled_constraint_gap)
-        from anysolver._b2_physical_linear_batch_dev import _accurate_sparse_residual
+        from anyfesolver._b2_physical_linear_batch_dev import _accurate_sparse_residual
         pools = threadpool_info()
         require(pools and all(p['num_threads'] == 1 for p in pools) and
                 numba.get_num_threads() == 1 and numba.config.DISABLE_JIT, 'effective thread1/JIT-off required')
@@ -251,7 +251,7 @@ def main(site, saved, output, reuse=None, refined=None):
     finally:
         report['elapsed_seconds'] = time.perf_counter()-started
         report['imports'] = {n: str(Path(m.__file__).resolve()) for n, m in sys.modules.copy().items()
-                             if n.split('.')[0] == 'anysolver' and getattr(m, '__file__', None)}
+                             if n.split('.')[0] == 'anyfesolver' and getattr(m, '__file__', None)}
         require(all(Path(p).is_relative_to(site) for p in report['imports'].values()), 'all product imports must be onsite')
         (output/'result.json').write_text(json.dumps(report, indent=2, allow_nan=False)+'\n', encoding='utf-8')
         print(json.dumps({k: report[k] for k in ('status', 'elapsed_seconds')}))

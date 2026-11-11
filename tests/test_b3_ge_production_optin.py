@@ -6,10 +6,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver import b3_ge
-from anysolver._ge_beam3_native_analysis import NativeBeamAnalysis
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver.elements import QuadraticBeamElement, create_element
+from anyfesolver import b3_ge
+from anyfesolver._ge_beam3_native_analysis import NativeBeamAnalysis
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver.elements import QuadraticBeamElement, create_element
 from test_ge_beam3_native_generalized import problem
 
 
@@ -96,7 +96,7 @@ def test_legacy_b3_factory_default_is_unchanged_and_b3_ge_is_not_an_element_alia
 
 
 def test_historical_ge_beam3_is_not_reinterpreted():
-    from anysolver.ge_beam3_element import GeometricallyExactBeam3D3NElement
+    from anyfesolver.ge_beam3_element import GeometricallyExactBeam3D3NElement
 
     historical = create_element(
         "ge-beam3",

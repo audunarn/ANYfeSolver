@@ -1,9 +1,9 @@
 """Elastic B3 bar with declared actual hemisphere support on a fixed sphere."""
-from anysolver import (BoundaryCondition, ContactDefinition, ContactSurface,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactSurface,
     ContactInteraction, ContactSolverSettings, RigidContactBody, LoadCase,
     solve_static_nonlinear)
-from anysolver.elements import QuadraticBeamElement
-from anysolver.fe_core import FEModel
+from anyfesolver.elements import QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
 
 
 def run():

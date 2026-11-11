@@ -7,26 +7,26 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import arc_length, nonlinear_performance_batch_c, nonlinear_static
-from anysolver.arc_length import ArcLengthControl
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.elements import Element
-from anysolver.fe_core import FEModel
-from anysolver.jit_compiler import JIT_DISABLED_REASON, JIT_ENABLED
-from anysolver.mesh_gen import generate_simple_panel_mesh
-from anysolver.nonlinear_performance_batch_c import (
+from anyfesolver import arc_length, nonlinear_performance_batch_c, nonlinear_static
+from anyfesolver.arc_length import ArcLengthControl
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.elements import Element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.jit_compiler import JIT_DISABLED_REASON, JIT_ENABLED
+from anyfesolver.mesh_gen import generate_simple_panel_mesh
+from anyfesolver.nonlinear_performance_batch_c import (
     assemble_reduced_system,
     batch_c_status,
     build_reduced_assembly_plan,
     reset_batch_c_counters,
 )
-from anysolver.nonlinear_performance_bootstrap import (
+from anyfesolver.nonlinear_performance_bootstrap import (
     get_nonlinear_assembly_plan,
     install_nonlinear_performance_optimizations,
     uninstall_nonlinear_performance_optimizations,
 )
-from anysolver.nonlinear_static import DisplacementControl, solve_static_nonlinear
-from anysolver.nonlinear_static import _ensure_nonlinear_acceleration
+from anyfesolver.nonlinear_static import DisplacementControl, solve_static_nonlinear
+from anyfesolver.nonlinear_static import _ensure_nonlinear_acceleration
 
 _ensure_nonlinear_acceleration()
 
@@ -208,7 +208,7 @@ def test_direct_reduced_assembly_retains_batch_b_elastic_kernel(monkeypatch) -> 
     # for it; it remains in use for legacy shells.  Pin both facts, and keep the
     # Batch C retention check on the legacy panel (same retarget as
     # tests/test_nonlinear_performance_batch_b.py::_legacy_panel).
-    from anysolver.elements import create_shell_element
+    from anyfesolver.elements import create_shell_element
 
     qualified = generate_simple_panel_mesh(
         1.0, 0.6, 0.01, num_divisions_x=2, num_divisions_y=1
@@ -774,7 +774,7 @@ def test_short_nonlinear_solve_skips_direct_reduction_setup(monkeypatch) -> None
 def test_lazy_install_updates_and_restores_prebound_consumer_aliases() -> None:
     """A caller may import either solver before the lazy installer runs."""
 
-    consumer_name = "_anysolver_batch_c_prebound_consumer"
+    consumer_name = "_anyfesolver_batch_c_prebound_consumer"
     consumer = ModuleType(consumer_name)
     uninstall_nonlinear_performance_optimizations()
     original_static = nonlinear_static.solve_static_nonlinear

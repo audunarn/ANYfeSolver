@@ -9,7 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from anysolver.s4_validity import (
+from anyfesolver.s4_validity import (
     bending_patch_metric,
     free_element_mode_metric,
     generate_s4_validity_report,

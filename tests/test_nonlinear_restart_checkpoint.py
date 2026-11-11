@@ -6,20 +6,20 @@ import hashlib
 import numpy as np
 import pytest
 
-import anysolver.nonlinear_static as nonlinear_static_module
-from anysolver.activity import ElementActivity
-from anysolver.arc_length import ArcLengthControl, solve_static_arc_length
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.elements import Element
-from anysolver.fe_core import FEModel
-from anysolver.nonlinear_restart import (
+import anyfesolver.nonlinear_static as nonlinear_static_module
+from anyfesolver.activity import ElementActivity
+from anyfesolver.arc_length import ArcLengthControl, solve_static_arc_length
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.elements import Element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.nonlinear_restart import (
     NonlinearCheckpointError,
     canonical_checkpoint_json_bytes,
     create_nonlinear_checkpoint,
     load_nonlinear_checkpoint,
     validate_nonlinear_checkpoint,
 )
-from anysolver.nonlinear_static import DisplacementControl, solve_static_nonlinear
+from anyfesolver.nonlinear_static import DisplacementControl, solve_static_nonlinear
 
 
 class _SofteningSpring(Element):
@@ -445,7 +445,7 @@ def test_displacement_static_checkpoint_exact_split_continuation() -> None:
 
 
 def test_accelerated_displacement_dispatch_delegates_checkpoint_semantics(monkeypatch) -> None:
-    from anysolver import nonlinear_performance
+    from anyfesolver import nonlinear_performance
 
     nonlinear_performance.install_nonlinear_performance_optimizations()
     original = nonlinear_performance._ORIGINAL_DISPLACEMENT_SOLVER

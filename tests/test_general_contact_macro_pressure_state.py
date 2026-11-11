@@ -6,20 +6,20 @@ from dataclasses import replace
 from types import SimpleNamespace
 from scipy import sparse
 
-from anysolver import validate_general_contact
-from anysolver.general_contact import linearized_pivot
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver import validate_general_contact
+from anyfesolver.general_contact import linearized_pivot
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 from test_general_contact_q4_s3_jet2_static_owner import _settings
 from test_general_contact_q4_s3_refined_patch import _two_q4_two_s3
 from scripts.general_contact_d1_mixed_mesh_jet2_schur_press import build_case
 
-from anysolver.general_contact.pressure_basis import (
+from anyfesolver.general_contact.pressure_basis import (
     build_q4_source_macro_q1_pair_basis,
 )
-from anysolver.general_contact.s3_patch_augmented import (
+from anyfesolver.general_contact.s3_patch_augmented import (
     MovingS3PatchProjectedNormal,
 )
-from anysolver.general_contact.s3_patch_mortar_energy import (
+from anyfesolver.general_contact.s3_patch_mortar_energy import (
     MovingS3PatchPrimalMortarPenalty, S3PatchFace,
 )
 

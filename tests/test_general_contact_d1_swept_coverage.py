@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver.general_contact.d1_interior_profile import (
+from anyfesolver.general_contact.d1_interior_profile import (
     _bernstein_cross, _bernstein_dot, _interval_sub,
     swept_projected_coverage_admissible,
 )
@@ -206,7 +206,7 @@ def test_bernstein_intervals_enclose_independently_exact_quartic_coefficients():
 
 def test_actual_eight_s3_captured_physical_skin_trial_is_covered():
     # Reuse the actual preserved development geometry, without a coupled solve.
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     from scripts.general_contact_d1_interior_press_dev import build_interior_press
 
     path = Path(__file__).resolve().parents[1] / (

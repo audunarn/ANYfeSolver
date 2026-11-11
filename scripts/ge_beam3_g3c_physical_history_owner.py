@@ -92,7 +92,7 @@ def mutation_inventory():
 def runtime_identity():
     """Inert identity, independently recomputed by the reviewed coordinator."""
     rows = [(p.relative_to(ROOT).as_posix(), sha256(p.read_bytes().replace(b'\r\n', b'\n')).hexdigest())
-            for p in sorted((ROOT/'src'/'anysolver').rglob('*.py'))]
+            for p in sorted((ROOT/'src'/'anyfesolver').rglob('*.py'))]
     rows += [(name, sha256((ROOT/name).read_bytes().replace(b'\r\n', b'\n')).hexdigest())
              for name in HISTORY_SOURCES]
     return packet.digest(dict(environment=ENVIRONMENT, sources=rows))
@@ -190,7 +190,7 @@ class HistoryOwner:
         # Importing this wrapper alone never captures or manufactures that lease.
         packet.authorities()
         frozen = runtime_identity(); code = dispatch()
-        from anysolver._ge_beam3_g3c_physical_owner import MixedGraphOwner
+        from anyfesolver._ge_beam3_g3c_physical_owner import MixedGraphOwner
         owner = MixedGraphOwner(fixture_id, variant, common_motion)
         lock = threading.Lock()
         for name,value in dict(_owner=owner,_owned_owner=owner,_lock=lock,_owned_lock=lock,
@@ -331,7 +331,7 @@ genuine owned nonce/sandbox. There is no caller pose, origin, load or callback.
                 origin = owner._published
                 history = packet.strict(origin.history); state = packet.strict(origin.state)
                 if not history: raise ValueError('accepted stage required for rebase diagnostic')
-                from anysolver import _ge_beam3_g3c_physical_owner as mechanics
+                from anyfesolver import _ge_beam3_g3c_physical_owner as mechanics
                 command = mechanics.command(history[-1]['command'],history[:-1],
                                              packet.strict(owner._definition)['common_motion'])
                 if history[-1]['accepted_state_sha256'] != origin.state_sha256:

@@ -5,8 +5,8 @@ import os
 import numpy as np
 import pytest
 
-from anysolver import validate_general_contact
-from anysolver.general_contact.s3_patch_static import (
+from anyfesolver import validate_general_contact
+from anyfesolver.general_contact.s3_patch_static import (
     REFINED_Q4_S3_AUGMENTED_PROFILE,
 )
 from examples.general_contact_refined_q4_s3_force import (

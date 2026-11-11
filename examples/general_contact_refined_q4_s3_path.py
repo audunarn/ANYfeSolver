@@ -2,12 +2,12 @@
 
 import json
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactPathControl, ContactPathProgram, ContactSolverSettings,
     ContactSurface, create_shell_element, solve_static_nonlinear,
 )
-from anysolver.fe_core import FEModel
+from anyfesolver.fe_core import FEModel
 
 
 model = FEModel("refined_q4_s3_contact_example")

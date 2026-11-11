@@ -3,8 +3,8 @@ from math import acos,ceil,cos,floor,pi,sin
 
 import pytest
 
-from anysolver.general_contact.native_surface_crossing import GapSlabEnclosure,certify_single_crossing
-from anysolver.general_contact.native_surface_support import SupportIntervalBudget
+from anyfesolver.general_contact.native_surface_crossing import GapSlabEnclosure,certify_single_crossing
+from anyfesolver.general_contact.native_surface_support import SupportIntervalBudget
 
 
 def rotating_family(phase,travel,level):
@@ -98,8 +98,8 @@ def test_invalid_enclosures_rejected(values):
 @pytest.mark.parametrize('phase,travel,expected',[(-.4,2.,True),(-1.2,2.4,False)])
 def test_actual_retained_geometry_single_crossing_and_hidden_pulse(phase,travel,expected):
     import numpy as np
-    from anysolver.general_contact.native_surface_history import NativeSurfaceMotionSegment
-    from anysolver.general_contact.native_surface_support import segment_gap_slab_enclosure,history_endpoint_support_certified
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceMotionSegment
+    from anyfesolver.general_contact.native_surface_support import segment_gap_slab_enclosure,history_endpoint_support_certified
     from test_general_contact_native_surface_support import _field
     segment=NativeSurfaceMotionSegment(np.zeros((3,3)),np.array(((travel,0.,0.),(0.,0.,0.))),np.zeros(18))
     press=NativeSurfaceMotionSegment(np.tile((0.,0.,-.029),(3,1)),np.zeros((2,3)),np.zeros(18))
@@ -122,8 +122,8 @@ def test_actual_retained_geometry_single_crossing_and_hidden_pulse(phase,travel,
 
 def test_actual_slab_adapter_rejects_wrong_half_cell():
     import numpy as np
-    from anysolver.general_contact.native_surface_history import NativeSurfaceMotionSegment
-    from anysolver.general_contact.native_surface_support import segment_gap_slab_enclosure
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceMotionSegment
+    from anyfesolver.general_contact.native_surface_support import segment_gap_slab_enclosure
     from test_general_contact_native_surface_support import _field
     field=_field(segments=(NativeSurfaceMotionSegment(np.zeros((3,3)),np.zeros((2,3)),np.zeros(18)),))
     with pytest.raises(ValueError,match='half-cell'):
@@ -132,8 +132,8 @@ def test_actual_slab_adapter_rejects_wrong_half_cell():
 
 def test_deforming_target_subslab_uses_original_time_derivative():
     import numpy as np
-    from anysolver.general_contact.native_surface_history import NativeSurfaceMotionSegment
-    from anysolver.general_contact.native_surface_support import segment_gap_slab_enclosure
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceMotionSegment
+    from anyfesolver.general_contact.native_surface_support import segment_gap_slab_enclosure
     from test_general_contact_native_surface_support import _field
     shell=np.zeros(18);shell[8]=.01;shell[14]=-.006;shell[12]=.025
     translations=np.tile((.015,0.,-.002),(3,1));omega=.2
@@ -171,11 +171,11 @@ def test_convex_origin_thin_translated_target_against_high_precision(translation
     from decimal import Decimal,localcontext
     import numpy as np
     from scipy.spatial.transform import Rotation
-    from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
-    from anysolver.general_contact.native_surface_patch import NativeS3MaterialSurfacePatch
-    from anysolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
-    from anysolver.general_contact.native_surface_support import segment_gap_slab_enclosure,_convex_support_origin
-    from anysolver.general_contact.s3_friction_point import S3SkinMaterialPoint
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
+    from anyfesolver.general_contact.native_surface_patch import NativeS3MaterialSurfacePatch
+    from anyfesolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
+    from anyfesolver.general_contact.native_surface_support import segment_gap_slab_enclosure,_convex_support_origin
+    from anyfesolver.general_contact.s3_friction_point import S3SkinMaterialPoint
     from test_general_contact_native_surface_support import _field
     base=_field()
     # Dyadic vertices and translations preserve this represented thin geometry.

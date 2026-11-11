@@ -40,8 +40,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver import solve_static_nonlinear
-from anysolver.general_contact import semismooth_path
+from anyfesolver import solve_static_nonlinear
+from anyfesolver.general_contact import semismooth_path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 SEED_DECISION_MODULE = (Path(__file__).resolve().parent

@@ -86,7 +86,7 @@ def test_small_controlled_reversal_restores_elastic_reference_state():
 
 
 def test_coupled_plastic_section_control_replay_and_discard():
-    from anysolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
+    from anyfesolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
     from docs.reference_cases.ge_beam3_curved_p5_assembly_history_probe import NonlinearAssemblyHistoryProbe
     from test_ge_beam3_curved_p5_nonlinear_mixed_probe import law
     reference=CurvedBeam3ReferenceGeometry([[0.,0.,0.],[1.,0.,0.],[2.,0.,0.]],np.tile(np.eye(3),(3,1,1)))

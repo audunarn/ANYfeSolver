@@ -7,8 +7,8 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver import b3_ge, stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import b3_ge, stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_stiffened_shell_ge_physical_fibre_linear import _definition
 from test_stiffened_shell_staged_material_history import _capture, _same, _canonical
 from test_stiffened_shell_fibre_chart_boundary_comparison import (

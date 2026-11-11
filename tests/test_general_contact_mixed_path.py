@@ -6,14 +6,14 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     ContactPathControl, ContactPathNodalForce, ContactPathProgram,
     solve_static_nonlinear,
 )
 from examples.general_contact_refined_q4_s3_mixed_path import (
     GAP_BUDGET_M, make_case, solve_case,
 )
-from anysolver.general_contact.core import contact_scope
+from anyfesolver.general_contact.core import contact_scope
 from scripts.general_contact_d1_mixed_jet2_schur_probe import make_candidate
 
 

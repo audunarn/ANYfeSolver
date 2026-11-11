@@ -1,9 +1,9 @@
 """Local implementation development only; not G3c graph qualification."""
 import numpy as np
 import pytest
-from anysolver._ge_beam3_g3c_local_beam import LocalBeam, deformation
-from anysolver.fe_core import FEModel,Material
-from anysolver.elements import BeamElement,QuadraticBeamElement
+from anyfesolver._ge_beam3_g3c_local_beam import LocalBeam, deformation
+from anyfesolver.fe_core import FEModel,Material
+from anyfesolver.elements import BeamElement,QuadraticBeamElement
 
 SECTION=dict(area=1,Iy=.2,Iz=.3,J=.1,shear_factor_y=.8,shear_factor_z=.7,orientation=[0,0,1])
 def exp(v):
@@ -121,7 +121,7 @@ def test_detached_definition_outputs_and_invalid_routes():
     with pytest.raises(ValueError): p.evaluate(z,q)
 
 def test_mutation_of_caller_arrays_cannot_split_kinematic_and_chart_inputs(monkeypatch):
-    import anysolver._ge_beam3_g3c_local_beam as module
+    import anyfesolver._ge_beam3_g3c_local_beam as module
     p=make(2); z,q=state(2); expected=p.evaluate(z.copy(),q.copy())
     original=module.deformation
     def observed(*args):
@@ -144,7 +144,7 @@ def test_physical_orientation_scale_never_uses_legacy_fallback(n):
     for value in results[1:]: equal(value.chart_hessian,results[0].chart_hessian)
 
 def test_coherent_definition_swap_during_trial_rejects(monkeypatch):
-    import anysolver._ge_beam3_g3c_local_beam as module
+    import anyfesolver._ge_beam3_g3c_local_beam as module
     p=make(2); d=p.descriptor(); z,q=state(2)
     other=LocalBeam('B2',tuple(d['node_ids']),np.array(d['coordinates']),d['anchor_node'],200,.25,SECTION)
     for name in ('_body','_seal'):
@@ -174,7 +174,7 @@ def test_runner_rejects_changed_bound_source_and_payload(tmp_path):
     for name in paths:
         target=tmp_path/name; target.parent.mkdir(parents=True,exist_ok=True); shutil.copyfile(root/name,target)
     runner.verify_equation_bindings(c,tmp_path)
-    for name in ('src/anysolver/elements.py','docs/GE_BEAM3_G3C_OBJECTIVE_BEAM_FRAME_CONTRACT.md'):
+    for name in ('src/anyfesolver/elements.py','docs/GE_BEAM3_G3C_OBJECTIVE_BEAM_FRAME_CONTRACT.md'):
         target=tmp_path/name; original=target.read_bytes(); target.write_bytes(original+b'\n')
         with pytest.raises(ValueError): runner.verify_equation_bindings(c,tmp_path)
         target.write_bytes(original)
@@ -274,7 +274,7 @@ def test_recovery_common_rigid_zero_and_superposed_motion(n):
     equal(b.current_frame,W@a.current_frame)
 
 def test_scalar_shear_floor_is_explicit_unresolved_physical_recovery():
-    from anysolver._ge_beam3_g3c_recovery import PhysicalRecoveryBlocked
+    from anyfesolver._ge_beam3_g3c_recovery import PhysicalRecoveryBlocked
     s=dict(SECTION,area=1e-14,Iy=1e-12,Iz=1e-12,J=1e-12,shear_factor_y=1,shear_factor_z=1)
     p=LocalBeam('B2',(1,2),np.array([[0.,0.,0.],[1.,0.,0.]]),1,1,0,s)
     with pytest.raises(PhysicalRecoveryBlocked,match='BLOCKED_G3C_B2_PHYSICAL_RECOVERY_SHEAR_CLAMP'):

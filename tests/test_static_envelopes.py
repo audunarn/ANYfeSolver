@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from anysolver.static_envelopes import EnvelopeReducer
+from anyfesolver.static_envelopes import EnvelopeReducer
 
 
 def test_signed_extrema_ties_and_repeated_case_labels():

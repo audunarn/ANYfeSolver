@@ -5,17 +5,17 @@ import json
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_g4_completion import (
+from anyfesolver._ge_beam3_g4_completion import (
     AcceptedHistoryEnvelope, RestartAuthority)
-from anysolver._ge_beam3_p5_seeded.core import canonical, sha
-from anysolver._ge_beam3_retained_arc import NodalDeadForces, Program as ArcProgram, solve as arc_solve
-from anysolver._ge_beam3_retained_fibre_program import solve_force_program
-from anysolver._ge_beam3_retained_fibre_control import (
+from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
+from anyfesolver._ge_beam3_retained_arc import NodalDeadForces, Program as ArcProgram, solve as arc_solve
+from anyfesolver._ge_beam3_retained_fibre_program import solve_force_program
+from anyfesolver._ge_beam3_retained_fibre_control import (
     TranslationProgram, solve_translation_program)
-from anysolver._ge_beam3_retained_generalized_program import solve as generalized_solve
-from anysolver._ge_beam3_retained_generalized_state import Program as GeneralizedProgram
-from anysolver._ge_beam3_seeded_load_program import ForceProgram
-from anysolver.control import CancellationToken
+from anyfesolver._ge_beam3_retained_generalized_program import solve as generalized_solve
+from anyfesolver._ge_beam3_retained_generalized_state import Program as GeneralizedProgram
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram
+from anyfesolver.control import CancellationToken
 from test_ge_beam3_g4a_station_transaction import make_owner, strains
 from test_ge_beam3_native_generalized_modal import make as arc_model
 from test_ge_beam3_native_generalized_restart import make as generalized_model, pattern as generalized_pattern

@@ -13,8 +13,8 @@ import math
 from pathlib import Path
 import subprocess
 
-import anysolver
-from anysolver import stiffened_shell
+import anyfesolver
+from anyfesolver import stiffened_shell
 import numpy as np
 from scipy.sparse.linalg import spsolve
 from threadpoolctl import threadpool_info, threadpool_limits
@@ -112,15 +112,15 @@ def _run(owner, intervals: int, span: int, kind: str,
 def main(output: Path) -> None:
     if output.exists():
         raise FileExistsError("preserve prior common-field evidence")
-    expected = (ROOT / "src" / "anysolver" / "__init__.py").resolve()
-    if Path(anysolver.__file__).resolve() != expected:
+    expected = (ROOT / "src" / "anyfesolver" / "__init__.py").resolve()
+    if Path(anyfesolver.__file__).resolve() != expected:
         raise RuntimeError("common-field diagnostic imported another checkout")
     result = {
         "status": "BL5_COMMON_FIELD_DEVELOPMENT_ONLY",
         "source_git": subprocess.check_output(
             ("git", "rev-parse", "HEAD"), cwd=ROOT, text=True).strip(),
         "runner_sha256": sha256(Path(__file__).read_bytes()).hexdigest(),
-        "imported_anysolver": str(expected),
+        "imported_anyfesolver": str(expected),
         "cases": [],
         "limitations": ("Strong nodal and weak native work are compared only "
                         "on imposed common nodal fields with either zero or "

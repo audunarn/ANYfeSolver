@@ -2,9 +2,9 @@
 from dataclasses import replace
 import numpy as np
 import pytest
-from anysolver import b3_ge, stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver import b3_ge, stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
 from test_stiffened_shell_bl5_finite import _model, _action
 
 

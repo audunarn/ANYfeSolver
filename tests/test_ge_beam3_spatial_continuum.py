@@ -54,8 +54,8 @@ def test_boundary_count_and_no_smeared_point_force():
 def test_no_mechanics_import():
     tree=ast.parse(Path(p.__file__).read_bytes())
     for node in ast.walk(tree):
-        if isinstance(node,ast.ImportFrom):assert not (node.module or '').startswith(('anysolver','tests','docs'))
-        if isinstance(node,ast.Import):assert all(not n.name.startswith(('anysolver','tests','docs')) for n in node.names)
+        if isinstance(node,ast.ImportFrom):assert not (node.module or '').startswith(('anyfesolver','tests','docs'))
+        if isinstance(node,ast.Import):assert all(not n.name.startswith(('anyfesolver','tests','docs')) for n in node.names)
 
 @pytest.mark.parametrize('knots',(np.linspace(0.,1.,65),np.linspace(0.,1.,385),np.array([0.,.03,.21,.39,.9,1.])))
 def test_validation_points_not_collocation_nodes_or_midpoints(knots):

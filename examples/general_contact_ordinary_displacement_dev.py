@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import json
 
-import anysolver
-from anysolver import (
+import anyfesolver
+from anyfesolver import (
     BoundaryCondition,
     ContactDefinition,
     ContactInteraction,
@@ -20,8 +20,8 @@ from anysolver import (
     solve_static_nonlinear,
     validate_general_contact,
 )
-from anysolver.fe_core import FEModel
-from anysolver.nonlinear_static import DisplacementControl
+from anyfesolver.fe_core import FEModel
+from anyfesolver.nonlinear_static import DisplacementControl
 
 
 def build_model():
@@ -128,7 +128,7 @@ def main() -> None:
         "contact_free_elastic_force_predictor_n": float(
             result.info["contact_free_elastic_force_predictor_n"]),
         "has_restart_checkpoint": result.restart_checkpoint is not None,
-        "anysolver_module": str(anysolver.__file__),
+        "anyfesolver_module": str(anyfesolver.__file__),
     }, indent=2))
 
 

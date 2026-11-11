@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
-import anysolver as fs
-from anysolver.contact import _plastic_impact_damage_update, _verification_contact_panel
-from anysolver.material_curves import DNVC208MaterialCurve
+import anyfesolver as fs
+from anyfesolver.contact import _plastic_impact_damage_update, _verification_contact_panel
+from anyfesolver.material_curves import DNVC208MaterialCurve
 
 
 def test_nonlinear_impact_public_configs_are_exported():
@@ -84,8 +84,8 @@ def test_nonlinear_impact_commits_state_from_exact_accepted_newton_iterate(
 
     from scipy import sparse
 
-    from anysolver.boundary import LoadCase
-    from anysolver import nonlinear_static
+    from anyfesolver.boundary import LoadCase
+    from anyfesolver import nonlinear_static
 
     model = _verification_contact_panel()
     load = LoadCase("newton-state-identity")
@@ -240,10 +240,10 @@ def test_corotational_nonlinear_impact_matches_von_karman_at_small_deformation()
 
 def test_plastic_impact_damage_erodes_beam_from_committed_state():
     """PlasticImpactDamageConfig deletes beam elements from committed plastic state."""
-    from anysolver.boundary import BoundaryCondition
-    from anysolver.contact import _plastic_impact_damage_update
-    from anysolver.elements import BeamElement
-    from anysolver.fe_core import FEModel
+    from anyfesolver.boundary import BoundaryCondition
+    from anyfesolver.contact import _plastic_impact_damage_update
+    from anyfesolver.elements import BeamElement
+    from anyfesolver.fe_core import FEModel
 
     model = FEModel("beam_plastic")
     model.add_material("steel", 2.1e11, 0.3, density=7850.0)
@@ -270,7 +270,7 @@ def test_plastic_impact_damage_erodes_beam_from_committed_state():
 
 def test_state_von_mises_envelope_reconstructs_return_mapped_stress():
     """sigma = C_el (eps - eps_p) from the committed state, not E * eps."""
-    from anysolver.nonlinear_static import state_von_mises_envelope
+    from anyfesolver.nonlinear_static import state_von_mises_envelope
 
     E, nu = 1.0e5, 0.3
     # Uniaxial layered state: total strain 0.01, of which 0.008 is plastic.
@@ -300,9 +300,9 @@ def test_state_von_mises_envelope_reconstructs_return_mapped_stress():
 
 def _clamped_grid_panel(n: int = 4) -> "object":
     """1 m x 1 m clamped shell grid that can actually bend and yield."""
-    from anysolver.boundary import BoundaryCondition
-    from anysolver.elements import create_shell_element
-    from anysolver.fe_core import FEModel
+    from anyfesolver.boundary import BoundaryCondition
+    from anyfesolver.elements import create_shell_element
+    from anyfesolver.fe_core import FEModel
 
     model = FEModel("yielding_panel")
     model.add_material("soft", 1.0e5, 0.3, density=20.0)
@@ -341,7 +341,7 @@ def _clamped_grid_panel(n: int = 4) -> "object":
 def test_nonlinear_impact_state_von_mises_history_respects_material_curve():
     """Recorded stress history stays on the hardening curve while an elastic
     recovery from the same displacements overshoots it."""
-    from anysolver.assembly import compute_stresses
+    from anyfesolver.assembly import compute_stresses
 
     curve = DNVC208MaterialCurve(
         sigma_prop=800.0,
@@ -389,7 +389,7 @@ def test_nonlinear_impact_state_von_mises_history_respects_material_curve():
 
 
 def test_rtcl_triaxiality_weight_matches_published_anchor_points():
-    from anysolver.fracture import rtcl_triaxiality_weight
+    from anyfesolver.fracture import rtcl_triaxiality_weight
 
     eta = np.array([-1.0, -1.0 / 3.0, 0.0, 1.0 / 3.0, 2.0 / 3.0])
     weight = rtcl_triaxiality_weight(eta)
@@ -413,8 +413,8 @@ def _layered_state(strain_rows, plastic_rows, alpha):
 def test_rtcl_damage_ignores_compression_but_deletes_in_tension():
     """RTCL erosion: a compressed element accumulates no damage while a
     tension element with the same plastic strain softens and deletes."""
-    from anysolver.contact import _plastic_impact_damage_update, _verification_contact_panel
-    from anysolver.elements import create_shell_element
+    from anyfesolver.contact import _plastic_impact_damage_update, _verification_contact_panel
+    from anyfesolver.elements import create_shell_element
 
     model = _verification_contact_panel()
     # second shell, same material, so both categories are in scope
@@ -468,7 +468,7 @@ def test_rtcl_damage_ignores_compression_but_deletes_in_tension():
 
 
 def test_rtcl_beam_fibers_damage_only_in_tension():
-    from anysolver.fracture import state_rtcl_increment
+    from anyfesolver.fracture import state_rtcl_increment
 
     state = {
         "alpha": np.array([0.05, 0.05]),
@@ -520,7 +520,7 @@ def test_rtcl_modified_scales_critical_strain_by_plane_strain_weight():
     """rtcl_modified calibrates eps_cr so plane-strain tension fails exactly at
     the mesh-scaled GL limit: utilization is the plain-RTCL value divided by
     w_ps = exp(sqrt(3)/2 - 1/2) ~ 1.4424."""
-    from anysolver.contact import _plastic_impact_damage_update, _verification_contact_panel
+    from anyfesolver.contact import _plastic_impact_damage_update, _verification_contact_panel
 
     tension = _layered_state(
         [[0.20, -0.06, 0.0], [0.20, -0.06, 0.0]],
@@ -548,7 +548,7 @@ def test_rtcl_modified_scales_critical_strain_by_plane_strain_weight():
 def test_nonlinear_impact_equilibrates_base_load_instead_of_step():
     """A static base load must enter the transient as an equilibrium state,
     not a sudden step that rings the structure through the whole impact."""
-    from anysolver.boundary import LoadCase
+    from anyfesolver.boundary import LoadCase
 
     def base_case(model, magnitude):
         case = LoadCase("preload")

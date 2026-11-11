@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell
-from anysolver._stiffened_shell_l1_assembly_experimental import SPACE_A, SPACE_B
+from anyfesolver import stiffened_shell
+from anyfesolver._stiffened_shell_l1_assembly_experimental import SPACE_A, SPACE_B
 from scripts.b3_e4_f03_l1_matched_flat_web import build, evaluate
 from scripts.b3_e4_f03_l1_uncoupled_flat_controls import evaluate as controls
 

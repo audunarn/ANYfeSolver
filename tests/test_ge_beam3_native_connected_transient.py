@@ -4,10 +4,10 @@ from dataclasses import replace
 import json
 import numpy as np
 import pytest
-from anysolver.dynamics import TransientConfig
-from anysolver.ge_beam3_native_connected_dynamics import solve_transient
-from anysolver._ge_beam3_native_transient import NativeTransientError
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.ge_beam3_native_connected_dynamics import solve_transient
+from anyfesolver._ge_beam3_native_transient import NativeTransientError
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from examples.native_connected_dynamic_dev import build,velocity
 
 DT=2.**-12
@@ -73,7 +73,7 @@ def test_real_trial_commit_interrupt_prefix_and_cleanup(monkeypatch,boundary):
         def signal(*args,**kwargs):original(*args,**kwargs);raise KeyboardInterrupt('after authentic commit')
         monkeypatch.setattr(owner,'commit',signal)
     else:
-        import anysolver._native_midpoint_controller as engine
+        import anyfesolver._native_midpoint_controller as engine
         original=engine.cancellation_safe_point
         def signal(token,stage):
             original(token,stage)
@@ -87,7 +87,7 @@ def test_real_trial_commit_interrupt_prefix_and_cleanup(monkeypatch,boundary):
 
 
 def test_prepared_origin_and_restored_journal_failure_roll_back(monkeypatch):
-    import anysolver._ge_beam3_connected_trajectory as adapter
+    import anyfesolver._ge_beam3_connected_trajectory as adapter
     owner=build();original=adapter._result
     monkeypatch.setattr(adapter,'_result',lambda *a,**k:(_ for _ in ()).throw(ValueError('serialization')))
     with pytest.raises(ValueError):solve_transient(owner,config(owner,0))
@@ -119,8 +119,8 @@ def test_cutback_is_shared_and_incompatible_config_refuses(monkeypatch):
 
 
 def test_actual_inflight_cancel_and_atomic_receipt_rollback(monkeypatch):
-    from anysolver.control import CancellationToken,SolveCancelled
-    import anysolver._native_midpoint_controller as engine
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    import anyfesolver._native_midpoint_controller as engine
     owner=build();token=CancellationToken();original=engine.cancellation_safe_point
     def cancel(token_arg,stage):
         if stage=='native_transient.before_commit':token.cancel('actual precommit')
@@ -177,7 +177,7 @@ def test_resigned_controller_cadence_and_fixed_unknown_refusal(case):
 @pytest.mark.parametrize('case',['reason','first_exceeds_plan','broken_halving','accepted_halving','floor','cutback_truncated','untruncated_short','extra_key','nonfinite','wrong_type','exhaustion'])
 def test_closed_adaptive_policy_metadata_refusal(case):
     # Pure controller metadata control, distinct from the actual capsule replay.
-    from anysolver._ge_beam3_connected_trajectory import _replay_planned_dt
+    from anyfesolver._ge_beam3_connected_trajectory import _replay_planned_dt
     settings=dict(minimum_dt=DT/16,max_cutbacks=2)
     reason='connected midpoint iteration limit'
     step=dict(dt=DT/4,truncated=False,cutbacks=[dict(dt=DT,reason=reason),dict(dt=DT/2,reason=reason)])
@@ -196,7 +196,7 @@ def test_closed_adaptive_policy_metadata_refusal(case):
 
 
 def test_closed_adaptive_policy_valid_halving_and_horizon_history():
-    from anysolver._ge_beam3_connected_trajectory import _replay_planned_dt
+    from anyfesolver._ge_beam3_connected_trajectory import _replay_planned_dt
     settings=dict(minimum_dt=DT/16,max_cutbacks=2)
     reason='connected midpoint backtracking failed'
     step=dict(dt=DT/4,truncated=False,cutbacks=[dict(dt=DT,reason=reason),dict(dt=DT/2,reason=reason)])
@@ -225,7 +225,7 @@ def test_clipped_prefix_extended_history_fresh_restore():
 
 @pytest.mark.parametrize('boundary',['record','stage'])
 def test_restart_mechanical_replay_single_lease_and_cancellation(monkeypatch,boundary):
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.control import CancellationToken,SolveCancelled
     old=build();prefix=solve_transient(old,config(old,1))
     fresh=build();token=CancellationToken();seen=[]
     method='_evaluate' if boundary=='record' else '_stage';original=getattr(fresh,method)

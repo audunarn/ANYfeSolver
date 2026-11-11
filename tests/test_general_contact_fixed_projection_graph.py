@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.fixed_projection_graph import (
+from anyfesolver.general_contact.fixed_projection_graph import (
     fixed_projection_graph_swept_certificate,
 )
 

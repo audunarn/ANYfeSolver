@@ -2,7 +2,7 @@
 import json
 import numpy as np
 from scipy import sparse
-from anysolver import stiffened_shell as api
+from anyfesolver import stiffened_shell as api
 
 def traction_source(member_id="beam", source_id="explicit-square-gauss-traction-v1"):
     a=.1/np.sqrt(3.)

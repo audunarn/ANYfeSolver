@@ -5,9 +5,9 @@ import json
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_shell_joint_state import CoupledShellBeamAnalysis, decode
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver._ge_beam3_shell_joint_state import CoupledShellBeamAnalysis, decode
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_ge_beam3_shell_joint_trial import specimen
 
 
@@ -175,8 +175,8 @@ def test_cancelled_replay_issues_no_states(capsule, monkeypatch):
 
 @pytest.mark.parametrize('topology', ('Q4', 'S3-V2D'))
 def test_coupled_plastic_beam_history_advances_once_and_replays(topology, tmp_path):
-    from anysolver._ge_beam3_retained_generalized_state import Context, Program
-    from anysolver._ge_beam3_shell_joint_trial import ShellBeamTrialAssembly
+    from anyfesolver._ge_beam3_retained_generalized_state import Context, Program
+    from anyfesolver._ge_beam3_shell_joint_trial import ShellBeamTrialAssembly
     from test_ge_beam3_native_generalized_restart import make as plastic_model, pattern
     targets = (.25, .5, 1., .5, 0., -.5, 0.)
     def build():

@@ -5,10 +5,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 from scipy.optimize import root
-from anysolver import (LoadCase, DisplacementControl, CancellationToken, SolveCancelled,
+from anyfesolver import (LoadCase, DisplacementControl, CancellationToken, SolveCancelled,
     solve_static_nonlinear, validate_general_contact, report_general_contact_capability)
-from anysolver.general_contact.beam_hemisphere_cylinder import HemisphereCylinderManager
-from anysolver.general_contact.beam_hemisphere_cylinder_motion import (
+from anyfesolver.general_contact.beam_hemisphere_cylinder import HemisphereCylinderManager
+from anyfesolver.general_contact.beam_hemisphere_cylinder_motion import (
     TranslatingHemisphereCylinderManager, PROFILE)
 from test_general_contact_hemisphere_cylinder_static import (
     _bar_case, _support_case, _line_reference, _potential)

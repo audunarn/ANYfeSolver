@@ -134,7 +134,7 @@ def prepare():
     require(sha(old['consumer_wheel'])==old['consumer_sha256'],'frozen consumer artifact identity')
     with ZipFile(old['consumer_wheel']) as z:
         consumer={n:hashlib.sha256(z.read(n)).hexdigest() for n in z.namelist() if n.startswith('anyfem/') and not n.endswith('/')}
-    solver={n:h for n,h in a['package'].items() if n.startswith('anysolver/')}
+    solver={n:h for n,h in a['package'].items() if n.startswith('anyfesolver/')}
     paths=[Path(__file__),ROOT/'tests/test_r8_b2_assembly_series_dev.py',ROOT/'scripts/b2_large_scale_development.py',
         ROOT/'scripts/r8_b2_g5_readiness_dev.py',ROOT/'scripts/r8_b2_installed_batch_persistence_dev.py',
         ROOT/'scripts/_b3_e4_f03_local_scientific_supervisor.py',FULL,METRICS/'ARTIFACT.json',METRICS/'TESTED_BINDINGS.json',
@@ -168,11 +168,11 @@ def installed_samples(attempt,plan,size,ordinals):
     require(len(ordinals)>0 and all(type(n) is int and 1<=n<=5 for n in ordinals) and len(set(ordinals))==len(ordinals),'warm sample ordinals')
     site=Path(plan['package_site']).resolve()
     sys.path[:]=[str(site)]+[x for x in sys.path if not Path(x or '.').resolve().is_relative_to(ROOT/'src')
-        and not Path(x or '.').resolve().is_relative_to(Path('C:/Github/ANYsolver/src'))]
+        and not Path(x or '.').resolve().is_relative_to(Path('C:/Github/ANYfeSolver/src'))]
     # Imports and persistence are outside all measured owner constructions.
     import numpy as np
-    from anysolver import stiffened_shell as api
-    from anysolver._stiffened_shell_b2_assembly_diagnostics import capture_assembly
+    from anyfesolver import stiffened_shell as api
+    from anyfesolver._stiffened_shell_b2_assembly_diagnostics import capture_assembly
     from anyfem.solve.stiffened_shell_b2 import ExperimentalB2PhysicalRigidFootprintPanel,SCHEMA_PHYSICAL_FOOTPRINT_SPARSE_V2,save_case,load_case
     from anyfem.model.project import Project
     from anyfem.model.records import AnalysisDefinition

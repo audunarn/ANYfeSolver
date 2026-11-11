@@ -52,8 +52,8 @@ def main():
     command = [sys.executable, "-c", boot, *child_args]
     sources = [Path(__file__), ROOT / "scripts/r8_f03_supported_work_dev.py",
                ROOT / "tests/test_r8_f03_supported_work_20261010.py",
-               ROOT / "src/anysolver/_stiffened_shell_l1_supported_work_experimental.py",
-               ROOT / "src/anysolver/_stiffened_shell_l1_assembly_experimental.py"]
+               ROOT / "src/anyfesolver/_stiffened_shell_l1_supported_work_experimental.py",
+               ROOT / "src/anyfesolver/_stiffened_shell_l1_assembly_experimental.py"]
     source_hashes = {}
     for i, path in enumerate(sources):
         source_hashes[str(path.relative_to(ROOT))] = sha(path)

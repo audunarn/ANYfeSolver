@@ -9,9 +9,9 @@ from scipy import sparse
 
 sys.path.insert(0, str(Path(__file__).parent))
 import test_general_contact_event_subdivision as events  # noqa: E402
-from anysolver.dynamics import TransientConfig  # noqa: E402
-from anysolver.general_contact import transient as driver  # noqa: E402
-from anysolver.general_contact.algebraic_path import affine_descriptor_path  # noqa: E402
+from anyfesolver.dynamics import TransientConfig  # noqa: E402
+from anyfesolver.general_contact import transient as driver  # noqa: E402
+from anyfesolver.general_contact.algebraic_path import affine_descriptor_path  # noqa: E402
 
 CONTROLS = SimpleNamespace(s3_path_position_tolerance_m=1e-10, s3_path_rotation_tolerance_rad=1e-9,
                            equilibrium_tolerance=1e-8)

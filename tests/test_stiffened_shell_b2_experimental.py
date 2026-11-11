@@ -4,12 +4,12 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import stiffened_shell
+from anyfesolver import stiffened_shell
 
-from anysolver._stiffened_shell_b2_experimental import (
+from anyfesolver._stiffened_shell_b2_experimental import (
     ExperimentalB2Error, create_experimental_b2_analysis,
 )
-from anysolver.control import CancellationToken
+from anyfesolver.control import CancellationToken
 from test_b2_physical_linear_oriented_graph import _members, _solve
 
 

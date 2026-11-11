@@ -3,8 +3,8 @@ from dataclasses import replace
 import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
-from anysolver import b3_ge,stiffened_shell as ss
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver import b3_ge,stiffened_shell as ss
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
 from test_stiffened_shell_curved_material import (
     curved_material_panel,make_owner,_actions,assert_generalized_records_equal,
 )

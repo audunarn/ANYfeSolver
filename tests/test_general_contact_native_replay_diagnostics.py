@@ -11,8 +11,8 @@ from hashlib import sha256
 
 import pytest
 
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.general_contact.native_replay_diagnostics import (
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.general_contact.native_replay_diagnostics import (
     LEAF_COUNT_LIMIT,
     PATH_LIMIT,
     PLAIN_COMPONENT_LIMIT,

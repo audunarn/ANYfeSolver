@@ -107,7 +107,7 @@ def test_flat_embedding_has_only_five_physical_fields_per_node():
 
 def test_actual_mixed_bl5_owner_keeps_supported_offline_shell_fields():
     """The physical trace has zero off-line columns, but its H1 norm does not."""
-    from anysolver import stiffened_shell as api
+    from anyfesolver import stiffened_shell as api
     from test_stiffened_shell_l1_assembly_experimental import _bl5_joint_mesh_definition
 
     base = _bl5_joint_mesh_definition(4, 4, 1)

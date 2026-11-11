@@ -3,14 +3,14 @@
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, DisplacementControl, LoadCase,
     create_shell_element, solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.patch_sliding import _RestrictedSlidingPatchFEManager
-from anysolver.general_contact.static_path import (
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.patch_sliding import _RestrictedSlidingPatchFEManager
+from anyfesolver.general_contact.static_path import (
     ContactPathControl, ContactPathProgram,
 )
 

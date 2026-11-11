@@ -141,13 +141,13 @@ def installed_native_field(site,output):
     if output.exists():raise FileExistsError(output)
     output.mkdir(parents=True)
     sys.path.insert(0,str(site))
-    from anysolver import b3_ge,stiffened_shell as api
-    import anysolver
+    from anyfesolver import b3_ge,stiffened_shell as api
+    import anyfesolver
     from threadpoolctl import threadpool_info
     import os
     import psutil
-    if not Path(anysolver.__file__).resolve().is_relative_to(site):
-        raise RuntimeError('effective ANYsolver import escaped installed artifact')
+    if not Path(anyfesolver.__file__).resolve().is_relative_to(site):
+        raise RuntimeError('effective ANYfeSolver import escaped installed artifact')
     evidence=site.parent
     binding=json.loads((evidence/'installed-v2/binding.json').read_text())
     wheel=evidence/'dist/anysolver-0.4.7-py3-none-any.whl'
@@ -160,7 +160,7 @@ def installed_native_field(site,output):
     pools=threadpool_info()
     if any(p['num_threads']!=1 for p in pools) or os.environ.get('NUMBA_DISABLE_JIT')!='1' or psutil.Process().cpu_affinity()!=[0]:
         raise RuntimeError('effective CPU/thread/JIT settings differ')
-    runtime=dict(python=sys.version,executable=sys.executable,anysolver=str(Path(anysolver.__file__).resolve()),
+    runtime=dict(python=sys.version,executable=sys.executable,anyfesolver=str(Path(anyfesolver.__file__).resolve()),
         wheel_sha256=WHEEL_SHA,source_head=binding['source_head'],numerical_pools=pools,
         affinity=psutil.Process().cpu_affinity(),jit_disabled=os.environ.get('NUMBA_DISABLE_JIT'),
         source_contract='spatial exponential(jets[i][3:]) in _ge_beam3_variational_shell.deformation; reference-linear zero-anchor theta')
@@ -213,7 +213,7 @@ def installed_native_field(site,output):
                 guards['shell_normal_spin_max']>1e-12 or max(abs(x) for x in guards['port_offset_identity_m'])>1e-9):
             raise RuntimeError('native physical field guards failed; completed fields preserved, no retry')
         runtime['imported_modules']={name:str(Path(m.__file__).resolve()) for name,m in sys.modules.items()
-            if name.startswith('anysolver') and getattr(m,'__file__',None)}
+            if name.startswith('anyfesolver') and getattr(m,'__file__',None)}
         if any(not Path(p).is_relative_to(site) for p in runtime['imported_modules'].values()):
             raise RuntimeError('mixed source/installed runtime imports')
         runtime['final_numerical_pools']=threadpool_info()

@@ -7,9 +7,9 @@ import sys
 import numpy as np
 import pytest
 
-import anysolver
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.e4_pl_s3_v2b_element import (
+import anyfesolver
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.e4_pl_s3_v2b_element import (
     CBMIN3,
     FORMULATION_ID,
     IMPLEMENTATION_ID,
@@ -18,8 +18,8 @@ from anysolver.e4_pl_s3_v2b_element import (
     StrictFlatLinearCapabilityError,
     StrictFlatLinearE4PLS3V2BShellElement,
 )
-from anysolver.element_capabilities import ElementCapabilityError
-from anysolver.elements import (
+from anyfesolver.element_capabilities import ElementCapabilityError
+from anyfesolver.elements import (
     DEFAULT_Q4_FORMULATION,
     DEFAULT_S3_FORMULATION,
     ShellElement,
@@ -27,7 +27,7 @@ from anysolver.elements import (
     create_shell_element,
     shell_formulation_diagnostics,
 )
-from anysolver.fe_core import FEMesh, Material
+from anyfesolver.fe_core import FEMesh, Material
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -117,10 +117,10 @@ def test_v2b_is_additive_opt_in_and_defaults_are_unchanged() -> None:
 
 
 def test_v2b_authority_identity_is_explicit() -> None:
-    assert anysolver.StrictFlatLinearE4PLS3V2BShellElement is StrictFlatLinearE4PLS3V2BShellElement
-    assert anysolver.STRICT_FLAT_S3_V2B_FORMULATION_ID == FORMULATION_ID
-    assert anysolver.STRICT_FLAT_S3_V2B_IMPLEMENTATION_ID == IMPLEMENTATION_ID
-    assert anysolver.STRICT_FLAT_S3_V2B_SELECTOR == SELECTOR
+    assert anyfesolver.StrictFlatLinearE4PLS3V2BShellElement is StrictFlatLinearE4PLS3V2BShellElement
+    assert anyfesolver.STRICT_FLAT_S3_V2B_FORMULATION_ID == FORMULATION_ID
+    assert anyfesolver.STRICT_FLAT_S3_V2B_IMPLEMENTATION_ID == IMPLEMENTATION_ID
+    assert anyfesolver.STRICT_FLAT_S3_V2B_SELECTOR == SELECTOR
     assert FORMULATION_ID == "CANDIDATE_E4_PL_S3_V2B_FLAT_LINEAR_V1"
     assert SELECTOR == "e4-pl-s3-v2b"
     assert CBMIN3 == 2.0

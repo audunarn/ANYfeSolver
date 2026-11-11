@@ -66,7 +66,7 @@ def test_checker_imports_no_production_or_runner() -> None:
             imports.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module:
             imports.append(node.module)
-    assert not any(name == "anysolver" or name.startswith("anysolver.") for name in imports)
+    assert not any(name == "anyfesolver" or name.startswith("anyfesolver.") for name in imports)
     assert not any("v6s_stage4b" in name for name in imports)
 
 
@@ -89,7 +89,7 @@ def test_v2d_adapter_is_explicit_and_defaults_are_unchanged() -> None:
     source = RUNNER.read_text(encoding="utf-8")
     assert 'formulation="e4-pl-s3-v2d"' in source
     assert 'CANDIDATE_E4_PL_S3_V2D_NATIVE_PARITY_V1' in source
-    elements = (ROOT / "src/anysolver/elements.py").read_text(encoding="utf-8")
+    elements = (ROOT / "src/anyfesolver/elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in elements
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in elements
 

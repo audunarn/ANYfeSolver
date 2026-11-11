@@ -5,12 +5,12 @@ import json
 import numpy as np
 import pytest
 
-from anysolver.marine_mooring import (MooringLine,MooringLineAssembler,MooringNodeState,
+from anyfesolver.marine_mooring import (MooringLine,MooringLineAssembler,MooringNodeState,
     FixedEndpoint,DynamicLineNodeEndpoint as Node,RigidBodyAttachmentEndpoint as Fairlead)
-from anysolver.marine_rigid import RigidBody6D
-from anysolver.marine_contributions import (WorldWrenchContribution,DynamicContribution,
+from anyfesolver.marine_rigid import RigidBody6D
+from anyfesolver.marine_contributions import (WorldWrenchContribution,DynamicContribution,
                                            ContributionResult,HISTORY_CHART)
-from anysolver.marine_mechanical import (MarineMechanicalModel,MarineMechanicalRunSpec,
+from anyfesolver.marine_mechanical import (MarineMechanicalModel,MarineMechanicalRunSpec,
     MarineMechanicalInputError,MarineMechanicalSolveError,solve_marine_mechanical,
     model_to_dict,model_from_dict,result_to_dict,MOORING_API_VERSION,API_VERSION)
 
@@ -106,7 +106,7 @@ def test_named_model_roundtrip_and_old_schema_cannot_erase_lines():
     old=model_to_dict(replace(model,mooring=None))
     assert old['api_version']==API_VERSION and 'mooring' not in old
     assert model_to_dict(model_from_dict(old))==old
-    from anysolver.marine_mooring import data_from_dict,MooringLineError
+    from anyfesolver.marine_mooring import data_from_dict,MooringLineError
     with pytest.raises(MooringLineError):data_from_dict(encoded['mooring'],('invalid',))
 
 

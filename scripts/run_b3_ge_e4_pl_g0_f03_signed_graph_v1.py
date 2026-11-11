@@ -25,9 +25,9 @@ CASES=(tuple(('native',topology,n,n) for topology in ('Q4','S3-V2D')
 MAX_RSS=8*1024**3
 MAX_CASE_SECONDS=900
 MAX_TOTAL_SECONDS=7200
-ROOT=Path('C:/Github/ANYsolver/.qualification/b3-ge-e4-pl/f03-signed-graph-v1')
-CACHE=Path('C:/Github/ANYsolver/.qualification/b3-ge-e4-pl/numba-cache')
-PREVIOUS=Path('C:/Github/ANYsolver/.qualification/b3-ge-e4-pl/f03-banded-moment-v3')
+ROOT=Path('C:/Github/ANYfeSolver/.qualification/b3-ge-e4-pl/f03-signed-graph-v1')
+CACHE=Path('C:/Github/ANYfeSolver/.qualification/b3-ge-e4-pl/numba-cache')
+PREVIOUS=Path('C:/Github/ANYfeSolver/.qualification/b3-ge-e4-pl/f03-banded-moment-v3')
 PREVIOUS_HASHES={
     'manifest.json':'38d94e90f1fb3cb5f5e03ca4815154795e50403736f9a376cf1d8dbe2432e0a9',
     'records.jsonl':'2604ffc87f9646b65910c523304df5943f2632df125252c2f45b1d99229cf932',
@@ -167,13 +167,13 @@ def main():
         raise ValueError('registered inventory differs')
     imported=subprocess.check_output(
         [sys.executable,'-c','import sys;sys.path.insert(0,"src");'
-         'import anysolver;print(anysolver.__file__)'],cwd=PARENT.parent,text=True).strip()
+         'import anyfesolver;print(anyfesolver.__file__)'],cwd=PARENT.parent,text=True).strip()
     if not Path(imported).resolve().is_relative_to((PARENT.parent/'src').resolve()):
-        raise ValueError('ANYsolver import outside frozen integration source')
+        raise ValueError('ANYfeSolver import outside frozen integration source')
     args.root.mkdir(parents=True,exist_ok=False)
     manifest={'purpose':'SIGNED_GRAPH_V1_EXPLORATORY_NOT_F03_ACCEPTANCE',
               'revision':revision,'source_sha256':hashes,'cases':CASES,
-              'predecessor_sha256':predecessor,'anysolver_import':imported,
+              'predecessor_sha256':predecessor,'anyfesolver_import':imported,
               'numba_cache':str(CACHE),
               'memory_limit_bytes':MAX_RSS,'case_wall_seconds':MAX_CASE_SECONDS,
               'total_wall_seconds':MAX_TOTAL_SECONDS,'rss_sampling_seconds':.5,

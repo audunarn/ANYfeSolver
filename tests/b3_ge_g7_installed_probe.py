@@ -65,12 +65,12 @@ def main() -> int:
         raise RuntimeError("invalid frozen solver identity")
 
     import numpy as np
-    import anysolver
-    from anysolver import b3_ge
-    from anysolver.boundary import BoundaryCondition
-    from anysolver.elements import ELEMENT_TYPES, QuadraticBeamElement, create_element
+    import anyfesolver
+    from anyfesolver import b3_ge
+    from anyfesolver.boundary import BoundaryCondition
+    from anyfesolver.elements import ELEMENT_TYPES, QuadraticBeamElement, create_element
 
-    origin = Path(anysolver.__file__).resolve(strict=True)
+    origin = Path(anyfesolver.__file__).resolve(strict=True)
     if site not in origin.parents:
         raise RuntimeError("ANYSolver was not imported from the installed target")
     if b3_ge.SELECTOR != "b3-ge" or b3_ge.NAME != "B3-GE":
@@ -155,7 +155,7 @@ def main() -> int:
                 "commit": anyfem_commit,
                 "tree": anyfem_tree,
             },
-            "anysolver": {"commit": args.solver_commit, "tree": args.solver_tree},
+            "anyfesolver": {"commit": args.solver_commit, "tree": args.solver_tree},
             "anystructure": {
                 "adapter_sha256": file_sha(anystructure_root / "anystruct/ge_beam3_optin.py"),
                 "commit": anystructure_commit,

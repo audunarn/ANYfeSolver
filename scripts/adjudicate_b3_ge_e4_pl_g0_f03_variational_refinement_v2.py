@@ -6,7 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 
-ROOT = Path('C:/Github/ANYsolver/.qualification/b3-ge-e4-pl/f03-variational-refinement-v2')
+ROOT = Path('C:/Github/ANYfeSolver/.qualification/b3-ge-e4-pl/f03-variational-refinement-v2')
 FROZEN = '1f123848af8f8c6527d186d4f334040ef33cc2e0'
 U = 1e6 / (210e9 * .07)
 PARENT = Path(__file__).resolve().parent
@@ -30,7 +30,7 @@ V1_HASHES = {
     'preflight.json':'8a6dc936d517a2fb060208d086d51a36c71d3efb93fc6989e2075491e8904d78',
     'records.jsonl':'e4925757567209706512f0aeec5ce234871eafdd1b669822b4b049bdf6511204',
 }
-V1_ROOT = Path('C:/Github/ANYsolver/.qualification/b3-ge-e4-pl/f03-variational-line-v1')
+V1_ROOT = Path('C:/Github/ANYfeSolver/.qualification/b3-ge-e4-pl/f03-variational-line-v1')
 
 
 def sha(path):

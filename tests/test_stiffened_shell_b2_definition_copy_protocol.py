@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver._stiffened_shell_b2_definition_ownership import (
+from anyfesolver._stiffened_shell_b2_definition_ownership import (
     _Array, _CSR, _Coordinates,
 )
 
@@ -148,7 +148,7 @@ def test_coordinates_copy_and_deepcopy_are_identity_stable():
 def test_definition_deepcopy_preserves_owned_views_and_admission():
     from dataclasses import replace
     from test_stiffened_shell_b2_mixed_panel_experimental import _definition, _load
-    from anysolver import stiffened_shell as api
+    from anyfesolver import stiffened_shell as api
     base, _ = _definition('q4')
     cloned = copy.deepcopy(base)
     assert cloned is not base

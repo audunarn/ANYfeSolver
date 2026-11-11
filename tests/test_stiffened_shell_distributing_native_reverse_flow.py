@@ -4,7 +4,7 @@ from math import fsum
 
 import numpy as np
 
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from test_stiffened_shell_distributing_native_material import definition, checks
 
 

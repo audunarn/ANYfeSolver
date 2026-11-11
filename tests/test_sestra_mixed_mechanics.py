@@ -1,8 +1,8 @@
 """Independent linear centroidal force/rigid-arm controls."""
 import numpy as np
 import pytest
-from anysolver.fe_core import FEModel
-from anysolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement
 
 def beam(offsets=None):
  m=FEModel('beam controls');m.add_node(1,0,0,0);m.add_node(2,2,0,0)
@@ -52,7 +52,7 @@ def test_legacy_zero_offset_mass_is_unchanged():
   b.set_linear_nodal_offsets([(0,0,0),(-2,0,0)]);b.compute_stiffness_matrix(m.mesh,mat)
 
 def test_rectangular_admission_rounding_bound_has_length_units():
- from anysolver.sestra_mixed_verification import rectangular_serialization_admission
+ from anyfesolver.sestra_mixed_verification import rectangular_serialization_admission
  xyz=np.array([[1.,1,0],[2,1,0],[2,2,0],[1,2,0]])
  xyz[2,0]+=1e-7
  assert rectangular_serialization_admission(xyz)[0]
@@ -60,7 +60,7 @@ def test_rectangular_admission_rounding_bound_has_length_units():
  assert not rectangular_serialization_admission(xyz)[0]
 
 def shell(distorted=True):
- from anysolver.elements import create_shell_element
+ from anyfesolver.elements import create_shell_element
  m=FEModel('sampling controls');xy=[(0,0),(2,0),(2.2 if distorted else 2,1),(0,1)]
  for nid,(x,y) in enumerate(xy,1):m.add_node(nid,x,y,0)
  e=create_shell_element(1,[1,2,3,4],thickness=.02);m.add_element(1,e)
@@ -81,7 +81,7 @@ def test_custom_qualified_points_match_affine_membrane_and_symmetric_bending():
  np.testing.assert_array_equal(e.gauss_points,saved)
 
 def test_explicit_default_points_bitwise_equivalent_and_bad_points_refuse():
- from anysolver.e4_pl_element import _GAUSS
+ from anyfesolver.e4_pl_element import _GAUSS
  m,e,mat=shell();u=np.arange(24)*1e-8
  default=e.compute_stresses(m.mesh,u,mat,return_global=True)
  explicit=e.compute_stresses(m.mesh,u,mat,return_global=True,natural_points=_GAUSS)
@@ -91,8 +91,8 @@ def test_explicit_default_points_bitwise_equivalent_and_bad_points_refuse():
   with pytest.raises(ValueError,match='natural stress points'):e.compute_stresses(m.mesh,u,mat,natural_points=points)
 
 def test_custom_points_refuse_warped_and_generalized_routes():
- from anysolver.elements import create_shell_element
- from anysolver.shell_sections import GeneralizedShellSection
+ from anyfesolver.elements import create_shell_element
+ from anyfesolver.shell_sections import GeneralizedShellSection
  m,e,mat=shell();m.mesh.nodes[3].z=.2
  with pytest.raises(ValueError,match='warped'):e.compute_stresses(m.mesh,np.zeros(24),mat,natural_points=[[0,0]])
  m,e,mat=shell(False)

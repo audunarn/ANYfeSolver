@@ -3,11 +3,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver import AnalysisSession, BoundaryCondition, FixedSupport, LoadCase, solve_linear
-from anysolver.activity import ContributionPolicy, ElementActivity, ElementActivityPolicy
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
-from anysolver.matrix_assembly import assemble_mass_matrix, assemble_stiffness_matrix
+from anyfesolver import AnalysisSession, BoundaryCondition, FixedSupport, LoadCase, solve_linear
+from anyfesolver.activity import ContributionPolicy, ElementActivity, ElementActivityPolicy
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.matrix_assembly import assemble_mass_matrix, assemble_stiffness_matrix
 
 
 def _bar() -> FEModel:
@@ -131,7 +131,7 @@ def test_unchanged_epoch_does_not_rescan_scales_and_prescribed_values_reuse(monk
         solve_linear(model, load, session=session)
         old_k, old_m = session.stiffness_plan(), session.mass_plan()
         old_constraint = session.constraint_plan()
-        import anysolver.matrix_assembly as assembly
+        import anyfesolver.matrix_assembly as assembly
         original = assembly._activity_scales
         calls = []
         def observe(model, quantity):

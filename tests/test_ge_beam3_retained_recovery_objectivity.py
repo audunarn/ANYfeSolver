@@ -1,11 +1,11 @@
 """Complementary recovery work and fixed-reference rigid-motion checks."""
 import numpy as np
 import pytest
-from anysolver._ge_beam3_retained_force_program import ForceProgram, solve_force_program
-from anysolver._ge_beam3_retained_state import Context
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._ge_beam3_p5.compensated_coordinates import split_sum
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_retained_force_program import ForceProgram, solve_force_program
+from anyfesolver._ge_beam3_retained_state import Context
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._ge_beam3_p5.compensated_coordinates import split_sum
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_curved_contrast_probe import make_curved
 
 

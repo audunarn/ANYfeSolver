@@ -10,13 +10,13 @@ import numpy as np
 import pytest
 from scipy.optimize import brentq
 from scipy.integrate import quad
-from anysolver import (ContactDefinition,ContactSurface,ContactInteraction,ContactSolverSettings,
+from anyfesolver import (ContactDefinition,ContactSurface,ContactInteraction,ContactSolverSettings,
     RigidContactBody,BoundaryCondition,LoadCase,DisplacementControl,solve_static_nonlinear,
     validate_general_contact,report_general_contact_capability)
-from anysolver.fe_core import FEModel
-from anysolver.elements import BeamElement,QuadraticBeamElement
-from anysolver.general_contact.beam_radial_ends import BeamRadialEndManager,PROFILE
-from anysolver.general_contact.beam_end_radial_geometry import (ownership_path_admissible,
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement,QuadraticBeamElement
+from anyfesolver.general_contact.beam_radial_ends import BeamRadialEndManager,PROFILE
+from anyfesolver.general_contact.beam_end_radial_geometry import (ownership_path_admissible,
     end_controls,point_sign,regular_curve_path)
 
 
@@ -349,7 +349,7 @@ def test_public_radial_endpoint_example(kind):
 
 @pytest.mark.parametrize('cancel',(False,True))
 def test_actual_candidate_failure_or_cancellation_keeps_radial_model_reusable(cancel,monkeypatch):
-    from anysolver import CancellationToken,SolveCancelled
+    from anyfesolver import CancellationToken,SolveCancelled
     model,definition,settings,load=_static('sphere')
     args=dict(contact=definition,contact_settings=settings,num_steps=4,max_iterations=20,
         tolerance=1e-10,emit_restart_checkpoint=True)

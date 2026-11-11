@@ -3,12 +3,12 @@ from hashlib import sha256
 import json
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_retained_generalized_modal as modal
-from anysolver._ge_beam3_retained_generalized_state import Context,Program
-from anysolver._ge_beam3_retained_generalized_program import solve
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver import _ge_beam3_retained_generalized_modal as modal
+from anyfesolver._ge_beam3_retained_generalized_state import Context,Program
+from anyfesolver._ge_beam3_retained_generalized_program import solve
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from docs.reference_cases.ge_beam3_generalized_ellipsoid_oracle import response as independent
 from test_ge_beam3_native_generalized import problem
 from test_ge_beam3_native_generalized_restart import make as connected

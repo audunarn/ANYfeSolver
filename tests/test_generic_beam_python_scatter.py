@@ -9,8 +9,8 @@ import sys
 import numpy as np
 import pytest
 
-from anysolver import nonlinear_performance as performance
-from anysolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver import nonlinear_performance as performance
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
 
 
 def original(values, positions, size):
@@ -58,7 +58,7 @@ def test_selector_rechecks_jit_and_exact_family(monkeypatch):
     plan.shell_batches=(object(),)
     assert performance._generic_beam_scatter_kernel(plan) is performance._scatter_sum
     plan.shell_batches=()
-    from anysolver.general_contact.runtime import _ACTIVE_CONTACT, suspend_contact
+    from anyfesolver.general_contact.runtime import _ACTIVE_CONTACT, suspend_contact
     token=_ACTIVE_CONTACT.set(object())
     try:
         assert performance._generic_beam_scatter_kernel(plan) is performance._scatter_sum_python_ordered
@@ -76,7 +76,7 @@ def test_invalid_index_retains_refusal():
 
 
 def beam_model():
-    from anysolver.fe_core import FEModel
+    from anyfesolver.fe_core import FEModel
     model=FEModel('generic-beam-scatter')
     model.add_material('steel',210e9,0.3)
     for node_id in (1,2,3):model.add_node(node_id,float(node_id-1),0.,0.)
@@ -86,7 +86,7 @@ def beam_model():
 
 
 def test_actual_beam_assembly_exact_parity(monkeypatch, tmp_path):
-    from anysolver import nonlinear_static
+    from anyfesolver import nonlinear_static
     import numba
     # JIT-off must be selected before decorators and Numba overloads load.
     # Toggling it after an ordinary JIT-on import can corrupt cold overloads.
@@ -130,7 +130,7 @@ def test_actual_beam_assembly_exact_parity(monkeypatch, tmp_path):
 
 
 def test_beam_plan_invalidation():
-    from anysolver.nonlinear_performance_bootstrap import get_nonlinear_assembly_plan
+    from anyfesolver.nonlinear_performance_bootstrap import get_nonlinear_assembly_plan
     model=beam_model()
     first=get_nonlinear_assembly_plan(model,5)
     assert get_nonlinear_assembly_plan(model,5) is first

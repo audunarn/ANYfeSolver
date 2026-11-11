@@ -1,5 +1,5 @@
 """Submodel transfer (docs/SUBMODEL_TRANSFER_CONTRACT.md): interpolation, driven trace,
-interface forces and error allowance on small ANYsolver-only shell models.
+interface forces and error allowance on small ANYfeSolver-only shell models.
 
 Oracles are closed-form affine and rigid fields and hand-derived multiplier relations;
 no result is compared with another run of the same code.
@@ -10,13 +10,13 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver import BoundaryCondition, LoadCase, solve_linear
-from anysolver.analysis_session import AnalysisSession
-from anysolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
-from anysolver.elements import ShellElement, create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.mesh_gen import InterpolatedBeamShellMPCElement
-from anysolver.submodel_transfer import (
+from anyfesolver import BoundaryCondition, LoadCase, solve_linear
+from anyfesolver.analysis_session import AnalysisSession
+from anyfesolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
+from anyfesolver.elements import ShellElement, create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.mesh_gen import InterpolatedBeamShellMPCElement
+from anyfesolver.submodel_transfer import (
     DOF_NAMES,
     SubmodelTransferError,
     TransferPoint,
@@ -180,7 +180,7 @@ def test_contract_mpc_example_trace_and_multipliers():
     assert node_values(model, u, m2)[0] == pytest.approx(2 * values[s][0] - values[m1][0], abs=1e-18)
 
     forces = interface_forces(model, u, case, trace)
-    from anysolver.matrix_assembly import assemble_load_vector
+    from anyfesolver.matrix_assembly import assemble_load_vector
     with AnalysisSession(model) as session:
         k = session.stiffness_plan().matrix
     f = np.asarray(assemble_load_vector(model, case)[0])
@@ -512,7 +512,7 @@ def test_support_coupled_through_mpc_gets_the_right_reaction():
         model, {node: g_field(coords(model, node)) for node in cut}, policy="drive_all"))
     u, _ = solve_linear(model, case)
     forces = interface_forces(model, u, case, trace)
-    from anysolver.matrix_assembly import assemble_load_vector
+    from anyfesolver.matrix_assembly import assemble_load_vector
     with AnalysisSession(model) as session:
         k = session.stiffness_plan().matrix
     r = k @ u - np.asarray(assemble_load_vector(model, case)[0])
@@ -740,7 +740,7 @@ def test_junction_threshold_order_is_enforced():
 # ----------------------------------------------------------------------
 # review round 4 additions
 # ----------------------------------------------------------------------
-import anysolver.submodel_transfer as transfer_module
+import anyfesolver.submodel_transfer as transfer_module
 
 
 def free_body(model, grid, n, forces, case):

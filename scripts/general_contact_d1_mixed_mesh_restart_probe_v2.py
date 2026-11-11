@@ -12,9 +12,9 @@ import time
 import numpy as np
 import scipy
 import anymaterial
-import anysolver
+import anyfesolver
 
-from anysolver import solve_static_nonlinear
+from anyfesolver import solve_static_nonlinear
 from scripts.general_contact_d1_mixed_mesh_jet2_schur_press import build_case
 
 
@@ -167,7 +167,7 @@ def main(reference_path: Path, output_path: Path) -> None:
             "python": sys.version.split()[0],
             "numpy": np.__version__,
             "scipy": scipy.__version__,
-            "anysolver_module": str(Path(anysolver.__file__).resolve()),
+            "anyfesolver_module": str(Path(anyfesolver.__file__).resolve()),
             "anymaterial_module": str(Path(anymaterial.__file__).resolve()),
         },
         "elapsed_seconds": time.perf_counter()-started,

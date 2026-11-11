@@ -3,9 +3,9 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell as public
-from anysolver import _stiffened_shell_ge_reference_modal as modal
-from anysolver.control import CancellationToken
+from anyfesolver import stiffened_shell as public
+from anyfesolver import _stiffened_shell_ge_reference_modal as modal
+from anyfesolver.control import CancellationToken
 from test_stiffened_shell_ge_reference_modal import _definition
 
 

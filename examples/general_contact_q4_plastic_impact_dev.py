@@ -13,12 +13,12 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction, ContactSurface,
     DNVC208MaterialCurve, FEModel, RigidContactBody, create_shell_element,
 )
-from anysolver.dynamics import TransientConfig
-from anysolver.general_contact.transient import (
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.general_contact.transient import (
     ContactTransientSolverControls, solve_transient_contact,
 )
 
@@ -69,11 +69,11 @@ def build_model():
 
 def source_provenance():
     """Record actual imported source paths and content hashes."""
-    names = ('anysolver', 'anysolver.fe_core', 'anysolver.dynamics',
-             'anysolver.general_contact.transient',
-             'anysolver.general_contact.core',
-             'anysolver.general_contact.q4_material_checkpoint',
-             'anysolver.e4_pl_element', 'anysolver.plasticity',
+    names = ('anyfesolver', 'anyfesolver.fe_core', 'anyfesolver.dynamics',
+             'anyfesolver.general_contact.transient',
+             'anyfesolver.general_contact.core',
+             'anyfesolver.general_contact.q4_material_checkpoint',
+             'anyfesolver.e4_pl_element', 'anyfesolver.plasticity',
              DNVC208MaterialCurve.__module__)
     sources = {}
     for name in dict.fromkeys(names):

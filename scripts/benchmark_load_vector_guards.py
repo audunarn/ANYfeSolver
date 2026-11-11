@@ -25,12 +25,12 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from anysolver.boundary import LoadCase  # noqa: E402
-from anysolver.e4_pl_element import QualifiedE4PLShellElement  # noqa: E402
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement  # noqa: E402
-from anysolver.elements import BeamElement  # noqa: E402
-from anysolver.fe_core import FEModel  # noqa: E402
-from anysolver.matrix_assembly import (  # noqa: E402
+from anyfesolver.boundary import LoadCase  # noqa: E402
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement  # noqa: E402
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement  # noqa: E402
+from anyfesolver.elements import BeamElement  # noqa: E402
+from anyfesolver.fe_core import FEModel  # noqa: E402
+from anyfesolver.matrix_assembly import (  # noqa: E402
     assemble_load_matrix,
     assemble_load_vector,
 )

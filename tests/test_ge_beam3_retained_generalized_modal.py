@@ -5,15 +5,15 @@ from types import SimpleNamespace
 import json
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_retained_generalized_modal as modal
-from anysolver import _ge_beam3_native_generalized_factor_modal as prior
-from anysolver._ge_beam3_retained_generalized_state import Context,Program
-from anysolver._ge_beam3_retained_generalized_program import solve
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver.control import CancellationToken,SolveCancelled
+from anyfesolver import _ge_beam3_retained_generalized_modal as modal
+from anyfesolver import _ge_beam3_native_generalized_factor_modal as prior
+from anyfesolver._ge_beam3_retained_generalized_state import Context,Program
+from anyfesolver._ge_beam3_retained_generalized_program import solve
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver.control import CancellationToken,SolveCancelled
 from test_ge_beam3_generalized_slenderness_diagnostic import make
 from test_ge_beam3_native_generalized_modal import make as connected
 from test_ge_beam3_schur_line_program import save

@@ -3,11 +3,11 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import b3_ge, stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_distributing_pose import DistributingPoseDomainError
-from anysolver._stiffened_shell_ge_distributing_finite import PreparedFiniteDistributingAttachment
-from anysolver._stiffened_shell_ge_checkpoint_binary import MAGIC, encode
+from anyfesolver import b3_ge, stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_distributing_pose import DistributingPoseDomainError
+from anyfesolver._stiffened_shell_ge_distributing_finite import PreparedFiniteDistributingAttachment
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import MAGIC, encode
 from test_stiffened_shell_ge_distributing_reference import _definition, _selection, _multi_definition, _multi_selection
 
 
@@ -105,7 +105,7 @@ def test_rejected_or_programming_candidate_preserves_checkpoint(monkeypatch,fail
 def test_multihost_finite_owner_and_preparation_reuse(monkeypatch):
     owner=ss.create_analysis(definition=definition(True))
     try:
-        import anysolver._stiffened_shell_ge_distributing_reference as reference
+        import anyfesolver._stiffened_shell_ge_distributing_reference as reference
         def forbidden(*args,**kwargs):raise AssertionError("reference search repeated during solve")
         monkeypatch.setattr(reference,"_compile_reference_geometry",forbidden)
         result=owner.solve(actions(),(.25,.5))

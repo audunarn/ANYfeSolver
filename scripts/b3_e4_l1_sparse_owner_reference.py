@@ -20,9 +20,9 @@ import psutil
 import scipy
 from threadpoolctl import threadpool_info
 
-import anysolver
-from anysolver import b3_ge, stiffened_shell
-from anysolver._stiffened_shell_l1_assembly_experimental import SPACE_A, SPACE_B
+import anyfesolver
+from anyfesolver import b3_ge, stiffened_shell
+from anyfesolver._stiffened_shell_l1_assembly_experimental import SPACE_A, SPACE_B
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -154,7 +154,7 @@ def main():
         "python": __import__("sys").version.split()[0],
         "numpy": np.__version__,
         "scipy": scipy.__version__,
-        "imported_package": str(Path(anysolver.__file__).resolve()),
+        "imported_package": str(Path(anyfesolver.__file__).resolve()),
         "thread_environment": {key: os.environ.get(key) for key in (
             "NUMBA_DISABLE_JIT", "OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS")},
         "effective_threadpools": [

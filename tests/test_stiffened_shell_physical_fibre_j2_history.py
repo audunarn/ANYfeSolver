@@ -3,10 +3,10 @@ import json
 import math
 import numpy as np
 from scipy.spatial.transform import Rotation
-from anysolver import b3_ge, stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver import _stiffened_shell_ge_finite_experimental as finite
-from anysolver._stiffened_shell_beam_history import arrays as history_arrays
+from anyfesolver import b3_ge, stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver import _stiffened_shell_ge_finite_experimental as finite
+from anyfesolver._stiffened_shell_beam_history import arrays as history_arrays
 import pytest
 from examples.stiffened_shell_coupled_plastic_history import (
     definition, programme, activity, OPTIONS, CONTROL, ENDPOINT_FORCES_N,

@@ -114,10 +114,10 @@ def independent_mass_chart():
 
 
 def test_actual_flexural_impact_and_independent_storage():
-    from anysolver.assembly import assemble_mass_matrix
-    from anysolver.general_contact.beam_s3_transient import BeamS3TransientManager
-    from anysolver.nonlinear_static import _assemble_nonlinear_system
-    from anysolver.general_contact.runtime import suspend_contact
+    from anyfesolver.assembly import assemble_mass_matrix
+    from anyfesolver.general_contact.beam_s3_transient import BeamS3TransientManager
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system
+    from anyfesolver.general_contact.runtime import suspend_contact
     m,r=run(quadratic=True,unequal=True,flexural=True)
     M,_=assemble_mass_matrix(m);dofs=lambda n:m.mesh.dof_manager.get_node_dofs(n)
     shell=m.mesh.elements[2];sdofs=np.concatenate([dofs(n) for n in (3,4,5)])

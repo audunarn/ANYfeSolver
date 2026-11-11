@@ -6,11 +6,11 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver import b3_ge, stiffened_shell
-from anysolver._ge_beam3_pose_joint import RigidPoseJoint
-from anysolver import _stiffened_shell_ge_experimental as ge_experimental
-from anysolver._stiffened_shell_point_recovery import point_record
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import b3_ge, stiffened_shell
+from anyfesolver._ge_beam3_pose_joint import RigidPoseJoint
+from anyfesolver import _stiffened_shell_ge_experimental as ge_experimental
+from anyfesolver._stiffened_shell_point_recovery import point_record
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_stiffened_shell_ge_experimental import _panel
 
 

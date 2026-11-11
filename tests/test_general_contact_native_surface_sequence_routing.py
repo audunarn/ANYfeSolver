@@ -3,9 +3,9 @@ from dataclasses import asdict
 from hashlib import sha256
 import numpy as np
 import pytest
-from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialPointFriction
-from anysolver.general_contact.native_surface_event_sequence import evaluate_closed_event_sequence
-from anysolver.general_contact.native_surface_path import material_path_pose
+from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialPointFriction
+from anyfesolver.general_contact.native_surface_event_sequence import evaluate_closed_event_sequence
+from anyfesolver.general_contact.native_surface_path import material_path_pose
 from test_general_contact_native_surface_closed_sequence import _recontact
 
 
@@ -47,7 +47,7 @@ def test_sequence_no_event_persistence_retains_incoming_elastic_history():
 
 
 def test_sequence_v2_checkpoint_roundtrip_and_v1_rejection(monkeypatch):
-    from anysolver.general_contact.native_surface_transaction import NativeS3MaterialTransaction
+    from anyfesolver.general_contact.native_surface_transaction import NativeS3MaterialTransaction
     from test_general_contact_native_surface_replay_owner import _patch,normal_settings,friction_settings
     def make():
         return _patch(activation_policy='transverse_event_sequence',gap_check='straight_patch',
@@ -74,8 +74,8 @@ def test_sequence_v2_checkpoint_roundtrip_and_v1_rejection(monkeypatch):
 def test_saved_second_load_closed_point_through_history_field(tmp_path):
     import json,os
     from pathlib import Path
-    from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceReplayBudget,NativeSurfaceMotionSegment
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceReplayBudget,NativeSurfaceMotionSegment
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
     from test_general_contact_native_surface_replay_owner import _patch,normal_settings,friction_settings
     _,bridge=_patch(activation_policy='transverse_event_sequence',gap_check='straight_patch',
         normal_integration='straight_segmented',normal_integration_settings=normal_settings(),
@@ -103,7 +103,7 @@ def test_saved_second_load_closed_point_through_history_field(tmp_path):
 
 
 def test_open_ending_sequence_retains_initial_active_history_and_matches_single_release():
-    from anysolver.general_contact.native_surface_activation import evaluate_release
+    from anyfesolver.general_contact.native_surface_activation import evaluate_release
     old,start,history,t,w,s=_recontact()
     pair=_policy(old,'transverse_event_sequence');w[0,0]=.3
     actual=pair.evaluate_path(start,history,t,w,s).contribution
@@ -123,8 +123,8 @@ def test_initially_active_three_events_end_open_with_independent_work():
     from dataclasses import replace
     from scipy.optimize import brentq
     from scipy.spatial.transform import Rotation
-    from anysolver.general_contact.native_retained_station import NativeRetainedRoundStation
-    from anysolver.general_contact.friction_point import initial_friction_point,trial_coulomb_point
+    from anyfesolver.general_contact.native_retained_station import NativeRetainedRoundStation
+    from anyfesolver.general_contact.friction_point import initial_friction_point,trial_coulomb_point
     from test_general_contact_native_surface_s3_friction import _case
     _,old,start,_=_case()
     source=NativeRetainedRoundStation(7,old.source.reference,-.5,.03,0.)

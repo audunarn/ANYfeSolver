@@ -1,17 +1,17 @@
 """Two connected B2 chains in distributed round-centreline contact.
 
-Run after installing ANYsolver: python examples/general_contact_round_beam_chain_pair.py
+Run after installing ANYfeSolver: python examples/general_contact_round_beam_chain_pair.py
 Use --consistent for the opt-in development tangent with moving-owner terms.
 SI units are used throughout. This is a development example, not qualification.
 """
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, DisplacementControl,
     LoadCase, solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
 
 
 def main(*, beam_chain_tangent: str = "finite_difference") -> None:

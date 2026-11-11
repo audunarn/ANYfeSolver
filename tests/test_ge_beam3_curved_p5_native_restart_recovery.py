@@ -11,8 +11,8 @@ import sys
 import numpy as np
 import pytest
 
-from anysolver.nonlinear_static import solve_static_nonlinear
-from anysolver.nonlinear_restart import canonical_checkpoint_json_bytes, _state_records, NonlinearCheckpointError
+from anyfesolver.nonlinear_static import solve_static_nonlinear
+from anyfesolver.nonlinear_restart import canonical_checkpoint_json_bytes, _state_records, NonlinearCheckpointError
 from docs.reference_cases.ge_beam3_curved_p5_native_material_probe import canonical, seal, NativeMaterialError
 from docs.reference_cases import ge_beam3_curved_p5_native_state_codec as codec
 from docs.reference_cases.ge_beam3_curved_p5_algebra_probe import rotation
@@ -58,7 +58,7 @@ def test_fresh_process_checkpoint_continuation_matches(completed_paths, tmp_path
     script='''from pathlib import Path
 import sys
 from test_ge_beam3_curved_p5_native_restart_recovery import problem, solve
-from anysolver.nonlinear_restart import canonical_checkpoint_json_bytes
+from anyfesolver.nonlinear_restart import canonical_checkpoint_json_bytes
 model, element, load=problem()
 result=solve(model, load, num_steps=2, max_load_factor=1., restart_checkpoint=Path(sys.argv[1]).read_bytes(), emit_restart_checkpoint=True)
 assert result.status=='completed'

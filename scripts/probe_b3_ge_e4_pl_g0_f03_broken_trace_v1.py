@@ -13,7 +13,7 @@ if not os.environ.get('NUMBA_CACHE_DIR'):
     raise RuntimeError('set a writable NUMBA_CACHE_DIR before source import')
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'src'))
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 import scipy
@@ -144,7 +144,7 @@ def main():
             for name in names}
     manifest={'purpose':'EXPLORATORY_BROKEN_TRACE_NOT_F03_ACCEPTANCE',
               'cases':CASES,'source_sha256':hashes,
-              'import':str(Path(anysolver.__file__).resolve()),
+              'import':str(Path(anyfesolver.__file__).resolve()),
               'python':sys.version,'numpy':np.__version__,'scipy':scipy.__version__,
               'numba':numba.__version__,'cache':os.environ['NUMBA_CACHE_DIR'],
               'blas_threads':1,'max_dense_primal_rows':1200,

@@ -9,11 +9,11 @@ import runpy
 
 import numpy as np
 import pytest
-from anysolver import (ContactNodalLoadHistory, ContactTransientSolverControls, LoadCase,
+from anyfesolver import (ContactNodalLoadHistory, ContactTransientSolverControls, LoadCase,
                        TransientConfig, solve_transient_contact)
-from anysolver.assembly import assemble_mass_matrix
-from anysolver.nonlinear_restart import analysis_configuration_fingerprint
-from anysolver.general_contact.transient import _multiple_shell_plane_path_gaps
+from anyfesolver.assembly import assemble_mass_matrix
+from anyfesolver.nonlinear_restart import analysis_configuration_fingerprint
+from anyfesolver.general_contact.transient import _multiple_shell_plane_path_gaps
 
 example=runpy.run_path(str(Path(__file__).parents[1]/'examples/general_contact_multiple_q4_planes_dev.py'))
 D=np.array([[1.,0.],[0.,1.],[.5,.5]])

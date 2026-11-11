@@ -6,10 +6,10 @@ import pytest
 from scipy.linalg import block_diag
 from scipy.spatial.transform import Rotation
 
-from anysolver.general_contact.overlap import PlanarFace
-from anysolver.general_contact.q4_target_overlap import q4_target_overlap_integrals
-from anysolver.general_contact.q4_s3_overlap_derivatives import UnsupportedQ4S3Branch
-from anysolver.general_contact.s3_q4_overlap_derivatives import s3_q4_overlap_derivatives
+from anyfesolver.general_contact.overlap import PlanarFace
+from anyfesolver.general_contact.q4_target_overlap import q4_target_overlap_integrals
+from anyfesolver.general_contact.q4_s3_overlap_derivatives import UnsupportedQ4S3Branch
+from anyfesolver.general_contact.s3_q4_overlap_derivatives import s3_q4_overlap_derivatives
 
 
 CONTROLS = dict(support_tolerance=1e-12, weighted_gap_tolerance=1e-13,

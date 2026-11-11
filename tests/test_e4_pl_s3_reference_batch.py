@@ -18,29 +18,29 @@ from typing import Any, Mapping
 import numpy as np
 import pytest
 
-import anysolver.matrix_assembly as matrix_assembly_module
-import anysolver.e4_pl_s3_element as s3_element_module
-import anysolver.s3_reference_batch as s3_batch_module
-from anysolver.assembly import (
+import anyfesolver.matrix_assembly as matrix_assembly_module
+import anyfesolver.e4_pl_s3_element as s3_element_module
+import anyfesolver.s3_reference_batch as s3_batch_module
+from anyfesolver.assembly import (
     compute_constraint_force_diagnostics,
     compute_reactions,
 )
-from anysolver.activity import ElementActivity
-from anysolver.boundary import LoadCase
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from anysolver.fe_core import FEModel, FEMesh
-from anysolver.matrix_assembly import AssemblyError, assemble_stiffness_matrix
-from anysolver.materials import Hill48Yield
-from anysolver.recovery import (
+from anyfesolver.activity import ElementActivity
+from anyfesolver.boundary import LoadCase
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+from anyfesolver.fe_core import FEModel, FEMesh
+from anyfesolver.matrix_assembly import AssemblyError, assemble_stiffness_matrix
+from anyfesolver.materials import Hill48Yield
+from anyfesolver.recovery import (
     RecoveryConfig,
     ResourceConfig,
     _compute_one_element_stress,
     recover_element_stresses_with_report,
     recover_stress_result,
 )
-from anysolver.recovery_batches import get_recovery_batch_plan
-from anysolver.s3_reference_batch import (
+from anyfesolver.recovery_batches import get_recovery_batch_plan
+from anyfesolver.s3_reference_batch import (
     MIN_REFERENCE_S3_RECOVERY_GROUP,
     REFERENCE_S3_BATCH_POLICY_ID,
     REFERENCE_S3_FORMULATION_ID,
@@ -48,7 +48,7 @@ from anysolver.s3_reference_batch import (
     prepare_reference_s3_components,
     reference_s3_eligibility,
 )
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 def _build_model(
@@ -1395,7 +1395,7 @@ def test_committed_state_recovery_stays_outside_reference_batch(
     def forbidden(*_args, **_kwargs):
         raise AssertionError("committed recovery entered the reference-elastic batch")
 
-    monkeypatch.setattr("anysolver.recovery.recover_reference_s3", forbidden)
+    monkeypatch.setattr("anyfesolver.recovery.recover_reference_s3", forbidden)
     result = recover_stress_result(
         model,
         vector,

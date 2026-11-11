@@ -8,9 +8,9 @@ from types import FunctionType, SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver import _compensated_contractions as arithmetic
-from anysolver import elements, vectorized_nonlinear
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver import _compensated_contractions as arithmetic
+from anyfesolver import elements, vectorized_nonlinear
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
 from test_general_contact_c5_elastic_increment import case, pose
 
 
@@ -164,7 +164,7 @@ def test_committed_current_split_matches_direct_response_without_state_change():
     np.testing.assert_array_equal(actual["force"], force)
     np.testing.assert_array_equal(actual["total"], tangent)
     # Canonical serialization handles all nested state provenance, not just arrays.
-    from anysolver.e4_pl_element import canonical_json_bytes
+    from anyfesolver.e4_pl_element import canonical_json_bytes
     assert canonical_json_bytes(sealed) == canonical_json_bytes(saved)
 
 

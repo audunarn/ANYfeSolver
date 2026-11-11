@@ -209,12 +209,12 @@ def test_supervisor_requires_exact_source_inventory_before_claim(tmp_path, monke
 
 def test_supervisor_freezes_direct_runner_imports():
     assert {
-        "src/anysolver/control.py",
-        "src/anysolver/_native_reference_modal.py",
-        "src/anysolver/_ge_beam3_native_generalized_loading.py",
-        "src/anysolver/_ge_beam3_native_line_loading.py",
-        "src/anysolver/_ge_beam3_centered_reference.py",
-        "src/anysolver/fe_core.py",
+        "src/anyfesolver/control.py",
+        "src/anyfesolver/_native_reference_modal.py",
+        "src/anyfesolver/_ge_beam3_native_generalized_loading.py",
+        "src/anyfesolver/_ge_beam3_native_line_loading.py",
+        "src/anyfesolver/_ge_beam3_centered_reference.py",
+        "src/anyfesolver/fe_core.py",
     } <= supervisor.MEASUREMENT_SOURCES
 
 

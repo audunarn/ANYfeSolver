@@ -5,16 +5,16 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import stiffened_shell as api
-from anysolver._b2_f10_f11_point_attachment import compile_reference_point, LAW_ID, S3_LAW_ID
-from anysolver.control import CancellationToken
-from anysolver.elements import create_shell_element
-from anysolver.e4_pl_element import FORMULATION_ID as Q4_ID
-from anysolver.e4_pl_s3_v2d_element import (
+from anyfesolver import stiffened_shell as api
+from anyfesolver._b2_f10_f11_point_attachment import compile_reference_point, LAW_ID, S3_LAW_ID
+from anyfesolver.control import CancellationToken
+from anyfesolver.elements import create_shell_element
+from anyfesolver.e4_pl_element import FORMULATION_ID as Q4_ID
+from anyfesolver.e4_pl_s3_v2d_element import (
     FORMULATION_ID as S3_ID, NativeParityCapabilityError,
 )
-from anysolver.fe_core import FEModel
-import anysolver._stiffened_shell_b2_q4_panel_experimental as owner_module
+from anyfesolver.fe_core import FEModel
+import anyfesolver._stiffened_shell_b2_q4_panel_experimental as owner_module
 
 
 def _definition(kind="mixed"):

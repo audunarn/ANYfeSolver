@@ -14,7 +14,7 @@ from time import monotonic
 import numpy as np
 from threadpoolctl import threadpool_info
 
-from anysolver._ge_beam3_mixed_ad import rotation_exponential
+from anyfesolver._ge_beam3_mixed_ad import rotation_exponential
 from scripts._b3_e4_f03_native_fixture import build
 from scripts._b3_e4_f03_weak_line_candidate import LineMultiplierSpace
 from scripts.b3_e4_f03_distributed_surface_finite import FiniteSurfaceMomentPatch

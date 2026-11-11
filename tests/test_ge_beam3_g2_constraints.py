@@ -8,12 +8,12 @@ import numpy as np
 import pytest
 from scipy.linalg import null_space
 from scipy.spatial.transform import Rotation
-from anysolver._ge_beam3_g2_constraints import ConstraintSet, compile_affine
-from anysolver._ge_beam3_g2_analysis import ConstrainedAnalysis
-from anysolver._ge_beam3_g1_element import ElasticElement
-from anysolver._ge_beam3_g1_elastic import canonical
-from anysolver._ge_beam3_mixed_ad import RotationDomainError
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+from anyfesolver._ge_beam3_g2_constraints import ConstraintSet, compile_affine
+from anyfesolver._ge_beam3_g2_analysis import ConstrainedAnalysis
+from anyfesolver._ge_beam3_g1_element import ElasticElement
+from anyfesolver._ge_beam3_g1_elastic import canonical
+from anyfesolver._ge_beam3_mixed_ad import RotationDomainError
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
 from test_ge_beam3_g1_elastic import reference, section
 
 FIXTURE = json.loads((Path(__file__).resolve().parents[1]/"docs/reference_cases/ge_beam3_g2_fixtures_v1.json").read_text())
@@ -155,7 +155,7 @@ def test_S11_noncommuting_targets_and_restart(tmp_path):
     path = tmp_path/"restart.json"; owner.publish(path); before = path.read_bytes()
     with pytest.raises(ValueError): owner.publish(path)
     assert path.read_bytes() == before
-    with patch("anysolver._ge_beam3_g1_analysis.os.link", side_effect=OSError("publication failure")):
+    with patch("anyfesolver._ge_beam3_g1_analysis.os.link", side_effect=OSError("publication failure")):
         with pytest.raises(OSError): owner.publish(tmp_path/"failed.json")
     assert not (tmp_path/"failed.json").exists()
 

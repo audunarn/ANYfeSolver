@@ -3,17 +3,17 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-import anysolver.corotational as corotational
-from anysolver.corotational import corotational_element_response, rotation_matrix_from_vector
-from anysolver.corotational_performance import (
+import anyfesolver.corotational as corotational
+from anyfesolver.corotational import corotational_element_response, rotation_matrix_from_vector
+from anyfesolver.corotational_performance import (
     corotational_performance_status,
     reset_corotational_performance_status,
     rotate_corotational_force_blocks,
     rotate_corotational_force_tangent_blocks,
 )
-from anysolver.elements import BeamElement, QuadraticBeamElement, create_element
-from anysolver.fe_core import FEModel
-from anysolver.nonlinear_performance_bootstrap import nonlinear_performance_status
+from anyfesolver.elements import BeamElement, QuadraticBeamElement, create_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.nonlinear_performance_bootstrap import nonlinear_performance_status
 
 
 def _dense_rotation(rotation: np.ndarray, size: int) -> np.ndarray:

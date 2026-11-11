@@ -4,22 +4,22 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import (
+from anyfesolver import (
     FEModel,
     FixedSupport,
     QualifiedE4PLS3ShellElement,
     QualifiedE4PLShellElement,
 )
-from anysolver.algebraic_dynamics import (
+from anyfesolver.algebraic_dynamics import (
     AlgebraicDynamicsError,
     _certify_spd,
     _sparse_nullspace_basis,
     build_declared_algebraic_basis,
     solve_descriptor_spectrum,
 )
-from anysolver.assembly import build_constraint_transformation
-from anysolver.matrix_assembly import assemble_mass_matrix, assemble_stiffness_matrix
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.matrix_assembly import assemble_mass_matrix, assemble_stiffness_matrix
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 def _q4_section(*, rotary_inertia_per_area: float) -> GeneralizedShellSection:

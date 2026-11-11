@@ -25,7 +25,7 @@ def artifact():
  return dict(files=len(frozen),wheel_sha256=WHEEL_SHA,manifest_sha256=sha(PACKAGE/'snapshot-bindings.json'),prefix_sha256=PREFIX_SHA)
 
 def bindings():
- paths=[ROOT/'src/anysolver'/p for p in (*infra.PRODUCTS,'_stiffened_shell_q4_algorithmic_pullback.py',
+ paths=[ROOT/'src/anyfesolver'/p for p in (*infra.PRODUCTS,'_stiffened_shell_q4_algorithmic_pullback.py',
   '_stiffened_shell_algorithmic_pullback.py','_stiffened_shell_increment_control.py')]
  paths += [Path(__file__),ROOT/'tests/test_r8_f06_coupled_resume_dev.py',PREFIX,
   PACKAGE/'snapshot-bindings.json',DOC/'AUTHORITY.json',DOC/'CONTROL_AUTHORITY.json',DOC/'SLOT_TRANSFER.json']

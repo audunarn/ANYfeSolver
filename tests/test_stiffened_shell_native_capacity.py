@@ -9,8 +9,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver import b3_ge, stiffened_shell as ss
-from anysolver.control import CancellationToken
+from anyfesolver import b3_ge, stiffened_shell as ss
+from anyfesolver.control import CancellationToken
 from examples import stiffened_shell_native_capacity as capacity
 
 

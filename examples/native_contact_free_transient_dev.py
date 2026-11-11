@@ -8,10 +8,10 @@ import argparse
 import json
 import numpy as np
 
-from anysolver.boundary import BoundaryCondition
-from anysolver.dynamics import TransientConfig
-from anysolver.ge_beam3_native import LinePattern, DistributedPattern
-from anysolver.ge_beam3_native_dynamics import create_analysis, SELECTOR, solve_transient
+from anyfesolver.boundary import BoundaryCondition
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.ge_beam3_native import LinePattern, DistributedPattern
+from anyfesolver.ge_beam3_native_dynamics import create_analysis, SELECTOR, solve_transient
 from examples.native_contact_free_finite_velocity_dev import build_definition, initial_velocity
 
 

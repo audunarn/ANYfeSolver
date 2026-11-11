@@ -8,11 +8,11 @@ import pytest
 
 from docs.reference_cases import ge_beam3_centered_line_load_oracle as oracle
 from docs.reference_cases import ge_beam3_centered_line_load_probe as probe
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Centered
-from anysolver._ge_beam3_p5_coordinates.positions import from_total
-from anysolver._ge_beam3_p5.core import canonical
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._ge_beam3_p5.section import SectionHistory, DirectedHardeningSection
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Centered
+from anyfesolver._ge_beam3_p5_coordinates.positions import from_total
+from anyfesolver._ge_beam3_p5.core import canonical
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._ge_beam3_p5.section import SectionHistory, DirectedHardeningSection
 from test_ge_beam3_centered_reference import fixture
 from test_ge_beam3_curved_p5_nonlinear_mixed_probe import law
 from test_ge_beam3_curved_p5_native_chart_probe import sample
@@ -65,7 +65,7 @@ def test_full_work_force_and_hessian_match_independent_reconstruction(solved):
 
 
 def test_load_only_derivatives_match_the_frozen_complete_variational_core(solved):
-    from anysolver._ge_beam3_centered_mixed import CenteredStationaryBeam
+    from anyfesolver._ge_beam3_centered_mixed import CenteredStationaryBeam
     data, result, _, _ = solved; ref, section, high, low, vertex, _, origins = data
     full = []
     for value in (0.,1.):
@@ -149,7 +149,7 @@ def test_load_only_variations_retain_tiny_work_without_material_subtraction(scal
 
 
 def test_material_potential_subtraction_would_erase_tiny_line_work():
-    from anysolver._ge_beam3_centered_mixed import CenteredStationaryBeam
+    from anyfesolver._ge_beam3_centered_mixed import CenteredStationaryBeam
     data = setup(shift=2.**40); ref, section, high, low, vertex, _, origins = data
     cells = np.array([rotation([.4,-.2,.3]),rotation([-.1,.35,.2])])
     moments = np.zeros((2,2,3)); tiny = FORCE*1e-20

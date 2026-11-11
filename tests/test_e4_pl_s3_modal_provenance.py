@@ -8,7 +8,7 @@ from typing import Any
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     FEModel,
     FixedSupport,
@@ -16,12 +16,12 @@ from anysolver import (
     shell_element_from_dict,
     solve_free_vibration,
 )
-from anysolver.e4_pl_s3_element import (
+from anyfesolver.e4_pl_s3_element import (
     ALGEBRAIC_COORDINATE_POLICY_ID,
     FORMULATION_ID,
 )
-from anysolver.element_capabilities import ElementCapabilityError
-from anysolver.elements import BeamElement
+from anyfesolver.element_capabilities import ElementCapabilityError
+from anyfesolver.elements import BeamElement
 
 
 _PROVENANCE = [
@@ -131,7 +131,7 @@ def test_descriptor_failure_provenance_and_diagnostics_are_stable() -> None:
 def test_descriptor_backend_failure_is_wrapped_without_backend_text(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import anysolver.algebraic_dynamics as algebraic_dynamics
+    import anyfesolver.algebraic_dynamics as algebraic_dynamics
 
     calls = 0
 

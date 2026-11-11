@@ -5,7 +5,7 @@ from fractions import Fraction as F
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver.general_contact import ContactInteraction,resolve_automatic_contact_domain as resolve
+from anyfesolver.general_contact import ContactInteraction,resolve_automatic_contact_domain as resolve
 
 
 
@@ -79,8 +79,8 @@ def _independent_pose_gap(model,u):
 
 
 def _footprint(model,resolution,settings,u):
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.overlap import PlanarFace,planar_projected_overlap
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.overlap import PlanarFace,planar_projected_overlap
     manager=GeneralS3PatchManager(model,resolution.definition,settings);source,target=manager._positions(u)
     pairs=[]
     for si in manager.law.source_face_indices:
@@ -97,10 +97,10 @@ def _footprint(model,resolution,settings,u):
                    reason='bounded installed refined automatic deformable lifecycle')
 def test_installed_s3_physical_orientation_stage():
     """One guarded stage per invocation, sharing only retained JSON evidence."""
-    import anysolver,numba
+    import anyfesolver,numba
     from threadpoolctl import threadpool_info
-    from anysolver import ContactDefinition,solve_static_nonlinear
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver import ContactDefinition,solve_static_nonlinear
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     from examples.general_contact_s3_physical_orientation import build_orientation_pair,solve_shell_pair
     stage=os.environ['S3_PHYSICAL_ORIENTATION_STAGE'].split('-')[0]
     evidence=Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])
@@ -119,7 +119,7 @@ def test_installed_s3_physical_orientation_stage():
         physical_inputs=dict(integration_role='lower_coarser',controlled_physical_body='upper',source_work_labels='physical_upper_not_integration_role',upper_actuator_midplane_z_m=.055,upper_physical_bottom_offset_m=-.025,lower_pressure_midplane_z_m=0.,
             lower_physical_top_offset_m=float(.025-.01),upper_director=(0.,0.,director_z),lower_director=(0.,0.,director_z),
             path=path.contract()),
-        runtime_before_solve=dict(anysolver_path=anysolver.__file__,
+        runtime_before_solve=dict(anyfesolver_path=anyfesolver.__file__,
             automatic_domain_path=__import__('inspect').getfile(resolve),
             jit_disabled=bool(numba.config.DISABLE_JIT),numba_threads=int(numba.get_num_threads()),
             pools=threadpool_info()))
@@ -226,7 +226,7 @@ def test_installed_s3_physical_orientation_stage():
         assert abs(result.displacements[target_dof])>1e-10
         manager=GeneralS3PatchManager(model,resolution.definition,settings)
         residual,_,contact_result=manager.evaluate(result.displacements,tangent=False)
-        from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+        from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
         structural,_,states=_assemble_nonlinear_system(model,result.displacements,result.element_states,
             5,tangent=False,kinematics='von_karman')
         _discard_nonlinear_state_candidate(states)
@@ -308,8 +308,8 @@ def test_installed_s3_physical_orientation_stage():
 
 def test_reference_orientation_scalar_work_covariance_and_directional_tangent():
     from examples.general_contact_s3_physical_orientation import build_orientation_pair
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager,_adapters,_selected
-    from anysolver.general_contact.s3_overlap_derivatives import s3_overlap_derivatives
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager,_adapters,_selected
+    from anyfesolver.general_contact.s3_overlap_derivatives import s3_overlap_derivatives
     from scipy import sparse
     pairs=[build_orientation_pair(director_z=sign) for sign in (1,-1)]
     managers=[GeneralS3PatchManager(m,res.definition,st) for m,dom,st,res,path in pairs]
@@ -356,9 +356,9 @@ def test_reference_orientation_scalar_work_covariance_and_directional_tangent():
 
 
 def test_default_contract_identity_and_unused_routes():
-    from anysolver import CancellationToken,SolveCancelled,validate_general_contact,solve_static_nonlinear
-    from anysolver.general_contact.core import _contact_settings_contract
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver import CancellationToken,SolveCancelled,validate_general_contact,solve_static_nonlinear
+    from anyfesolver.general_contact.core import _contact_settings_contract
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     from examples.general_contact_s3_physical_orientation import build_orientation_pair,solve_shell_pair
     model,domain,settings,res,path=build_orientation_pair(director_z=-1,orientation='legacy')
     assert 'shell_pair_orientation' not in _contact_settings_contract(settings)
@@ -436,9 +436,9 @@ def test_retained_minus_prefix_matching_phase_parity():
 
 def test_public_multiple_beam_transient_refuses_physical_orientation_before_allocation(monkeypatch):
     from examples.general_contact_multiple_beam_s3_transient import build
-    from anysolver.dynamics import TransientConfig
-    from anysolver.general_contact.transient import solve_transient_contact,_admit,ContactTransientSolverControls
-    import anysolver.general_contact.multiple_beam_s3_transient as owner
+    from anyfesolver.dynamics import TransientConfig
+    from anyfesolver.general_contact.transient import solve_transient_contact,_admit,ContactTransientSolverControls
+    import anyfesolver.general_contact.multiple_beam_s3_transient as owner
     model,definition,settings,velocity=build()
     controls=ContactTransientSolverControls(allow_multiple_deformable_beam_s3_dev=True)
     before=repr(model)

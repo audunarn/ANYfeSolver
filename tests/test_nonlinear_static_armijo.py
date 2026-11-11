@@ -3,12 +3,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver import nonlinear_performance, nonlinear_static
-from anysolver.boundary import BoundaryCondition, FixedSupport, LoadCase
-from anysolver.elements import Element
-from anysolver.fe_core import FEModel
-from anysolver.material_curves import dnv_c208_steel_curve
-from anysolver.nonlinear_static import (
+from anyfesolver import nonlinear_performance, nonlinear_static
+from anyfesolver.boundary import BoundaryCondition, FixedSupport, LoadCase
+from anyfesolver.elements import Element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.material_curves import dnv_c208_steel_curve
+from anyfesolver.nonlinear_static import (
     NonlinearLoadProgram,
     NonlinearLoadStage,
     NonlinearConvergenceSettings,
@@ -16,7 +16,7 @@ from anysolver.nonlinear_static import (
     _armijo_residual_weights,
     solve_static_nonlinear,
 )
-from anysolver.plasticity import PlaneStressConvergenceError, plane_stress_return_map
+from anyfesolver.plasticity import PlaneStressConvergenceError, plane_stress_return_map
 
 
 class _HardeningSpring(Element):

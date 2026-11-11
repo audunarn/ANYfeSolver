@@ -8,12 +8,12 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver import (
+from anyfesolver import (
     ContactDefinition, ContactInteraction, ContactSolverSettings,
     ContactSurface, create_shell_element, validate_general_contact,
 )
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 from scripts.general_contact_d1_distributed_tangent_probe import _branches
 
 

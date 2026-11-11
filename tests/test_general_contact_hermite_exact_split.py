@@ -14,7 +14,7 @@ import pytest
 
 from fractions import Fraction
 
-from anysolver.general_contact.shell_pair_hermite_sweep import (
+from anyfesolver.general_contact.shell_pair_hermite_sweep import (
     _split, shell_pair_hermite_lower)
 
 
@@ -84,7 +84,7 @@ def test_split_recursive_tree_matches_oracle():
                 target_v0=np.full((4, 3), .02), target_v1=np.full((4, 3), -.02),
                 dt=0.013)
     # Build the same flat polynomial tuple the sweep subdivides.
-    from anysolver.general_contact import shell_pair_hermite_sweep as module
+    from anyfesolver.general_contact import shell_pair_hermite_sweep as module
     coords = lambda v: tuple(tuple(Fraction(float(x)) for x in row) for row in v)
     a = module._nodes(coords(a0), coords(a1), coords(data['source_v0']),
                       coords(data['source_v1']), Fraction(0.013))
@@ -171,7 +171,7 @@ def subdividing_path():
 
 def test_sweep_result_is_unchanged_on_subdividing_case(monkeypatch):
     """Compare the complete caller certificate with original arithmetic."""
-    import anysolver.general_contact.shell_pair_hermite_sweep as sweep
+    import anyfesolver.general_contact.shell_pair_hermite_sweep as sweep
     data = subdividing_path()
     result = sweep.shell_pair_hermite_lower(gap_tolerance_m=0., **data)
     assert result.success and result.visited_panels > 1
@@ -181,7 +181,7 @@ def test_sweep_result_is_unchanged_on_subdividing_case(monkeypatch):
 
 
 def test_sweep_cancellation_and_budget_refusals_are_unchanged(monkeypatch):
-    import anysolver.general_contact.shell_pair_hermite_sweep as sweep
+    import anyfesolver.general_contact.shell_pair_hermite_sweep as sweep
     data = subdividing_path()
     cancelled = sweep.shell_pair_hermite_lower(cancel=lambda: True, **data)
     assert cancelled.status == 'cancelled' and not cancelled.success

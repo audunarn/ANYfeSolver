@@ -4,11 +4,11 @@ from hashlib import sha256
 import numpy as np
 import pytest
 
-from anysolver.control import CancellationToken
-from anysolver._ge_beam3_seeded_load_program import ForceProgram
-from anysolver._ge_beam3_retained_fibre_program import solve_force_program
-from anysolver._ge_beam3_retained_fibre_state import Context, Layout
-from anysolver._ge_beam3_p5_seeded.core import canonical, sha
+from anyfesolver.control import CancellationToken
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram
+from anyfesolver._ge_beam3_retained_fibre_program import solve_force_program
+from anyfesolver._ge_beam3_retained_fibre_state import Context, Layout
+from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
 from test_ge_beam3_retained_fibre import make_model
 
 

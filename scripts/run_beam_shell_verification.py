@@ -11,7 +11,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from anysolver.beam_shell_verification import DEFAULT_BEAM_SHELL_VERIFICATION_PATH, write_beam_shell_verification_report
+from anyfesolver.beam_shell_verification import DEFAULT_BEAM_SHELL_VERIFICATION_PATH, write_beam_shell_verification_report
 
 
 def main() -> int:

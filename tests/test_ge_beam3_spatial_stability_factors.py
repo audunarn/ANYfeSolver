@@ -3,9 +3,9 @@ from decimal import Decimal as D, localcontext
 from hashlib import sha256
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_elastic_seed_modal as modal
-from anysolver import _ge_beam3_elastic_seed_continuation as owner
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver import _ge_beam3_elastic_seed_modal as modal
+from anyfesolver import _ge_beam3_elastic_seed_continuation as owner
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_elastic_seed_continuation import seed, model, programme
 from docs.reference_cases.ge_beam3_sparse_inertia_audit import inertia
 from docs.reference_cases.ge_beam3_decimal_inertia_audit import inertia as dense

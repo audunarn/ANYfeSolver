@@ -5,7 +5,7 @@ import json
 import numpy as np
 import pytest
 
-from anysolver.ge_beam3_curved_reference import (
+from anyfesolver.ge_beam3_curved_reference import (
     CurvedBeam3ReferenceGeometry,
     GE_BEAM3_CURVED_REFERENCE_INTERPOLATION_ID,
     GE_BEAM3_CURVED_REFERENCE_SCHEMA_ID,

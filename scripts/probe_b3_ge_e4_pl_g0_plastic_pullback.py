@@ -6,11 +6,11 @@ import json
 
 import numpy as np
 
-from anysolver._ge_beam3_variational_shell import deformation
-from anysolver.e4_pl_s3_v2d_state import canonical_json_bytes
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.material_curves import DNVC208MaterialCurve
+from anyfesolver._ge_beam3_variational_shell import deformation
+from anyfesolver.e4_pl_s3_v2d_state import canonical_json_bytes
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.material_curves import DNVC208MaterialCurve
 
 
 def main() -> int:

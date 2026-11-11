@@ -33,11 +33,11 @@ def _exact_float(x):
 
 
 def _build_local_pose():
-    from anysolver import (BoundaryCondition, ContactDefinition, ContactSurface,
+    from anyfesolver import (BoundaryCondition, ContactDefinition, ContactSurface,
                            ContactInteraction, ContactSolverSettings,
                            create_shell_element)
-    from anysolver.elements import QuadraticBeamElement
-    from anysolver.fe_core import FEModel
+    from anyfesolver.elements import QuadraticBeamElement
+    from anyfesolver.fe_core import FEModel
     m, delta, height, radius = 256, Q(1, 16384), Q(1, 128), Q(1, 128)
     X, Y, rise = (m*m-1)*delta, Q(4), 2*m*delta
     stations = (Q(1, 4), Q(5, 16), Q(3, 8))
@@ -161,16 +161,16 @@ def _reference_directional(B, coefficient, velocity):
 
 def test_production_nonzero_null_directional_coupling():
     """Future authorized selector; no transient-initial or C2 DAE claim."""
-    from anysolver.general_contact.beam_s3_directional_rates import (
+    from anyfesolver.general_contact.beam_s3_directional_rates import (
         DirectionalBeamS3Manager, directional_coefficients, directional_operator,
         exact_gap_polynomial, solve_directional_velocity, recover_directional_rates,
         PROFILE)
-    from anysolver.assembly import assemble_mass_matrix, build_constraint_transformation
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
-    from anysolver.algebraic_dynamics import build_declared_algebraic_basis
-    from anysolver.nonlinear_static import _assemble_nonlinear_system
-    from anysolver.general_contact.runtime import suspend_contact
-    from anysolver.nonlinear_state import discard_active_state_candidate
+    from anyfesolver.assembly import assemble_mass_matrix, build_constraint_transformation
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.algebraic_dynamics import build_declared_algebraic_basis
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system
+    from anyfesolver.general_contact.runtime import suspend_contact
+    from anyfesolver.nonlinear_state import discard_active_state_candidate
     (model, definition, settings, u, refs, dofs, height, radius,
      X, Y, rise) = _build_local_pose()
     manager = DirectionalBeamS3Manager(model, definition, settings,

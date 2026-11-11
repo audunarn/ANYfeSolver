@@ -9,8 +9,8 @@ from __future__ import annotations
 import json
 import math
 
-from anysolver.elements import BeamElement
-from anysolver.fe_core import Material
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import Material
 
 
 def case(area: float, direction: str) -> dict:

@@ -16,7 +16,7 @@ import sys
 from time import monotonic
 import warnings
 
-import anysolver
+import anyfesolver
 import numpy as np
 import scipy
 from scipy import linalg, sparse
@@ -82,9 +82,9 @@ def evaluate(*, shell_cells: int = 16,
         raise ValueError("bounded x16/B3-14/m8 Mx space comparison required")
     if mode_resolved_mx_only and (beam_half_cells, p0_intervals) not in ((14, 4), (14, 8)):
         raise ValueError("bounded fixed-4:1 x16/B3-14 P0 mode required")
-    expected = (Path(__file__).resolve().parents[1]/"src"/"anysolver").resolve()
-    if Path(anysolver.__file__).resolve().parent != expected:
-        raise RuntimeError("bounded quotient imported another ANYsolver checkout")
+    expected = (Path(__file__).resolve().parents[1]/"src"/"anyfesolver").resolve()
+    if Path(anyfesolver.__file__).resolve().parent != expected:
+        raise RuntimeError("bounded quotient imported another ANYfeSolver checkout")
     started = monotonic()
     xs, ys = local_grid(shell_cells, transverse_cells=4)
     shell, shell_physical_operator = raw_e4_tangent(xs, ys, thickness=.035)
@@ -307,7 +307,7 @@ def evaluate(*, shell_cells: int = 16,
                    "no physical connection accuracy or multiplier-space selection"],
         "provenance": {
             "python": sys.version.split()[0], "numpy": np.__version__,
-            "scipy": scipy.__version__, "anysolver_import": str(Path(anysolver.__file__).resolve()),
+            "scipy": scipy.__version__, "anyfesolver_import": str(Path(anyfesolver.__file__).resolve()),
             "threadpools": threadpool_info(),
             "env": {key: os.environ.get(key) for key in
                     ("NUMBA_DISABLE_JIT", "OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS")},

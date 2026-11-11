@@ -49,7 +49,7 @@ def _oracle_module() -> types.ModuleType:
 
 
 def _load_numeric_reference() -> tuple[types.ModuleType, list[str]]:
-    source = ROOT / "src" / "anysolver" / "shell_formulations"
+    source = ROOT / "src" / "anyfesolver" / "shell_formulations"
     package = "_s4_drill_numeric"
     shell_package = f"{package}.shell_formulations"
     created: list[str] = []
@@ -256,7 +256,7 @@ def test_whole_matrix_eq21_eq25_binary64_agreement_and_stored_packet() -> None:
             sys.modules.pop(name, None)
 
 
-def test_oracle_source_has_no_anysolver_import() -> None:
+def test_oracle_source_has_no_anyfesolver_import() -> None:
     source = ORACLE.read_text(encoding="utf-8")
-    assert "import anysolver" not in source
-    assert "from anysolver" not in source
+    assert "import anyfesolver" not in source
+    assert "from anyfesolver" not in source

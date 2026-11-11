@@ -5,15 +5,15 @@ from fractions import Fraction as F
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver.general_contact import ContactInteraction,resolve_automatic_contact_domain as resolve
+from anyfesolver.general_contact import ContactInteraction,resolve_automatic_contact_domain as resolve
 
 
 
 def _footprint(model,resolution,settings,u):
     """Report actual projected pair polygons, not a new admission certificate."""
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.q4_source_overlap import projected_q4_source_face
-    from anysolver.general_contact.overlap import PlanarFace,planar_projected_overlap
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.q4_source_overlap import projected_q4_source_face
+    from anyfesolver.general_contact.overlap import PlanarFace,planar_projected_overlap
     manager=GeneralS3PatchManager(model,resolution.definition,settings)
     source,target=manager._positions(u)
     pairs=[]
@@ -35,10 +35,10 @@ def _footprint(model,resolution,settings,u):
                    reason='bounded installed refined automatic deformable lifecycle')
 def test_installed_automatic_sliding_stage():
     """One guarded stage per invocation, sharing only retained JSON evidence."""
-    import anysolver,numba
+    import anyfesolver,numba
     from threadpoolctl import threadpool_info
-    from anysolver import ContactDefinition,solve_static_nonlinear
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver import ContactDefinition,solve_static_nonlinear
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     from examples.general_contact_automatic_q4_pair import build,solve_shell_pair
     stage=os.environ['Q4_PAIR_STAGE'].split('-')[0]
     evidence=Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])
@@ -57,7 +57,7 @@ def test_installed_automatic_sliding_stage():
         physical_inputs=dict(source_midplane_z_m=.055,source_bottom_offset_m=-.025,
             target_midplane_z_m=-.01,target_top_offset_m=.025,source_director=(0.,0.,1.),target_director=(0.,0.,1.),
             path=path.contract()),
-        runtime_before_solve=dict(anysolver_path=anysolver.__file__,
+        runtime_before_solve=dict(anyfesolver_path=anyfesolver.__file__,
             automatic_domain_path=__import__('inspect').getfile(resolve),
             jit_disabled=bool(numba.config.DISABLE_JIT),numba_threads=int(numba.get_num_threads()),
             pools=threadpool_info()))
@@ -164,7 +164,7 @@ def test_installed_automatic_sliding_stage():
         assert abs(result.displacements[target_dof])>1e-10
         manager=GeneralS3PatchManager(model,resolution.definition,settings)
         residual,_,contact_result=manager.evaluate(result.displacements,tangent=False)
-        from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+        from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
         structural,_,states=_assemble_nonlinear_system(model,result.displacements,result.element_states,
             5,tangent=False,kinematics='von_karman')
         _discard_nonlinear_state_candidate(states)
@@ -323,10 +323,10 @@ CONTROLS=dict(area_tolerance=1e-9,weighted_gap_tolerance=1e-10,maximum_triangles
     support_gradient_tolerance=1e-5,support_hessian_tolerance=1e-5,weighted_gap_gradient_tolerance=1e-5,weighted_gap_hessian_tolerance=1e-5)
 
 def test_independent_scalar_trapezoid_work_and_tangent(monkeypatch):
-    from anysolver.general_contact.q4_q4_overlap_derivatives import q4_q4_overlap_derivatives as derivative,q4_q4_swept_chart_admissible as chart
-    from anysolver.general_contact.q4_source_overlap import q4_source_overlap_integrals
-    from anysolver.general_contact.s3_patch_mortar_energy import MovingS3PatchPrimalMortarPenalty,S3PatchFace
-    from anysolver.general_contact.s3_patch_augmented import MovingS3PatchProjectedNormal
+    from anyfesolver.general_contact.q4_q4_overlap_derivatives import q4_q4_overlap_derivatives as derivative,q4_q4_swept_chart_admissible as chart
+    from anyfesolver.general_contact.q4_source_overlap import q4_source_overlap_integrals
+    from anyfesolver.general_contact.s3_patch_mortar_energy import MovingS3PatchPrimalMortarPenalty,S3PatchFace
+    from anyfesolver.general_contact.s3_patch_augmented import MovingS3PatchProjectedNormal
     poly=[(F('.1'),F(0)),(F(1),F(0)),(F(0),F(1)),(F(0),F('.1'))]
     assert _bilinear_extrema(poly,(F(0),F(0),F(0),F(1)))==(0,F(1,4))
     xy=np.array([[-.4,-.3],[1.7,-.3],[1.7,1.8],[-.4,1.8]])
@@ -361,7 +361,7 @@ def test_independent_scalar_trapezoid_work_and_tangent(monkeypatch):
     crossface=float(np.linalg.norm(independent.tangent[0:3,6:9]));assert crossface>1e-10
     source[:,2]=.0002*source[:,0]+.0001*source[:,1]+.0003*source[:,0]*source[:,1]
     pose=np.concatenate((source,target));direction=np.random.default_rng(72).normal(size=pose.shape);direction/=np.linalg.norm(direction)
-    import anysolver.general_contact.s3_patch_augmented as owner
+    import anyfesolver.general_contact.s3_patch_augmented as owner
     agree=owner._q4_s3_pair_values_agree;operand=owner._q4_s3_gap_operand_roundoff
     forced=[];fallback=[]
     def force_fallback(*args,**kw):
@@ -385,9 +385,9 @@ def test_independent_scalar_trapezoid_work_and_tangent(monkeypatch):
 
 def test_public_transient_refuses_unused_q4_pair_selector(monkeypatch):
     from examples.general_contact_multiple_beam_s3_transient import build
-    from anysolver.dynamics import TransientConfig
-    from anysolver.general_contact.transient import solve_transient_contact,_admit,ContactTransientSolverControls
-    import anysolver.general_contact.multiple_beam_s3_transient as owner
+    from anyfesolver.dynamics import TransientConfig
+    from anyfesolver.general_contact.transient import solve_transient_contact,_admit,ContactTransientSolverControls
+    import anyfesolver.general_contact.multiple_beam_s3_transient as owner
     model,definition,settings,velocity=build()
     controls=ContactTransientSolverControls(allow_multiple_deformable_beam_s3_dev=True)
     before=repr(model)
@@ -418,11 +418,11 @@ def test_public_transient_refuses_unused_q4_pair_selector(monkeypatch):
 
 
 def test_default_identity_physical_map_and_public_unused_routes(monkeypatch):
-    from anysolver import validate_general_contact,CancellationToken,SolveCancelled,LoadCase,solve_static_nonlinear,solve_static_arc_length,ArcLengthControl
-    from anysolver.general_contact.core import _contact_settings_contract
+    from anyfesolver import validate_general_contact,CancellationToken,SolveCancelled,LoadCase,solve_static_nonlinear,solve_static_arc_length,ArcLengthControl
+    from anyfesolver.general_contact.core import _contact_settings_contract
     from examples.general_contact_automatic_s3_pair import build_s3_pair
     from examples.general_contact_automatic_q4_pair import build,solve_shell_pair
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     model,domain,settings,res,path=build_s3_pair()
     assert 'path_predictor' in _contact_settings_contract(settings) and 'shell_pair_orientation' not in _contact_settings_contract(settings)
     candidate=build();model,domain,settings,res,path=candidate
@@ -444,7 +444,7 @@ def test_default_identity_physical_map_and_public_unused_routes(monkeypatch):
     from examples.general_contact_triangulated_rigid_patch import case as arc_case
     arc,definition,defaults=arc_case();assert validate_general_contact(arc,definition,defaults,analysis_control='arc_length').valid
     load=LoadCase('arc_refusal');load.add_nodal_load(2,forces=(0.,0.,-.01));before=repr(arc)
-    import anysolver.general_contact.arc_contact as arc_owner
+    import anyfesolver.general_contact.arc_contact as arc_owner
     calls=[]
     def forbidden(*args,**kw):
         calls.append(True);raise AssertionError('arc allocation/mutation reached before selector refusal')

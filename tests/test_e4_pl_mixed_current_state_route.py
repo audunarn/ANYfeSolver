@@ -8,12 +8,12 @@ import numpy as np
 import pytest
 from scipy import linalg
 
-import anysolver.e4_pl_element as q4_module
-import anysolver.e4_pl_s3_element as s3_module
-import anysolver.e4_pl_s3_state as s3_state_module
-import anysolver.elements as elements_module
-import anysolver.shell_sections as shell_sections_module
-from anysolver import (
+import anyfesolver.e4_pl_element as q4_module
+import anyfesolver.e4_pl_s3_element as s3_module
+import anyfesolver.e4_pl_s3_state as s3_state_module
+import anyfesolver.elements as elements_module
+import anyfesolver.shell_sections as shell_sections_module
+from anyfesolver import (
     AnalysisSession,
     FEModel,
     assemble_stiffness_matrix,
@@ -21,36 +21,36 @@ from anysolver import (
     solve_free_vibration,
     solve_static_nonlinear,
 )
-from anysolver.activity import ElementActivity
-from anysolver.assembly import build_constraint_transformation
-from anysolver.boundary import FixedSupport, LoadCase
-from anysolver.buckling import (
+from anyfesolver.activity import ElementActivity
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.boundary import FixedSupport, LoadCase
+from anyfesolver.buckling import (
     QUALIFIED_Q4_S3_CURRENT_STATE_BUCKLING_POLICY_ID,
 )
-from anysolver.current_state_tangent import (
+from anyfesolver.current_state_tangent import (
     COMMITTED_CURRENT_TANGENT_ASSEMBLY_POLICY_ID,
     COMMITTED_CURRENT_TANGENT_ROUTE_POLICY_ID,
     assemble_committed_current_tangent_components,
     require_exact_qualified_component_lifecycle_api,
     validate_committed_current_tangent_inputs,
 )
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.e4_pl_s3_element import (
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.e4_pl_s3_element import (
     REFERENCE_ELASTIC_BUBBLE_LINEARIZATION_ID,
     QualifiedE4PLS3ShellElement,
 )
-from anysolver.e4_pl_s3_state import canonical_json_bytes
-from anysolver.element_capabilities import ElementCapabilityError
-from anysolver.elements import ShellElement
-from anysolver.linalg import FactorizationCache
-from anysolver.modal import CURRENT_STATE_MODAL_POLICY_ID
-from anysolver.nonlinear_state import (
+from anyfesolver.e4_pl_s3_state import canonical_json_bytes
+from anyfesolver.element_capabilities import ElementCapabilityError
+from anyfesolver.elements import ShellElement
+from anyfesolver.linalg import FactorizationCache
+from anyfesolver.modal import CURRENT_STATE_MODAL_POLICY_ID
+from anyfesolver.nonlinear_state import (
     NonlinearStateStore,
     begin_state_evaluation,
     create_model_native_rotation_store,
     discard_active_state_candidate,
 )
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 def _b_coupled_section() -> GeneralizedShellSection:

@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import numpy as np
 from scipy import sparse
 
-from anysolver.general_contact import linearized_pivot
+from anyfesolver.general_contact import linearized_pivot
 
 
 class _MovingSupportGeometry:

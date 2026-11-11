@@ -2,8 +2,8 @@
 import numpy as np
 import pytest
 from dataclasses import replace
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
 from examples.stiffened_shell_coupled_plastic_history import definition, activity, OPTIONS, CONTROL
 
 

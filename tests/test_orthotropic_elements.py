@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BeamElement,
     DNVC208MaterialCurve,
     FEModel,
@@ -19,11 +19,11 @@ from anysolver import (
     recover_stress_result,
     validate_production_model,
 )
-from anysolver.elements import (
+from anyfesolver.elements import (
     _shell_material_matrices,
     validate_initial_field_state,
 )
-from anysolver.nonlinear_static import states_von_mises_map
+from anyfesolver.nonlinear_static import states_von_mises_map
 
 
 def _orthotropic(

@@ -29,15 +29,15 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-import anysolver.recovery_batches as recovery_batches  # noqa: E402
-import anysolver.s3_reference_batch as s3_batch  # noqa: E402
-from anysolver.e4_pl_s3_element import (  # noqa: E402
+import anyfesolver.recovery_batches as recovery_batches  # noqa: E402
+import anyfesolver.s3_reference_batch as s3_batch  # noqa: E402
+from anyfesolver.e4_pl_s3_element import (  # noqa: E402
     QualifiedE4PLS3ShellElement,
 )
-from anysolver.e4_pl_element import QualifiedE4PLShellElement  # noqa: E402
-from anysolver.fe_core import FEModel  # noqa: E402
-from anysolver.matrix_assembly import assemble_stiffness_matrix  # noqa: E402
-from anysolver.recovery import (  # noqa: E402
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement  # noqa: E402
+from anyfesolver.fe_core import FEModel  # noqa: E402
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix  # noqa: E402
+from anyfesolver.recovery import (  # noqa: E402
     RecoveryConfig,
     ResourceConfig,
     clear_recovery_batch_plan,

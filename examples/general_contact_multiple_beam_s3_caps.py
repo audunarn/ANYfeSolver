@@ -2,10 +2,10 @@
 
 Installed-tested development example; not an engineering qualification.
 """
-from anysolver import (FEModel, BoundaryCondition, LoadCase, ContactDefinition,
+from anyfesolver import (FEModel, BoundaryCondition, LoadCase, ContactDefinition,
     ContactSurface, ContactInteraction, ContactSolverSettings, solve_static_nonlinear,
     create_shell_element)
-from anysolver.elements import BeamElement
+from anyfesolver.elements import BeamElement
 
 
 def build():

@@ -3,16 +3,16 @@ import json
 import time
 import numpy as np
 import pytest
-from anysolver import FEModel,BoundaryCondition,create_shell_element
-from anysolver.control import SolveCancelled
-from anysolver._ge_beam3_mixed_ad import Jet2,sqrt as old_sqrt
-from anysolver.e4_pl_enriched import EnrichedProfileError
-from anysolver.general_contact.enriched_overlap import (
+from anyfesolver import FEModel,BoundaryCondition,create_shell_element
+from anyfesolver.control import SolveCancelled
+from anyfesolver._ge_beam3_mixed_ad import Jet2,sqrt as old_sqrt
+from anyfesolver.e4_pl_enriched import EnrichedProfileError
+from anyfesolver.general_contact.enriched_overlap import (
     moments as old_moments,QuadraturePolicy,EnrichedGeometryError)
-from anysolver.general_contact.enriched_union import selected_pair_moments as old_selected
-from anysolver.general_contact import enriched_moment_batch as kernel
-from anysolver.general_contact.moment_batch_ad import PointJet,sqrt as batch_sqrt,choose
-from anysolver.general_contact.enriched_nonlinear import (
+from anyfesolver.general_contact.enriched_union import selected_pair_moments as old_selected
+from anyfesolver.general_contact import enriched_moment_batch as kernel
+from anyfesolver.general_contact.moment_batch_ad import PointJet,sqrt as batch_sqrt,choose
+from anyfesolver.general_contact.enriched_nonlinear import (
     NonlinearEnrichedSystem,PairDefinition,MixedCriteria,IterationControl)
 
 POLICY=QuadraturePolicy(1e-10,1e-8,1e-5,14144)

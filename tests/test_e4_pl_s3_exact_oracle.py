@@ -9,10 +9,10 @@ import sys
 import numpy as np
 import pytest
 
-import anysolver.e4_pl_s3_element as s3_element
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from anysolver.fe_core import FEMesh, Material
-from anysolver.shell_sections import GeneralizedShellSection
+import anyfesolver.e4_pl_s3_element as s3_element
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+from anyfesolver.fe_core import FEMesh, Material
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -397,7 +397,7 @@ def test_exact_oracle_is_independent_and_rejects_nonexact_inputs() -> None:
             imports.add(node.module.split(".", 1)[0])
     assert imports <= {"__future__", "dataclasses", "fractions", "typing"}
     source = ORACLE_PATH.read_text(encoding="utf-8").lower()
-    assert "import anysolver" not in source
+    assert "import anyfesolver" not in source
     assert "e4_pl_s3_linear_reference" not in source
     with pytest.raises(TypeError, match="exact oracle inputs"):
         oracle.reconstruct_exact_blocks(

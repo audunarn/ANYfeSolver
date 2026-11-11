@@ -12,7 +12,7 @@ ENV=dict(OMP_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',MKL_NUM_THREADS='1',
  PYTHONDONTWRITEBYTECODE='1',PYTEST_DISABLE_PLUGIN_AUTOLOAD='1',PYTEST_ADDOPTS='',PYTHONPATH='')
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def write(p,v):Path(p).write_text(json.dumps(v,indent=2,allow_nan=False)+'\n')
-def identities():return {str(p.relative_to(ROOT)):sha(p) for p in [NEW,OLD,Path(__file__),*sorted((ROOT/'src/anysolver').rglob('*.py'))]}
+def identities():return {str(p.relative_to(ROOT)):sha(p) for p in [NEW,OLD,Path(__file__),*sorted((ROOT/'src/anyfesolver').rglob('*.py'))]}
 def child(stage,out,focus=None):
  import psutil
  psutil.Process().cpu_affinity([0]);selected=ROOT/'src' if stage=='source' else HERE/'site'
@@ -43,9 +43,9 @@ def run(stage,focus=None):
    frozen=json.loads(prior[0].read_text());build=Path(frozen['build_input'])
    assert all(sha(build/'src'/rel)==v for rel,v in frozen['source'].items())
   else:
-   build=out/'input';build.mkdir();shutil.copytree(ROOT/'src/anysolver',build/'src/anysolver',ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
+   build=out/'input';build.mkdir();shutil.copytree(ROOT/'src/anyfesolver',build/'src/anyfesolver',ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
    for n in ('pyproject.toml','README.md','LICENSE','COPYRIGHT','THIRD_PARTY_NOTICES.md'):shutil.copy2(ROOT/n,build/n)
-   snapshot={str(p.relative_to(build/'src')):sha(p) for p in (build/'src/anysolver').rglob('*.py')}
+   snapshot={str(p.relative_to(build/'src')):sha(p) for p in (build/'src/anyfesolver').rglob('*.py')}
    assert all(v==ids[str(Path('src')/rel)] for rel,v in snapshot.items()),'source changed during immutable build snapshot'
    frozen=dict(source=snapshot,build_input=str(build))
   write(out/'frozen-source.json',frozen)

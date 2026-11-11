@@ -4,10 +4,10 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-import anysolver.quantities as quantities
-from anysolver.quantities import QuantityUnavailableError, resolve_result_quantity
-from anysolver.recovery import StressRecoveryProvenance, StressRecoveryResult
-from anysolver.results import FEResult
+import anyfesolver.quantities as quantities
+from anyfesolver.quantities import QuantityUnavailableError, resolve_result_quantity
+from anyfesolver.recovery import StressRecoveryProvenance, StressRecoveryResult
+from anyfesolver.results import FEResult
 
 
 def _carrier(frame, kind="recovery"):

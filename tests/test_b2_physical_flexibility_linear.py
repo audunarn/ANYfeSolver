@@ -5,7 +5,7 @@ from fractions import Fraction
 import numpy as np
 import pytest
 
-from anysolver._b2_physical_flexibility_linear import (
+from anyfesolver._b2_physical_flexibility_linear import (
     ConditioningAdmissionError, LinearOperator, LinearSection,
     OPERATOR_ID, RepresentabilityError,
 )

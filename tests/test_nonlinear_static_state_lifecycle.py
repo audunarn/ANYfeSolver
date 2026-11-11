@@ -6,15 +6,15 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-import anysolver.nonlinear_static as nonlinear_static
-from anysolver import nonlinear_performance
-from anysolver import nonlinear_performance_batch_c
-from anysolver.control import SolveCancelled
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from anysolver.elements import ShellElement
-from anysolver.fe_core import FEModel
-from anysolver.boundary import FixedSupport
-from anysolver.nonlinear_state import (
+import anyfesolver.nonlinear_static as nonlinear_static
+from anyfesolver import nonlinear_performance
+from anyfesolver import nonlinear_performance_batch_c
+from anyfesolver.control import SolveCancelled
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+from anyfesolver.elements import ShellElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import FixedSupport
+from anyfesolver.nonlinear_state import (
     NonlinearStateStore,
     begin_state_evaluation,
     finish_state_evaluation,

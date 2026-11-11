@@ -4,14 +4,14 @@ from pathlib import Path
 from hashlib import sha256
 import numpy as np
 import pytest
-from anysolver._ge_beam3_equilibrium_schur_solver import EquilibriumSchurSolver
-from anysolver._ge_beam3_fibre_schur_solver import ResultantSchurSolver as Previous
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.boundary import BoundaryCondition
-from anysolver._ge_beam3_seeded_load_program import ForceProgram
-from anysolver._ge_beam3_fibre_line_work import ReferenceLineForces
-from anysolver import _ge_beam3_fibre_line_program as physical
-from anysolver import _ge_beam3_schur_line_program as controller
+from anyfesolver._ge_beam3_equilibrium_schur_solver import EquilibriumSchurSolver
+from anyfesolver._ge_beam3_fibre_schur_solver import ResultantSchurSolver as Previous
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.boundary import BoundaryCondition
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram
+from anyfesolver._ge_beam3_fibre_line_work import ReferenceLineForces
+from anyfesolver import _ge_beam3_fibre_line_program as physical
+from anyfesolver import _ge_beam3_schur_line_program as controller
 from docs.reference_cases.ge_beam3_exact_linear_witness import solve as exact_solve
 from docs.reference_cases.ge_beam3_curved_moment_fixture import model as curved_model
 from test_ge_beam3_schur_line_program import inputs,save

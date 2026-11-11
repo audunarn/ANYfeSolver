@@ -50,7 +50,7 @@ def test_v5n_auditor_imports_only_standard_library_and_not_mechanics() -> None:
             imports.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module:
             imports.append(node.module)
-    assert not any(name == "anysolver" or name.startswith("anysolver.") for name in imports)
+    assert not any(name == "anyfesolver" or name.startswith("anyfesolver.") for name in imports)
     assert set(imports) <= {"__future__", "argparse", "ast", "hashlib", "json", "pathlib", "typing"}
 
 

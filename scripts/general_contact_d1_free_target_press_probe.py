@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 import time
 
-from anysolver import BoundaryCondition, solve_static_nonlinear
+from anyfesolver import BoundaryCondition, solve_static_nonlinear
 from scripts.general_contact_d1_mixed_mesh_jet2_schur_press import (
     _json_default, build_case,
 )

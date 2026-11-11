@@ -91,8 +91,8 @@ def independent_reference(model,u,v):
     return dict(independent_min_gap=minimum,energy=float(beam+shell+membrane+contact+kinetic),beam=float(beam),shell=float(shell),membrane=membrane,contact=float(contact),kinetic=float(kinetic),details=details),force,mass
 
 def run(*,dt=DT,end=END,restart=None,acceleration_unknown=True):
-    from anysolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
-    from anysolver.dynamics import TransientConfig
+    from anyfesolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
+    from anyfesolver.dynamics import TransientConfig
     m,d,s,u,v,load,initial=prepare()
     result=solve_transient_contact(m,d,TransientConfig(dt,end,initial_displacement=u,initial_velocity=v),base_load_case=load,contact_settings=s,
         solver_controls=ContactTransientSolverControls(allow_equilibrated_directional_beam_s3_dev=True,save_constraint_reactions_dev=True,

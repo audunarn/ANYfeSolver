@@ -145,7 +145,7 @@ def test_compact_scientific_duplicate_nonfinite_rejection(raw):
 
 
 def test_compact_native_serializer_compatibility():
-    from anysolver._ge_beam3_g1_elastic import canonical
+    from anyfesolver._ge_beam3_g1_elastic import canonical
     body = dict(schema="example", value=[1., -0.0], qualification=False)
     raw = canonical(body)
     assert c.strict(raw, compact=True) == body
@@ -156,7 +156,7 @@ def test_compact_native_serializer_compatibility():
 def test_correction_extent_and_frozen_parent_authorities():
     base = "edad651af3460aa33283686e4f9345190a3b0094"
     c.git("merge-base", "--is-ancestor", base, "HEAD")
-    modified = {"src/anysolver/_ge_beam3_g3_analysis.py", "tests/test_ge_beam3_g3a_graph.py"}
+    modified = {"src/anyfesolver/_ge_beam3_g3_analysis.py", "tests/test_ge_beam3_g3a_graph.py"}
     added = {"scripts/confirm_ge_beam3_g3a.py", "tests/test_ge_beam3_g3a_confirmation.py",
              "docs/GE_BEAM3_G3A_CORRECTION_CONFIRMATION.md",
              "docs/reference_cases/ge_beam3_g3a_confirmation_inventory.json",

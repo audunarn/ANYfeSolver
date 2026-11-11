@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     ElementCapabilityError,
     FEModel,
@@ -13,7 +13,7 @@ from anysolver import (
     TransientConfig,
     solve_transient_sphere_impact,
 )
-from anysolver.element_capabilities import require_model_element_capabilities
+from anyfesolver.element_capabilities import require_model_element_capabilities
 
 
 def _model() -> FEModel:

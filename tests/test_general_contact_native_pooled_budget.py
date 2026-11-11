@@ -7,16 +7,16 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver.general_contact.native_pair_error_budget import PooledQuadratureBudget, within_reserve
-from anysolver.general_contact.native_retained_whole_pair import (
+from anyfesolver.general_contact.native_pair_error_budget import PooledQuadratureBudget, within_reserve
+from anyfesolver.general_contact.native_retained_whole_pair import (
     NativeRetainedWholeCurvePair, _exact_tiny_cell_omission_bound, _private_factored_gap,
     _pooled_connected_junction_partition,
     _pooled_interval_open, _pooled_endpoint_feature_inventory, _vertex_fixed_projection_feature,
 )
-from anysolver.general_contact.native_retained_body_projection import strict_projection_station, charged_junction_omission
-from anysolver.general_contact.beam_curve_pair import b3_distance_jet, _b3_distance_jet_at_station
-from anysolver.general_contact.native_curved_pair_partition import physical_point_map
-from anysolver._ge_beam3_connected_dynamic import _RetainedMidpointAssembly
+from anyfesolver.general_contact.native_retained_body_projection import strict_projection_station, charged_junction_omission
+from anyfesolver.general_contact.beam_curve_pair import b3_distance_jet, _b3_distance_jet_at_station
+from anyfesolver.general_contact.native_curved_pair_partition import physical_point_map
+from anyfesolver._ge_beam3_connected_dynamic import _RetainedMidpointAssembly
 from examples.general_contact_native_pair_impact_dev import build, config
 
 
@@ -179,7 +179,7 @@ def test_saved_arbitrary_stage_exact_vertex_kkt_discriminator():
     This passes only exact inventory/provenance checks, not the unmet FD gate.
     A genuine two-interior label explicitly preserves mature fallback needs.
     """
-    from anysolver.general_contact.native_retained_body_projection import endpoint_projection_bands
+    from anyfesolver.general_contact.native_retained_body_projection import endpoint_projection_bands
     inventory = _oracle_inventory
     owner = build(); accepted = owner.initialize(physical_velocity=config(owner).initial_velocity)
     direction = np.sin(np.arange(owner.size)+.3); direction[list(owner.p)] *= 100.

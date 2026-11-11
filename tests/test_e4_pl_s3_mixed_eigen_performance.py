@@ -70,8 +70,8 @@ def test_input_is_canonical_hash_bound_and_uses_the_frozen_candidate(
             "tests/test_e4_pl_s3_mixed_structural_qualification.py",
         ],
         "changed_paths": [
-            "src/anysolver/matrix_assembly.py",
-            "src/anysolver/s3_reference_batch.py",
+            "src/anyfesolver/matrix_assembly.py",
+            "src/anyfesolver/s3_reference_batch.py",
             "tests/test_e4_pl_s3_reference_batch.py",
         ],
         "commit": "4e5b5976d4286ffd0cda5b8424d154132f3f8da0",
@@ -125,7 +125,7 @@ def test_duplicate_nonfinite_hash_and_topology_mutations_fail_before_mechanics(
     payload["authority"]["candidate"]["changed_paths"] = sorted(
         [
             *payload["authority"]["candidate"]["changed_paths"][:-1],
-            "src/anysolver/e4_pl_element.py",
+            "src/anyfesolver/e4_pl_element.py",
         ]
     )
     extent = tmp_path / "extent.json"
@@ -462,10 +462,10 @@ def test_timeout_terminates_worker_and_removes_partial_canonical_output(
 def test_default_s3_remains_legacy_and_q4_mechanics_is_unchanged(
     authorities: Any,
 ) -> None:
-    from anysolver.elements import DEFAULT_S3_FORMULATION
+    from anyfesolver.elements import DEFAULT_S3_FORMULATION
 
     assert DEFAULT_S3_FORMULATION == "legacy-s3"
-    q4 = ROOT / "src" / "anysolver" / "e4_pl_element.py"
+    q4 = ROOT / "src" / "anyfesolver" / "e4_pl_element.py"
     assert authorities.input["authority"]["production_boundary"]["q4_mechanics"][
         "sha256"
     ] == (

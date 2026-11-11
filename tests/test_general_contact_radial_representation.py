@@ -9,8 +9,8 @@ from fractions import Fraction
 import numpy as np
 import pytest
 
-from anysolver.general_contact.beam_hemisphere_cylinder import HemisphereCylinderManager
-from anysolver.general_contact.beam_hemisphere_cylinder_motion import TranslatingHemisphereCylinderManager
+from anyfesolver.general_contact.beam_hemisphere_cylinder import HemisphereCylinderManager
+from anyfesolver.general_contact.beam_hemisphere_cylinder_motion import TranslatingHemisphereCylinderManager
 from test_general_contact_radial_beam_ends import _case
 
 
@@ -91,9 +91,9 @@ def test_sub_ulp_motion_reaches_line_cap_sweep_and_rigid_work():
 
 
 def test_sphere_line_gap_matches_literal_radius_and_legacy_remains_rounded():
-    from anysolver.general_contact.beam_hemisphere_sphere import HemisphereSphereManager
-    from anysolver.general_contact.beam_radial_ends import BeamRadialEndManager
-    from anysolver.general_contact.beam_end_radial_geometry import radial_point_work
+    from anyfesolver.general_contact.beam_hemisphere_sphere import HemisphereSphereManager
+    from anyfesolver.general_contact.beam_radial_ends import BeamRadialEndManager
+    from anyfesolver.general_contact.beam_end_radial_geometry import radial_point_work
     radius=Fraction.from_float(1e7)+Fraction.from_float(.01)
     point=((Fraction.from_float(1e7+.01),),(Fraction(0),),(Fraction(0),))
     manager=object.__new__(HemisphereSphereManager)
@@ -146,7 +146,7 @@ def test_exact_radius_tiny_b3_endpoint_interval_is_not_hidden(reverse):
 
 
 def test_sub_ulp_curved_b3_active_rim_matches_local_geometry_and_formula():
-    from anysolver.general_contact.beam_hemisphere_cylinder_work import hemisphere_cylinder_work
+    from anyfesolver.general_contact.beam_hemisphere_cylinder_work import hemisphere_cylinder_work
     origin=10**16
     local=np.array(((0.,0.,0.),(2.,0.,1.),(4.,0.,3.)))
     positions=local.copy();positions[:,0]+=origin
@@ -165,8 +165,8 @@ def test_sub_ulp_curved_b3_active_rim_matches_local_geometry_and_formula():
 @pytest.mark.parametrize('moving',(False,True))
 def test_pre_correction_restart_contract_is_rejected(moving,monkeypatch):
     import json
-    from anysolver import LoadCase, solve_static_nonlinear
-    from anysolver.general_contact.beam_hemisphere_sphere import HemisphereSphereManager
+    from anyfesolver import LoadCase, solve_static_nonlinear
+    from anyfesolver.general_contact.beam_hemisphere_sphere import HemisphereSphereManager
     from test_general_contact_coupled_tool_staging import coupled_fixture
     from test_general_contact_hemisphere_cylinder_static import _bar_case
     factory=coupled_fixture if moving else _bar_case

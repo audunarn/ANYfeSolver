@@ -1,6 +1,6 @@
 """Automatic coarse-lower S3 pair with explicit physical skins and four path phases."""
-from anysolver import BoundaryCondition,FEModel,create_shell_element,solve_static_nonlinear
-from anysolver.general_contact import (ContactSurface,ContactSolverSettings,
+from anyfesolver import BoundaryCondition,FEModel,create_shell_element,solve_static_nonlinear
+from anyfesolver.general_contact import (ContactSurface,ContactSolverSettings,
     AutomaticContactParticipant,AutomaticContactDefaults,AutomaticContactDomain,
     resolve_automatic_contact_domain,verify_automatic_contact_resolution)
 
@@ -14,7 +14,7 @@ def solve_shell_pair(model,domain,settings,resolution,path,**controls):
 
 def build_s3_pair(*,director_z=-1,resolve_domain=True):
     """Explicit downward directors preserve physical skins; lower coarse side integrates."""
-    from anysolver import ContactPathControl,ContactPathProgram
+    from anyfesolver import ContactPathControl,ContactPathProgram
     model=FEModel('declared-automatic-s3-pair')
     model.add_material('elastic',1e5,.3,density=1.)
     source=((.1,.1,.055),(.6,.1,.055),(1.1,.1,.055),

@@ -2,9 +2,9 @@
 import importlib.util,pathlib,decimal
 import numpy as np
 import pytest
-from anysolver import solve_static_nonlinear,solve_linear
-from anysolver import corotational as cr
-from anysolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver import solve_static_nonlinear,solve_linear
+from anyfesolver import corotational as cr
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
 spec=importlib.util.spec_from_file_location('abuse_fixture',pathlib.Path(__file__).parents[1]/'scripts/explore_nonlinear_abuse.py');fixture=importlib.util.module_from_spec(spec);spec.loader.exec_module(fixture)
 
 @pytest.mark.parametrize('inputs',[{'E':1e12},{'thickness':.1},{'E':1e12,'origin':1e6},{'E':1e12,'scale':.01}])
@@ -51,7 +51,7 @@ def test_automatic_precision_keeps_explicit_route_policies(mode):
 
 
 def test_history_owner_keeps_historical_policy_and_recovery_reads_result_policy():
-    from anysolver.recovery import recover_stress_result
+    from anyfesolver.recovery import recover_stress_result
     for initial,expected in [(None,True),({},False)]:
         m,_=fixture.plate_model({'name':'recovery','E':1e5})
         r=solve_static_nonlinear(m,None,num_steps=2,kinematics='corotational',corotational_tangent='work_conjugate',initial_element_states=initial)

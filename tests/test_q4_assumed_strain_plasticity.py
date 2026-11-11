@@ -7,7 +7,7 @@ along in-plane bending/hourglass modes and the clamped plastic plate
 converged to spurious mechanisms (+203 mm at n=8, wrong sign at n=16, against
 about 35-39 mm from the legacy element and CalculiX).  The route under test
 evaluates the return map at the hybrid's assumed strain; see
-``anysolver._q4_assumed_strain_plasticity``.
+``anyfesolver._q4_assumed_strain_plasticity``.
 """
 
 from __future__ import annotations
@@ -18,14 +18,14 @@ import warnings
 import numpy as np
 import pytest
 
-import anysolver as fs
-from anysolver import _q4_assumed_strain_plasticity as AS
-from anysolver.boundary import FixedSupport, LoadCase
-from anysolver.elements import create_shell_element
-from anysolver.material_curves import DNVC208MaterialCurve
-from anysolver.nonlinear_performance import NonlinearAssemblyPlan
-from anysolver.nonlinear_static import _assemble_nonlinear_system
-from anysolver.plasticity import plane_stress_elastic_matrix
+import anyfesolver as fs
+from anyfesolver import _q4_assumed_strain_plasticity as AS
+from anyfesolver.boundary import FixedSupport, LoadCase
+from anyfesolver.elements import create_shell_element
+from anyfesolver.material_curves import DNVC208MaterialCurve
+from anyfesolver.nonlinear_performance import NonlinearAssemblyPlan
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver.plasticity import plane_stress_elastic_matrix
 
 
 def _curve():
@@ -270,7 +270,7 @@ def test_owner_case_c1_step_and_mesh_sweep(n, steps):
 # ---------------------------------------------------------------------------
 
 def _hill_material(with_curve=True):
-    from anysolver.materials import Hill48Yield, OrthotropicMaterial
+    from anyfesolver.materials import Hill48Yield, OrthotropicMaterial
 
     shear = 3e7 / np.sqrt(3.0)
     return OrthotropicMaterial(
@@ -284,8 +284,8 @@ def _hill_material(with_curve=True):
 
 @pytest.mark.parametrize("with_curve", [True, False], ids=["curve", "perfectly_plastic"])
 def test_hill48_plastic_q4_is_refused_with_typed_error(with_curve):
-    from anysolver.e4_pl_element import QualifiedE4PLShellElement
-    from anysolver.fe_core import FEMesh
+    from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+    from anyfesolver.fe_core import FEMesh
 
     mesh = FEMesh()
     for index, (x, y) in enumerate(SQUARE):
@@ -407,7 +407,7 @@ def test_fd_tangent_close_to_reversal_through_zero_plastic_strain():
 def test_module_numpy_usage_is_inside_the_frozen_runtime_authority():
     import ast
     import inspect
-    from anysolver import e4_pl_s3_state
+    from anyfesolver import e4_pl_s3_state
 
     tree = ast.parse(inspect.getsource(AS))
     root, linalg = set(), set()
@@ -479,7 +479,7 @@ def test_preyield_layer_stress_matches_independent_mixed_recovery():
     differs exactly by the hybrid relief.
     """
 
-    from anysolver.plasticity import lobatto_layers
+    from anyfesolver.plasticity import lobatto_layers
 
     model, element, material = _single(SQUARE)
     u = (_field(SQUARE, "hourglass", 2e-5) + _field(SQUARE, "stretch", 3e-5)

@@ -127,11 +127,11 @@ def test_e3_material_scope_and_production_boundary_are_frozen() -> None:
     assert environment["baseline_execution"]["one_live_118_suite"] is False
     assert environment["oracle"]["dependencies"] == "python_standard_library_only"
     expected_paths = [
-        "C:/Github/ANYsolver/tmp/s4_candidate_a_mpmath_valid",
-        "C:/Github/ANYsolver/.s4_candidate_a_pinned/fileio/src",
-        "C:/Github/ANYsolver/.s4_candidate_a_pinned/material/src",
-        "C:/Github/ANYsolver/.s4_candidate_a_pinned/mesh/src",
-        "C:/Github/ANYsolver/.s4_candidate_a_pinned/geometry/src",
+        "C:/Github/ANYfeSolver/tmp/s4_candidate_a_mpmath_valid",
+        "C:/Github/ANYfeSolver/.s4_candidate_a_pinned/fileio/src",
+        "C:/Github/ANYfeSolver/.s4_candidate_a_pinned/material/src",
+        "C:/Github/ANYfeSolver/.s4_candidate_a_pinned/mesh/src",
+        "C:/Github/ANYfeSolver/.s4_candidate_a_pinned/geometry/src",
     ]
     assert inherited_environment["baseline_test_runtime"]["pythonpath_order_absolute"] == expected_paths
     assert environment["reproduced_e0_runtime"]["pythonpath_order_absolute"] == expected_paths

@@ -12,8 +12,8 @@ import warnings
 import numpy as np
 import pytest
 
-from anysolver import _compensated_contractions as cc
-from anysolver import vectorized_nonlinear as vn
+from anyfesolver import _compensated_contractions as cc
+from anyfesolver import vectorized_nonlinear as vn
 
 # Skipped only when the compiled kernels are really unavailable (or explicitly opted out);
 # a fused path that was disabled at import by a failed self-check must make these tests fail.
@@ -212,7 +212,7 @@ def test_scalar_square_uses_libm_pow_not_multiply():
 
 
 def test_fused_backend_flag_is_authority_guarded():
-    from anysolver import prepared_static_q4 as q
+    from anyfesolver import prepared_static_q4 as q
     q.require_q4_kernel_authority()
     names = {row[0] for row in q._NATIVE_KERNEL_FACTS}
     assert {"fused_shell_zero_tangent", "fused_elastic_increment", "_mm", "_tc"} <= names

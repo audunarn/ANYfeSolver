@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver.general_contact.s3_patch_augmented import MovingS3PatchProjectedNormal
+from anyfesolver.general_contact.s3_patch_augmented import MovingS3PatchProjectedNormal
 from scripts.general_contact_d1_coupled_refinement import main
 
 

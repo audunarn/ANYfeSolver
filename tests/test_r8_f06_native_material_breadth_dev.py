@@ -6,8 +6,8 @@ pytestmark=pytest.mark.skipif('F06_BREADTH_OUTPUT' not in os.environ,reason='bou
 
 def test_family_classifier_and_partial_policy():
  from scripts.r8_f06_native_material_breadth_dev import definition,actions
- from anysolver import stiffened_shell as ss
- from anysolver._stiffened_shell_beam_history import compensated_kind
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._stiffened_shell_beam_history import compensated_kind
  for case,kind in (('axial','fibre'),('biaxial','fibre'),('mixed','mixed')):
   owner=ss.create_analysis(definition=definition(case))
   try:
@@ -26,8 +26,8 @@ def test_family_classifier_and_partial_policy():
 def test_biaxial_defining_law_and_spatial_derivative(monkeypatch):
  from scripts.r8_f06_native_material_breadth_dev import definition
  from scripts import r8_f06_fibre_log_domain_dev as old
- from anysolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
- from anysolver._stiffened_shell_f06_increment_arithmetic import POLICY
+ from anyfesolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
+ from anyfesolver._stiffened_shell_f06_increment_arithmetic import POLICY
  import test_r8_f06_fibre_log_domain_dev as controls
  e,_=definition('biaxial').beams[0].instantiate()
  def physical(*,paired=True):
@@ -40,14 +40,14 @@ def test_biaxial_defining_law_and_spatial_derivative(monkeypatch):
 def test_public_material_lifecycle():
  import numpy as np
  from scripts.r8_f06_native_material_breadth_dev import definition,actions,DOC
- from anysolver import stiffened_shell as ss
- from anysolver.control import CancellationToken,SolveCancelled
- from anysolver._ge_beam3_p5_seeded.core import canonical
- from anysolver._ge_beam3_fibre_section import PhysicalFibreSection
- from anysolver._stiffened_shell_beam_history import shapes,compensated_kind
- from anysolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,encode_compensated,decode,encode,SCHEMAS
- from anysolver._stiffened_shell_f06_increment_arithmetic import Pair
- import anysolver._stiffened_shell_f06_increment_arithmetic as arithmetic
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver.control import CancellationToken,SolveCancelled
+ from anyfesolver._ge_beam3_p5_seeded.core import canonical
+ from anyfesolver._ge_beam3_fibre_section import PhysicalFibreSection
+ from anyfesolver._stiffened_shell_beam_history import shapes,compensated_kind
+ from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,encode_compensated,decode,encode,SCHEMAS
+ from anyfesolver._stiffened_shell_f06_increment_arithmetic import Pair
+ import anyfesolver._stiffened_shell_f06_increment_arithmetic as arithmetic
  case=os.environ['F06_BREADTH_CASE'];out=Path(os.environ['F06_BREADTH_OUTPUT'])
  model=definition(case);owner=ss.create_analysis(definition=model);calls=[];native_calls=[];original=arithmetic.full_log_coefficients
  def phase(name):(out/'progress.json').write_text(json.dumps(dict(phase=name)))
@@ -120,7 +120,7 @@ def test_public_material_lifecycle():
   assert canonical(driver._beam_origins)==accepted and canonical(driver._beam_predecessors)==predecessor
   for n,v in saved_lows.items():np.testing.assert_array_equal(getattr(driver._state,n),v)
   rebased=owner.checkpoint();phase('rebase-passed')
-  from anysolver._stiffened_shell_ge_checkpoint_binary import decode_chart,encode_chart
+  from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode_chart,encode_chart
   chart,chart_corrections=decode_compensated(rebased,owner._identity,correction_shapes)
   event,anchors,witness,numeric=decode_chart(chart,owner._identity,len(owner._shell_ids))
   chart_kind,steps,chart_values=decode(numeric,owner._identity,lambda k,g:base_shapes+shapes(owner._beam_parts,'origin')+shapes(owner._beam_parts,'accepted'))
@@ -150,7 +150,7 @@ def test_public_material_lifecycle():
    cancel=Cancel()
    with pytest.raises(SolveCancelled):owner.solve(actions(case),(.42,),cancellation_token=cancel)
    assert cancel.visits==2 and owner.checkpoint()==after
-   from anysolver._stiffened_shell_increment_control import FiniteIncrementFailure
+   from anyfesolver._stiffened_shell_increment_control import FiniteIncrementFailure
    with pytest.raises(FiniteIncrementFailure):owner.solve(actions(case),(1.2,),max_iterations=1,max_backtracks=0)
    assert owner.checkpoint()==after
   metrics=dict(status='PASS',case=case,kind=expected,reused_prefix=prefix,material=material,

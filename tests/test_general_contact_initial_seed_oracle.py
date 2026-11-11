@@ -20,7 +20,7 @@ the caller's blocks.
 import numpy as np
 from scipy import sparse
 
-from anysolver.general_contact.initial_contact_seed import (
+from anyfesolver.general_contact.initial_contact_seed import (
     InitialContactSeedRefusal,
     MAXIMUM_SEED_PRESSURE_MODES,
     propose_linearized_kkt_seed,

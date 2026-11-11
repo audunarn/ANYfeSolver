@@ -11,13 +11,13 @@ import json,os,runpy
 import numpy as np
 import pytest
 from scipy.optimize import root
-from anysolver import TransientConfig,solve_transient_contact
-from anysolver.general_contact.s3_pressure_hermite_bounds import s3_pressure_hermite_bounds
-from anysolver.matrix_assembly import assemble_stiffness_matrix
-from anysolver.assembly import assemble_mass_matrix
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.runtime import active_contact_manager
-from anysolver.nonlinear_restart import model_configuration_fingerprint
+from anyfesolver import TransientConfig,solve_transient_contact
+from anyfesolver.general_contact.s3_pressure_hermite_bounds import s3_pressure_hermite_bounds
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.assembly import assemble_mass_matrix
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.runtime import active_contact_manager
+from anyfesolver.nonlinear_restart import model_configuration_fingerprint
 from s3_von_karman_oracle import p1_von_karman_membrane
 
 demo=runpy.run_path(str(Path(__file__).parents[1]/'examples/general_contact_deforming_s3_impact_dev.py'))
@@ -152,7 +152,7 @@ def reference(times,K,columns=1,normal_stiffness=None):
 
 @pytest.mark.parametrize('columns',(1,8))
 def test_clipped_structural_reference_matches_adopted_s3_von_karman(columns):
-    from anysolver.nonlinear_static import _assemble_nonlinear_system
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system
     model,_,modes=demo['build_model'](target_xy=TARGET_XY,source_columns=columns)
     xy,_,_,initial=layout(columns)
     K=modes.T@assemble_stiffness_matrix(model)[0]@modes

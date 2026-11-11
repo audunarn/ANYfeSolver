@@ -22,7 +22,7 @@ from scripts.r8_e02_rigid_torque_fields import WHEEL_SHA
 
 ROOT=Path(__file__).resolve().parents[1]
 SITE=ROOT/'docs/agent_plans/development/r8-b2-work-guard-installed-20261009/site'
-CCX=Path('C:/Github/ANYsolver/.qualification/b3-ge-e4-pl/calculix-223/CalculiX-2.23.0-win-x64/bin/ccx.exe')
+CCX=Path('C:/Github/ANYfeSolver/.qualification/b3-ge-e4-pl/calculix-223/CalculiX-2.23.0-win-x64/bin/ccx.exe')
 
 def sha(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 def save(path,value):Path(path).write_text(json.dumps(value,indent=2,allow_nan=False))
@@ -206,10 +206,10 @@ def parse_current_solid(data,dat,stdout,deck,manifest,*,principal_observation=Fa
 def native(load,path):
     c,deck,m,a=staged(load,path);path=Path(path)
     sys.path.insert(0,str(SITE))
-    import anysolver,os,psutil
-    from anysolver import b3_ge,stiffened_shell as api
+    import anyfesolver,os,psutil
+    from anyfesolver import b3_ge,stiffened_shell as api
     from threadpoolctl import threadpool_info
-    if not Path(anysolver.__file__).resolve().is_relative_to(SITE):raise RuntimeError('mixed source/site import')
+    if not Path(anyfesolver.__file__).resolve().is_relative_to(SITE):raise RuntimeError('mixed source/site import')
     pools=threadpool_info()
     if psutil.Process().cpu_affinity()!=[0] or os.environ.get('NUMBA_DISABLE_JIT')!='1' or any(p['num_threads']!=1 for p in pools):
         raise RuntimeError('effective resource configuration differs')
@@ -254,7 +254,7 @@ def native(load,path):
         save(path/'native-observation.json',record)
         metrics=measure(c,record,c['model'],deck,a);save(path/'native-metrics.json',metrics)
         imports={name:str(Path(module.__file__).resolve()) for name,module in sys.modules.items()
-            if name.startswith('anysolver') and getattr(module,'__file__',None)}
+            if name.startswith('anyfesolver') and getattr(module,'__file__',None)}
         finalpools=threadpool_info();save(path/'native-runtime-final.json',dict(imports=imports,pools=finalpools,affinity=psutil.Process().cpu_affinity()))
         if any(not Path(p).is_relative_to(SITE) for p in imports.values()) or any(p['num_threads']!=1 for p in finalpools):raise RuntimeError('mixed imports/effective pools')
         if (not metrics['diagnostic_limits_satisfied'] or pair<=0 or guards['stub_force_max']>1e-7 or

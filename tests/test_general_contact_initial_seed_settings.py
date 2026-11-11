@@ -11,12 +11,12 @@ from dataclasses import asdict, replace
 
 import pytest
 
-from anysolver import ContactSolverSettings, validate_general_contact
-from anysolver.general_contact.core import (
+from anyfesolver import ContactSolverSettings, validate_general_contact
+from anyfesolver.general_contact.core import (
     _INITIAL_CONTACT_SEED_REVISION,
     _contact_settings_contract,
 )
-from anysolver.general_contact.request_identity import (
+from anyfesolver.general_contact.request_identity import (
     identify_general_contact_request,
 )
 

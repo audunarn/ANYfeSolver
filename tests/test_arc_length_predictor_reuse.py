@@ -4,11 +4,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver import arc_length as arc
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.fe_core import FEModel
+from anyfesolver import arc_length as arc
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.fe_core import FEModel
 
 
 def panel():
@@ -164,8 +164,8 @@ def test_singular_predictor_keeps_retry_accounting(monkeypatch):
 
 
 def test_s3_and_plastic_material_keep_uncached_path():
-    from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-    from anysolver.material_curves import dnv_c208_steel_curve
+    from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+    from anyfesolver.material_curves import dnv_c208_steel_curve
     model, load = panel()
     common = dict(model=model, load_cases=(load, None), contact=None,
                   follower_active=False, kinematics="von_karman", cancellation_token=None)

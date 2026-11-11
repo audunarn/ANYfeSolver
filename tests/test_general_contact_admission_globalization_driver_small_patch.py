@@ -92,18 +92,18 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactPathControl, ContactPathNodalForce, ContactPathProgram,
     ContactSolverSettings, ContactSurface, create_shell_element,
     solve_static_nonlinear,
 )
-from anysolver.control import SolveCancelled
-from anysolver.fe_core import FEModel
-from anysolver.general_contact import s3_patch_static, static_path
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.semismooth_path import SemismoothStep
-from anysolver.nonlinear_restart import (
+from anyfesolver.control import SolveCancelled
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact import s3_patch_static, static_path
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.semismooth_path import SemismoothStep
+from anyfesolver.nonlinear_restart import (
     _CHECKPOINT_HASH_KEY,
     _checkpoint_without_hash,
     _sha256,

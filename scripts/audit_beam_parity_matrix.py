@@ -36,9 +36,9 @@ METHOD_ROWS = {
     'compute_stresses': ['P19', 'U05'], 'compute_internal_forces': ['U07'],
     'to_dict': ['P18', 'U09'],
 }
-EXTRA = ['src/anysolver/ge_beam3_element.py', 'src/anysolver/ge_beam3_native.py',
-         'src/anysolver/_ge_beam3_native_analysis.py',
-         'src/anysolver/_ge_beam3_durable_coupled.py',
+EXTRA = ['src/anyfesolver/ge_beam3_element.py', 'src/anyfesolver/ge_beam3_native.py',
+         'src/anyfesolver/_ge_beam3_native_analysis.py',
+         'src/anyfesolver/_ge_beam3_durable_coupled.py',
          'docs/GE_BEAM3_NATIVE_WORKFLOWS.md', 'docs/GE_BEAM3_DELIVERY_STATUS.md',
          'docs/reference_cases/ge_beam3_final_delivery_independent_review.json']
 
@@ -125,7 +125,7 @@ def build_inventory(data):
         for ref in refs:
             if ref.startswith(path+'::') and ref.split('::')[1] not in definitions(raw):
                 raise ValueError('missing test definition: '+ref)
-    elements = ast.parse(git('show', BASE+':src/anysolver/elements.py'))
+    elements = ast.parse(git('show', BASE+':src/anyfesolver/elements.py'))
     public = {}
     for node in elements.body:
         if isinstance(node, ast.ClassDef) and node.name in {'Element', 'BeamElement', 'QuadraticBeamElement'}:
@@ -151,7 +151,7 @@ def build_inventory(data):
 
 def render(data, inventory):
     lines = ['# GE-B3 legacy parity matrix — frozen step 1', '',
-        'Baseline: ANYsolver 0.4.3, commit `'+BASE+'`, tree `'+TREE+'`.', '',
+        'Baseline: ANYfeSolver 0.4.3, commit `'+BASE+'`, tree `'+TREE+'`.', '',
         'Status: **planning inventory frozen; no new mechanics qualification**. '
         'This step changes no runtime, default, dependency, source equation or historical evidence. '
         'No scientific test was executed. Test links identify source definitions, not fresh passes.', '',

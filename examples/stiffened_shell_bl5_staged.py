@@ -5,15 +5,15 @@ BL5 constrains integrated position/director gaps and releases normal spin;
 it is not a six-channel welded bond or a qualified physical reference.
 The objective Q4 policy is explicit. Only elastic static use is demonstrated;
 the generalized section's inertia metadata is not a qualified spectral model.
-Run this file with an installed ANYsolver or the repository source environment.
+Run this file with an installed ANYfeSolver or the repository source environment.
 """
 from contextlib import ExitStack
 import json
 
 import numpy as np
 
-from anysolver import b3_ge, stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import b3_ge, stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
 
 
 def definition():

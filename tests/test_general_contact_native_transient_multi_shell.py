@@ -7,12 +7,12 @@ from pathlib import Path
 from types import SimpleNamespace
 import numpy as np
 import pytest
-from anysolver._ge_beam3_connected_dynamic import _RetainedMidpointAssembly
-from anysolver._ge_beam3_native_multi_shell_contact import AggregateWorkBudget,PROFILE,RESOURCE,TRANSITION,BOUNDARY,PATH_FAILURE
-from anysolver._ge_beam3_native_transient import NativeTransientError
-from anysolver._ge_beam3_p5_seeded.core import canonical,sha
-from anysolver.control import CancellationToken,SolveCancelled
-from anysolver.general_contact.native_transient_multi_shell import NativeTransientS3ContactPair,S3ContactBody,solve_native_transient_multi_shell
+from anyfesolver._ge_beam3_connected_dynamic import _RetainedMidpointAssembly
+from anyfesolver._ge_beam3_native_multi_shell_contact import AggregateWorkBudget,PROFILE,RESOURCE,TRANSITION,BOUNDARY,PATH_FAILURE
+from anyfesolver._ge_beam3_native_transient import NativeTransientError
+from anyfesolver._ge_beam3_p5_seeded.core import canonical,sha
+from anyfesolver.control import CancellationToken,SolveCancelled
+from anyfesolver.general_contact.native_transient_multi_shell import NativeTransientS3ContactPair,S3ContactBody,solve_native_transient_multi_shell
 from examples.general_contact_native_multi_shell_impact_dev import build,config,run,selections,FORCE_REFERENCE_N,MOMENT_REFERENCE_NM
 
 
@@ -58,7 +58,7 @@ def test_global_shared_node_structural_assembly_and_actual_mass_once():
     path=subset._swept(subset_state,subset_state,subset_state,None)
     subset._unselected_orientation_leg=original
     assert observed==[22,22] and path['checked_intervals']>=8
-    from anysolver.general_contact.s3_skin_work import S3SkinWorkAdapter
+    from anyfesolver.general_contact.s3_skin_work import S3SkinWorkAdapter
     adapter=S3SkinWorkAdapter.from_model(shell[0].model,7,22,'top')
     skin=adapter.current_positions(subset_state.shell_displacement[:24]);budget=AggregateWorkBudget(1,1,1)
     original(adapter,skin,skin,0,budget,None)
@@ -145,9 +145,21 @@ def test_public_coupled_two_step_multiple_body_response_and_both_path_legs():
 
 
 def test_genuine_split_restart_chain_and_authenticated_translation_work_tamper():
+    def forge_initial(owner, checkpoint):
+        # Use the prefix producer inside its original construction lifetime.
+        # The independent restart and full solves can outlive that owner.
+        changed=json.loads(checkpoint);record=changed['body']['controller']['initial']
+        record['state']['shell_displacement'][owner.shell_p[0]]+=1e-6
+        candidate=owner._state(record['state']);record['state_sha256']=sha(candidate)
+        record['accounting']=json.loads(canonical(owner._evaluate(candidate)[-1]))
+        changed['checkpoint_sha256']=sha(changed['body'])
+        return canonical(changed)
+
     replay=os.environ.get('NMS8_RESTART_REPLAY')
     if replay is None:
-        owner,prefix=run(steps=1);resumed_owner,resumed=run(checkpoint=prefix.checkpoint);full_owner,full=run()
+        owner,prefix=run(steps=1)
+        forged_initial=forge_initial(owner,prefix.checkpoint)
+        resumed_owner,resumed=run(checkpoint=prefix.checkpoint);full_owner,full=run()
         prefix_state=owner.current;resumed_state=resumed_owner.current;full_state=full_owner.current
     else:
         # Only guarded immutable authentic PUBLIC producer artifacts. Ordinary
@@ -161,6 +173,7 @@ def test_genuine_split_restart_chain_and_authenticated_translation_work_tamper()
             return SimpleNamespace(checkpoint=capsule,to_dict=lambda:payload)
         prefix=saved('prefix');resumed=saved('resumed');full=saved('full');owner=build()
         assert binding['candidate_identity']==owner.identity
+        forged_initial=forge_initial(owner,prefix.checkpoint)
         prefix_state=owner._state(prefix.to_dict()['final']['state'])
         resumed_state=owner._state(resumed.to_dict()['final']['state']);full_state=owner._state(full.to_dict()['final']['state'])
     assert prefix.to_dict()['accepted_steps']==1 and resumed.to_dict()['accepted_steps']==2
@@ -172,11 +185,7 @@ def test_genuine_split_restart_chain_and_authenticated_translation_work_tamper()
     with pytest.raises(NativeTransientError,match='native contact path/work journal mismatch'):
         solve_native_transient_multi_shell(fresh,config(fresh),checkpoint=raw,expected_sha256=sha256(raw).hexdigest(),max_steps=64,max_cutbacks=8,minimum_dt=.003/256)
     assert fresh.current is None and not fresh._candidates
-    changed=json.loads(prefix.checkpoint);record=changed['body']['controller']['initial']
-    record['state']['shell_displacement'][owner.shell_p[0]]+=1e-6
-    candidate=owner._state(record['state']);record['state_sha256']=sha(candidate)
-    record['accounting']=json.loads(canonical(owner._evaluate(candidate)[-1]))
-    changed['checkpoint_sha256']=sha(changed['body']);raw=canonical(changed);fresh=build()
+    raw=forged_initial;fresh=build()
     with pytest.raises(NativeTransientError,match='initial physical contract mismatch'):
         solve_native_transient_multi_shell(fresh,config(fresh),checkpoint=raw,expected_sha256=sha256(raw).hexdigest(),max_steps=64,max_cutbacks=8,minimum_dt=.003/256)
     assert fresh.current is None
@@ -233,7 +242,7 @@ def test_topology_duplicate_pair_model_alias_and_definition_mutation_refusals(mo
     owner=build();state=_initial(owner);owner.shell_bodies[0].model.materials['elastic'].elastic_modulus*=2
     with pytest.raises(ValueError):owner.trial(state,dt=.003)
     assert owner.current is state and not owner._candidates
-    from anysolver._ge_beam3_native_definition import NativeBeamDefinition
+    from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
     native,shell,pairs=selections()
     too_many=tuple(replace(native[0],body_id=i) for i in (1,)+tuple(range(100,119)))
     def forbidden(*args):raise AssertionError('native preparation reached before global cap')

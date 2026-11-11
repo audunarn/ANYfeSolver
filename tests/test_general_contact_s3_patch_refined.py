@@ -3,19 +3,19 @@
 import numpy as np
 from dataclasses import replace
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactPathControl, ContactPathProgram, ContactSolverSettings,
     ContactSurface, create_shell_element, solve_static_nonlinear,
     validate_general_contact,
 )
-from anysolver.fe_core import FEModel
+from anyfesolver.fe_core import FEModel
 
-from anysolver.general_contact.s3_patch_augmented import MovingS3PatchProjectedNormal
-from anysolver.general_contact.s3_patch_mortar_energy import (
+from anyfesolver.general_contact.s3_patch_augmented import MovingS3PatchProjectedNormal
+from anyfesolver.general_contact.s3_patch_mortar_energy import (
     MovingS3PatchPrimalMortarPenalty, S3PatchFace,
 )
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 from test_general_contact_s3_patch_augmented import _augmented_case
 
 

@@ -42,8 +42,8 @@ def test_v6v_closes_every_registered_audit_gate_without_activation() -> None:
     assert result["activation_authorized"] is False
     assert result["checks"]["focused_test_count"] == 42
     assert all(value is True for key, value in result["checks"].items() if key != "focused_test_count")
-    assert result["package"]["anysolver"]["import_from_isolated_target"] is True
-    assert result["package"]["anysolver"]["round_trip_exact"] is True
+    assert result["package"]["anyfesolver"]["import_from_isolated_target"] is True
+    assert result["package"]["anyfesolver"]["round_trip_exact"] is True
     assert result["next_gate"] == "V6W_FINAL_QUALIFICATION_EVIDENCE_COMPOSITION"
 
 

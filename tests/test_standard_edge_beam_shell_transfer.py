@@ -27,23 +27,23 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import audit_constraints
-from anysolver.analysis_session import AnalysisSession
-from anysolver.assembly import (
+from anyfesolver import audit_constraints
+from anyfesolver.analysis_session import AnalysisSession
+from anyfesolver.assembly import (
     build_constraint_transformation,
     compute_constraint_force_diagnostics,
     reconstruct_full_solution,
 )
-from anysolver.boundary import FixedSupport, LoadCase
-from anysolver.constraint_audit import require_valid_constraints
-from anysolver.elements import BeamElement, CoupledBeamShellElement
-from anysolver.fe_core import FEModel
-from anysolver.mesh_gen import (
+from anyfesolver.boundary import FixedSupport, LoadCase
+from anyfesolver.constraint_audit import require_valid_constraints
+from anyfesolver.elements import BeamElement, CoupledBeamShellElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.mesh_gen import (
     COUPLING_PARTITION_OF_UNITY_ATOL,
     InterpolatedBeamShellMPCElement,
     generate_simple_panel_mesh,
 )
-from anysolver.validation import mpc_constraint_residuals
+from anyfesolver.validation import mpc_constraint_residuals
 
 ATOL = 1.0e-10
 TRANSLATION_SCALE = 1.0

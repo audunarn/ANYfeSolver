@@ -5,7 +5,7 @@ from fractions import Fraction as F
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver.general_contact import ContactInteraction,resolve_automatic_contact_domain as resolve
+from anyfesolver.general_contact import ContactInteraction,resolve_automatic_contact_domain as resolve
 
 
 
@@ -79,8 +79,8 @@ def _independent_pose_gap(model,u):
 
 
 def _footprint(model,resolution,settings,u):
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.overlap import PlanarFace,planar_projected_overlap
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.overlap import PlanarFace,planar_projected_overlap
     manager=GeneralS3PatchManager(model,resolution.definition,settings);source,target=manager._positions(u)
     pairs=[]
     for si in manager.law.source_face_indices:
@@ -97,10 +97,10 @@ def _footprint(model,resolution,settings,u):
                    reason='bounded installed refined automatic deformable lifecycle')
 def test_installed_automatic_s3_pair_stage():
     """One guarded stage per invocation, sharing only retained JSON evidence."""
-    import anysolver,numba
+    import anyfesolver,numba
     from threadpoolctl import threadpool_info
-    from anysolver import ContactDefinition,solve_static_nonlinear
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver import ContactDefinition,solve_static_nonlinear
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     from examples.general_contact_automatic_s3_pair import build_s3_pair,solve_shell_pair
     stage=os.environ['AUTOMATIC_S3_PAIR_STAGE'].split('-')[0]
     evidence=Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])
@@ -118,7 +118,7 @@ def test_installed_automatic_s3_pair_stage():
         physical_inputs=dict(integration_role='lower_coarser',controlled_physical_body='upper',source_work_labels='physical_upper_not_integration_role',upper_actuator_midplane_z_m=.055,upper_physical_bottom_offset_m=-.025,lower_pressure_midplane_z_m=0.,
             lower_physical_top_offset_m=float(.025-.01),upper_director=(0.,0.,-1.),lower_director=(0.,0.,-1.),
             path=path.contract()),
-        runtime_before_solve=dict(anysolver_path=anysolver.__file__,
+        runtime_before_solve=dict(anyfesolver_path=anyfesolver.__file__,
             automatic_domain_path=__import__('inspect').getfile(resolve),
             jit_disabled=bool(numba.config.DISABLE_JIT),numba_threads=int(numba.get_num_threads()),
             pools=threadpool_info()))
@@ -225,7 +225,7 @@ def test_installed_automatic_s3_pair_stage():
         assert abs(result.displacements[target_dof])>1e-10
         manager=GeneralS3PatchManager(model,resolution.definition,settings)
         residual,_,contact_result=manager.evaluate(result.displacements,tangent=False)
-        from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+        from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
         structural,_,states=_assemble_nonlinear_system(model,result.displacements,result.element_states,
             5,tangent=False,kinematics='von_karman')
         _discard_nonlinear_state_candidate(states)
@@ -289,7 +289,7 @@ def test_installed_automatic_s3_pair_stage():
 
 def test_s3_orientation_work_map_and_refusal():
     from examples.general_contact_automatic_s3_pair import build_s3_pair
-    from anysolver.general_contact.s3_skin_work import S3SkinWorkAdapter
+    from anyfesolver.general_contact.s3_skin_work import S3SkinWorkAdapter
     down=build_s3_pair(resolve_domain=False);up=build_s3_pair(director_z=1,resolve_domain=False)
     for eid in range(1,7):
         a=S3SkinWorkAdapter.from_model(down[0],1,eid,'top' if eid<=4 else 'bottom')
@@ -305,7 +305,7 @@ def test_s3_orientation_work_map_and_refusal():
 
 def test_s3_smooth_full_work_tangent_and_unsafe_path():
     from examples.general_contact_automatic_s3_pair import build_s3_pair
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     from scipy import sparse
     model,domain,settings,resolution,path=build_s3_pair()
     manager=GeneralS3PatchManager(model,resolution.definition,settings)
@@ -319,8 +319,8 @@ def test_s3_smooth_full_work_tangent_and_unsafe_path():
     force,tangent,result=manager.evaluate(u)
     oracle=_independent_pose_gap(model,u)
     assert oracle['tilted_source_normal_squared_xy']>1e-13
-    from anysolver.general_contact.s3_overlap_derivatives import s3_overlap_derivatives
-    from anysolver.general_contact.s3_skin_work import S3SkinWorkAdapter
+    from anyfesolver.general_contact.s3_overlap_derivatives import s3_overlap_derivatives
+    from anyfesolver.general_contact.s3_skin_work import S3SkinWorkAdapter
     reference={};current={}
     for eid in range(1,7):
         adapter=S3SkinWorkAdapter.from_model(model,1,eid,'top' if eid<=4 else 'bottom')
@@ -348,7 +348,7 @@ def test_s3_smooth_full_work_tangent_and_unsafe_path():
 
 
 def test_s3_predictor_route_and_precancel_safety():
-    from anysolver import CancellationToken,SolveCancelled,validate_general_contact
+    from anyfesolver import CancellationToken,SolveCancelled,validate_general_contact
     from examples.general_contact_automatic_s3_pair import build_s3_pair,solve_shell_pair
     model,domain,settings,resolution,path=build_s3_pair()
     assert not validate_general_contact(model,resolution.definition,settings,analysis_control='force').valid

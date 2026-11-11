@@ -15,14 +15,14 @@ import json
 from pathlib import Path
 import subprocess
 
-import anysolver
-from anysolver import stiffened_shell
+import anyfesolver
+from anyfesolver import stiffened_shell
 import numpy as np
 from scipy import linalg, sparse
 from scipy.sparse.linalg import splu
 from threadpoolctl import threadpool_info, threadpool_limits
-from anysolver._stiffened_shell_l1_assembly_experimental import compile_lines
-from anysolver._ge_beam3_retained_generalized_state import Mechanical
+from anyfesolver._stiffened_shell_l1_assembly_experimental import compile_lines
+from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
 
 from b3_e4_f03_bl5_joint_growth_dev import _case
 from test_stiffened_shell_l1_assembly_experimental import (
@@ -38,18 +38,18 @@ LOADS = {"fy": (0., 100., 0., 0., 0., 0.),
 
 
 def analyze(*, ratio_probe: bool = False):
-    expected = (ROOT / "src" / "anysolver" / "__init__.py").resolve()
-    if Path(anysolver.__file__).resolve() != expected:
-        raise RuntimeError("off-grid screen imported another ANYsolver")
+    expected = (ROOT / "src" / "anyfesolver" / "__init__.py").resolve()
+    if Path(anyfesolver.__file__).resolve() != expected:
+        raise RuntimeError("off-grid screen imported another ANYfeSolver")
     report = {
         "status": ("BL5_P1_SEVEN_RATIO_FEASIBILITY_ONLY" if ratio_probe else
                    "BL5_P1_OFFGRID_DEVELOPMENT_ONLY"),
         "source_git": subprocess.check_output(
             ("git", "rev-parse", "HEAD"), cwd=ROOT, text=True).strip(),
         "runner_sha256": sha256(Path(__file__).read_bytes()).hexdigest(),
-        "product_sha256": sha256((ROOT / "src" / "anysolver" /
+        "product_sha256": sha256((ROOT / "src" / "anyfesolver" /
             "_stiffened_shell_l1_assembly_experimental.py").read_bytes()).hexdigest(),
-        "imported_anysolver": str(expected),
+        "imported_anyfesolver": str(expected),
         "geometry_m": {"length": 1., "width": .2,
                        "shell_thickness": .035,
                        "beam_axis_height": .0675},
@@ -184,15 +184,15 @@ def probe_rank():
 
 def probe_coarse_trace():
     """One reference-abscissa P1 rule on the coarser of two uniform traces."""
-    expected = (ROOT / "src" / "anysolver" / "__init__.py").resolve()
-    if Path(anysolver.__file__).resolve() != expected:
-        raise RuntimeError("coarse-trace probe imported another ANYsolver")
+    expected = (ROOT / "src" / "anyfesolver" / "__init__.py").resolve()
+    if Path(anyfesolver.__file__).resolve() != expected:
+        raise RuntimeError("coarse-trace probe imported another ANYfeSolver")
     report = {"status": "BL5_P1_COARSE_TRACE_DEVELOPMENT_ONLY",
               "source_git": subprocess.check_output(
                   ("git", "rev-parse", "HEAD"), cwd=ROOT,
                   text=True).strip(),
               "runner_sha256": sha256(Path(__file__).read_bytes()).hexdigest(),
-              "imported_anysolver": str(expected), "cases": [],
+              "imported_anyfesolver": str(expected), "cases": [],
               "limitations": ("Uniform straight flat-Q4 traces only; the "
                               "coarse reference knots are a diagnostic, not "
                               "a derived general attachment, stability norm, "

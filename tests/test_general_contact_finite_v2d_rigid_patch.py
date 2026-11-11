@@ -5,8 +5,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 from examples.general_contact_finite_v2d_rigid_patch import build,solve,fixture,json_value,report_result
-from anysolver.general_contact.finite_rigid_patch import FiniteRigidPatchManager,PROFILE,admitted_definition
-from anysolver.general_contact.finite_rigid_support import slab_support_and_ownership,tool_normal_gap_lower
+from anyfesolver.general_contact.finite_rigid_patch import FiniteRigidPatchManager,PROFILE,admitted_definition
+from anyfesolver.general_contact.finite_rigid_support import slab_support_and_ownership,tool_normal_gap_lower
 
 
 def oracle():
@@ -36,7 +36,7 @@ def test_refuse_unsupported_owner_or_settings(kind):
     from dataclasses import replace
     m,d,s,p,q=build()
     if kind=='native':
-        from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+        from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
         old=m.mesh.elements[1]
         m.mesh.elements[1]=QualifiedE4PLS3ShellElement(1,old.node_ids,'elastic',thickness=.05,reference_normal=(0.,0.,1.))
     elif kind=='affine':s=replace(s,shell_skin_kinematics='reference_linear')
@@ -116,7 +116,7 @@ def fresh():
     or not Path(os.environ['FINITE_RIGID_FRESH']).is_file(),
     reason='archived fresh run under FINITE_RIGID_FRESH absent: saved gap/wrench/penalty/integration assessment requires the saved accepted suffix and history')
 def test_saved_independent_gap_equilibrium_wrench_penalty_and_integration():
-    from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate,_weighted_external_load_system
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate,_weighted_external_load_system
     m,d,s,p,seed=build();m.apply_boundary_conditions();data=fresh();assert data['fixture']==json_value(fixture(m,d,s,p,seed))
     poses=data['accepted_suffix'];rows=data['history'];assert len(poses)==len(rows)>0
     assert [v['step_index'] for v in poses]==[v['step_index'] for v in rows]==list(range(1,len(poses)+1))
@@ -165,7 +165,7 @@ def test_saved_independent_gap_equilibrium_wrench_penalty_and_integration():
 
 @pytest.mark.parametrize('prefix_name,start_factor',(('active-prefix2.json',2.),('open-prefix.json',3.)))
 def test_actual_active_and_open_restart(prefix_name,start_factor):
-    from anysolver.general_contact.finite_v2d_state import prepare_v2d_states
+    from anyfesolver.general_contact.finite_v2d_state import prepare_v2d_states
     from examples.general_contact_finite_v2d_rigid_patch import main
     fresh_path=os.environ.get('FINITE_RIGID_FRESH')
     if not fresh_path or not Path(fresh_path).is_file():
@@ -248,9 +248,9 @@ def test_exact_artificial_diagonal_touch_stays_visible_conservative_refusal():
     or not (Path(os.environ['FINITE_RIGID_WORKFLOW'])/'open-prefix.json').is_file(),
     reason='archived open-prefix.json under FINITE_RIGID_WORKFLOW absent: material/contact cancellation rollback requires the saved prefix checkpoint')
 def test_actual_cancellation_after_contact_and_material_trial(monkeypatch):
-    from anysolver import CancellationToken,SolveCancelled
-    import anysolver.nonlinear_static as driver
-    from anysolver.general_contact.core import _ACTIVE_CONTACT
+    from anyfesolver import CancellationToken,SolveCancelled
+    import anyfesolver.nonlinear_static as driver
+    from anyfesolver.general_contact.core import _ACTIVE_CONTACT
     root=Path(os.environ['FINITE_RIGID_WORKFLOW']);prefix=json.loads((root/'open-prefix.json').read_text())
     m,d,s,p,q=build();token=CancellationToken();before=json.dumps(prefix,sort_keys=True);context=_ACTIVE_CONTACT.get();observed={}
     assembly=driver._assemble_nonlinear_system_unchecked;evaluate=FiniteRigidPatchManager.evaluate
@@ -276,13 +276,13 @@ def test_actual_cancellation_after_contact_and_material_trial(monkeypatch):
     or not Path(os.environ['FINITE_RIGID_FRESH']).is_file(),
     reason='archived fresh run under FINITE_RIGID_FRESH absent: owner-mutation and corrupt rich checkpoint refusals require the saved checkpoint and fixture')
 def test_actual_checkpoint_owner_mutation_and_null_input_refused(monkeypatch,tmp_path):
-    from anysolver.general_contact.finite_v2d_state import prepare_v2d_states
+    from anyfesolver.general_contact.finite_v2d_state import prepare_v2d_states
     from examples.general_contact_finite_v2d_rigid_patch import main,SCHEMA
     data=fresh();m,d,s,p,q=build();cp=data['checkpoint'];states={v['element_id']:copy.deepcopy(v['state']) for v in cp['element_states']}
     states[1]['committed_total_u'][0]+=1e-4
     with pytest.raises((ValueError,TypeError)):prepare_v2d_states(m,np.asarray(cp['displacements']),states,5,{},restart=True)
-    import anysolver.nonlinear_static as driver
-    from anysolver.general_contact.core import _ACTIVE_CONTACT
+    import anyfesolver.nonlinear_static as driver
+    from anyfesolver.general_contact.core import _ACTIVE_CONTACT
     context=_ACTIVE_CONTACT.get();assembly=driver._assemble_nonlinear_system_unchecked
     corrupted=copy.deepcopy(data);corrupted['checkpoint']['element_states'][0]['state']['committed_total_u'][0]+=1e-4
     bad_owner=tmp_path/'corrupt-owner.json';bad_owner.write_text(json.dumps(corrupted,allow_nan=False))
@@ -331,8 +331,8 @@ def test_spatial_spin_additive_chart_work_counterexample_one_radian():
 
 
 def test_actual_public_entry_selects_only_admitted_ordinary_finite_profile(monkeypatch):
-    import anysolver.nonlinear_static as driver
-    from anysolver.general_contact.core import active_contact_manager
+    import anyfesolver.nonlinear_static as driver
+    from anyfesolver.general_contact.core import active_contact_manager
     from dataclasses import replace
     m,d,s,p,q=build();seen=[]
     class ReachedOrdinaryOwner(Exception):pass

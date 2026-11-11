@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     FixedSupport,
     FractureConfig,
@@ -21,21 +21,21 @@ from anysolver import (
     solve_transient_newmark,
     create_shell_element,
 )
-from anysolver.anystructure_fem_mode import build_fe_model_from_generated_geometry
-from anysolver.contact import (
+from anyfesolver.anystructure_fem_mode import build_fe_model_from_generated_geometry
+from anyfesolver.contact import (
     RigidSphereImpact,
     SphereContactConfig,
     _require_user_capacity_for_orthotropic_linear_damage,
     material_characteristic_modulus,
     solve_transient_sphere_impact,
 )
-from anysolver.dynamics import TransientConfig
-from anysolver.elements import BeamElement, ShellElement
-from anysolver.external_references import write_calculix_input_deck
-from anysolver.fe_core import FEModel
-from anysolver.fracture import ImpactDamageConfig, state_rtcl_increment
-from anysolver.material_curves import DNVC208MaterialCurve
-from anysolver.runtime import _apply_material_curve_to_model
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.elements import BeamElement, ShellElement
+from anyfesolver.external_references import write_calculix_input_deck
+from anyfesolver.fe_core import FEModel
+from anyfesolver.fracture import ImpactDamageConfig, state_rtcl_increment
+from anyfesolver.material_curves import DNVC208MaterialCurve
+from anyfesolver.runtime import _apply_material_curve_to_model
 
 
 ORTHOTROPIC_CONSTANTS = {

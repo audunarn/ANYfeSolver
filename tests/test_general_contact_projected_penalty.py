@@ -3,8 +3,8 @@ from dataclasses import replace
 from scipy import sparse
 import numpy as np
 import pytest
-from anysolver import validate_general_contact
-from anysolver.general_contact.s3_patch_static import (
+from anyfesolver import validate_general_contact
+from anyfesolver.general_contact.s3_patch_static import (
     GeneralS3PatchManager, REFINED_Q4_S3_PROJECTED_PENALTY_PROFILE,
 )
 from test_general_contact_q4_s3_refined_patch import _two_q4_two_s3
@@ -137,8 +137,8 @@ def test_smooth_both_body_skin_directional_tangent_interval():
 
 
 def test_ordinary_scope_rejects_unsupported_control_before_mutation():
-    from anysolver.general_contact.core import contact_scope
-    from anysolver import solve_static_nonlinear
+    from anyfesolver.general_contact.core import contact_scope
+    from anyfesolver import solve_static_nonlinear
     model, definition, settings = _candidate()
     with pytest.raises(ValueError, match="unsupported projected penalty"):
         with contact_scope(model, definition, settings, analysis_control="arc_length"):
@@ -151,7 +151,7 @@ def test_ordinary_scope_rejects_unsupported_control_before_mutation():
 
 
 def test_ordinary_rejects_unadmitted_finite_rotation_work_map():
-    from anysolver import solve_static_nonlinear
+    from anyfesolver import solve_static_nonlinear
     model, definition, settings = _candidate()
     with pytest.raises(ValueError, match="small-rotation kinematics"):
         solve_static_nonlinear(model, contact=definition, contact_settings=settings,

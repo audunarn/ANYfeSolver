@@ -28,12 +28,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell as ss
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._ge_beam3_retained_generalized_state import Mechanical
-from anysolver._stiffened_shell_ge_finite_experimental import (
+from anyfesolver import stiffened_shell as ss
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
+from anyfesolver._stiffened_shell_ge_finite_experimental import (
     FinitePointDriver, _State, _owned)
-from anysolver._stiffened_shell_rotation_charts import physical_frames
+from anyfesolver._stiffened_shell_rotation_charts import physical_frames
 from test_stiffened_shell_bl5_coupled_material import coupled
 from test_stiffened_shell_bl5_finite import _action
 

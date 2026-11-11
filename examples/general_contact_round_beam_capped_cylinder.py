@@ -1,9 +1,9 @@
 """Explicit exterior round B3/capped-cylinder static development example."""
-from anysolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, RigidCappedCylinder, LoadCase,
     solve_static_nonlinear)
-from anysolver.fe_core import FEModel
-from anysolver.elements import QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import QuadraticBeamElement
 
 
 def run():

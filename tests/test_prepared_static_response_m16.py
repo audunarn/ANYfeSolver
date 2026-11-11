@@ -1,7 +1,7 @@
 """M16 certified response route: behaviour (criterion C6) and development fixtures."""
 import numpy as np
 import pytest
-from anysolver import (PatternCase, prepare_static_response_evaluator, RecoveryConfig,
+from anyfesolver import (PatternCase, prepare_static_response_evaluator, RecoveryConfig,
     PreparedStaticError, PreparedStaticCapabilityError, LoadCase)
 from test_prepared_static_evaluator import _bar, _case, _shell_model, _shell_case
 import prepared_static_response_m16_assessment as assessment
@@ -79,7 +79,7 @@ def test_failed_certificate_falls_back(monkeypatch):
 
 
 def test_nonaffine_recovery_refused(monkeypatch):
-    import anysolver.prepared_static_response as response_module
+    import anyfesolver.prepared_static_response as response_module
     zero = {'axial_stress': np.zeros(2), 'label': 'beam'}
     schema = response_module._library_schema(7, zero)
     monkeypatch.setattr(response_module, '_recover_owned_local',
@@ -89,7 +89,7 @@ def test_nonaffine_recovery_refused(monkeypatch):
 
 
 def test_unreproducible_derived_measure_refused(monkeypatch):
-    import anysolver.prepared_static_response as response_module
+    import anyfesolver.prepared_static_response as response_module
     zero = {'axial_stress': np.zeros(2), 'von_mises': np.zeros(2)}
     schema = response_module._library_schema(8, zero)
     monkeypatch.setattr(response_module, '_recover_owned_local',
@@ -100,8 +100,8 @@ def test_unreproducible_derived_measure_refused(monkeypatch):
 
 @pytest.mark.parametrize('stage', ['element_schema', 'element_library'])
 def test_library_token_never_runs_in_owned_scope(monkeypatch, stage):
-    import anysolver.prepared_static_response as response_module
-    import anysolver.prepared_static_recovery as recovery_module
+    import anyfesolver.prepared_static_response as response_module
+    import anyfesolver.prepared_static_recovery as recovery_module
     observed = []
     class HostileToken:
         def raise_if_cancelled(self, where):
@@ -129,7 +129,7 @@ def test_envelope_route_labels_and_close_releases_library():
 
 
 def test_offsets_and_constrained_loads_once_in_library_route():
-    from anysolver import BoundaryCondition, prepare_static_evaluator
+    from anyfesolver import BoundaryCondition, prepare_static_evaluator
     model = _bar(False)
     model.add_boundary_condition(BoundaryCondition('left', [1], {'ux': 0.001, 'uy': 0., 'uz': 0., 'rx': 0., 'ry': 0., 'rz': 0.}))
     model.add_boundary_condition(BoundaryCondition('right', [2], {'uy': 0., 'uz': 0., 'rx': 0., 'ry': 0., 'rz': 0.}))

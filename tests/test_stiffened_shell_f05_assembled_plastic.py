@@ -8,9 +8,9 @@ import numpy as np
 import pytest
 from scipy.sparse.linalg import spsolve
 
-from anysolver import stiffened_shell
-from anysolver._stiffened_shell_ge_finite_experimental import _material_arrays
-from anysolver.e4_pl_s3_state import canonical_json_bytes
+from anyfesolver import stiffened_shell
+from anyfesolver._stiffened_shell_ge_finite_experimental import _material_arrays
+from anyfesolver.e4_pl_s3_state import canonical_json_bytes
 from test_stiffened_shell_ge_finite_experimental import _actions
 from test_stiffened_shell_q4_pullback_owner import _definition
 

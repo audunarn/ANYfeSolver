@@ -4,9 +4,9 @@ import json
 import numpy as np
 import pytest
 from scipy.integrate import quad
-from anysolver import LoadCase, RigidContactBody, solve_static_nonlinear
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver.general_contact.multiple_beam_rigid import MultipleBeamRigidManager
+from anyfesolver import LoadCase, RigidContactBody, solve_static_nonlinear
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver.general_contact.multiple_beam_rigid import MultipleBeamRigidManager
 from test_general_contact_multiple_beam_rigid import fixture as two_plane_fixture
 
 

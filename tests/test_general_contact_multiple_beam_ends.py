@@ -5,12 +5,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 from scipy.optimize import brentq
-from anysolver import (ContactDefinition,ContactSurface,ContactInteraction,ContactSolverSettings,
+from anyfesolver import (ContactDefinition,ContactSurface,ContactInteraction,ContactSolverSettings,
     RigidContactBody,RigidCappedCylinder,BoundaryCondition,LoadCase,DisplacementControl,
     solve_static_nonlinear,validate_general_contact,report_general_contact_capability)
-from anysolver.fe_core import FEModel
-from anysolver.elements import QuadraticBeamElement
-from anysolver.general_contact.multiple_beam_rigid import MultipleBeamRigidManager,PROFILE_ENDS
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import QuadraticBeamElement
+from anyfesolver.general_contact.multiple_beam_rigid import MultipleBeamRigidManager,PROFILE_ENDS
 
 
 def fixture(kind='sphere'):

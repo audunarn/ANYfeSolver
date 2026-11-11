@@ -5,12 +5,12 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.friction_point import initial_friction_point
-from anysolver.general_contact.native_retained_station import NativeRetainedRoundStation
-from anysolver.general_contact.s3_friction_point import S3SkinMaterialPoint
-from anysolver.general_contact.native_surface_s3_friction import (
+from anyfesolver import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.friction_point import initial_friction_point
+from anyfesolver.general_contact.native_retained_station import NativeRetainedRoundStation
+from anyfesolver.general_contact.s3_friction_point import S3SkinMaterialPoint
+from anyfesolver.general_contact.native_surface_s3_friction import (
     NativeS3MaterialConfiguration,NativeS3MaterialPointFriction,
 )
 from test_general_contact_native_retained_station import _reference
@@ -165,8 +165,8 @@ def test_native_surface_point_resource_preflight():
 
 @pytest.mark.parametrize('angle', [.01, .2])
 def test_local_geometry_memo_and_exact_rotation_match_uncached_jet_oracle(monkeypatch, angle):
-    import anysolver.general_contact.native_surface_s3_friction as module
-    from anysolver._ge_beam3_mixed_ad import Jet2, so3_exp, matvec
+    import anyfesolver.general_contact.native_surface_s3_friction as module
+    from anyfesolver._ge_beam3_mixed_ad import Jet2, so3_exp, matvec
     _, pair, origin, history = _case()
     spin = np.zeros(60); spin[18] = 1.
     candidate = _moved(origin, spin, angle)
@@ -184,7 +184,7 @@ def test_local_geometry_memo_and_exact_rotation_match_uncached_jet_oracle(monkey
 
 
 def test_skin_frame_memo_is_bounded_readonly_and_invalid_pose_still_rejects():
-    import anysolver.general_contact.native_surface_s3_friction as module
+    import anyfesolver.general_contact.native_surface_s3_friction as module
     _, pair, origin, history = _case()
     module._skin_frame_jet.cache_clear()
     for shift in range(40):
@@ -205,8 +205,8 @@ def test_skin_frame_memo_is_bounded_readonly_and_invalid_pose_still_rejects():
 
 @pytest.mark.parametrize('angle', [.01,.2])
 def test_batched_local_jets_match_scalar_jet2_work(monkeypatch, angle):
-    import anysolver.general_contact.native_surface_s3_friction as module
-    from anysolver._ge_beam3_mixed_ad import Jet2, so3_exp, matvec, dot
+    import anyfesolver.general_contact.native_surface_s3_friction as module
+    from anyfesolver._ge_beam3_mixed_ad import Jet2, so3_exp, matvec, dot
     _,pair,origin,history=_case()
     spin=np.zeros(60); spin[18]=1.
     candidate=_moved(origin,spin,angle)

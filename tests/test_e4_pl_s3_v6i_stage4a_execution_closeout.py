@@ -81,7 +81,7 @@ def test_v6i_closeout_authorizes_only_request_preparation() -> None:
 
 
 def test_v6i_closeout_preserves_q4_and_legacy_s3_defaults() -> None:
-    tree = ast.parse((ROOT / "src/anysolver/elements.py").read_text(encoding="utf-8"))
+    tree = ast.parse((ROOT / "src/anyfesolver/elements.py").read_text(encoding="utf-8"))
     defaults: dict[str, str] = {}
     for node in tree.body:
         if not isinstance(node, (ast.Assign, ast.AnnAssign)):

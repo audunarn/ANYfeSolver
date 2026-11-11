@@ -6,11 +6,11 @@ import pytest
 pytest.importorskip('anyloads.marine',reason='optional native Morison ANYloads API is not installed')
 from anyloads.marine import (AiryComponent,AiryEnvironment,CurrentProfile,
                              MorisonSection,HydrodynamicOwnership)
-from anysolver.marine_rigid import RigidBody6D,RigidBodyState,rotation_matrix
-from anysolver.marine_contributions import BodyLayout,CommittedHistory,StepInformation,ContributionSet
-from anysolver.marine_morison import (MemberEndpoint,MorisonMember,MorisonMemberSetContribution,
+from anyfesolver.marine_rigid import RigidBody6D,RigidBodyState,rotation_matrix
+from anyfesolver.marine_contributions import BodyLayout,CommittedHistory,StepInformation,ContributionSet
+from anyfesolver.marine_morison import (MemberEndpoint,MorisonMember,MorisonMemberSetContribution,
     MarineMorisonError,data_to_dict,data_from_dict)
-from anysolver.marine_mechanical import (MarineMechanicalModel,MarineMechanicalRunSpec,
+from anyfesolver.marine_mechanical import (MarineMechanicalModel,MarineMechanicalRunSpec,
     MarineMechanicalInputError,model_to_dict,model_from_dict,solve_marine_mechanical)
 
 def body(name='a'):
@@ -160,7 +160,7 @@ def test_native_driver_initial_added_mass_and_three_step_history_cancellation():
     p,states=simple(current=(0.,0.,0.))
     section=replace(p.members[0].section,drag_coefficient=0.)
     p=replace(p,members=(replace(p.members[0],section=section),))
-    from anysolver.marine_contributions import WorldWrenchContribution
+    from anyfesolver.marine_contributions import WorldWrenchContribution
     wrench=WorldWrenchContribution('push',p.bodies[0],(0.,0.,0.),(0.,2.,0.))
     model=MarineMechanicalModel(p.bodies,contributions=(p,wrench))
     states={'a':RigidBodyState((0.,0.,-2.))}
@@ -210,8 +210,8 @@ def test_unknown_subclass_and_collapsed_member_refuse():
 def test_native_coupled_fixture_plus_omitted_member_and_drag_correction():
     """Explicit synthetic BEM fixture; does not prove mesh/source exclusion."""
     from test_marine_potential_flow import fixture
-    from anysolver.marine_hydro_coordinates import EquilibriumHydroFrame
-    from anysolver.marine_potential_flow import PotentialFlowDevelopmentContribution
+    from anyfesolver.marine_hydro_coordinates import EquilibriumHydroFrame
+    from anyfesolver.marine_potential_flow import PotentialFlowDevelopmentContribution
     p,states=simple()
     frame=EquilibriumHydroFrame('a',(0.,0.,-2.),np.eye(3),np.eye(3),(0.,0.,0.))
     data=fixture((frame,));data=replace(data,dt=.01)
@@ -229,9 +229,9 @@ def test_native_coupled_fixture_plus_omitted_member_and_drag_correction():
 def test_mid_trial_cancel_preserves_accepted_fluid_history_and_member_prefix(monkeypatch):
     """Cancel inside the second-step fluid sampling, before any trial commit."""
     from test_marine_potential_flow import fixture
-    from anysolver.marine_hydro_coordinates import EquilibriumHydroFrame
-    from anysolver.marine_potential_flow import PotentialFlowDevelopmentContribution
-    from anysolver.marine_mechanical import result_to_dict
+    from anyfesolver.marine_hydro_coordinates import EquilibriumHydroFrame
+    from anyfesolver.marine_potential_flow import PotentialFlowDevelopmentContribution
+    from anyfesolver.marine_mechanical import result_to_dict
     p,states=simple()
     frame=EquilibriumHydroFrame('a',(0.,0.,-2.),np.eye(3),np.eye(3),(0.,0.,0.))
     fluid=PotentialFlowDevelopmentContribution(replace(fixture((frame,)),dt=.01))

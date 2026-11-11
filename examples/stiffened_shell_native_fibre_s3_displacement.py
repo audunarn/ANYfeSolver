@@ -3,7 +3,7 @@ from dataclasses import replace
 from pathlib import Path
 import argparse
 import json
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from stiffened_shell_ge_point_zero_unload import definition as reference_definition
 from math import fsum
 

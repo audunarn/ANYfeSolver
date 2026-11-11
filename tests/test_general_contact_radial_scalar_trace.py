@@ -3,8 +3,8 @@ from types import SimpleNamespace
 import json
 import numpy as np
 import pytest
-from anysolver.general_contact import semismooth_path as driver
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact import semismooth_path as driver
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 from docs.d1_review_support.d1_radial_scalar_trace import radial_solver_trace
 
 

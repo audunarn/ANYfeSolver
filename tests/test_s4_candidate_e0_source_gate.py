@@ -130,7 +130,7 @@ def test_e0_oracle_is_stdlib_only_and_emits_exact_contract() -> None:
             assert node.module is not None
             imports.add(node.module.split(".")[0])
     assert imports <= {"__future__", "argparse", "hashlib", "json", "pathlib", "sys"}
-    assert "anysolver" not in imports
+    assert "anyfesolver" not in imports
     result = _run("--emit-contract")
     assert result.returncode == 0 and result.stderr == b""
     assert result.stdout == CONTRACT.read_bytes()
@@ -256,4 +256,4 @@ def test_e0_extent_is_qualification_only_and_has_no_production_import() -> None:
     assert not any(path.startswith(("src/", "pyproject.toml", ".github/")) for path in candidate_paths)
 
     source = ORACLE.read_text(encoding="utf-8")
-    assert "import anysolver" not in source and "from anysolver" not in source
+    assert "import anyfesolver" not in source and "from anyfesolver" not in source

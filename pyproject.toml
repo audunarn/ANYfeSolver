@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ANYsolver"
-version = "0.4.7"
+name = "ANYfeSolver"
+version = "0.5.0"
 description = "Qualified beam and shell finite-element solver"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -30,7 +30,7 @@ dependencies = [
   "ANYmaterial>=0.2,<0.3",
   "ANYmesher>=0.4,<0.6",
   "ANYfileio>=0.3.2,<0.4",
-  "ANYsolver-results>=2.1,<3",
+  "ANYfeSolver-results>=2.2,<3",
 ]
 
 [project.optional-dependencies]
@@ -49,24 +49,26 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/audunarn/ANYsolver"
-Repository = "https://github.com/audunarn/ANYsolver"
-Issues = "https://github.com/audunarn/ANYsolver/issues"
+Homepage = "https://github.com/audunarn/ANYfeSolver"
+Repository = "https://github.com/audunarn/ANYfeSolver"
+Issues = "https://github.com/audunarn/ANYfeSolver/issues"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["anysolver", "anysolver.*"]
+include = ["anyfesolver", "anyfesolver.*"]
 
 [tool.setuptools.package-data]
-anysolver = ["_native_guard.cpp"]
+anyfesolver = ["_native_guard.cpp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-pythonpath = ["src"]
+# The results runtime is a separately packaged distribution; its source tree is
+# on the path so a checkout test run needs no editable install of either wheel.
+pythonpath = ["src", "packages/results/src"]
 addopts = ["-ra", "-p", "no:cacheprovider"]
 filterwarnings = [
   "ignore:Legacy four-node ShellElement is a temporary rollback path:DeprecationWarning",

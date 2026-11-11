@@ -25,7 +25,7 @@ forward to a new candidate.
 ## Open limits and follow-ups
 
 - On October 29, the older V6 source-authority check reported a mismatch for
-  `src/anysolver/e4_pl_s3_v2c_element.py`. The same failure occurred before and
+  `src/anyfesolver/e4_pl_s3_v2c_element.py`. The same failure occurred before and
   after development-file removal. Its historical binding was not rewritten;
   see the [cleanup evidence](CLEANUP_20261029.md).
 - The [Q4 changelog entry](../CHANGELOG.md#unreleased) records the unresolved

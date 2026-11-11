@@ -39,10 +39,10 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver import BeamElement
-from anysolver.corotational import rotation_matrix_from_vector
-from anysolver.general_contact.curved_shell_skin import CurvedShellSkinMap
-from anysolver.mesh_gen import InterpolatedBeamShellMPCElement
+from anyfesolver import BeamElement
+from anyfesolver.corotational import rotation_matrix_from_vector
+from anyfesolver.general_contact.curved_shell_skin import CurvedShellSkinMap
+from anyfesolver.mesh_gen import InterpolatedBeamShellMPCElement
 
 from examples.elastic_sphere_stiffened_panel import (
     DROP_CLEARANCE,
@@ -60,7 +60,7 @@ from examples.elastic_sphere_stiffened_panel import (
     prepare_case_models,
 )
 
-SCHEMA = "anysolver.elastic-sphere-panel-contact-skins-v1"
+SCHEMA = "anyfesolver.elastic-sphere-panel-contact-skins-v1"
 STATUS = "skin_geometry_prepared"
 CONTACT_RESPONSE_STATUS = "unsupported"
 IMPACT_STATUS = "unsupported"
@@ -298,7 +298,7 @@ def prepare_skin_geometry() -> dict:
             "gravity_solve_status": str(result.status),
             "skin_service": (
                 "development-only face-local curved shell skin map "
-                "(anysolver.general_contact.curved_shell_skin); not an "
+                "(anyfesolver.general_contact.curved_shell_skin); not an "
                 "admitted contact solve"
             ),
             "sphere_skin": {

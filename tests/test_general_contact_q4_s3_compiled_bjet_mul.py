@@ -2,7 +2,7 @@
 
 import numpy as np
 
-import anysolver.general_contact.q4_s3_overlap_derivatives as derivatives
+import anyfesolver.general_contact.q4_s3_overlap_derivatives as derivatives
 
 
 REFERENCE = np.array([[0., 0., 0.], [2., 0., 0.],

@@ -6,7 +6,7 @@ from decimal import Decimal as D,localcontext
 import numpy as np
 import pytest
 from docs.reference_cases.ge_beam3_decimal_linear_audit import solve_linear
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 
 
 def test_decimal_pivoting_keeps_weak_rhs_and_indefinite_blocks():

@@ -4,10 +4,10 @@ import runpy
 import numpy as np
 from scipy.integrate import quad
 from scipy.optimize import root
-from anysolver import BoundaryCondition, LoadCase, solve_static_nonlinear
-from anysolver.elements import QuadraticBeamElement
-from anysolver.matrix_assembly import assemble_stiffness_matrix
-from anysolver.general_contact.deformable_beam_s3_static import DeformableBeamS3Manager
+from anyfesolver import BoundaryCondition, LoadCase, solve_static_nonlinear
+from anyfesolver.elements import QuadraticBeamElement
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.general_contact.deformable_beam_s3_static import DeformableBeamS3Manager
 from s3_von_karman_oracle import model_triangle_von_karman
 
 

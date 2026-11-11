@@ -6,25 +6,25 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import create_shell_element
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_retained_nodal_loading import NodalDeadForces, Program
-from anysolver._ge_beam3_p5_seeded.core import canonical, sha
-from anysolver.boundary import BoundaryCondition, FixedSupport
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.native_retained_line_s3 import (
+from anyfesolver import create_shell_element
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_retained_nodal_loading import NodalDeadForces, Program
+from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
+from anyfesolver.boundary import BoundaryCondition, FixedSupport
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.native_retained_line_s3 import (
     NativeRetainedRoundLineS3Interior,
 )
-from anysolver.general_contact.native_retained_line_s3_work import (
+from anyfesolver.general_contact.native_retained_line_s3_work import (
     NativeRetainedLineS3Work,
 )
-from anysolver.general_contact.native_retained_s3_static import (
+from anyfesolver.general_contact.native_retained_s3_static import (
     NativeRetainedRoundS3Analysis,
 )
-from anysolver.general_contact.overlap import reference_shell_face
-from anysolver.general_contact.s3_skin_work import S3SkinWorkAdapter
+from anyfesolver.general_contact.overlap import reference_shell_face
+from anyfesolver.general_contact.s3_skin_work import S3SkinWorkAdapter
 from test_ge_beam3_native_generalized_modal import make
 
 

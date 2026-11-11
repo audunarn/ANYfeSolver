@@ -4,10 +4,10 @@ from pathlib import Path
 import runpy
 import numpy as np
 import pytest
-from anysolver import ContactTransientSolverControls
-from anysolver.general_contact.normal_s3_skin_path import prepare_normal_s3_skin_path
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.runtime import active_contact_manager
+from anyfesolver import ContactTransientSolverControls
+from anyfesolver.general_contact.normal_s3_skin_path import prepare_normal_s3_skin_path
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.runtime import active_contact_manager
 
 demo=runpy.run_path(str(Path(__file__).parents[1]/'examples/general_contact_deforming_s3_impact_dev.py'))
 CONTROLS=replace(demo['CONTROLS'],normal_s3_polygon_pressure_bounds_dev=True)
@@ -37,7 +37,7 @@ def test_polygon_pressure_owner_retains_hidden_material_approach_guard():
 
 
 def test_v16_active_restart_and_pressure_algorithm_identity(monkeypatch):
-    from anysolver.general_contact import normal_s3_skin_path as module
+    from anyfesolver.general_contact import normal_s3_skin_path as module
     original=module.NormalS3SkinPath.overlap_sweep;guards=[]
     def observed(self,*args,**kwargs):
         guards.append(kwargs['event_gap_tolerance_m'])

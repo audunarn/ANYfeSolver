@@ -682,7 +682,7 @@ LOCAL_DISTRIBUTIONS = (
     ("ANYmaterial", "ANYmaterial", "anymaterial"),
     ("ANYmesh", "ANYmesher", "anymesher"),
     ("ANYfileIO", "ANYfileio", "anyfileio"),
-    ("ANYsolver", "ANYsolver", "anysolver"),
+    ("ANYfeSolver", "ANYfeSolver", "anyfesolver"),
 )
 
 SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
@@ -1213,7 +1213,7 @@ def validate_gate_result(
     """Validate a prospective Q1M gate result without creating evidence.
 
     Passing ``repository_paths`` enables the final clean-tree and Git-object
-    identity check. Its keys must name ANYsolver and all five siblings.
+    identity check. Its keys must name ANYfeSolver and all five siblings.
     """
 
     contract = dict(_load_contract() if contract is None else contract)
@@ -1248,8 +1248,8 @@ def validate_gate_result(
     candidate = _exact_keys(
         record["candidate"], {"clean", "commit", "repository", "tree"}, "$.candidate"
     )
-    if candidate["repository"] != "ANYsolver":
-        raise EvidenceError("$.candidate.repository must be ANYsolver")
+    if candidate["repository"] != "ANYfeSolver":
+        raise EvidenceError("$.candidate.repository must be ANYfeSolver")
     if not _require_bool(candidate["clean"], "$.candidate.clean"):
         raise EvidenceError("the candidate repository must be clean")
     _require_match(candidate["commit"], GIT_OBJECT_RE, "$.candidate.commit")
@@ -1524,7 +1524,7 @@ def validate_gate_result(
         if file_hash_record(package_path) != record["package_result"]:
             raise EvidenceError("package result identity mismatch")
         expected_source_identities = {
-            "ANYsolver": record["candidate"],
+            "ANYfeSolver": record["candidate"],
             "ANYmesh": record["siblings"]["ANYmesh"],
             "ANYgeometry": record["siblings"]["ANYgeometry"],
             "ANYmaterial": record["siblings"]["ANYmaterial"],
@@ -1534,13 +1534,13 @@ def validate_gate_result(
             source = package["sources"][name]
             if source["commit"] != identity["commit"] or source["tree"] != identity["tree"]:
                 raise EvidenceError(f"package source identity mismatch for {name}")
-        if package["wheels"]["ANYsolver"] != record["wheel"]:
-            raise EvidenceError("package result ANYsolver wheel mismatch")
+        if package["wheels"]["ANYfeSolver"] != record["wheel"]:
+            raise EvidenceError("package result ANYfeSolver wheel mismatch")
     elif package_result_path is not None:
         raise EvidenceError("package result path is forbidden when package did not pass")
     if lanes["package"]["status"] == "PASS" and wheel_path is not None:
         if wheel_hash_record(Path(wheel_path)) != wheel:
-            raise EvidenceError("installed ANYsolver wheel identity mismatch")
+            raise EvidenceError("installed ANYfeSolver wheel identity mismatch")
     elif wheel_path is not None:
         raise EvidenceError("wheel path is forbidden when package did not pass")
     return record
@@ -1577,10 +1577,10 @@ def _validate_repository_identities(
     repository_paths: Mapping[str, Path],
     contract: Mapping[str, Any],
 ) -> None:
-    expected_names = {"ANYsolver", *SIBLING_NAMES}
+    expected_names = {"ANYfeSolver", *SIBLING_NAMES}
     if set(repository_paths) != expected_names:
         raise EvidenceError("repository_paths must name the candidate and all siblings")
-    identities = {"ANYsolver": record["candidate"], **record["siblings"]}
+    identities = {"ANYfeSolver": record["candidate"], **record["siblings"]}
     if "execution" in contract:
         empty_status = contract["execution"]["clean_status_empty"]
         repository_order = contract["execution"]["clean_status_scope"]
@@ -1796,7 +1796,7 @@ def _local_roots() -> dict[str, Path]:
         "ANYmaterial": github / "ANYmaterial",
         "ANYmesh": github / "ANYmesh",
         "ANYfileIO": github / "ANYfileIO",
-        "ANYsolver": ROOT,
+        "ANYfeSolver": ROOT,
     }
     for name in tuple(roots):
         override = os.environ.get(f"Q1M_{name.upper()}_ROOT")
@@ -3872,7 +3872,7 @@ def _functional_shard_environment(
     inner_wave_environment: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
     roots = _local_roots()
-    roots["ANYsolver"] = sandbox
+    roots["ANYfeSolver"] = sandbox
     metadata = shard_root / "temp" / "metadata"
     _write_source_metadata_overlay(roots, metadata)
     environment = os.environ.copy()
@@ -5834,7 +5834,7 @@ def _run_pytest_lane(lane: str, selected: Sequence[str]) -> int:
             if sys.version_info >= (3, 12):
                 shutil.rmtree(temporary_path, onexc=make_writable_and_retry)
             else:
-                # ``onexc`` was added in Python 3.12. ANYsolver also supports
+                # ``onexc`` was added in Python 3.12. ANYfeSolver also supports
                 # Python 3.11, whose equivalent callback is ``onerror``.
                 shutil.rmtree(temporary_path, onerror=make_writable_and_retry)
         try:
@@ -6474,7 +6474,7 @@ def under(path, root):
     return True
 
 origins = {}
-for package in ("anysolver", "anygeometry", "anymaterial", "anymesher", "anyfileio"):
+for package in ("anyfesolver", "anygeometry", "anymaterial", "anymesher", "anyfileio"):
     module = importlib.import_module(package)
     origin = pathlib.Path(module.__file__).resolve()
     if not under(origin, target):
@@ -6490,7 +6490,7 @@ for entry in sys.path:
 if any(under(pathlib.Path.cwd().resolve(), root) for root in forbidden):
     raise AssertionError("smoke process cwd is inside a source repository")
 
-from anysolver import (
+from anyfesolver import (
     LegacyQ4DeprecationWarning,
     QualifiedE4PLShellElement,
     ShellElement,
@@ -6549,7 +6549,7 @@ def run_package_lane(
     environment.pop("PYTHONHOME", None)
     environment["PYTHONNOUSERSITE"] = "1"
 
-    with tempfile.TemporaryDirectory(prefix="anysolver-q1m-package-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="anyfesolver-q1m-package-") as temporary:
         workspace = Path(temporary).resolve()
         if any(
             workspace == path.resolve() or workspace.is_relative_to(path.resolve())
@@ -6684,14 +6684,14 @@ def run_package_lane(
         validate_package_result(result)
         payload = canonical_json_bytes(result)
         if wheel_output is not None:
-            if wheel_output.name != wheels["ANYsolver"].name:
+            if wheel_output.name != wheels["ANYfeSolver"].name:
                 raise EvidenceError(
-                    "preserved wheel path basename must match the built ANYsolver wheel"
+                    "preserved wheel path basename must match the built ANYfeSolver wheel"
                 )
             wheel_output.parent.mkdir(parents=True, exist_ok=True)
-            with wheels["ANYsolver"].open("rb") as source, wheel_output.open("xb") as target_stream:
+            with wheels["ANYfeSolver"].open("rb") as source, wheel_output.open("xb") as target_stream:
                 shutil.copyfileobj(source, target_stream)
-            if wheel_hash_record(wheel_output) != wheel_hash_record(wheels["ANYsolver"]):
+            if wheel_hash_record(wheel_output) != wheel_hash_record(wheels["ANYfeSolver"]):
                 raise EvidenceError("preserved wheel identity differs from built wheel")
         if output is not None:
             output.parent.mkdir(parents=True, exist_ok=True)

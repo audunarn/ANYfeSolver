@@ -3,10 +3,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken,SolveCancelled
-from anysolver._stiffened_shell_displacement_checkpoint import decode_snapshot,encode_snapshot,identities
-from anysolver._stiffened_shell_displacement_adaptive import decode
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken,SolveCancelled
+from anyfesolver._stiffened_shell_displacement_checkpoint import decode_snapshot,encode_snapshot,identities
+from anyfesolver._stiffened_shell_displacement_adaptive import decode
 from test_stiffened_shell_native_point_displacement import owner,OPTIONS,native_state
 from test_stiffened_shell_native_generalized_adaptive_history import exact
 from test_stiffened_shell_q4_pullback_owner import _definition
@@ -30,7 +30,7 @@ def test_native_material_chart_rebase_atomic_continue(request,monkeypatch,family
     with pytest.raises(SolveCancelled):analysis.rebase_rotations(previous.generation,cancellation_token=token)
     assert analysis.checkpoint()==raw and analysis._finite_driver is driver
     # Cancellation after isolated replay, immediately before locked publication.
-    import anysolver._stiffened_shell_displacement_control as displacement
+    import anyfesolver._stiffened_shell_displacement_control as displacement
     safe=displacement.cancellation_safe_point;token=CancellationToken()
     def cancel_before_publish(value,stage):
         if stage=='stiffened-shell.displacement.publish':token.cancel('prepared native chart')

@@ -5,14 +5,14 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, DisplacementControl, LoadCase,
     solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.elements import QuadraticBeamElement
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.beam_curve_pair_static import B3PairManager
+from anyfesolver.elements import QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.beam_curve_pair_static import B3PairManager
 
 
 def _pair():

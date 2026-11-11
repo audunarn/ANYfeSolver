@@ -8,10 +8,10 @@ from dataclasses import replace
 import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
-from anysolver.marine_rigid import RigidBody6D
-from anysolver.marine_link import MechanicalLink6D
-from anysolver.marine_contributions import DynamicContribution, ContributionResult, HISTORY_CHART
-from anysolver.marine_mechanical import (
+from anyfesolver.marine_rigid import RigidBody6D
+from anyfesolver.marine_link import MechanicalLink6D
+from anyfesolver.marine_contributions import DynamicContribution, ContributionResult, HISTORY_CHART
+from anyfesolver.marine_mechanical import (
     MarineMechanicalModel, MarineMechanicalRunSpec, MarineMechanicalSolveError,
     solve_marine_mechanical)
 

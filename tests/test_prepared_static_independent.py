@@ -5,12 +5,12 @@ import weakref
 import numpy as np
 import pytest
 
-from anysolver import (FEModel, LoadCase, FixedSupport, BoundaryCondition,
+from anyfesolver import (FEModel, LoadCase, FixedSupport, BoundaryCondition,
                        AnalysisSession, RecoveryConfig, StaticCase, solve_linear,
                        compute_constraint_force_diagnostics, CancellationToken,
                        SolveCancelled)
-from anysolver.elements import BeamElement
-from anysolver.prepared_static import prepare_static_evaluator
+from anyfesolver.elements import BeamElement
+from anyfesolver.prepared_static import prepare_static_evaluator
 
 
 def model():
@@ -140,7 +140,7 @@ def test_cancel_after_certified_block_and_close_iterator_releases_active_run():
         np.testing.assert_allclose(again.displacements, [[.02]], rtol=1e-12, atol=1e-14)
 
 def test_preparation_rejects_raw_structural_change_without_revision_bump(monkeypatch):
-    import anysolver.prepared_static_snapshot as module
+    import anyfesolver.prepared_static_snapshot as module
     m = model()
     original = module.compile_canonical_load_maps
     def changing(*args, **kwargs):

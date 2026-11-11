@@ -14,10 +14,10 @@ from pathlib import Path
 import numpy as np
 from scipy import linalg
 
-from anysolver.assembly import build_constraint_transformation
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.semismooth import linearize
-from anysolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.semismooth import linearize
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
 from docs.d1_review_support.d1_two_body_reference_oracle import independent_gap_work
 from scripts.general_contact_d1_interior_press_dev import build_interior_press
 

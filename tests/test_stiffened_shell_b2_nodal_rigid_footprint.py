@@ -5,15 +5,15 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import stiffened_shell as api
-from anysolver.control import CancellationToken
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.fe_core import FEModel
-from anysolver._stiffened_shell_b2_nodal_footprint import (
+from anyfesolver import stiffened_shell as api
+from anyfesolver.control import CancellationToken
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver._stiffened_shell_b2_nodal_footprint import (
     LAW_ID, _Incidence, compile_footprints, reference_shell_matrix,
     selected_wrenches,
 )
-from anysolver._ge_beam3_pose_joint import RigidPoseJoint
+from anyfesolver._ge_beam3_pose_joint import RigidPoseJoint
 
 
 def _definition(*, cells=2, points=False, affine=False, selected_only=False):
@@ -268,7 +268,7 @@ def test_selected_batches_one_factor_and_no_unselected_recovery(request, monkeyp
         np.testing.assert_allclose(case.selected_displacements,
             (first.displacements[-5]*(i+1),), rtol=1e-8, atol=1e-12)
         assert len(case.footprint_wrenches) == 1
-    import anysolver._stiffened_shell_b2_q4_panel_experimental as panel
+    import anyfesolver._stiffened_shell_b2_q4_panel_experimental as panel
     def forbidden(*args):
         raise AssertionError("unselected group recovery materialized")
     monkeypatch.setattr(panel, "selected_wrenches", forbidden)

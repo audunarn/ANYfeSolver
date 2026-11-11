@@ -4,7 +4,7 @@ from array import array
 import numpy as np
 import pytest
 from scipy import sparse
-from anysolver import stiffened_shell as api
+from anyfesolver import stiffened_shell as api
 from test_stiffened_shell_b2_mixed_panel_experimental import _definition, _load
 from test_stiffened_shell_b2_experimental import _members
 from examples.stiffened_shell_b2_physical_rigid_footprint import definition as physical_definition

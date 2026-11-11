@@ -7,14 +7,14 @@ from typing import Any
 import numpy as np
 import pytest
 
-import anysolver.assembly as assembly_module
-import anysolver.elements as elements_module
-import anysolver.matrix_assembly as matrix_assembly_module
-import anysolver.recovery_batches as recovery_batches_module
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.elements import BeamElement, QuadraticBeamElement
-from anysolver.fe_core import FEModel, FEMesh
-from anysolver.matrix_assembly import AssemblyError
+import anyfesolver.assembly as assembly_module
+import anyfesolver.elements as elements_module
+import anyfesolver.matrix_assembly as matrix_assembly_module
+import anyfesolver.recovery_batches as recovery_batches_module
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver.fe_core import FEModel, FEMesh
+from anyfesolver.matrix_assembly import AssemblyError
 
 
 def _qualified_q4_model() -> tuple[FEModel, QualifiedE4PLShellElement]:

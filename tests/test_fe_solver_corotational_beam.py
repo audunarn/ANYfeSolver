@@ -12,9 +12,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver.beam_validity import generate_beam_validity_report
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
+from anyfesolver.beam_validity import generate_beam_validity_report
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
 
 
 E = 210.0e9

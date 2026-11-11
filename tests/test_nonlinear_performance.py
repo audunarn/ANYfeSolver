@@ -5,24 +5,24 @@ import threading
 
 import numpy as np
 
-from anysolver.mesh_gen import generate_simple_panel_mesh
-from anysolver import nonlinear_static
-from anysolver import nonlinear_performance
-from anysolver import nonlinear_performance_bootstrap
-from anysolver.jit_compiler import JIT_ENABLED
-from anysolver import nonlinear_performance_batch_c
-from anysolver.material_curves import dnv_c208_steel_curve
-from anysolver.elements import QuadraticBeamElement, create_element
-from anysolver.fe_core import FEModel
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.nonlinear_performance_bootstrap import (
+from anyfesolver.mesh_gen import generate_simple_panel_mesh
+from anyfesolver import nonlinear_static
+from anyfesolver import nonlinear_performance
+from anyfesolver import nonlinear_performance_bootstrap
+from anyfesolver.jit_compiler import JIT_ENABLED
+from anyfesolver import nonlinear_performance_batch_c
+from anyfesolver.material_curves import dnv_c208_steel_curve
+from anyfesolver.elements import QuadraticBeamElement, create_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.nonlinear_performance_bootstrap import (
     MAX_NONLINEAR_LAYER_PLANS_PER_MODEL,
     clear_nonlinear_assembly_cache,
     get_nonlinear_assembly_plan,
     nonlinear_assembly_diagnostics,
     nonlinear_performance_status,
 )
-from anysolver.nonlinear_static import ShellInitialField, _prepare_initial_states
+from anyfesolver.nonlinear_static import ShellInitialField, _prepare_initial_states
 
 
 def _panel_model():
@@ -413,7 +413,7 @@ def test_deleted_q4_initial_field_override_is_scaled_and_frozen_exactly() -> Non
     # route scope is refused (the compatible-strain plastic route with the
     # qualified correction is unstable once layers yield).
     import pytest
-    from anysolver._q4_assumed_strain_plasticity import UnsupportedQ4PlasticRouteError
+    from anyfesolver._q4_assumed_strain_plasticity import UnsupportedQ4PlasticRouteError
     with pytest.raises(UnsupportedQ4PlasticRouteError, match="active initial"):
         legacy(model, displacement, committed, 3, **arguments)
     nonlinear_performance.clear_nonlinear_assembly_cache(model)

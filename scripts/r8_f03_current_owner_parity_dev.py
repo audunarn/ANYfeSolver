@@ -38,8 +38,8 @@ SOURCE_FILES = ("scripts/b3_e4_bl5_coherent_aggregation_dev.py",
                 "scripts/b3_e4_bl5_riesz_controls_dev.py",
                 "scripts/r8_bl5_actual_primal_work_dev.py",
                 "scripts/r8_bl5_mixed_shell_h1_dev.py",
-                "src/anysolver/_stiffened_shell_ge_experimental.py",
-                "src/anysolver/_stiffened_shell_l1_assembly_experimental.py")
+                "src/anyfesolver/_stiffened_shell_ge_experimental.py",
+                "src/anyfesolver/_stiffened_shell_l1_assembly_experimental.py")
 
 
 def require(condition: bool, message: str) -> None:
@@ -145,9 +145,9 @@ def preflight(level: int) -> dict:
     require(sha(FAMILY / "family-result.json") == FAMILY_SHA and AUDIT.is_file(),
             "frozen family/audit identity changed")
     nx, ny, cells = LEVELS[level]
-    old_owner = subprocess.run(["git", "show", f"{OLD_PRODUCT}:src/anysolver/_stiffened_shell_ge_experimental.py"],
+    old_owner = subprocess.run(["git", "show", f"{OLD_PRODUCT}:src/anyfesolver/_stiffened_shell_ge_experimental.py"],
                                cwd=ROOT, check=True, capture_output=True).stdout
-    current_owner = (ROOT / "src/anysolver/_stiffened_shell_ge_experimental.py").read_bytes()
+    current_owner = (ROOT / "src/anyfesolver/_stiffened_shell_ge_experimental.py").read_bytes()
     require(function_ast_hash(old_owner, "_assemble_beam") ==
             function_ast_hash(current_owner, "_assemble_beam"),
             "native beam assembly changed from frozen product")
@@ -199,7 +199,7 @@ def child(level: int, folder: Path, campaign: str) -> None:
         import numba
         import psutil
         from threadpoolctl import threadpool_info
-        from anysolver import stiffened_shell as api
+        from anyfesolver import stiffened_shell as api
         from scripts.b3_e4_bl5_coherent_aggregation_dev import model
         from scripts.b3_e4_bl5_reference_actions_dev import native_slots, physical_loads
         from scripts.b3_e4_bl5_riesz_controls_dev import beam_norm, shell_scalar

@@ -3,10 +3,10 @@ from dataclasses import replace
 import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
-from anysolver.general_contact.native_retained_station import NativeRetainedRoundStation
-from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialPointFriction
-from anysolver.general_contact.native_surface_event_sequence import evaluate_closed_event_sequence
-from anysolver.general_contact.friction_point import trial_coulomb_point
+from anyfesolver.general_contact.native_retained_station import NativeRetainedRoundStation
+from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialPointFriction
+from anyfesolver.general_contact.native_surface_event_sequence import evaluate_closed_event_sequence
+from anyfesolver.general_contact.friction_point import trial_coulomb_point
 from test_general_contact_native_surface_s3_friction import _case
 
 
@@ -112,8 +112,8 @@ def test_closed_sequence_independent_discrete_work_and_deforming_target():
 
 
 def test_closed_sequence_reports_actual_history_calls(monkeypatch):
-    import anysolver.general_contact.native_surface_activation as activation
-    import anysolver.general_contact.native_surface_event_sequence as sequence
+    import anyfesolver.general_contact.native_surface_activation as activation
+    import anyfesolver.general_contact.native_surface_event_sequence as sequence
     original=activation.trial_coulomb_point;calls=[]
     def counted(*args,**kwargs):
         calls.append(1)
@@ -129,7 +129,7 @@ def test_closed_sequence_reports_actual_history_calls(monkeypatch):
 
 def test_initially_open_three_events_preserve_completed_window_and_final_force():
     from scipy.optimize import brentq
-    from anysolver.general_contact.friction_point import initial_friction_point
+    from anyfesolver.general_contact.friction_point import initial_friction_point
     _,old,start,_=_case()
     source=NativeRetainedRoundStation(7,old.source.reference,-.5,.03,0.)
     pair=NativeS3MaterialPointFriction(source,old.target,reference_weight_m2=.01,

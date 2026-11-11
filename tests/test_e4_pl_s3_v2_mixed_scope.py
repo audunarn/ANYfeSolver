@@ -5,16 +5,16 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from anysolver.e4_pl_s3_v2_element import (
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+from anyfesolver.e4_pl_s3_v2_element import (
     BLOCKED_OPERATIONS,
     SUPPORTED_OPERATIONS,
     StrictFlatLinearCapabilityError,
     StrictFlatLinearE4PLS3V2ShellElement,
 )
-from anysolver.elements import BeamElement, ShellElement
-from anysolver.fe_core import FEMesh, Material
+from anyfesolver.elements import BeamElement, ShellElement
+from anyfesolver.fe_core import FEMesh, Material
 
 
 NORMAL = np.asarray((0.0, 0.0, 1.0), dtype=np.float64)

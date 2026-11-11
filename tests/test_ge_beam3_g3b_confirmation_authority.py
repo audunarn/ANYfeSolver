@@ -136,7 +136,7 @@ def test_real_collection_matches_frozen_lane(lane):
 def test_confirmation_has_only_owner_entry_runtime_delta():
     base="f67aed07ed877aec679837e0a44e2db5cb398f74"
     git=["git","-c","safe.directory="+ROOT.as_posix()]
-    path="src/anysolver/_ge_beam3_g3b_owner.py"
+    path="src/anyfesolver/_ge_beam3_g3b_owner.py"
     changed=subprocess.check_output(git+["diff","--name-only",base,"--","src/"],cwd=ROOT,timeout=20).decode().splitlines()
     assert changed==[path]
     old=ast.parse(subprocess.check_output(git+["show",base+":"+path],cwd=ROOT,timeout=20))

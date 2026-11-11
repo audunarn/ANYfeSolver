@@ -7,11 +7,11 @@ import time
 
 import numpy as np
 
-from anysolver.general_contact.overlap import PlanarFace, planar_projected_overlap
-from anysolver.general_contact.s3_patch_augmented import (
+from anyfesolver.general_contact.overlap import PlanarFace, planar_projected_overlap
+from anyfesolver.general_contact.s3_patch_augmented import (
     _touching_projected_boundaries, _touching_shared_target_edge,
 )
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 from scripts.general_contact_d1_coupled_refinement import build_case
 
 

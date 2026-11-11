@@ -358,7 +358,7 @@ def mesh_statistics(mesh: Mesh2D) -> Dict[str, Any]:
 
 
 def build_model(mesh: Mesh2D, thickness: float):
-    from anysolver import FEModel, create_shell_element
+    from anyfesolver import FEModel, create_shell_element
 
     model = FEModel("s3-angle")
     model.add_material("steel", E, NU, density=DENSITY)
@@ -392,7 +392,7 @@ def _boundary_nodes(mesh: Mesh2D, tolerance: float = 1.0e-12) -> Dict[str, List[
 def element_resultants(model, displacement: np.ndarray, key: str):
     """Yield (station xy, weight, global 2x2 resultant tensor) for S3 elements."""
 
-    from anysolver.fe_core import FEMesh
+    from anyfesolver.fe_core import FEMesh
 
     material = model.get_material("steel")
     manager = model.mesh.dof_manager
@@ -459,9 +459,9 @@ def membrane_exact_energy(length: float, c: float, thickness: float) -> float:
 
 
 def run_membrane(mesh: Mesh2D, thickness: float = 0.05) -> Dict[str, Any]:
-    from anysolver import solve_linear
-    from anysolver.boundary import BoundaryCondition
-    from anysolver import assemble_stiffness_matrix
+    from anyfesolver import solve_linear
+    from anyfesolver.boundary import BoundaryCondition
+    from anyfesolver import assemble_stiffness_matrix
 
     length = mesh.lx
     c = 0.5 * mesh.ly
@@ -579,7 +579,7 @@ def plate_buckling_nx(a: float, b: float, thickness: float) -> float:
 
 
 def _simply_supported(model, mesh: Mesh2D, *, inplane: str) -> None:
-    from anysolver.boundary import BoundaryCondition
+    from anyfesolver.boundary import BoundaryCondition
 
     sides = _boundary_nodes(mesh)
     for side in ("x0", "x1"):
@@ -618,7 +618,7 @@ def _interpolate_centre(mesh: Mesh2D, values: Dict[int, float]) -> float:
 
 
 def run_plate_static(mesh: Mesh2D, thickness: float, pressure: float = 1.0e3) -> Dict[str, Any]:
-    from anysolver import LoadCase, solve_linear
+    from anyfesolver import LoadCase, solve_linear
 
     model = build_model(mesh, thickness)
     _simply_supported(model, mesh, inplane="clamped")
@@ -681,7 +681,7 @@ def _private_element_matrix(model, element, method: str, *args: Any) -> Tuple[np
     tests/test_s3_angle_models.py.
     """
 
-    from anysolver.fe_core import FEMesh
+    from anyfesolver.fe_core import FEMesh
 
     local = FEMesh()
     for node_id in element.node_ids:
@@ -717,9 +717,9 @@ def run_plate_modal(
     """
 
     import scipy.sparse.linalg as spla
-    from anysolver import assemble_stiffness_matrix
-    from anysolver.assembly import build_constraint_transformation
-    from anysolver.modal import solve_free_vibration
+    from anyfesolver import assemble_stiffness_matrix
+    from anyfesolver.assembly import build_constraint_transformation
+    from anyfesolver.modal import solve_free_vibration
 
     model = build_model(mesh, thickness)
     _simply_supported(model, mesh, inplane="clamped")
@@ -777,10 +777,10 @@ def run_plate_buckling(mesh: Mesh2D, thickness: float, *, public_route: bool = F
 
     import scipy.sparse as sp
     import scipy.sparse.linalg as spla
-    from anysolver import assemble_stiffness_matrix
-    from anysolver.assembly import build_constraint_transformation
-    from anysolver.buckling import solve_eigenvalue_buckling
-    from anysolver.fe_core import FEMesh
+    from anyfesolver import assemble_stiffness_matrix
+    from anyfesolver.assembly import build_constraint_transformation
+    from anyfesolver.buckling import solve_eigenvalue_buckling
+    from anyfesolver.fe_core import FEMesh
 
     model = build_model(mesh, thickness)
     _simply_supported(model, mesh, inplane="uniaxial")
@@ -857,9 +857,9 @@ def run_nonlinear_end_moment(mesh: Mesh2D, thickness: float = 0.01, turn: float 
     tip (u, w) = (R sin(phi) - L, R (1 - cos(phi))) with phi = M L / EI.
     """
 
-    from anysolver import FEModel, LoadCase, create_shell_element
-    from anysolver.boundary import FixedSupport
-    from anysolver.nonlinear_static import solve_static_nonlinear
+    from anyfesolver import FEModel, LoadCase, create_shell_element
+    from anyfesolver.boundary import FixedSupport
+    from anyfesolver.nonlinear_static import solve_static_nonlinear
 
     model = FEModel("s3-angle-nonlinear")
     model.add_material("steel", E, 0.0, density=DENSITY)
@@ -1240,12 +1240,12 @@ def _json_default(value: Any) -> Any:
 
 
 def manifest(args: argparse.Namespace) -> Dict[str, Any]:
-    import anysolver
+    import anyfesolver
     import anymesher
     import scipy
 
     packages = {}
-    for name in ("anysolver", "anymesher", "anymaterial", "anyfileio", "numpy", "scipy", "numba"):
+    for name in ("anyfesolver", "anymesher", "anymaterial", "anyfileio", "numpy", "scipy", "numba"):
         try:
             module = __import__(name)
             packages[name] = {
@@ -1254,8 +1254,8 @@ def manifest(args: argparse.Namespace) -> Dict[str, Any]:
             }
         except ImportError:
             packages[name] = None
-    from anysolver.elements import DEFAULT_S3_FORMULATION
-    from anysolver.e4_pl_s3_v2d_element import FORMULATION_ID, IMPLEMENTATION_ID
+    from anyfesolver.elements import DEFAULT_S3_FORMULATION
+    from anyfesolver.e4_pl_s3_v2d_element import FORMULATION_ID, IMPLEMENTATION_ID
 
     return {
         "schema": SCHEMA,

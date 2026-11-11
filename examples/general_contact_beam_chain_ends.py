@@ -1,9 +1,9 @@
 """Development-only physical-end contact between nonmatching elastic B2 chains."""
 import numpy as np
-from anysolver import (BoundaryCondition,ContactDefinition,ContactInteraction,ContactSolverSettings,
+from anyfesolver import (BoundaryCondition,ContactDefinition,ContactInteraction,ContactSolverSettings,
     ContactSurface,LoadCase,solve_static_nonlinear)
-from anysolver.fe_core import FEModel
-from anysolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement
 
 
 def run(cells=4,target_cells=3):

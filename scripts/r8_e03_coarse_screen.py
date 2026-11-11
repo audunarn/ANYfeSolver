@@ -15,7 +15,7 @@ import sys
 import zipfile
 
 
-CCX_PATH = Path("C:/Github/ANYsolver/.qualification/b3-ge-e4-pl/calculix-223/CalculiX-2.23.0-win-x64/bin/ccx.exe")
+CCX_PATH = Path("C:/Github/ANYfeSolver/.qualification/b3-ge-e4-pl/calculix-223/CalculiX-2.23.0-win-x64/bin/ccx.exe")
 CCX_SHA256 = "27a9426a1ee2f72c38fbe892e0ffaf38e14867628ffd0235770261b6f3ec9c5f"
 WHEEL_SHA256 = "fa5507fe14cc09949743adb7d5ae340a2499d9b813d6b80a1b7d4ea414267e82"
 MODULE_MANIFEST = ".qualification/b3-ge-e4-pl/r8-e03-curved-source-dev-20261007-v1/inputs-manifest-v1.json"
@@ -74,12 +74,12 @@ def _bindings(bindings, phase):
     provider = Path(bindings["installed_provider_root"]).resolve()
     # Reuse entry-v1.py's source/wheel/site payload parity, without importing a solver.
     source = {p.relative_to(source_root/"src").as_posix(): _sha(p.read_bytes())
-        for p in (source_root/"src/anysolver").rglob("*.py")}
+        for p in (source_root/"src/anyfesolver").rglob("*.py")}
     installed = {p.relative_to(provider).as_posix(): _sha(p.read_bytes())
-        for p in (provider/"anysolver").rglob("*.py")}
+        for p in (provider/"anyfesolver").rglob("*.py")}
     with zipfile.ZipFile(wheel) as archive:
         payload = {name: _sha(archive.read(name)) for name in archive.namelist()
-            if name.startswith("anysolver/") and name.endswith(".py")}
+            if name.startswith("anyfesolver/") and name.endswith(".py")}
     if source != manifest["source_modules"] or source != payload or source != installed:
         raise ValueError("source/wheel/installed 431-module payload mismatch")
     command = bindings.get("command")
@@ -183,12 +183,12 @@ def finish_screen(evidence_dir, *, receipt, raw):
                 raise ValueError("CCX version 2.23 must appear in actual execution stdout")
             result = parse_result(case, metadata, raw["frd"], raw["sta"], raw["stdout"], raw["stderr"], receipt)
         else:
-            origin = Path(receipt["anysolver_origin"]).resolve()
+            origin = Path(receipt["anyfesolver_origin"]).resolve()
             if not origin.is_relative_to(Path(bindings["installed_provider_root"]).resolve()):
                 raise ValueError("native child must load declared installed provider")
             origin_name = origin.relative_to(Path(bindings["installed_provider_root"]).resolve()).as_posix()
             modules = json.loads((Path(bindings["source_root"])/MODULE_MANIFEST).read_bytes())["source_modules"]
-            if origin_name != "anysolver/__init__.py" or receipt.get("anysolver_origin_sha256") != modules[origin_name] or _sha(origin.read_bytes()) != modules[origin_name]:
+            if origin_name != "anyfesolver/__init__.py" or receipt.get("anyfesolver_origin_sha256") != modules[origin_name] or _sha(origin.read_bytes()) != modules[origin_name]:
                 raise ValueError("actual native child origin must match installed module manifest hash")
             result = _detached_receipt(json.loads(raw["native_result"]))
             for key, value in dict(status="COMPLETED_UNQUALIFIED_B2_CANDIDATE", profile=B2,

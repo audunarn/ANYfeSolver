@@ -6,8 +6,8 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver._stiffened_shell_bl5_local_experimental import BL5LocalOperator
-from anysolver._stiffened_shell_l1_local_experimental import (
+from anyfesolver._stiffened_shell_bl5_local_experimental import BL5LocalOperator
+from anyfesolver._stiffened_shell_l1_local_experimental import (
     L1LocalOperator, NativeHalfCellPort,
 )
 from scripts._b3_e4_f03_native_fixture import build

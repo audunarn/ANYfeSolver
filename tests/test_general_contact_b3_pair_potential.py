@@ -5,7 +5,7 @@ import pytest
 from scipy.integrate import quad
 from scipy.optimize import minimize_scalar
 
-from anysolver.general_contact.beam_curve_pair import (
+from anyfesolver.general_contact.beam_curve_pair import (
     B3PairPotential, certify_b3_pair_gap,
 )
 

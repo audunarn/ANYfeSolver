@@ -7,16 +7,16 @@ import pytest
 from examples.general_contact_arc_length import analysis
 from examples.general_contact_triangulated_rigid_patch import case
 from test_general_contact_triangulated_rigid_patch import independent_mass
-from anysolver import solve_static_arc_length,ArcLengthControl,LoadCase
-from anysolver.matrix_assembly import assemble_stiffness_matrix
-from anysolver.general_contact import report_general_contact_capability
-from anysolver.general_contact.runtime import active_contact_manager
-from anysolver.general_contact.arc_contact import PROFILE,ArcContactAdapter
+from anyfesolver import solve_static_arc_length,ArcLengthControl,LoadCase
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.general_contact import report_general_contact_capability
+from anyfesolver.general_contact.runtime import active_contact_manager
+from anyfesolver.general_contact.arc_contact import PROFILE,ArcContactAdapter
 
 
 def test_actual_arc_patch_response_restart(monkeypatch):
     import importlib
-    arc=importlib.import_module('anysolver.arc_length');captured=[]
+    arc=importlib.import_module('anyfesolver.arc_length');captured=[]
     real=arc._support_reaction_resultants_from_forces
     def recover(model,internal,constant,proportional,factor,**kwargs):
         captured.append(np.asarray(internal)-np.asarray(constant)-factor*np.asarray(proportional))
@@ -79,7 +79,7 @@ def test_arc_refusal_cancel_and_exception(monkeypatch):
     assert report_general_contact_capability(model,definition,settings,analysis_control='arc_length').validation.profile==PROFILE
     for extra in ({'kinematics':'corotational'},{'imperfection':{}}):
         with pytest.raises(ValueError):solve_static_arc_length(model,load,**kwargs,**extra)
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.control import CancellationToken,SolveCancelled
     token=CancellationToken();token.cancel()
     with pytest.raises(SolveCancelled):solve_static_arc_length(model,load,**kwargs,cancellation_token=token)
     assert active_contact_manager() is None
@@ -109,7 +109,7 @@ def test_no_contact_linear_response_compatibility():
 @pytest.mark.skipif(not os.environ.get('ARC_CONTACT_DIAGNOSTIC'),reason='explicit exploratory diagnostic only')
 def test_first_arc_failure_discriminator(monkeypatch):
     import importlib
-    arc=importlib.import_module('anysolver.arc_length')
+    arc=importlib.import_module('anyfesolver.arc_length')
     original=arc._finalize_arc_element_states
     sweeps=[];old_admissible=ArcContactAdapter.admissible
     def check(self,start,end):
@@ -132,8 +132,8 @@ def test_first_arc_failure_discriminator(monkeypatch):
 
 def test_inflight_cancel_and_rejected_retry(monkeypatch):
     import importlib
-    arc=importlib.import_module('anysolver.arc_length')
-    from anysolver.control import CancellationToken,SolveCancelled
+    arc=importlib.import_module('anyfesolver.arc_length')
+    from anyfesolver.control import CancellationToken,SolveCancelled
     token=CancellationToken();real_safe=arc.cancellation_safe_point;seen=[];real_commit=ArcContactAdapter.commit
     def safe(value,stage=''):
         if stage=='arc_length.contact_before_commit':token.cancel('in flight')
@@ -161,7 +161,7 @@ def test_inflight_cancel_and_rejected_retry(monkeypatch):
 
 def test_recomputed_intermediate_history_mutation_refuses():
     import hashlib
-    from anysolver.general_contact import transient_results_archive as codec
+    from anyfesolver.general_contact import transient_results_archive as codec
     prefix=analysis(2);capsule=prefix.to_restart_checkpoint()
     history=codec._decode(capsule['path_state']['contact_state']['history'],codec._Budget(codec.MAX_BYTES),{})
     manager=ArcContactAdapter(*case())
@@ -171,7 +171,7 @@ def test_recomputed_intermediate_history_mutation_refuses():
     history[0]['contact']=manager.prepare(history[0]['displacements'],1,history[0]['load_factor'])['contact']
     capsule['path_state']['contact_state']['history']=codec._encode(history,codec._Budget(codec.MAX_BYTES),{})
     unsigned=dict(capsule);unsigned.pop('checkpoint_sha256')
-    from anysolver.nonlinear_restart import canonical_checkpoint_json_bytes
+    from anyfesolver.nonlinear_restart import canonical_checkpoint_json_bytes
     capsule['checkpoint_sha256']=hashlib.sha256(canonical_checkpoint_json_bytes(unsigned)).hexdigest().upper()
     with pytest.raises(ValueError,match='structural step metric|spherical constraint|predictor history'):
         analysis(1,capsule)
@@ -204,7 +204,7 @@ def test_zero_accepted_contact_failure_is_explicit():
 
 
 def test_intact_checkpoint_settings_incompatibility():
-    from anysolver.nonlinear_restart import load_nonlinear_checkpoint
+    from anyfesolver.nonlinear_restart import load_nonlinear_checkpoint
     prefix=analysis(2)
     capsule=prefix.to_restart_checkpoint()
     verified=load_nonlinear_checkpoint(capsule)

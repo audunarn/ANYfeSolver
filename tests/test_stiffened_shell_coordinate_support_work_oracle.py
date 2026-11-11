@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver._stiffened_shell_coordinate_support import reactions
+from anyfesolver._stiffened_shell_coordinate_support import reactions
 
 
 @pytest.mark.parametrize("anchor_vector", [(0., 0., 0.), (.2, -.1, .05)])

@@ -3,9 +3,9 @@
 import numpy as np
 import pytest
 
-from anysolver._native_reference_factor_spectrum import solve_reference_factor_spectrum as solve
-from anysolver._native_stationary_spectrum import solve_stationary_spectrum
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver._native_reference_factor_spectrum import solve_reference_factor_spectrum as solve
+from anyfesolver._native_stationary_spectrum import solve_stationary_spectrum
+from anyfesolver.control import CancellationToken, SolveCancelled
 from docs.reference_cases.ge_beam3_slender_spectrum_probe import factors
 
 

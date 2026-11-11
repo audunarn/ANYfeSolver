@@ -4,7 +4,7 @@ from math import factorial
 import json
 
 import numpy as np
-from anysolver import _ge_beam3_mixed_ad as ad
+from anyfesolver import _ge_beam3_mixed_ad as ad
 
 
 def oracle(kind, value, terms):

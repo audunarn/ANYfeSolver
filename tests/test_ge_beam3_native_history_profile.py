@@ -5,21 +5,21 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import pytest
-from anysolver import _ge_beam3_native_history_profile as capacity
-from anysolver._ge_beam3_p5_seeded.core import canonical,sha
-from anysolver._ge_beam3_p5_seeded import codec as legacy
+from anyfesolver import _ge_beam3_native_history_profile as capacity
+from anyfesolver._ge_beam3_p5_seeded.core import canonical,sha
+from anyfesolver._ge_beam3_p5_seeded import codec as legacy
 from test_ge_beam3_schur_line_program import save
 
 
 def factory(kind):
     if kind=='translation':
         from test_ge_beam3_native_translation import bar,packet
-        from anysolver._ge_beam3_native_translation import solve_translation as solve
-        from anysolver import _ge_beam3_native_translation_restart as codec
+        from anyfesolver._ge_beam3_native_translation import solve_translation as solve
+        from anyfesolver import _ge_beam3_native_translation_restart as codec
     else:
         from test_ge_beam3_native_arc import bar,packet
-        from anysolver._ge_beam3_native_arc import solve_arc as solve
-        from anysolver import _ge_beam3_native_arc_restart as codec
+        from anyfesolver._ge_beam3_native_arc import solve_arc as solve
+        from anyfesolver import _ge_beam3_native_arc_restart as codec
     return bar,solve,codec,packet
 
 
@@ -114,7 +114,7 @@ def test_profile_mutation_preserves_accepted_prefix(saved,tmp_path):
 
 
 def test_validation_deadline_unchanged(saved,monkeypatch,tmp_path):
-    from anysolver import _ge_beam3_native_generalized_combined_restart as combined
+    from anyfesolver import _ge_beam3_native_generalized_combined_restart as combined
     kind,_,p,r=saved;bar,_,codec,_=factory(kind);m,_=bar()
     chain,_=codec.decode_checkpoint(m,p,r.checkpoint,expected_sha256=sha256(r.checkpoint).hexdigest())
     clock=iter(range(0,100000,61));monkeypatch.setattr(combined,'monotonic',lambda:float(next(clock)))

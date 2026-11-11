@@ -10,10 +10,10 @@ import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 
-import anysolver
-from anysolver.assembly import build_constraint_transformation
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.matrix_assembly import assemble_stiffness_matrix
+import anyfesolver
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
 
 from scripts.general_contact_d1_2d_target_press_dev import build_case
 
@@ -62,7 +62,7 @@ def evaluate() -> dict:
     current = manager._positions(displacement)
     return {
         "candidate": "d1_2d_target_contact_free_linear_first_step_discriminator",
-        "anysolver_module": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_module": str(Path(anyfesolver.__file__).resolve()),
         "structural_model": "linear_reference_stiffness_only",
         "path_step": 1,
         "applied_force_n": float(np.sum(program.force_values_at(1))),

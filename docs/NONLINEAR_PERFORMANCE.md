@@ -461,7 +461,7 @@ one live `FEModel`. Passing `session=` is optional on `solve_linear()`,
 workflow. Omitting it preserves one-shot behavior.
 
 ```python
-from anysolver import AnalysisSession, solve_linear, solve_free_vibration
+from anyfesolver import AnalysisSession, solve_linear, solve_free_vibration
 
 with AnalysisSession(model) as session:
     displacement, static_info = solve_linear(
@@ -552,7 +552,7 @@ versioned Sol Ultra reports.
 
 ## Activation and A/B testing
 
-Importing `anysolver` does not install the nonlinear performance layer.
+Importing `anyfesolver` does not install the nonlinear performance layer.
 `solve_static_nonlinear()` performs a one-time lazy activation immediately
 before a nonlinear solve. Existing public solver calls are unchanged, and an
 optional acceleration import/initialization failure leaves the scalar path
@@ -568,8 +568,8 @@ FE_SOLVER_DISABLE_FAST_NL=1
 Runtime diagnostics are available from:
 
 ```python
-from anysolver.jit_compiler import jit_diagnostics
-from anysolver.nonlinear_performance_bootstrap import nonlinear_performance_status
+from anyfesolver.jit_compiler import jit_diagnostics
+from anyfesolver.nonlinear_performance_bootstrap import nonlinear_performance_status
 
 print(jit_diagnostics())
 print(nonlinear_performance_status())
@@ -631,7 +631,7 @@ layer.
 The plan can be cleared explicitly after non-standard in-place model changes:
 
 ```python
-from anysolver.nonlinear_performance_bootstrap import clear_nonlinear_assembly_cache
+from anyfesolver.nonlinear_performance_bootstrap import clear_nonlinear_assembly_cache
 
 clear_nonlinear_assembly_cache(model)
 ```

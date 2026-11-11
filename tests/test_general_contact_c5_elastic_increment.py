@@ -6,11 +6,11 @@ from types import FunctionType, SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver import FEModel
-from anysolver.elements import create_shell_element
-from anysolver import e4_pl_element as qualified
-from anysolver import vectorized_nonlinear as vectorized
-from anysolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver import FEModel
+from anyfesolver.elements import create_shell_element
+from anyfesolver import e4_pl_element as qualified
+from anyfesolver import vectorized_nonlinear as vectorized
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
 
 
 def case(*, warped=False, yielding=False):
@@ -51,7 +51,7 @@ def single_law_expected(element, mesh, material, u, state):
     facets (no assumed-strain route) keep the historical law.
     """
 
-    from anysolver import _q4_assumed_strain_plasticity as assumed
+    from anyfesolver import _q4_assumed_strain_plasticity as assumed
 
     correction = element._qualified_linear_correction(mesh, material, 5)
     element._hourglass_stiffness_matrix = None
@@ -146,7 +146,7 @@ def test_actual_batch_assembly_uses_single_law_kernel():
     # Retargeted 2026-10-23 (single elastic law): the retired compensated direct
     # elastic route is no longer the batch route for a planar qualified Q4; the
     # actual batch assembly must equal the independent single-law oracle.
-    from anysolver import _q4_assumed_strain_plasticity as assumed
+    from anyfesolver import _q4_assumed_strain_plasticity as assumed
 
     model, element, material = case()
     u = pose()

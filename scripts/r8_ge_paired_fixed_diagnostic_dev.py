@@ -213,10 +213,10 @@ def connected(out):
     raw,outer,fixed=select_inner(OUTER.read_bytes())
     if raw!=INNER.read_bytes():raise ValueError('inner checkpoint is not exact saved mechanical prefix')
     artifact()
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
     from scripts.r8_f06_cyclic_material_dev import definition,actions
     from scripts import r8_f06_paired_active_tangent_dev as atomic
-    from anysolver._stiffened_shell_displacement_corrector import DisplacementCorrectorFailure
+    from anyfesolver._stiffened_shell_displacement_corrector import DisplacementCorrectorFailure
     owner=ss.create_analysis(definition=definition('coupled'))
     try:
         owner.restore(raw)

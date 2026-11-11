@@ -4,10 +4,10 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_centered_reference import (
+from anyfesolver._ge_beam3_centered_reference import (
     CenteredCurvedBeam3ReferenceGeometry,
 )
-from anysolver.general_contact.native_retained_cell_pair import (
+from anyfesolver.general_contact.native_retained_cell_pair import (
     NativeRetainedSelectedCellPair,
 )
 

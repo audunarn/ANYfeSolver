@@ -13,9 +13,9 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver import CancellationToken
-from anysolver.nonlinear_restart import load_nonlinear_checkpoint
-from anysolver.constraint_audit import constraint_residual_summary
+from anyfesolver import CancellationToken
+from anyfesolver.nonlinear_restart import load_nonlinear_checkpoint
+from anyfesolver.constraint_audit import constraint_residual_summary
 from examples import beam_shell_coupling as example
 from test_nonlinear_beam_shell_slice3_continuation import (
     _assert_states_allclose, _independent_equilibrium,

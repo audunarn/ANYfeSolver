@@ -6,18 +6,18 @@ import itertools
 import numpy as np
 import pytest
 
-from anysolver import FEModel, QualifiedE4PLS3ShellElement, shell_element_from_dict
-from anysolver._native_rotation_state import create_native_rotation_state_store
-from anysolver.boundary import LoadCase
-from anysolver.e4_pl_s3_state import (
+from anyfesolver import FEModel, QualifiedE4PLS3ShellElement, shell_element_from_dict
+from anyfesolver._native_rotation_state import create_native_rotation_state_store
+from anyfesolver.boundary import LoadCase
+from anyfesolver.e4_pl_s3_state import (
     DIRECTOR_POLARITY_POLICY_ID,
     DIRECTOR_REVERSAL_TRANSFORM_ID,
     S3CommittedStateError,
     seal_committed_s3_state,
 )
-from anysolver.material_curves import LinearHardeningCurve
-from anysolver.shell_sections import GeneralizedShellSection
-from anysolver.recovery import _recover_qualified_s3_committed_state
+from anyfesolver.material_curves import LinearHardeningCurve
+from anyfesolver.shell_sections import GeneralizedShellSection
+from anyfesolver.recovery import _recover_qualified_s3_committed_state
 
 
 REFERENCE = np.asarray(

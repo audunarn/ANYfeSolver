@@ -5,7 +5,7 @@ import pytest
 from scipy.integrate import quad
 from scipy.spatial.transform import Rotation
 
-from anysolver.general_contact.native_retained_line_plane import (
+from anyfesolver.general_contact.native_retained_line_plane import (
     NativeRetainedRoundLinePlane,
 )
 from test_general_contact_native_retained_station import _reference

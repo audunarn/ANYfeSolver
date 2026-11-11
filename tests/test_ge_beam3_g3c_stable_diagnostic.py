@@ -1,8 +1,8 @@
 """Nonclassifying component diagnosis of the preserved d90aa3e failure."""
 import json
 import numpy as np
-from anysolver._ge_beam3_g3c_stable.owner import MixedGraphOwner
-from anysolver._ge_beam3_g3c_stable.boundary import chart_pullback
+from anyfesolver._ge_beam3_g3c_stable.owner import MixedGraphOwner
+from anyfesolver._ge_beam3_g3c_stable.boundary import chart_pullback
 
 def test_component_directional_diagnostic():
     owner=MixedGraphOwner(); u=np.linspace(-.002,.003,48)

@@ -11,10 +11,10 @@ import sys
 
 import numpy as np
 
-from anysolver import (BoundaryCondition,ContactDefinition,ContactInteraction,
+from anyfesolver import (BoundaryCondition,ContactDefinition,ContactInteraction,
     ContactSurface,DNVC208MaterialCurve,FEModel,RigidContactBody,create_shell_element)
-from anysolver.dynamics import TransientConfig
-from anysolver.general_contact.transient import ContactTransientSolverControls,solve_transient_contact
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.general_contact.transient import ContactTransientSolverControls,solve_transient_contact
 
 E,NU,H,RHO=1.e9,.3,.05,1.e4
 YIELD,KN,GAP,ANGLE=.2,4.e11,.0008,2.e-5
@@ -81,7 +81,7 @@ def run(*,dt=3.e-5,end=.003):
     imports={}
     for name,module in tuple(sys.modules.items()):
         value=getattr(module,'__file__',None)
-        if (name=='anysolver' or name.startswith('anysolver.')) and value:
+        if (name=='anyfesolver' or name.startswith('anyfesolver.')) and value:
             path=Path(value).resolve()
             imports[name]=dict(path=str(path),sha256=hashlib.sha256(path.read_bytes()).hexdigest())
     return dict(status='manufactured development; not engineering acceptance',

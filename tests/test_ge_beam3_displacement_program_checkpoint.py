@@ -62,9 +62,9 @@ def test_genuine_failure_and_matching_corrected_traces_are_retained():
 
 
 @pytest.mark.parametrize('path',[
-    'src/anysolver/_ge_beam3_displacement_program.py',
+    'src/anyfesolver/_ge_beam3_displacement_program.py',
     'tests/test_ge_beam3_displacement_program.py',
-    'src/anysolver/_ge_beam3_load_program.py',
+    'src/anyfesolver/_ge_beam3_load_program.py',
 ])
 def test_changed_driver_test_or_preserved_helper_breaks_binding(monkeypatch,path):
     original = source

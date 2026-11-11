@@ -12,7 +12,7 @@ import sys
 import time
 
 import anymaterial
-import anysolver
+import anyfesolver
 import numpy as np
 import scipy
 
@@ -69,9 +69,9 @@ def main() -> int:
     identity_checks["scipy"] = (
         scipy.__version__ == contract["environment"]["scipy"]
     )
-    identity_checks["anysolver_module"] = (
-        Path(anysolver.__file__).resolve()
-        == (ROOT / "src" / "anysolver" / "__init__.py").resolve()
+    identity_checks["anyfesolver_module"] = (
+        Path(anyfesolver.__file__).resolve()
+        == (ROOT / "src" / "anyfesolver" / "__init__.py").resolve()
     )
     identity_checks["anymaterial_module"] = (
         Path(anymaterial.__file__).resolve()
@@ -147,7 +147,7 @@ def main() -> int:
             "python": sys.version.split()[0],
             "numpy": np.__version__,
             "scipy": scipy.__version__,
-            "anysolver_module": str(Path(anysolver.__file__).resolve()),
+            "anyfesolver_module": str(Path(anyfesolver.__file__).resolve()),
             "anymaterial_module": str(Path(anymaterial.__file__).resolve()),
         },
     }

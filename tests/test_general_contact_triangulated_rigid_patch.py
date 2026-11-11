@@ -6,9 +6,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 from examples.general_contact_triangulated_rigid_patch import case,analysis
-from anysolver import (BoundaryCondition,ContactPathControl,ContactPathProgram,solve_static_nonlinear)
-from anysolver.matrix_assembly import assemble_stiffness_matrix
-from anysolver.general_contact.triangulated_rigid_static import (TriangulatedRigidManager,
+from anyfesolver import (BoundaryCondition,ContactPathControl,ContactPathProgram,solve_static_nonlinear)
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.general_contact.triangulated_rigid_static import (TriangulatedRigidManager,
     PATCH_PROFILE,_storage_guard,derivative_work_storage_bound,LOCAL_DERIVATIVE_WORK_LIMIT_BYTES,_source_overlap_guard)
 
 
@@ -64,7 +64,7 @@ def test_patch_force_response_and_lifecycle_restart(monkeypatch):
     assert len(references)==1
     reference,active,contact=references[0]
     import importlib
-    solver=importlib.import_module('anysolver.nonlinear_static');original=solver._support_reaction_resultants;captured={}
+    solver=importlib.import_module('anyfesolver.nonlinear_static');original=solver._support_reaction_resultants;captured={}
     def reaction(owner_model,imbalance,**kwargs):
         captured.update(model=owner_model,residual=np.array(imbalance,copy=True))
         return original(owner_model,imbalance,**kwargs)

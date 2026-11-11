@@ -5,10 +5,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 from examples.general_contact_s3_mesh_history_events import build_case,solve_case
-from anysolver.general_contact import S3MeshHistoryPathFrictionSettings
-from anysolver.general_contact.s3_friction_history_path import expand_program,guarded_invocation,register_entry
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.s3_friction_static import create_s3_friction_manager
+from anyfesolver.general_contact import S3MeshHistoryPathFrictionSettings
+from anyfesolver.general_contact.s3_friction_history_path import expand_program,guarded_invocation,register_entry
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_friction_static import create_s3_friction_manager
 
 def save(value):
     root=os.environ.get('AUTOMATIC_DOMAIN_RESULT')
@@ -72,8 +72,8 @@ def test_public():
     reason='archived history inputs AUTOMATIC_WORKFLOW_EVIDENCE R{ratio}-{step}.json absent: saved-pose proof requires the original staged evidence root')
 def test_proof():
     from test_general_contact_s3_mesh_weak_pressure_friction import _weak_pose_gate
-    from anysolver.general_contact.semismooth import linearize
-    from anysolver.nonlinear_static import _assemble_nonlinear_system
+    from anyfesolver.general_contact.semismooth import linearize
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system
     proof=[]
     for ratio in (2,4):
         case=build_case(ratio);m,d,s,f,p,_=case;expanded,_=expand_program(p,ratio)
@@ -113,11 +113,11 @@ def test_proof():
 @pytest.mark.skipif(not os.environ.get('AUTOMATIC_WORKFLOW_EVIDENCE') or not all((Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])/(name+'.json')).is_file() for name in ('R2-2','I2-3')),
     reason='archived history inputs AUTOMATIC_WORKFLOW_EVIDENCE R2-2.json/I2-3.json absent: atomic rollback replay requires the original staged checkpoints')
 def test_atomic(monkeypatch):
-    import anysolver.general_contact.static_path as path
-    import anysolver.general_contact.s3_friction_static as factory
-    from anysolver.control import CancellationToken
-    from anysolver.general_contact.runtime import _ACTIVE_CONTACT
-    from anysolver import solve_static_nonlinear
+    import anyfesolver.general_contact.static_path as path
+    import anyfesolver.general_contact.s3_friction_static as factory
+    from anyfesolver.control import CancellationToken
+    from anyfesolver.general_contact.runtime import _ACTIVE_CONTACT
+    from anyfesolver import solve_static_nonlinear
     stage=os.environ['FRICTION_STAGE'];kind=os.environ.get('ATOMIC_KIND','lease')
     incoming=json.loads((evidence()/('I2-3.json' if kind=='latecancel' else 'R2-2.json')).read_text())['checkpoint'];original=copy.deepcopy(incoming)
     case=build_case();m,d,s,f,p,_=case;declared_before=repr((m.boundary_conditions,m.constraint_equations,m.load_cases));before=repr(m);physical_before=[(m.mesh.get_node(n).x,m.mesh.get_node(n).y,m.mesh.get_node(n).z) for n in range(1,11)];program_before=p.contract();token=CancellationToken();captured=[];fault=[]
@@ -147,7 +147,7 @@ def test_atomic(monkeypatch):
         def outer(*a,**kw):
             result=lease(*a,**kw);fault.append('lease_returned_result')
             if kind=='cancel':
-                from anysolver.control import cancellation_safe_point
+                from anyfesolver.control import cancellation_safe_point
                 token.cancel('injected late cancellation');cancellation_safe_point(token)
             raise RuntimeError('injected post lease return')
         monkeypatch.setattr(path,'_run_with_qualified_assembly_runtime_lease',outer)
@@ -187,9 +187,9 @@ def test_archive_checkpoint_safety():
     changed=(*case[:3],replace(f,physical_subincrements_per_user_increment=4),*case[4:])
     with pytest.raises(ValueError):solve_case(changed,4,incoming)
     assert incoming==original
-    from anysolver.general_contact import S3MeshWholeChordGapFrictionSettings
+    from anyfesolver.general_contact import S3MeshWholeChordGapFrictionSettings
     old=(*case[:3],S3MeshWholeChordGapFrictionSettings(**{k:v for k,v in asdict(f).items() if k!='physical_subincrements_per_user_increment'}),*case[4:])
-    from anysolver import solve_static_nonlinear
+    from anyfesolver import solve_static_nonlinear
     with pytest.raises(ValueError):solve_static_nonlinear(m,contact=d,contact_settings=s,contact_friction=old[3],contact_path_program=p,restart_checkpoint=incoming,tolerance=1e-12,max_iterations=18)
     save(dict(ratio_incompatible=True,old_profile_incompatible=True,checkpoint_unchanged=True))
 
@@ -197,7 +197,7 @@ def test_archive_checkpoint_safety():
 @pytest.mark.skipif(not os.environ.get('AUTOMATIC_WORKFLOW_EVIDENCE'),
     reason='archived history inputs AUTOMATIC_WORKFLOW_EVIDENCE R2-1.json/R2-2.json absent: directional replay requires the original staged evidence root')
 def test_directional():
-    from anysolver.general_contact.semismooth import linearize
+    from anyfesolver.general_contact.semismooth import linearize
     m,d,s,f,p,_=build_case();owner=create_s3_friction_manager(m,GeneralS3PatchManager(m,d,s),f)
     prior=json.loads((evidence()/'R2-1.json').read_text())['checkpoint']
     owner.restore(prior['path_state']['friction_state'],np.array(prior['displacements']))

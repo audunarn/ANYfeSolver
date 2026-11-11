@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from anysolver_results import shell_surface_component
+from anyfesolver_results import shell_surface_component
 
 
 @pytest.mark.parametrize('surface', ['top', 'bottom'])

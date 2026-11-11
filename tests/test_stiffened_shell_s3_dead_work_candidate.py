@@ -3,9 +3,9 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_pose_joint import _exp_terms
-from anysolver._stiffened_shell_ge_experimental import ShellPanel, _shell_reference
-from anysolver._stiffened_shell_s3_dead_work_candidate import evaluate
+from anyfesolver._ge_beam3_pose_joint import _exp_terms
+from anyfesolver._stiffened_shell_ge_experimental import ShellPanel, _shell_reference
+from anyfesolver._stiffened_shell_s3_dead_work_candidate import evaluate
 
 
 def fixture(pressure=2.5):

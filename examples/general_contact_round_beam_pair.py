@@ -1,18 +1,18 @@
 """Two declared round B2 beams meet under prescribed displacement.
 
-Run with ANYsolver installed: python examples/general_contact_round_beam_pair.py
+Run with ANYfeSolver installed: python examples/general_contact_round_beam_pair.py
 This is a distributed line-contact development example, not C2 acceptance.
 """
 
 import json
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, DisplacementControl, LoadCase,
     solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
 
 
 def main() -> None:

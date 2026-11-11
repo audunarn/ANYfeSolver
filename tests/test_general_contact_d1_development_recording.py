@@ -33,7 +33,7 @@ def test_moving_clamp_controls_every_target_left_node():
         assert equation.value == 0.
         assert [coefficient for _, coefficient in equation.coefficients] == [1., -1.]
     from scipy import sparse
-    from anysolver.assembly import build_constraint_transformation
+    from anyfesolver.assembly import build_constraint_transformation
     moving.apply_boundary_conditions()
     size = moving.mesh.dof_manager.total_dofs
     _, _, transform, offset, _, _ = build_constraint_transformation(
@@ -127,7 +127,7 @@ def test_radial_postprocessing_failure_retains_mechanical_result(tmp_path, monke
 
 
 def test_invalid_rejected_geometry_is_reported_without_masking_failure():
-    from anysolver.general_contact.semismooth_path import _proposal_gap_diagnostic
+    from anyfesolver.general_contact.semismooth_path import _proposal_gap_diagnostic
     def invalid(*args):
         raise ValueError("folded rejected proposal")
     manager = SimpleNamespace(_positions=lambda u: u, _gap_lower=invalid)

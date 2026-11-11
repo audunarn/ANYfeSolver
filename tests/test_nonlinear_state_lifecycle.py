@@ -8,12 +8,12 @@ from typing import Any
 import numpy as np
 import pytest
 
-from anysolver.arc_length import ArcLengthControl, solve_static_arc_length
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.material_curves import DNVC208MaterialCurve
-from anysolver.nonlinear_static import (
+from anyfesolver.arc_length import ArcLengthControl, solve_static_arc_length
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.material_curves import DNVC208MaterialCurve
+from anyfesolver.nonlinear_static import (
     DisplacementControl,
     NonlinearLoadProgram,
     NonlinearLoadStage,
@@ -41,7 +41,7 @@ PLASTIC_CURVE = DNVC208MaterialCurve(
 def _install_accelerated_assembly_before_ab_comparisons() -> None:
     # Keep the persistent/mapping comparisons on the same already-installed
     # Batch-C dispatch; installation is otherwise lazy on the first solve.
-    from anysolver.nonlinear_static import _ensure_nonlinear_acceleration
+    from anyfesolver.nonlinear_static import _ensure_nonlinear_acceleration
 
     _ensure_nonlinear_acceleration()
 

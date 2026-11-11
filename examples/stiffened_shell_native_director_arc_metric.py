@@ -6,7 +6,7 @@ No capacity, branch uniqueness, scientific acceptance or qualification claim.
 """
 import json
 import numpy as np
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from examples.stiffened_shell_native_fibre_bl5_mixed_j2_displacement import definition
 from examples.stiffened_shell_native_fibre_bl5_displacement import ACTIONS,OPTIONS
 

@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     ContactDefinition,
     ContactInteraction,
@@ -14,8 +14,8 @@ from anysolver import (
     solve_static_nonlinear,
     validate_general_contact,
 )
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.core import _PlanarQ4PlaneManager
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.core import _PlanarQ4PlaneManager
 
 
 def _guided_s3_plane(director=(0.0, 0.0, 1.0)):

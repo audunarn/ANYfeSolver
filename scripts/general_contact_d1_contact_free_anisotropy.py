@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import time
 
-from anysolver import solve_static_nonlinear
+from anyfesolver import solve_static_nonlinear
 from scripts.general_contact_d1_finite_area_load import build_case
 
 

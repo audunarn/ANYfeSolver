@@ -25,9 +25,9 @@ would also contain its shell elements.
 
 ```python
 import numpy as np
-from anysolver import (FEModel, BoundaryCondition, LoadCase,
+from anyfesolver import (FEModel, BoundaryCondition, LoadCase,
                        CoupledBeamShellElement, solve_static_nonlinear)
-from anysolver.elements import BeamElement
+from anyfesolver.elements import BeamElement
 
 model = FEModel("connected_beam")
 model.add_material("steel", 210e9, 0.3)
@@ -58,7 +58,7 @@ node must lie at the weighted reference master position plus the declared
 offset. For example, for a beam node at that position:
 
 ```python
-from anysolver import InterpolatedBeamShellMPCElement
+from anyfesolver import InterpolatedBeamShellMPCElement
 connection = InterpolatedBeamShellMPCElement(
     20, beam_node_id=3, shell_node_ids=[1, 2],
     shape_weights=np.array([0.5, 0.5]), eccentricity=np.array([0., 0., 0.1]),
@@ -77,7 +77,7 @@ rotations are refused; this option does not widen that domain.
 ## Generated panels
 
 ```python
-from anysolver import MeshConfig, PanelGeometry, generate_stiffened_panel_mesh
+from anyfesolver import MeshConfig, PanelGeometry, generate_stiffened_panel_mesh
 panel = PanelGeometry(length=1., width=0.5, plate_thickness=0.01,
     stiffener_type="T-bar", stiffener_height=0.1,
     stiffener_web_thickness=0.005, stiffener_flange_width=0.05,
@@ -233,7 +233,7 @@ physical shell/beam elements, supports and loads must then be added as usual:
 
 ```python
 import numpy as np
-from anysolver import FEModel, InterpolatedBeamShellMPCElement
+from anyfesolver import FEModel, InterpolatedBeamShellMPCElement
 trace_model = FEModel("experimental_edge")
 trace_model.add_material("steel", 210e9, 0.3)
 trace_model.add_node(1, 0., 0., 0.)

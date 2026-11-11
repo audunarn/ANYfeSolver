@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 import time
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 from scipy import sparse
@@ -102,7 +102,7 @@ def evaluate():
         raise RuntimeError('effective one-thread/JIT-off settings required')
     started = time.perf_counter()
     definition, policy = model(NS, NT, NB, C_LAMBDA)
-    owner = anysolver.stiffened_shell.create_analysis(definition=definition)
+    owner = anyfesolver.stiffened_shell.create_analysis(definition=definition)
     line = definition.lines[0]
     if line.basis != 'p0' or len(definition.lines) != 1 or definition.points:
         raise ValueError('bounded P0 physical correspondence required')
@@ -185,7 +185,7 @@ def evaluate():
     for older, newer in zip(levels[:-1], levels[1:]):
         assert np.all(np.array(newer['total_dual']) >= np.array(older['total_dual'])*(1-1e-12))
     owner.close()
-    return dict(status='COMPLETED_DEVELOPMENT_ONLY', imported_anysolver=anysolver.__file__, threads=pools,
+    return dict(status='COMPLETED_DEVELOPMENT_ONLY', imported_anyfesolver=anyfesolver.__file__, threads=pools,
                 elapsed_seconds=time.perf_counter()-started, policy=policy,
                 ell_m=ELL, beam_norm_width_m=BEAM_WIDTH, shell_width_m=WIDTH, action_names=names,
                 density_units=labels, force_equivalent_mu=[m.tolist() for m in mu],

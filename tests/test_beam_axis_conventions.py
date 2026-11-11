@@ -14,11 +14,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver.fe_core import FEModel
-from anysolver.elements import BeamElement, QuadraticBeamElement
-from anysolver.boundary import BoundaryCondition, FixedSupport, LoadCase, PinnedSupport
-from anysolver.assembly import solve_linear
-from anysolver.buckling import solve_eigenvalue_buckling
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver.boundary import BoundaryCondition, FixedSupport, LoadCase, PinnedSupport
+from anyfesolver.assembly import solve_linear
+from anyfesolver.buckling import solve_eigenvalue_buckling
 
 E = 210.0e9
 NU = 0.3

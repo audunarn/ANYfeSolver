@@ -8,12 +8,12 @@ import pytest
 from scipy.spatial.transform import Rotation
 from types import SimpleNamespace
 
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver import _stiffened_shell_ge_finite_experimental as finite
-from anysolver._ge_beam3_variational_shell import deformation
-from anysolver._stiffened_shell_rotation_charts import physical_frames
-from anysolver._stiffened_shell_nodal_footprint import selected_wrenches
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver import _stiffened_shell_ge_finite_experimental as finite
+from anyfesolver._ge_beam3_variational_shell import deformation
+from anyfesolver._stiffened_shell_rotation_charts import physical_frames
+from anyfesolver._stiffened_shell_nodal_footprint import selected_wrenches
 from test_stiffened_shell_ge_experimental import _panel
 from test_stiffened_shell_ge_finite_experimental import _q4_shell_j2_panel
 from test_stiffened_shell_ge_physical_fibre_finite import _yielding_definition
@@ -378,7 +378,7 @@ def test_empty_footprints_preserve_legacy_identity_recovery_and_json_checkpoint(
     assert owner.preflight()["identity"] == identity
     q = np.r_[result.shell_displacement, result.beam_coordinates]
     load = owner._accepted[1]
-    from anysolver._stiffened_shell_ge_experimental import CHECKPOINT
+    from anyfesolver._stiffened_shell_ge_experimental import CHECKPOINT
     expected = json.dumps(dict(schema=CHECKPOINT, model=identity, generation=result.generation,
         q=q.tolist(), multipliers=result.multipliers.tolist(), load=load.tolist()),
         sort_keys=True,separators=(",", ":"),allow_nan=False).encode("ascii")
@@ -445,9 +445,9 @@ def test_loaded_stable_s3_complete_assembly_actual_update_derivative(request, re
 
 @pytest.mark.parametrize("mixed", (True, "all-s3"))
 def test_stable_footprint_complete_generalized_history_and_atomic_corrupt_restore(request, mixed):
-    from anysolver._stiffened_shell_ge_checkpoint_binary import decode, encode, MAGIC
-    from anysolver._stiffened_shell_beam_history import shapes, histories
-    from anysolver._stiffened_shell_nodal_footprint import (
+    from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode, encode, MAGIC
+    from anyfesolver._stiffened_shell_beam_history import shapes, histories
+    from anyfesolver._stiffened_shell_nodal_footprint import (
         stable_s3_policy_descriptor, retained_scale_policy_descriptor,
         chart_admission_policy_descriptor)
 
@@ -530,7 +530,7 @@ def test_stable_policy_is_absent_for_q4_footprint_and_empty_generalized_s3(reque
 
 
 def test_unequal_section_scales_follow_retained_roles_and_work_conjugate_units():
-    from anysolver import _stiffened_shell_ge_experimental as ge
+    from anyfesolver import _stiffened_shell_ge_experimental as ge
     xyz = np.array(((0., 0., 0.), (2., 0., 0.)))
     nodes = {i: (np.array((float(i-1), 0., .1)), np.eye(3)) for i in (1, 2, 3)}
     elastic = np.diag((2., 3., 5., 7., 11., 13.))
@@ -581,7 +581,7 @@ def test_unequal_section_scales_follow_retained_roles_and_work_conjugate_units()
 
 
 def test_q4_footprint_rejects_provisional_retained_scale_identity(request):
-    from anysolver._stiffened_shell_nodal_footprint import (
+    from anyfesolver._stiffened_shell_nodal_footprint import (
         retained_scale_policy_descriptor, chart_admission_policy_descriptor)
     definition = _definition(); panel = definition.shell
     owner = _owner(request, definition)
@@ -612,9 +612,9 @@ def test_q4_footprint_rejects_provisional_retained_scale_identity(request):
 
 @pytest.mark.parametrize("mixed", (False, True, "all-s3"))
 def test_footprint_rebase_and_current_model_chart_restore_reject_atomically(request, mixed):
-    from anysolver._stiffened_shell_ge_checkpoint_binary import encode, encode_chart, decode_chart
-    from anysolver._stiffened_shell_beam_history import arrays as history_arrays
-    from anysolver._stiffened_shell_nodal_footprint import chart_admission_policy_descriptor
+    from anyfesolver._stiffened_shell_ge_checkpoint_binary import encode, encode_chart, decode_chart
+    from anyfesolver._stiffened_shell_beam_history import arrays as history_arrays
+    from anyfesolver._stiffened_shell_nodal_footprint import chart_admission_policy_descriptor
     definition = _definition(mixed); owner = _owner(request, definition)
     actions = (ss.NodalAction("beam", 105, (0., 0., 10., 0., 0., 0.)),)
     accepted = owner.solve(actions, (.25, .5), max_iterations=20, max_backtracks=12)

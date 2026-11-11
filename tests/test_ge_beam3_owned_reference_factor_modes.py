@@ -2,9 +2,9 @@
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_native_generalized_paired_modal import solve_modes
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_native_generalized_paired_modal import solve_modes
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_ge_beam3_native_analysis import analysis
 from test_ge_beam3_native_generalized_modal import make
 

@@ -35,7 +35,7 @@ def _snapshot_site():
     with open(install, encoding="utf-8") as handle:
         record = json.load(handle)
     site = record.get("site")
-    if site and os.path.isdir(os.path.join(site, "anysolver")):
+    if site and os.path.isdir(os.path.join(site, "anyfesolver")):
         return site
     return None
 

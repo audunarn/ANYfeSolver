@@ -5,9 +5,9 @@ from dataclasses import replace
 import numpy as np
 import pytest
 from examples.general_contact_triangulated_rigid import case, analysis
-from anysolver import (ContactPathProgram,ContactPathControl,LoadCase,solve_static_nonlinear,validate_general_contact)
-from anysolver.general_contact import TriangulatedRigidContactBody
-from anysolver.general_contact.triangulated_rigid_static import TriangulatedRigidManager
+from anyfesolver import (ContactPathProgram,ContactPathControl,LoadCase,solve_static_nonlinear,validate_general_contact)
+from anyfesolver.general_contact import TriangulatedRigidContactBody
+from anyfesolver.general_contact.triangulated_rigid_static import TriangulatedRigidManager
 
 
 def test_complete_penalty_work_and_diagonal():
@@ -70,7 +70,7 @@ def test_finite_footprint_refusal_and_crossing():
 
 
 def test_tilted_actual_path_and_normal_refusal():
-    from anysolver.general_contact.s3_pair_static import _swept_gap_lower
+    from anyfesolver.general_contact.s3_pair_static import _swept_gap_lower
     model,definition,settings=case();manager=TriangulatedRigidManager(model,definition,settings)
     first=np.zeros(manager.n_dof);last=first.copy()
     last[model.mesh.dof_manager.get_node_dofs(2)[2]]=-4e-5
@@ -86,7 +86,7 @@ def test_tilted_actual_path_and_normal_refusal():
 
 def test_ordinary_force_and_path_restart(monkeypatch):
     import importlib
-    solver=importlib.import_module('anysolver.nonlinear_static')
+    solver=importlib.import_module('anyfesolver.nonlinear_static')
     original=solver._support_reaction_resultants
     captured={}
     def reaction(model,imbalance,**kwargs):
@@ -116,7 +116,7 @@ def test_ordinary_force_and_path_restart(monkeypatch):
     program=ContactPathProgram(controls=(ContactPathControl.node(2,'ux'),ContactPathControl.node(2,'uz')),
         waypoints=((0.,0.),(0.,-.00004),(0.,0.),(0.,-.00004)),steps_per_segment=1)
     # Remove the controlled ux from the guide, preserving all remaining constraints.
-    from anysolver import BoundaryCondition
+    from anyfesolver import BoundaryCondition
     model.boundary_conditions[0]=BoundaryCondition('guide',(1,2,3),{k:0. for k in ('uy','rx','ry','rz')})
     model.add_boundary_condition(BoundaryCondition('xguide',(1,3),{'ux':0.}))
     common=dict(contact=definition,contact_settings=settings,contact_path_program=program,max_iterations=15)
@@ -133,9 +133,9 @@ def test_ordinary_force_and_path_restart(monkeypatch):
     changed=replace(definition,rigid_bodies=(replace(definition.rigid_bodies[0],name='tool',vertices=((0.,0.,0.),(1.01,0.,0.),(1.,1.,0.),(0.,1.,0.))),))
     with pytest.raises(ValueError):
         solve_static_nonlinear(model,restart_checkpoint=half.to_restart_checkpoint(),**{**common,'contact':changed})
-    from anysolver.control import CancellationToken
+    from anyfesolver.control import CancellationToken
     token=CancellationToken();token.cancel('fixture cancellation')
-    from anysolver.control import SolveCancelled
+    from anyfesolver.control import SolveCancelled
     with pytest.raises(SolveCancelled):
         solve_static_nonlinear(model,cancellation_token=token,**common)
     if os.environ.get('TRIANGULATED_RIGID_RESULT'):

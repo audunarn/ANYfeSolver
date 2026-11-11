@@ -1,6 +1,6 @@
 """Planar Q4/S3 press, slide, open and recontact under distributed force.
 
-Run from the ANYsolver checkout with ``python -m
+Run from the ANYfeSolver checkout with ``python -m
 examples.general_contact_distributed_q4_s3_cycle``. The default eight-Q4 mesh
 is a short demonstration. The independently reviewed response uses 24 Q4s;
 general C1 acceptance remains open.
@@ -13,8 +13,8 @@ from dataclasses import replace
 import json
 from pathlib import Path
 
-import anysolver
-from anysolver import solve_static_nonlinear, validate_general_contact
+import anyfesolver
+from anyfesolver import solve_static_nonlinear, validate_general_contact
 
 from scripts.general_contact_d1_mixed_mesh_jet2_schur_press import build_case
 
@@ -66,7 +66,7 @@ def run(columns: int) -> dict:
         "status": result.status,
         "gap_tolerance_m": definition.interactions[0].gap_tolerance,
         "has_restart_checkpoint": result.restart_checkpoint is not None,
-        "anysolver_module": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_module": str(Path(anyfesolver.__file__).resolve()),
         "steps": records,
     }
 

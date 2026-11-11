@@ -3,10 +3,10 @@ from dataclasses import replace
 
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as api
-from anysolver._b2_physical_flexibility_linear import LinearOperator
-from anysolver._b2_f10_f11_point_attachment import compile_reference_point
-from anysolver.control import CancellationToken
+from anyfesolver import stiffened_shell as api
+from anyfesolver._b2_physical_flexibility_linear import LinearOperator
+from anyfesolver._b2_f10_f11_point_attachment import compile_reference_point
+from anyfesolver.control import CancellationToken
 from test_stiffened_shell_b2_body_acceleration import _loaded_definition, _mass
 
 

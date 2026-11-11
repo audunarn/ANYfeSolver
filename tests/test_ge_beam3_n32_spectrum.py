@@ -108,7 +108,7 @@ def test_actual_factor_authority(sign,tmp_path):
 
 def test_worker_has_no_production_import_or_owner_solve():
     tree=ast.parse(Path(worker.__file__).read_text())
-    assert not any(isinstance(n,ast.ImportFrom) and (n.module or '').startswith('anysolver') for n in ast.walk(tree))
+    assert not any(isinstance(n,ast.ImportFrom) and (n.module or '').startswith('anyfesolver') for n in ast.walk(tree))
     assert not any(isinstance(n,ast.Call) and isinstance(n.func,ast.Attribute) and n.func.attr in ('Context','solve','solve_bvp','prepare') for n in ast.walk(tree))
 
 def test_original_deadline_and_trace_cancellation(monkeypatch):

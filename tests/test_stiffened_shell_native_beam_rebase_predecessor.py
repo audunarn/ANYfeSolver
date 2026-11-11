@@ -12,8 +12,8 @@ checkpoint round-trips byte-for-byte.
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_stiffened_shell_native_plastic_chart import (
     definition, programme, same, has_flow, PREFIX, OPTIONS, CONTROL,
 )

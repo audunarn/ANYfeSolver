@@ -18,7 +18,7 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     DisplacementControl,
     FEModel,
@@ -26,12 +26,12 @@ from anysolver import (
     create_shell_element,
     solve_static_nonlinear,
 )
-from anysolver.assembly import build_constraint_transformation
-from anysolver.matrix_assembly import (
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.matrix_assembly import (
     assemble_load_vector,
     assemble_stiffness_matrix,
 )
-from anysolver.corotational import (
+from anyfesolver.corotational import (
     _rotation_left_jacobian_inverse,
     _so3_weighted_mean,
     build_nonlinear_rotating_mpc_map,
@@ -42,11 +42,11 @@ from anysolver.corotational import (
     rotation_vector_from_matrix,
     spatial_moment_from_rotation_covector,
 )
-from anysolver.constraint_audit import constraint_residual_summary
-from anysolver.elements import BeamElement, CoupledBeamShellElement
-from anysolver.mesh_gen import InterpolatedBeamShellMPCElement
-from anysolver.nonlinear_restart import model_configuration_fingerprint
-from anysolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver.constraint_audit import constraint_residual_summary
+from anyfesolver.elements import BeamElement, CoupledBeamShellElement
+from anyfesolver.mesh_gen import InterpolatedBeamShellMPCElement
+from anyfesolver.nonlinear_restart import model_configuration_fingerprint
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
 
 
 def _build_coupled_cantilever(

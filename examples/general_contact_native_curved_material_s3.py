@@ -5,22 +5,22 @@ from hashlib import sha256
 from pathlib import Path
 from math import hypot,pi
 import numpy as np
-from anysolver import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.boundary import BoundaryCondition,FixedSupport
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-from anysolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_retained_nodal_loading import NodalDeadForces,Program
-from anysolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
-from anysolver.general_contact.native_surface_normal import StraightNormalIntegrationSettings
-from anysolver.general_contact.native_material_s3 import NativeMaterialS3Patch
-from anysolver.general_contact.native_curved_s3_work import NativeCurvedMaterialS3Work
-from anysolver.general_contact.s3_skin_work import S3SkinWorkAdapter
-from anysolver.general_contact import NativeS3ContactPair,create_native_contact_analysis
+from anyfesolver import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import BoundaryCondition,FixedSupport
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+from anyfesolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_retained_nodal_loading import NodalDeadForces,Program
+from anyfesolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
+from anyfesolver.general_contact.native_surface_normal import StraightNormalIntegrationSettings
+from anyfesolver.general_contact.native_material_s3 import NativeMaterialS3Patch
+from anyfesolver.general_contact.native_curved_s3_work import NativeCurvedMaterialS3Work
+from anyfesolver.general_contact.s3_skin_work import S3SkinWorkAdapter
+from anyfesolver.general_contact import NativeS3ContactPair,create_native_contact_analysis
 
 
 def analysis(targets=(1.,0.,1.),*,normal_stiffness_Pa_per_m=1e7,two_facets=False,two_beams=False,physical_fibres=False,plastic_fibres=False,
@@ -34,8 +34,8 @@ def analysis(targets=(1.,0.,1.),*,normal_stiffness_Pa_per_m=1e7,two_facets=False
         second=np.array((0.,0.,1.));frames.append(np.column_stack((tangent,second,np.cross(tangent,second))))
     reference=CenteredCurvedBeam3ReferenceGeometry(np.array(points),np.array(frames))
     if physical_fibres:
-        from anysolver._ge_beam3_fibre_section import Fibre,FlowCurve,PhysicalFibreSection
-        from anysolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
+        from anyfesolver._ge_beam3_fibre_section import Fibre,FlowCurve,PhysicalFibreSection
+        from anyfesolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
         curve=FlowCurve.linear(2.,1e5) if plastic_fibres else FlowCurve((0.,),(1e6,),1.)
         fibres=tuple(Fibre(str(i),y,z,.00025,1e6,curve) for i,(y,z) in enumerate(
             ((.03,0.),(-.03,0.),(0.,.03),(0.,-.03))))

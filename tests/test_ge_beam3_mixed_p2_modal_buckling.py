@@ -8,9 +8,9 @@ import numpy as np
 import pytest
 from scipy.linalg import eig, eigh
 
-from anysolver.beam_sections import GeneralizedBeamSection
-from anysolver.fe_core import FEModel
-from anysolver.ge_beam3_mixed_element import (
+from anyfesolver.beam_sections import GeneralizedBeamSection
+from anyfesolver.fe_core import FEModel
+from anyfesolver.ge_beam3_mixed_element import (
     GeBeam3MixedStateError,
     GeometricallyExactBeam3D3NElement,
 )

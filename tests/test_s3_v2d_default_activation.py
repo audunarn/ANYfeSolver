@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     AnyStructureFEMConfig,
     LegacyS3MigrationWarning,
     LegacyShellElement,
@@ -206,8 +206,8 @@ def test_activation_candidate_binds_accepted_v6w_and_unchanged_q4() -> None:
         assert len(data) == record["bytes"]
         assert hashlib.sha256(data).hexdigest().upper() == record["sha256"]
 
-    q4_blob = _git_blob(ROOT / "src" / "anysolver" / "e4_pl_element.py")
-    s3_blob = _git_blob(ROOT / "src" / "anysolver" / "e4_pl_s3_element.py")
+    q4_blob = _git_blob(ROOT / "src" / "anyfesolver" / "e4_pl_element.py")
+    s3_blob = _git_blob(ROOT / "src" / "anyfesolver" / "e4_pl_s3_element.py")
     hotfix = _q4_replay_hotfix()
     successor = _q4_replay_canonicalization()
     runtime_successor = _qualified_shell_runtime_guard_successor()
@@ -255,8 +255,8 @@ def test_integration_repair_preserves_qualification_and_q4_boundary() -> None:
     assert len(activation_data) == activation["bytes"]
     assert hashlib.sha256(activation_data).hexdigest().upper() == activation["sha256"]
 
-    q4_blob = _git_blob(ROOT / "src" / "anysolver" / "e4_pl_element.py")
-    s3_blob = _git_blob(ROOT / "src" / "anysolver" / "e4_pl_s3_element.py")
+    q4_blob = _git_blob(ROOT / "src" / "anyfesolver" / "e4_pl_element.py")
+    s3_blob = _git_blob(ROOT / "src" / "anyfesolver" / "e4_pl_s3_element.py")
     hotfix = _q4_replay_hotfix()
     successor = _q4_replay_canonicalization()
     runtime_successor = _qualified_shell_runtime_guard_successor()

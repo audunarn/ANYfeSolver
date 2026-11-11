@@ -3,13 +3,13 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver import (AnalysisSession, BoundaryCondition, FixedSupport, LoadCase,
+from anyfesolver import (AnalysisSession, BoundaryCondition, FixedSupport, LoadCase,
     StaticCase, StaticBatchError, iter_linear_batches, RecoveryConfig, ResourceConfig,
     CancellationToken, SolveCancelled, solve_linear, compute_constraint_force_diagnostics)
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
-from anysolver.recovery import ResourcePolicyError
-from anysolver.linalg import backend_operation_counts
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.recovery import ResourcePolicyError
+from anyfesolver.linalg import backend_operation_counts
 
 
 def _bar(supported=True):
@@ -69,7 +69,7 @@ def test_selected_output_and_prepared_reactions_match_ordinary(monkeypatch):
     dof = model.mesh.nodes[2].dofs[0]
     recovery = RecoveryConfig(node_ids=[1, 2], element_ids=[1], components=["axial_stress"])
     # Prepared reactions must not reassemble the stiffness or load per case.
-    import anysolver.assembly as assembly
+    import anyfesolver.assembly as assembly
     def refuse(*args, **kwargs):
         raise AssertionError("prepared reaction route reassembled system")
     monkeypatch.setattr(assembly, "assemble_system", refuse)
@@ -135,7 +135,7 @@ def test_model_mutation_at_foreign_boundaries_terminates_stream(boundary):
 def test_cancellation_and_owned_session_close(monkeypatch):
     model = _bar()
     created = []
-    import anysolver.static_batch as module
+    import anyfesolver.static_batch as module
     original = module.AnalysisSession
     def make(model):
         session = original(model)
@@ -249,7 +249,7 @@ def test_time_conversion_mutation_is_rejected_and_plain_time_is_retained():
 
 
 def test_single_session_free_free_and_collecting_nullspace_share_augmented_factor():
-    from anysolver import solve_linear_many
+    from anyfesolver import solve_linear_many
     model = _bar(False)
     cases = [_case(0, 1, True), _case(1, -2, True)]
     with AnalysisSession(model) as session:
@@ -323,9 +323,9 @@ def test_reused_foreign_load_is_assembled_before_next_input():
 
 @pytest.mark.parametrize("kind", ["q4", "qualified_s3"])
 def test_compiled_recovery_is_used_by_stream_and_reused(kind, monkeypatch):
-    from anysolver import generate_simple_panel_mesh
-    from anysolver.recovery import _compute_one_element_stress
-    import anysolver.recovery as module
+    from anyfesolver import generate_simple_panel_mesh
+    from anyfesolver.recovery import _compute_one_element_stress
+    import anyfesolver.recovery as module
     import numba
     workers = 2 if module.JIT_ENABLED and numba.config.NUMBA_NUM_THREADS >= 2 else 1
     observed_workers = []
@@ -370,9 +370,9 @@ def test_compiled_recovery_is_used_by_stream_and_reused(kind, monkeypatch):
 @pytest.mark.parametrize("fail_load", [False, True])
 def test_phase_thread_policy_restores_before_foreign_boundaries(monkeypatch, fail_load):
     import numba
-    import anysolver.jit_compiler as jit
-    import anysolver.matrix_assembly as assembly
-    from anysolver.threading_policy import current_solver_threads
+    import anyfesolver.jit_compiler as jit
+    import anyfesolver.matrix_assembly as assembly
+    from anyfesolver.threading_policy import current_solver_threads
     from threadpoolctl import threadpool_info
     initial = numba.get_num_threads()
     workers = 2 if jit.JIT_ENABLED and numba.config.NUMBA_NUM_THREADS >= 2 else 1
@@ -437,8 +437,8 @@ def test_uncertified_backend_result_never_yields_success(monkeypatch):
 
 
 def test_collecting_nullspace_honors_external_cache_and_refuses_conflicting_session():
-    from anysolver import solve_linear_many
-    from anysolver.linalg import FactorizationCache
+    from anyfesolver import solve_linear_many
+    from anyfesolver.linalg import FactorizationCache
     model = _bar(False)
     cache = FactorizationCache(name="caller nullspace", max_entries=2)
     try:
@@ -460,8 +460,8 @@ def test_collecting_nullspace_honors_external_cache_and_refuses_conflicting_sess
 
 
 def test_default_v2d_recovery_preserves_public_scalar_outputs():
-    from anysolver import create_shell_element
-    from anysolver.recovery import recover_stress_result
+    from anyfesolver import create_shell_element
+    from anyfesolver.recovery import recover_stress_result
     model = FEModel("v2d_stream")
     model.add_material("steel", 100.0, 0.3)
     for node_id, coords in enumerate([(0, 0, 0), (1, 0, 0), (0, 1, 0)], 1):
@@ -481,8 +481,8 @@ def test_default_v2d_recovery_preserves_public_scalar_outputs():
 @pytest.mark.parametrize("cancel", [False, True])
 @pytest.mark.parametrize("stage", ["stress", "reaction"])
 def test_recovery_failure_identifies_case_and_preserves_cancellation(monkeypatch, cancel, stage):
-    import anysolver.recovery as recovery
-    import anysolver.assembly as assembly
+    import anyfesolver.recovery as recovery
+    import anyfesolver.assembly as assembly
     target, name = ((recovery, "recover_stress_result") if stage == "stress" else
                     (assembly, "_compute_constraint_force_diagnostics_under_lease"))
     original = getattr(target, name)
@@ -521,12 +521,12 @@ def test_session_cleanup_cannot_replace_primary_failure(monkeypatch):
 def test_recovery_scope_entries_scale_with_blocks_not_cases(monkeypatch):
     import contextlib
     import numba
-    import anysolver.assembly as assembly_module
-    import anysolver.jit_compiler as jit
-    import anysolver.matrix_assembly as matrix_assembly
-    import anysolver.recovery as recovery_module
-    import anysolver.threading_policy as policy
-    from anysolver.threading_policy import current_solver_threads
+    import anyfesolver.assembly as assembly_module
+    import anyfesolver.jit_compiler as jit
+    import anyfesolver.matrix_assembly as matrix_assembly
+    import anyfesolver.recovery as recovery_module
+    import anyfesolver.threading_policy as policy
+    from anyfesolver.threading_policy import current_solver_threads
     from threadpoolctl import threadpool_info
 
     workers = 2 if jit.JIT_ENABLED and numba.config.NUMBA_NUM_THREADS >= 2 else 1

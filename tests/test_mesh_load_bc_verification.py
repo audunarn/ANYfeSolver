@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from anysolver import (
+from anyfesolver import (
     mesh_load_bc_manifest_cases,
     run_mesh_load_bc_verification,
     write_mesh_load_bc_verification_report,

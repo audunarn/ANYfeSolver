@@ -6,10 +6,10 @@ from scipy.linalg import block_diag
 from docs.reference_cases.ge_beam3_common_kinematic_factor_probe import reference_chain
 from docs.reference_cases.ge_beam3_decimal_chain_audit import factor_chain_modes
 from docs.reference_cases.ge_beam3_reassembly_runtime_diagnostic import contrast
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_p5.algebra import rotation
-import anysolver._ge_beam3_reassembled_signed_modes as adapter
-from anysolver._native_factor_chain_modes import solve_factor_chain_modes
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5.algebra import rotation
+import anyfesolver._ge_beam3_reassembled_signed_modes as adapter
+from anyfesolver._native_factor_chain_modes import solve_factor_chain_modes
 
 
 def test_decimal_chain_preserves_unit_term_lost_by_expanded_binary64():

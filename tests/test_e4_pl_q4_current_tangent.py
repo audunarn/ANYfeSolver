@@ -5,7 +5,7 @@ import copy
 import numpy as np
 import pytest
 
-from anysolver.e4_pl_element import (
+from anyfesolver.e4_pl_element import (
     Q4_CURRENT_STATE_ALGORITHMIC_ORIGIN_SCHEMA_ID,
     Q4_CURRENT_STATE_BINDING_SCHEMA_ID,
     Q4_CURRENT_STATE_PROJECTION_POLICY_ID,
@@ -13,15 +13,15 @@ from anysolver.e4_pl_element import (
     QualifiedE4PLShellElement,
     _q4_compact_replay_last_place_equivalent,
 )
-from anysolver.e4_pl_s3_state import canonical_json_bytes
-from anysolver.elements import ShellElement
-from anysolver.fe_core import FEMesh, Material
-from anysolver.material_curves import DNVC208MaterialCurve
-from anysolver.materials import Hill48Yield, OrthotropicMaterial
-from anysolver.nonlinear_state import ShellStateBatch, ShellStateLayout
-from anysolver.shell_sections import GeneralizedShellSection
-from anysolver.vectorized_nonlinear import batch_shell_nonlinear_response
-from anysolver import _q4_assumed_strain_plasticity as _q4_assumed_strain
+from anyfesolver.e4_pl_s3_state import canonical_json_bytes
+from anyfesolver.elements import ShellElement
+from anyfesolver.fe_core import FEMesh, Material
+from anyfesolver.material_curves import DNVC208MaterialCurve
+from anyfesolver.materials import Hill48Yield, OrthotropicMaterial
+from anyfesolver.nonlinear_state import ShellStateBatch, ShellStateLayout
+from anyfesolver.shell_sections import GeneralizedShellSection
+from anyfesolver.vectorized_nonlinear import batch_shell_nonlinear_response
+from anyfesolver import _q4_assumed_strain_plasticity as _q4_assumed_strain
 
 
 def _production_q4_kernel(element, mesh, material):

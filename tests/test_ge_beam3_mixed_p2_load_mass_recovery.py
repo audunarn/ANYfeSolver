@@ -8,10 +8,10 @@ from typing import Any
 import numpy as np
 import pytest
 
-from anysolver.beam_sections import GeneralizedBeamSection
-from anysolver._ge_beam3_mixed_ad import rotation_exponential
-from anysolver.fe_core import FEModel
-from anysolver.ge_beam3_mixed_element import (
+from anyfesolver.beam_sections import GeneralizedBeamSection
+from anyfesolver._ge_beam3_mixed_ad import rotation_exponential
+from anyfesolver.fe_core import FEModel
+from anyfesolver.ge_beam3_mixed_element import (
     GE_BEAM3_MIXED_CANDIDATE_ID,
     GeBeam3MixedGeometryError,
     GeBeam3MixedStateError,

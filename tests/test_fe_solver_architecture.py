@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from anysolver import (
+from anyfesolver import (
     LoadCase,
     MeshConfig,
     PanelGeometry,

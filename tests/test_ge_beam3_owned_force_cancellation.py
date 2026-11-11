@@ -4,10 +4,10 @@ from hashlib import sha256
 import numpy as np
 import pytest
 
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._ge_beam3_native_generalized_loading import _ACTIVE
-from anysolver._ge_beam3_native_generalized_program import _PROGRAM
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._ge_beam3_native_generalized_loading import _ACTIVE
+from anyfesolver._ge_beam3_native_generalized_program import _PROGRAM
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_native_analysis import analysis, generalized_problem, fibre_problem, pattern
 
 

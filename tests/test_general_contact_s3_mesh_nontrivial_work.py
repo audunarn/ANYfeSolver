@@ -5,8 +5,8 @@ from dataclasses import asdict
 import numpy as np
 import pytest
 from examples.general_contact_s3_mesh_history_events import build_case,solve_case
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.s3_friction_static import create_s3_friction_manager
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_friction_static import create_s3_friction_manager
 
 CUTS={2:(2,4,6,8,10,12),4:(4,8,10,12,16,20,24)}
 def case(ratio=2):return build_case(ratio,'sliding')
@@ -23,7 +23,7 @@ def test_prepare():
         slider=dict(p_pa=1.,mu=.3,k_pa_per_m=1000.,area_m2=.01,positions=[0,.0001,.01,.0099,.009],analytic_relative_target=.001)))
 
 def test_slider():
-    from anysolver.general_contact.s3_friction_history_path import summarize_work_history
+    from anyfesolver.general_contact.s3_friction_history_path import summarize_work_history
     m,d,s,f,p,_=case();owner=create_s3_friction_manager(m,GeneralS3PatchManager(m,d,s),f)
     u=np.zeros(60)
     for node in (2,3,4,5):u[m.mesh.dof_manager.get_node_dofs(node)[2]]=-2e-7
@@ -155,9 +155,9 @@ def test_spin():
     reason='installed history stage input FRICTION_STAGE absent: staged nontrivial-work proof requires the original workflow stage selection')
 def test_proof():
     from test_general_contact_s3_mesh_weak_pressure_friction import _weak_pose_gate
-    from anysolver.general_contact.semismooth import linearize
-    from anysolver.nonlinear_static import _assemble_nonlinear_system
-    from anysolver.general_contact.s3_friction_history_path import expand_program
+    from anyfesolver.general_contact.semismooth import linearize
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system
+    from anyfesolver.general_contact.s3_friction_history_path import expand_program
     proof=[]
     selected=(int(os.environ['FRICTION_STAGE'][-1]),) if os.environ['FRICTION_STAGE'] in ('proof2','proof4') else (2,4)
     for ratio in selected:
@@ -203,7 +203,7 @@ def test_proof():
 @pytest.mark.skipif(not os.environ.get('AUTOMATIC_WORKFLOW_EVIDENCE'),
     reason='archived nontrivial inputs AUTOMATIC_WORKFLOW_EVIDENCE R2-4.json/R2-6.json absent: directional replay requires the original staged evidence root')
 def test_directional():
-    from anysolver.general_contact.semismooth import linearize
+    from anyfesolver.general_contact.semismooth import linearize
     m,d,s,f,p,_=case();owner=create_s3_friction_manager(m,GeneralS3PatchManager(m,d,s),f)
     prior=json.loads((evidence()/'R2-4.json').read_text())['checkpoint'];owner.restore(prior['path_state']['friction_state'],np.array(prior['displacements']))
     saved=json.loads((evidence()/'R2-6.json').read_text());u=np.array(saved['snapshots'][0]['displacement']);z=np.array(saved['checkpoint']['path_state']['history'][4]['friction']['supported_force_n'])
@@ -245,9 +245,9 @@ def test_mixed():
 @pytest.mark.skipif(not os.environ.get('AUTOMATIC_WORKFLOW_EVIDENCE'),
     reason='archived nontrivial input AUTOMATIC_WORKFLOW_EVIDENCE/R2-4.json absent: reporting rollback replay requires the original staged checkpoint')
 def test_reporting(monkeypatch):
-    import anysolver.general_contact.s3_friction_static as factory
-    import anysolver.general_contact.s3_friction_history_path as module
-    from anysolver.general_contact.runtime import _ACTIVE_CONTACT
+    import anyfesolver.general_contact.s3_friction_static as factory
+    import anyfesolver.general_contact.s3_friction_history_path as module
+    from anyfesolver.general_contact.runtime import _ACTIVE_CONTACT
     c=case();m,d,s,f,p,_=c
     incoming=json.loads((evidence()/'R2-4.json').read_text())['checkpoint'];original=copy.deepcopy(incoming)
     declared=copy.deepcopy((m.boundary_conditions,m.constraint_equations,m.load_cases));nodes=[(m.mesh.get_node(n).x,m.mesh.get_node(n).y,m.mesh.get_node(n).z) for n in range(1,11)]
@@ -297,7 +297,7 @@ def test_archive_checkpoint_safety():
     reason='archived nontrivial inputs AUTOMATIC_WORKFLOW_EVIDENCE R{ratio}-{cut}.json absent: work-consumer replay requires the original staged evidence root')
 def test_workconsumer():
     """Actual accepted structural/external/control quadrature, not an energy oracle."""
-    from anysolver.nonlinear_static import _assemble_nonlinear_system
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system
     reports=[]
     for ratio in (2,4):
         m,*_=case(ratio);terminal=json.loads((evidence()/f'R{ratio}-{6*ratio}.json').read_text());history=terminal['checkpoint']['path_state']['history']

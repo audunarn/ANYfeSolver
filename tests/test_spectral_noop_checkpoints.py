@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-import anysolver.buckling as buckling_module
-import anysolver.modal as modal_module
-from anysolver.boundary import BoundaryCondition, FixedSupport
-from anysolver.control import CancellationToken
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
+import anyfesolver.buckling as buckling_module
+import anyfesolver.modal as modal_module
+from anyfesolver.boundary import BoundaryCondition, FixedSupport
+from anyfesolver.control import CancellationToken
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
 
 
 def _modal_model() -> FEModel:

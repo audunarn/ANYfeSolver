@@ -2,9 +2,9 @@
 from copy import deepcopy
 import numpy as np
 import pytest
-from anysolver._ge_beam3_native_line_program import solve_line_static, _PROGRAM, model_identity
-from anysolver._ge_beam3_native_line_loading import LinePattern, _ACTIVE
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_native_line_program import solve_line_static, _PROGRAM, model_identity
+from anyfesolver._ge_beam3_native_line_loading import LinePattern, _ACTIVE
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_native_line_loading import problem, independent_work
 from test_ge_beam3_schur_line_program import save
 
@@ -62,7 +62,7 @@ def test_failed_newton_preserves_virgin_state(tmp_path):
 
 @pytest.mark.parametrize('kind',['pattern','bounds','model'])
 def test_invalid_authority_before_solver(kind,monkeypatch,tmp_path):
-    import anysolver.nonlinear_static as solver
+    import anyfesolver.nonlinear_static as solver
     model,_=problem(False,False); pattern=LinePattern(((1,.1,0.,0.),))
     kwargs={}
     if kind=='pattern':object.__setattr__(pattern,'signature','0'*64)
@@ -77,9 +77,9 @@ def test_invalid_authority_before_solver(kind,monkeypatch,tmp_path):
 
 @pytest.mark.parametrize('kind',['signature','resealed-program','resealed-effective'])
 def test_mid_assembly_mutation_discards_uncommitted_trial(kind,monkeypatch,tmp_path):
-    import anysolver.nonlinear_static as solver
+    import anyfesolver.nonlinear_static as solver
     from test_ge_beam3_native_fibre_static_element import store_for,sample
-    from anysolver._ge_beam3_native_line_program import _Program,assemble_at
+    from anyfesolver._ge_beam3_native_line_program import _Program,assemble_at
     model,e=problem(True,True);store=store_for(model,e);before=canonical(store.materialize())
     pattern=LinePattern(((1,.1,-.01,.005),));events=[]
     program=_Program(model,model_identity(model),pattern,LinePattern(()),events)

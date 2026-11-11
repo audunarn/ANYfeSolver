@@ -189,7 +189,7 @@ def test_e4_closeout_preserves_source_scope_and_no_production_boundary() -> None
             elif isinstance(node, ast.ImportFrom) and node.module:
                 imports.add(node.module.split(".")[0])
         assert imports <= permitted | {"__future__"}
-        assert "anysolver" not in imports
+        assert "anyfesolver" not in imports
 
     plan = (ROOT / "docs/agent_plans/S4_E4_PL_LINEAR_QUALIFICATION_PLAN.md").read_text(
         encoding="utf-8"

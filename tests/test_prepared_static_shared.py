@@ -1,7 +1,7 @@
 """M4 shared truth, bounded winner tiles and copy-on-write publication."""
 import numpy as np
 import pytest
-from anysolver import prepare_static_evaluator, RecoveryConfig, PreparedStaticCapabilityError
+from anyfesolver import prepare_static_evaluator, RecoveryConfig, PreparedStaticCapabilityError
 from test_prepared_static_evaluator import _bar, _case, _shell_model, _shell_case
 
 
@@ -79,7 +79,7 @@ def test_transaction_copies_only_changed_modes_and_preserves_committed_arrays():
 
 
 def test_shared_dispatch_rebinding_refused_before_receiving_owned_buffers(monkeypatch):
-    import anysolver.prepared_static_shared as shared
+    import anyfesolver.prepared_static_shared as shared
     with prepare_static_evaluator(_bar()) as owner:
         seen = []
         monkeypatch.setattr(shared, 'recover_shared_block', lambda *args: seen.append(args))
@@ -90,7 +90,7 @@ def test_shared_dispatch_rebinding_refused_before_receiving_owned_buffers(monkey
 
 @pytest.mark.parametrize('observation', ['result', 'restart', 'resume'])
 def test_reducer_storage_helper_refused_before_owned_data_observation(monkeypatch, observation):
-    import anysolver.prepared_static_envelopes as envelopes
+    import anyfesolver.prepared_static_envelopes as envelopes
     config = RecoveryConfig(include_stresses=False)
     with prepare_static_evaluator(_bar(), envelope_recovery_config=config) as owner:
         iterator = owner.iter_batches([_case(0), _case(1)], batch_size=1)
@@ -110,7 +110,7 @@ def test_reducer_storage_helper_refused_before_owned_data_observation(monkeypatc
 
 
 def test_driver_constructor_alias_refused_before_private_plan(monkeypatch):
-    import anysolver.prepared_static as driver
+    import anyfesolver.prepared_static as driver
     config = RecoveryConfig(include_stresses=False)
     with prepare_static_evaluator(_bar(), envelope_recovery_config=config) as owner:
         seen = []
@@ -124,8 +124,8 @@ def test_driver_constructor_alias_refused_before_private_plan(monkeypatch):
 
 
 def test_tile_failure_has_case_element_and_stage_without_publication():
-    from anysolver import PreparedStaticError
-    from anysolver.prepared_static_shared import _fold_labeled
+    from anyfesolver import PreparedStaticError
+    from anyfesolver.prepared_static_shared import _fold_labeled
     config = RecoveryConfig(components=['axial_stress'], include_displacements=False, include_reactions=False)
     with prepare_static_evaluator(_bar(), envelope_recovery_config=config) as owner:
         scratch = owner._envelope.empty_subset(('stress',), 1)

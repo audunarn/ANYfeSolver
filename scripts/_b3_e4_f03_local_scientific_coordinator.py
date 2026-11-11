@@ -118,10 +118,10 @@ def prepare_registration(
         packages.append(registration.PackageIdentity(
             name, version, str(path), count, digest,
         ))
-    solver_package = next(item for item in packages if item.name == "ANYsolver")
-    if (solver_package.origin != str(child_identity.candidate_anysolver_origin(str(source)))
-            or solver_package.version != child_identity.candidate_anysolver_version(str(source))):
-        raise ValueError("F03 registration requires candidate ANYsolver origin/version")
+    solver_package = next(item for item in packages if item.name == "ANYfeSolver")
+    if (solver_package.origin != str(child_identity.candidate_anyfesolver_origin(str(source)))
+            or solver_package.version != child_identity.candidate_anyfesolver_version(str(source))):
+        raise ValueError("F03 registration requires candidate ANYfeSolver origin/version")
     hardware = child_identity.observed_hardware()
     records = cases.preflight_inventory()
     run_root.mkdir()
@@ -203,12 +203,12 @@ def _preflight(
         version, origin = child_identity.observed_package(package.name)
         if version != package.version or Path(origin).resolve() != Path(package.origin).resolve():
             raise ValueError(f"F03 coordinator package identity changed: {package.name}")
-        if (package.name == "ANYsolver"
+        if (package.name == "ANYfeSolver"
                 and (Path(origin).resolve()
-                     != child_identity.candidate_anysolver_origin(registered.repository_root)
-                     or version != child_identity.candidate_anysolver_version(
+                     != child_identity.candidate_anyfesolver_origin(registered.repository_root)
+                     or version != child_identity.candidate_anyfesolver_version(
                          registered.repository_root))):
-            raise ValueError("F03 coordinator ANYsolver origin/version disagrees with candidate")
+            raise ValueError("F03 coordinator ANYfeSolver origin/version disagrees with candidate")
     if child_identity.observed_hardware() != registered.hardware:
         raise ValueError("F03 coordinator hardware identity changed")
     if (

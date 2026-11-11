@@ -5,17 +5,17 @@ import copy
 import numpy as np
 import pytest
 
-from anysolver.arc_length import ArcLengthControl, solve_static_arc_length
-from anysolver.boundary import BoundaryCondition, FixedSupport, LoadCase
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from anysolver.e4_pl_s3_state import (
+from anyfesolver.arc_length import ArcLengthControl, solve_static_arc_length
+from anyfesolver.boundary import BoundaryCondition, FixedSupport, LoadCase
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+from anyfesolver.e4_pl_s3_state import (
     canonical_json_bytes,
     strict_canonical_json_loads,
 )
-from anysolver.fe_core import FEModel
-from anysolver.material_curves import LinearHardeningCurve
-from anysolver.nonlinear_static import (
+from anyfesolver.fe_core import FEModel
+from anyfesolver.material_curves import LinearHardeningCurve
+from anyfesolver.nonlinear_static import (
     NonlinearLoadProgram,
     NonlinearLoadStage,
     solve_static_nonlinear,

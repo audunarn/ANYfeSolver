@@ -39,7 +39,7 @@ def test_centered_native_source_binding_and_development_boundary():
 def test_source_mutations_cannot_keep_the_development_binding(monkeypatch, kind):
     original = source_map.source
     target = (source_map.TARGET+'/positions.py' if kind != 'preserved' else
-              'src/anysolver/_ge_beam3_p5_coordinates/positions.py')
+              'src/anyfesolver/_ge_beam3_p5_coordinates/positions.py')
     def altered(path):
         raw = original(path)
         if path == target:
