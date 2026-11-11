@@ -135,9 +135,27 @@ def test_exact_producer_binding_original_controls_and_no_seed(tmp_path):
         reference.control_predicate(descriptor, u)
 
 
+def test_relocated_source_map_binds_original_bytes_and_complete_inventory(tmp_path):
+    source = tmp_path/'relocated.py'
+    source.write_bytes(b'original source')
+    original = {'scripts/original.py': runner.sha(source)}
+    row = dict(name='scripts/original.py', sha256=runner.sha(source), resolved=source.name)
+    assert runner._mapped_paths([row], original, tmp_path) == {'scripts/original.py': source}
+    with pytest.raises(ReferenceRefused, match='incomplete'):
+        runner._mapped_paths([], original, tmp_path)
+    with pytest.raises(ReferenceRefused, match='duplicate'):
+        runner._mapped_paths([row, row], original, tmp_path)
+    source.write_bytes(b'wrong source')
+    with pytest.raises(ReferenceRefused, match='binding'):
+        runner._mapped_paths([dict(row, sha256=runner.sha(source))], original, tmp_path)
+    with pytest.raises(ValueError, match='exact V15 binding'):
+        runner.run(tmp_path/'output', source, resolved_inputs=tmp_path/'unused')
+
+
 def test_original_matched238_complete_independent_seven_gates(record_property, tmp_path):
     out = Path(os.environ.get('ENRICHED_REFERENCE_OUTPUT', tmp_path))
-    result = runner.run(out/'reference')
+    binding = Path(os.environ.get('ENRICHED_REFERENCE_BINDING', runner.W/'INPUT_BINDING.json'))
+    result = runner.run(out/'reference', binding, resolved_inputs=os.environ.get('ENRICHED_REFERENCE_INPUT_MAP'))
     record_property('assessment_file', str(out/'reference/ASSESSMENT.json'))
     record_property('assessment_sha256', runner.sha(out/'reference/ASSESSMENT.json'))
     record_property('actual_seven', json.dumps(result['gates'], sort_keys=True))
