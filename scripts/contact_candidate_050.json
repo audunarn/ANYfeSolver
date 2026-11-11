@@ -15,7 +15,7 @@
     "ANYmaterial": "0.2.0",
     "ANYgeometry": "0.4.3",
     "ANYmesher": "0.5.0",
-    "ANYfileio": "0.3.2"
+    "ANYfileio": "0.3.3"
   },
   "wheel_files": {
     "ANYfeSolver": "anyfesolver-0.5.0+contact.candidate.20261111.s7-py3-none-any.whl",
@@ -23,7 +23,7 @@
     "ANYmaterial": "anymaterial-0.2.0-py3-none-any.whl",
     "ANYgeometry": "anygeometry-0.4.3-py3-none-any.whl",
     "ANYmesher": "anymesher-0.5.0-py3-none-any.whl",
-    "ANYfileio": "anyfileio-0.3.2-py3-none-any.whl"
+    "ANYfileio": "anyfileio-0.3.3-py3-none-any.whl"
   },
   "sibling_dirs": {
     "ANYmaterial": "ANYmaterial",
@@ -35,7 +35,7 @@
     "ANYmaterial": "d8a233ef4c5e38d25dbba0eb20e6cfa8d44ec5a2",
     "ANYgeometry": "91846898b03fa02b029abde82508eddb981efdc0",
     "ANYmesher": "2ccef378c3efb4ba3a9957b9ab896ac8fc454b9d",
-    "ANYfileio": "db73950018e1c87dab0ca618c25c965030ba08ce"
+    "ANYfileio": "fb11ea83656b427485f48fca9f7306c32658a672"
   },
   "numerical_pins": [
     "numpy==2.5.4",

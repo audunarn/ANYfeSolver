@@ -42,14 +42,14 @@ SOLVER_SDIST_EXTRA = {"LICENSING.md", "dependency-licenses.json", "README.md", "
 OLD_IMPORT_NAMES = ("anysolver", "anysolver_results")
 TERMINAL = "ANYFESOLVER_0_5_0_PACKAGING_GATE_PASSED_NOT_A_PUBLICATION_DECISION"
 SCHEMA = "ANYFESOLVER_0_5_0_PACKAGING_GATE_V1"
-# Public solver dependency bands that must stay as released in 0.4.7.
+# Public solver dependency bands for the 0.5.0 candidate.
 EXPECTED_SOLVER_REQUIRES = {
     "numpy": frozenset({">=2.0"}),
     "scipy": frozenset({">=1.13"}),
     "threadpoolctl": frozenset({">=3.5"}),
     "anymaterial": frozenset({">=0.2", "<0.3"}),
     "anymesher": frozenset({">=0.4", "<0.6"}),
-    "anyfileio": frozenset({">=0.3.2", "<0.4"}),
+    "anyfileio": frozenset({">=0.3.3", "<0.4"}),
     "anyfesolver-results": frozenset({">=2.2", "<3"}),
 }
 EXPECTED_RESULTS_REQUIRES = {"numpy": frozenset({">=2.0"})}
@@ -393,7 +393,7 @@ if mode == "full":
     except ValueError: pass
     else: raise RuntimeError("B3-GE became a generic/default route")
     out.update(legacy_b3_default=True, b3_ge_opt_in_only=True, armijo_opt_in_only=True)
-    bands = {"ANYfileio": ((0, 3, 2), (0, 4)), "ANYmaterial": ((0, 2), (0, 3)), "ANYmesher": ((0, 4), (0, 6))}
+    bands = {"ANYfileio": ((0, 3, 3), (0, 4)), "ANYmaterial": ((0, 2), (0, 3)), "ANYmesher": ((0, 4), (0, 6))}
     found = {}
     for name, (low, high) in bands.items():
         v = metadata.version(name); found[name] = v
@@ -494,7 +494,7 @@ def run(solver_wheel: Path, solver_sdist: Path, results_wheel: Path, results_sdi
         "candidate": {"commit": commit, "tree": tree},
         "checks": {
             "both_pairs_built_from_candidate_source": True,
-            "dependency_bands_unchanged": True,
+            "dependency_bands_match_candidate_metadata": True,
             "historical_verifier_untouched_and_not_reused_as_terminal": True,
             "installed_smoke": True,
             "no_old_import_trees": True,

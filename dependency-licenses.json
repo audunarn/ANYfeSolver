@@ -38,7 +38,7 @@
     {
       "distribution": "ANYfileio",
       "licence": "MPL-2.0",
-      "requirement": "ANYfileio>=0.3.2,<0.4",
+      "requirement": "ANYfileio>=0.3.3,<0.4",
       "scope": "runtime",
       "status": "not-bundled"
     },

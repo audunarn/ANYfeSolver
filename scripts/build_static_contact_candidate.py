@@ -91,7 +91,7 @@ then activate it (`.venv\\Scripts\\Activate.ps1` on Windows PowerShell or
 
 ```
 python -m pip install --no-cache-dir -r requirements-tested.txt
-python -m pip install --no-cache-dir --no-index --find-links wheelhouse "ANYfeSolver[general-contact]=={version}" anyfesolver-results==2.2.0 ANYmaterial==0.2.0 "ANYgeometry[planar]==0.4.3" ANYmesher==0.5.0 ANYfileio==0.3.2
+python -m pip install --no-cache-dir --no-index --find-links wheelhouse "ANYfeSolver[general-contact]=={version}" anyfesolver-results==2.2.0 ANYmaterial==0.2.0 "ANYgeometry[planar]==0.4.3" ANYmesher==0.5.0 ANYfileio==0.3.3
 python -m pip check
 ```
 

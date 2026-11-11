@@ -28,7 +28,7 @@ python -m pip install -e C:\Github\ANYfeSolver
 
 ### Installation and migration
 
-`ANYfeSolver` 0.5 uses the independent `ANYfeSolver-results` 2.2 runtime, `ANYmaterial` 0.2, `ANYmesher` 0.4–0.5 and `ANYfileio` 0.3.2 or later in the 0.3 line. Install the results distribution alone for NumPy-only offline recovery. The [migration guide](MIGRATION.md) covers renamed Python imports and upgrades from `ANYsolver`.
+`ANYfeSolver` 0.5 uses the independent `ANYfeSolver-results` 2.2 runtime, `ANYmaterial` 0.2, `ANYmesher` 0.4–0.5 and `ANYfileio` 0.3.3 or later in the 0.3 line. Install the results distribution alone for NumPy-only offline recovery. The [migration guide](MIGRATION.md) covers renamed Python imports and upgrades from `ANYsolver`.
 
 For the marine-excitation or marine-morison extra, install the corresponding ecosystem sibling checkout before requesting the extra:
 

@@ -4,6 +4,8 @@
 
 ## 0.5.0 - release candidate
 
+- Require ANYfileio 0.3.3 or later in the 0.3 line for SESTRA shell stress
+  recovery from relabelled descriptors and reported rotation frames.
 - Rename the solver distribution and import to `ANYfeSolver` and `anyfesolver`.
   The separately installable results runtime is `ANYfeSolver-results` 2.2.0,
   imported as `anyfesolver_results`. See [the migration guide](MIGRATION.md)

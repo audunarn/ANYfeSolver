@@ -29,9 +29,10 @@ The supported historical wire formats (recovery capsule contracts v1 and v2)
 are intended to remain readable by the renamed results runtime. This packaging
 change does not itself test that; it is covered by the results tests run in CI.
 
-`ANYfeSolver` 0.5.0 requires `ANYfeSolver-results>=2.2,<3`. The other public
-solver dependency bands (numpy, scipy, threadpoolctl, ANYmaterial, ANYmesher,
-ANYfileio) and the optional extras are as declared in 0.4.7.
+`ANYfeSolver` 0.5.0 requires `ANYfeSolver-results>=2.2,<3` and
+`ANYfileio>=0.3.3,<0.4`. The SESTRA reader uses the stress component order
+and rotation frame reported in the file. The remaining solver dependency
+bands and optional extras follow 0.4.7.
 `ANYfeSolver-results` depends only on `numpy>=2.0`. Project URLs point to
 `https://github.com/audunarn/ANYfeSolver`.
 

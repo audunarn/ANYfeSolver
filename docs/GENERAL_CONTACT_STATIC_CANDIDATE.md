@@ -75,7 +75,7 @@ Two supported routes:
    virtual environment:
 
    ```text
-   python -m pip install --find-links wheelhouse -r requirements-tested.txt "ANYfeSolver[general-contact]==0.5.0+contact.candidate.20261111.s7" "ANYfeSolver-results==2.2.0" "ANYmaterial==0.2.0" "ANYgeometry[planar]==0.4.3" "ANYmesher==0.5.0" "ANYfileio==0.3.2"
+   python -m pip install --find-links wheelhouse -r requirements-tested.txt "ANYfeSolver[general-contact]==0.5.0+contact.candidate.20261111.s7" "ANYfeSolver-results==2.2.0" "ANYmaterial==0.2.0" "ANYgeometry[planar]==0.4.3" "ANYmesher==0.5.0" "ANYfileio==0.3.3"
    ```
 
    Numeric and Shapely dependencies resolve normally from their usual
