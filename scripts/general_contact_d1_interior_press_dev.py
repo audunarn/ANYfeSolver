@@ -767,7 +767,7 @@ def radial_linear_discriminator(output: Path, *, target_cells=4,
     from scipy import linalg, optimize
     from anyfesolver.assembly import build_constraint_transformation
     from anyfesolver.matrix_assembly import assemble_stiffness_matrix
-    from docs.d1_review_support.d1_two_body_reference_oracle import independent_gap_work
+    from scripts.d1_reference_gap_work import independent_gap_work
     started = time.perf_counter()
     model, definition, settings, program, reference, record = build_radial_guided_case(
         target_cells=target_cells, target_right_x_m=target_right_x_m)
@@ -1046,7 +1046,7 @@ def radial_source_bin_check(output: Path, saved_path: Path):
         raise FileExistsError(output)
     from dataclasses import asdict
     from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from docs.d1_review_support.d1_radial_source_bin_work import check_guided_source_bins
+    from scripts.d1_radial_source_bin_work import check_guided_source_bins
     from docs.d1_review_support.d1_radial_reference_observables import uniform_disk_pressure_observables
     from docs.d1_review_support.d1_radial_bin_assessment import assess_physical_source_bins
     started = time.perf_counter()

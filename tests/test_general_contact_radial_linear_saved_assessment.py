@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from docs.d1_review_support import d1_radial_linear_saved_assessment as assessment
+from fixtures import d1_radial_linear_saved_assessment as assessment
 from docs.d1_review_support.d1_radial_two_body_reference import RadialTwoBodyReference
 
 

@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from docs.reference_cases.ge_beam3_slender_spectrum_probe import comparison
+from fixtures.reference_cases.ge_beam3_slender_spectrum_probe import comparison
 from anyfesolver._ge_beam3_p5_loads.core import canonical
 
 

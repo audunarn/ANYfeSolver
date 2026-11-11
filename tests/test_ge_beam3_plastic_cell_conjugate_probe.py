@@ -4,7 +4,7 @@ import pytest
 from anyfesolver._ge_beam3_p5_seeded import NativeP5BeamElement
 from anyfesolver._ge_beam3_p5.section import SectionHistory
 from anyfesolver._ge_beam3_p5_seeded.core import canonical
-from docs.reference_cases.ge_beam3_plastic_cell_conjugate_probe import PlasticCellConjugate
+from fixtures.reference_cases.ge_beam3_plastic_cell_conjugate_probe import PlasticCellConjugate
 from test_ge_beam3_complementary_section import section
 from test_ge_beam3_curved_contrast_probe import make_curved
 
