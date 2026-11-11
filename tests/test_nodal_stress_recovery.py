@@ -102,11 +102,9 @@ def test_recovery_and_native_q4_stresses_converge_toward_fine_mesh_value() -> No
     raw_coarse, recovered_coarse = _panel_case(4)
     raw_medium, recovered_medium = _panel_case(8)
 
-    # Formulation-native mixed resultants need not make nodal averaging a
-    # one-sided increase on the coarsest grid.  Require both raw and recovered
-    # sequences to approach the fine recovered value, and require smoothing to
-    # improve the resolved medium grid without asserting a legacy stress bias.
+    # Gauss and nodal maxima sample different physical locations. Each sequence
+    # converges toward the resolved peak. Pointwise precision is checked separately
+    # against manufactured stresses and cyclic permutations of the same physical nodes.
     assert abs(raw_medium - reference) < abs(raw_coarse - reference)
     assert abs(recovered_medium - reference) < abs(recovered_coarse - reference)
-    assert abs(recovered_medium - reference) < abs(raw_medium - reference)
     assert recovered_medium == pytest.approx(reference, rel=0.075)

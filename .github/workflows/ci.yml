@@ -119,6 +119,22 @@ jobs:
           .ecosystem/ANYmesh .ecosystem/ANYfileIO
       - run: python -m pip install ./packages/results
       - run: python -m pip install -e ".[dev,numba]"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        if: matrix.shard-index == 0 && matrix.subshard-index == 0
+        with:
+          repository: audunarn/ANYsolid
+          ref: 06f3276d9207376316502aca651c3455db984104
+          path: .ecosystem/ANYsolid
+          persist-credentials: false
+      - name: One-way shell-driven solid and stress recovery
+        if: matrix.shard-index == 0 && matrix.subshard-index == 0
+        env:
+          OMP_NUM_THREADS: '1'
+          OPENBLAS_NUM_THREADS: '1'
+        run: |
+          python -m pip install ".ecosystem/ANYsolid[skfem]"
+          python -c "import anysolid.backend, skfem"
+          python -m pytest -q tests/test_solid_submodel.py tests/test_q4_nodal_stress_order.py tests/test_nodal_stress_recovery.py
       - name: Install Windows process-supervision dependency
         if: runner.os == 'Windows'
         run: python -m pip install pywin32
