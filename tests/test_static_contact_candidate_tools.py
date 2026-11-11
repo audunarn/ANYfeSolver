@@ -78,7 +78,7 @@ def test_config_recipe_is_complete_and_matches_the_checkout() -> None:
 
 
 IDENTITY_KEYS = {"status", "note", "predecessor", "candidate_version",
-                 "repo_version", "private_versions", "wheel_files"}
+                 "repo_version", "private_versions", "wheel_files", "sibling_refs"}
 PREDECESSOR_FILE = ROOT / "scripts" / "contact_candidate_slice2.json"
 
 
@@ -92,9 +92,8 @@ def test_successor_numerical_fields_equal_the_frozen_predecessor() -> None:
     assert CONFIG["predecessor"]["candidate_version"] == predecessor["candidate_version"]
     assert CONFIG["predecessor"]["authority_renewed"] is False
     assert CONFIG["predecessor"]["numerical_run_made"] is False
-    # Same key set; every non-identity field (pins, selectors, batches, stages,
-    # nodes, examples, caps, cross-host files/quantities/exact/bound, scales,
-    # sibling dirs and refs) is exactly equal.
+    # Numerical pins, selectors, caps and cross-host comparison fields retain
+    # the predecessor's exact values.
     assert set(CONFIG) - {"predecessor"} == set(predecessor)
     for key in sorted(set(predecessor) - IDENTITY_KEYS):
         assert CONFIG[key] == predecessor[key], key
@@ -103,8 +102,13 @@ def test_successor_numerical_fields_equal_the_frozen_predecessor() -> None:
     assert CONFIG["timeouts"] == dict(case_seconds=120,
                                       host_numerical_seconds=600,
                                       rss_limit_mib=953)
-    # Third-party private wheels keep the predecessor's versions and files.
-    for package in ("ANYmaterial", "ANYgeometry", "ANYmesher", "ANYfileio"):
+    assert predecessor["sibling_refs"]["ANYfileio"] == "db73950018e1c87dab0ca618c25c965030ba08ce"
+    assert CONFIG["sibling_refs"] == predecessor["sibling_refs"] | {
+        "ANYfileio": "fb11ea83656b427485f48fca9f7306c32658a672",
+    }
+    assert CONFIG["private_versions"]["ANYfileio"] == "0.3.3"
+    assert CONFIG["wheel_files"]["ANYfileio"] == "anyfileio-0.3.3-py3-none-any.whl"
+    for package in ("ANYmaterial", "ANYgeometry", "ANYmesher"):
         assert CONFIG["private_versions"][package] == \
             predecessor["private_versions"][package]
         assert CONFIG["wheel_files"][package] == predecessor["wheel_files"][package]
