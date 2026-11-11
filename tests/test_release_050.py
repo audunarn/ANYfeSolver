@@ -148,6 +148,11 @@ def test_license_files_and_inventory_agree() -> None:
     for group in solver["optional-dependencies"].values():
         declared.update(group)
     assert declared == recorded
+    solver_notice = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    assert all(f"`{requirement}`" in solver_notice for requirement in declared)
+    results = _project("packages/results/pyproject.toml")["project"]
+    results_notice = (ROOT / "packages/results/THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
+    assert all(f"`{requirement}`" in results_notice for requirement in results["dependencies"])
 
 
 def test_manifest_ships_native_source_and_release_note() -> None:

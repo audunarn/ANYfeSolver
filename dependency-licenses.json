@@ -113,6 +113,13 @@
       "status": "not-bundled"
     },
     {
+      "distribution": "setuptools",
+      "licence": "MIT",
+      "requirement": "setuptools>=77",
+      "scope": "development",
+      "status": "not-bundled"
+    },
+    {
       "distribution": "twine",
       "licence": "Apache-2.0",
       "requirement": "twine>=5",
