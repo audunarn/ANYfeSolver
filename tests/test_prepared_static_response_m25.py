@@ -184,9 +184,7 @@ def _clone_from_traceback(excinfo):
     return None
 
 
-@pytest.mark.parametrize('kind', ['q4_staged', 'q4_warped', 's3', 'q4_pressure', 's3_pressure'])
-def test_trusted_capture_runs_warmups_on_native_trusted_path(kind):
-    model, element, options, staged = _case(kind)
+def _capture_with_guard_counts(model, element, **options):
     # Original-input policy admission precedes the private clone/trusted span,
     # and final policy revalidation follows it. Account for both real guard
     # costs separately; every clone warm-up guard is still counted. This does
@@ -216,6 +214,13 @@ def test_trusted_capture_runs_warmups_on_native_trusted_path(kind):
     assert sys.getprofile() is previous_profile
     assert policy_depth == 0
     assert policy_calls == 2 * int(type(element) is Q4 and options.get('warm_stress', True))
+    return recipe, counts, policy_counts
+
+
+@pytest.mark.parametrize('kind', ['q4_staged', 'q4_warped', 's3', 'q4_pressure', 's3_pressure'])
+def test_trusted_capture_runs_warmups_on_native_trusted_path(kind):
+    model, element, options, staged = _case(kind)
+    recipe, counts, policy_counts = _capture_with_guard_counts(model, element, **options)
     if kind == 'q4_staged':
         assert _calls(policy_counts, 'post_observation_guard') > 0
     assert _calls(counts, 'post_observation_guard') == 0, counts
@@ -562,20 +567,25 @@ def test_error_inside_capture_span_matches_guarded_route_and_revokes(kind):
         with pytest.raises(ValueError) as trusted_error:
             _capture_owned_local_recovery(model, element)
         clone = _clone_from_traceback(trusted_error)
-        assert clone is not None and not _accepts(clone)  # the failed clone's lease was revoked
+        if kind == 'q4_staged':
+            # Original-input Q4 policy rejects collapsed diagonals before cloning.
+            assert clone is None and 'diagonals are degenerate' in str(trusted_error.value)
+        else:
+            assert clone is not None and not _accepts(clone)
         with _foreign_error_handler():
             with pytest.raises(ValueError) as guarded_error:
                 _capture_owned_local_recovery(model, element)
         assert (type(trusted_error.value), str(trusted_error.value)) == (type(guarded_error.value), str(guarded_error.value))
     finally:
         third.x, third.y, third.z = saved
-    _recipe, counts = _profiled(lambda: _capture_owned_local_recovery(model, element))
+    _recipe, counts, _policy_counts = _capture_with_guard_counts(model, element)
     assert _calls(counts, 'trusted_post_observation_guard') > 0 and _calls(counts, 'post_observation_guard') == 0
 
 
 @pytest.mark.parametrize('kind', ['q4_staged', 'q4_warped', 's3'])
-def test_cancellation_inside_capture_span_propagates_and_revokes(kind):
-    """A cancellation raised inside the span (injected at the stage compile) propagates
+@pytest.mark.parametrize('failure', [SolveCancelled, ValueError])
+def test_cancellation_inside_capture_span_propagates_and_revokes(kind, failure):
+    """An exception raised inside the span (injected at the stage compile) propagates
     unchanged, the clone's lease is revoked, and a later capture is trusted again."""
     model, element, _options, _staged = _case(kind)
     previous = sys.gettrace()
@@ -586,19 +596,19 @@ def test_cancellation_inside_capture_span_propagates_and_revokes(kind):
             caller = frame.f_back
             owned = caller.f_locals.get('owned_element') if caller is not None else None
             inside.append(owned is not None and _accepts(owned))
-            raise SolveCancelled('injected cancellation')
+            raise failure('injected capture failure')
         return None
 
     sys.settrace(tracer)
     try:
-        with pytest.raises(SolveCancelled, match='injected cancellation') as cancelled:
+        with pytest.raises(failure, match='injected capture failure') as cancelled:
             _capture_owned_local_recovery(model, element)
     finally:
         sys.settrace(previous)
     assert inside == [True]  # the cancellation was raised inside the trusted span
     clone = _clone_from_traceback(cancelled)
     assert clone is not None and not _accepts(clone)
-    _recipe, counts = _profiled(lambda: _capture_owned_local_recovery(model, element))
+    _recipe, counts, _policy_counts = _capture_with_guard_counts(model, element)
     assert _calls(counts, 'trusted_post_observation_guard') > 0 and _calls(counts, 'post_observation_guard') == 0
 
 

@@ -1,6 +1,8 @@
 """A stopped development run must retain its mechanical non-success."""
 
+import hashlib
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -96,6 +98,9 @@ def _fake_radial_fixture(monkeypatch):
 
 
 def test_radial_solver_exception_retains_input_identity(tmp_path, monkeypatch):
+    import anyfesolver
+    from anyfesolver.general_contact import semismooth_path
+
     _fake_radial_fixture(monkeypatch)
     def fail(*args, **kwargs):
         raise ValueError("injected geometry failure")
@@ -105,8 +110,15 @@ def test_radial_solver_exception_retains_input_identity(tmp_path, monkeypatch):
         runner.radial_solve(output)
     record = json.loads(output.read_text())
     assert record["status"] == "solver_exception"
-    assert record["changed_kernel_sha256"]["semismooth_path.py"]
+    assert record["failure_reason"] == "ValueError: injected geometry failure"
+    assert record["anyfesolver_module"] == str(Path(anyfesolver.__file__).resolve())
+    assert record["changed_kernel_sha256"]["semismooth_path.py"] == hashlib.sha256(
+        Path(semismooth_path.__file__).read_bytes()).hexdigest()
+    assert record["runner_sha256"] == hashlib.sha256(Path(runner.__file__).read_bytes()).hexdigest()
     assert record["restart_checkpoint"] is None
+    trace = [json.loads(line) for line in Path(record["scalar_trace"]).read_text().splitlines()]
+    assert [row["event"] for row in trace] == ["trace_begin", "trace_end"]
+    assert Path(trace[0]["imported_source"]).resolve() == Path(anyfesolver.__file__).resolve()
 
 
 def test_radial_postprocessing_failure_retains_mechanical_result(tmp_path, monkeypatch):

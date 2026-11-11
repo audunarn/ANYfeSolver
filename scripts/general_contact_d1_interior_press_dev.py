@@ -1121,7 +1121,7 @@ def radial_solve(output: Path, *, target_cells=4, target_right_x_m=1.3):
             for path in (Path(anyfesolver.__file__).parent / "general_contact").glob("*.py")},
         runner_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest())
     try:
-        from docs.d1_review_support.d1_radial_scalar_trace import radial_solver_trace
+        from scripts.d1_radial_scalar_trace import radial_solver_trace
         trace_path = output.with_suffix('.trace.jsonl')
         record['scalar_trace'] = str(trace_path)
         with radial_solver_trace(trace_path):

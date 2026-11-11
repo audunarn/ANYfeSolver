@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from anyfesolver.general_contact import semismooth_path as driver
 from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from docs.d1_review_support.d1_radial_scalar_trace import radial_solver_trace
+from scripts.d1_radial_scalar_trace import radial_solver_trace
 
 
 def test_scalar_trace_preserves_values_inputs_and_restores_after_exception(tmp_path):

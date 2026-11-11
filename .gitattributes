@@ -1070,3 +1070,4 @@ src/anyfesolver/fe_core.py -text whitespace=blank-at-eol,-blank-at-eof,space-bef
 # One exact candidate configuration is shared by both host checkouts.
 scripts/contact_candidate_slice2.json text eol=lf
 /tests/data/namespace_migration/*.json -text
+/scripts/contact_candidate_050.json text eol=lf
