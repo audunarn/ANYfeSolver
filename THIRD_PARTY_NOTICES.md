@@ -13,7 +13,7 @@ inventory is `dependency-licenses.json`.
 | ANYmaterial | `ANYmaterial>=0.2,<0.3` | MPL-2.0 | Runtime dependency; separately distributed |
 | ANYmesher | `ANYmesher>=0.4,<0.6` | MPL-2.0 | Runtime dependency; separately distributed |
 | ANYfileio | `ANYfileio>=0.3.3,<0.4` | MPL-2.0 | Runtime dependency; separately distributed |
-| ANYfeSolver-results | `ANYfeSolver-results>=2.2,<3` | MPL-2.0 | Runtime dependency |
+| ANYfeSolver-results | `ANYfeSolver-results==2.2.0a1` | MPL-2.0 | Runtime dependency |
 | ANYhydro | `ANYhydro>=0.1.0` | MPL-2.0 | Optional marine excitation dependency |
 | ANYloads | `ANYloads>=0.1.0` | MPL-2.0 | Optional marine Morison dependency |
 | ANYgeometry | `ANYgeometry>=0.4.3,<0.5` | MPL-2.0 | Optional general-contact dependency; separately distributed |

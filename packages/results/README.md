@@ -1,5 +1,7 @@
 # anyfesolver-results
 
+**Alpha preview.** This release introduces the renamed Python packages. The solver has open shell equilibrium and checkpoint replay failures. Use it for migration testing. [Verification results](https://github.com/audunarn/ANYfeSolver/actions/runs/43105722933).
+
 NumPy-only offline runtime for ANYfeSolver recovery capsules
 (`RUNTIME_ID = "anysolver-results/2"`, also supporting the legacy runtime1 contract).
 

@@ -32,9 +32,9 @@ from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
 SOLVER_NAME = "anyfesolver"
-SOLVER_VERSION = "0.5.0"
+SOLVER_VERSION = "0.5.0a1"
 RESULTS_NAME = "anyfesolver_results"
-RESULTS_VERSION = "2.2.0"
+RESULTS_VERSION = "2.2.0a1"
 TIMEOUT_SECONDS = 900
 PROBE_TIMEOUT_SECONDS = 180
 LICENSE_FILES = {"LICENSE", "COPYRIGHT", "THIRD_PARTY_NOTICES.md"}
@@ -50,7 +50,7 @@ EXPECTED_SOLVER_REQUIRES = {
     "anymaterial": frozenset({">=0.2", "<0.3"}),
     "anymesher": frozenset({">=0.4", "<0.6"}),
     "anyfileio": frozenset({">=0.3.3", "<0.4"}),
-    "anyfesolver-results": frozenset({">=2.2", "<3"}),
+    "anyfesolver-results": frozenset({"==2.2.0a1"}),
 }
 EXPECTED_RESULTS_REQUIRES = {"numpy": frozenset({">=2.0"})}
 SOLVER_DOCS = {
@@ -368,9 +368,9 @@ import anyfesolver, anyfesolver_results
 for module in (anyfesolver, anyfesolver_results):
     if site not in pathlib.Path(module.__file__).resolve().parents:
         raise RuntimeError("installed origin mismatch: " + module.__name__)
-if anyfesolver.__version__ != "0.5.0" or metadata.version("ANYfeSolver") != "0.5.0":
+if anyfesolver.__version__ != "0.5.0a1" or metadata.version("ANYfeSolver") != "0.5.0a1":
     raise RuntimeError("solver version mismatch")
-if metadata.version("ANYfeSolver-results") != "2.2.0":
+if metadata.version("ANYfeSolver-results") != "2.2.0a1":
     raise RuntimeError("results version mismatch")
 for old in ("anysolver", "anysolver_results"):
     try:

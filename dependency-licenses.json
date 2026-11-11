@@ -45,7 +45,7 @@
     {
       "distribution": "ANYfeSolver-results",
       "licence": "MPL-2.0",
-      "requirement": "ANYfeSolver-results>=2.2,<3",
+      "requirement": "ANYfeSolver-results==2.2.0a1",
       "scope": "runtime",
       "status": "not-bundled"
     },
@@ -129,6 +129,6 @@
   ],
   "project": "ANYfeSolver",
   "project_licence": "MPL-2.0",
-  "release": "0.5.0",
+  "release": "0.5.0a1",
   "schema": "anyfesolver.dependency-licences-v1"
 }

@@ -534,7 +534,7 @@ from .sesam_fem import (
     write_sesam_fem_document,
 )
 
-__version__ = "0.5.0"
+__version__ = "0.5.0a1"
 
 __all__ = [
     "RigidCappedCylinder",

@@ -1,5 +1,7 @@
 # ANYfeSolver finite-element solver
 
+**Alpha preview.** This release introduces the renamed Python packages. The solver has open shell equilibrium and checkpoint replay failures. Use it for migration testing. [Verification results](https://github.com/audunarn/ANYfeSolver/actions/runs/43105722933).
+
 `anyfesolver` is a headless structural FE solver for beam,
 shell, stiffened-panel, and cylindrical-shell analysis. It is an engineering
 solver with an explicit qualification scope, not a general-purpose CAD,

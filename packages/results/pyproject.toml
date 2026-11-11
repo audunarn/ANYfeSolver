@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ANYfeSolver-results"
-version = "2.2.0"
+version = "2.2.0a1"
 description = "NumPy-only offline runtime for ANYfeSolver recovery capsules"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -14,7 +14,7 @@ authors = [
   { name = "Audun Arnesen Nyhus", email = "audunarn@gmail.com" },
 ]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 3 - Alpha",
   "Intended Audience :: Science/Research",
   "Programming Language :: Python :: 3",
   "Topic :: Scientific/Engineering",
