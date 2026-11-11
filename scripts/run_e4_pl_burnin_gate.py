@@ -1248,8 +1248,11 @@ def validate_gate_result(
     candidate = _exact_keys(
         record["candidate"], {"clean", "commit", "repository", "tree"}, "$.candidate"
     )
-    if candidate["repository"] != "ANYfeSolver":
-        raise EvidenceError("$.candidate.repository must be ANYfeSolver")
+    contract_identity = _sha256_bytes(canonical_json_bytes(contract))
+    historical_cycle = contract_identity in _HISTORICAL_CONTRACT_IDENTITIES
+    expected_repository = "ANYsolver" if historical_cycle else "ANYfeSolver"
+    if candidate["repository"] != expected_repository:
+        raise EvidenceError(f"$.candidate.repository must be {expected_repository}")
     if not _require_bool(candidate["clean"], "$.candidate.clean"):
         raise EvidenceError("the candidate repository must be clean")
     _require_match(candidate["commit"], GIT_OBJECT_RE, "$.candidate.commit")
@@ -1333,10 +1336,9 @@ def validate_gate_result(
         raise EvidenceError("resource request lanes are incomplete")
 
     lanes = _exact_keys(record["lanes"], set(GATE_LANES), "$.lanes")
-    contract_identity = _sha256_bytes(canonical_json_bytes(contract))
     historical_inventory_authority = (
         _HISTORICAL_INVENTORY_IDENTITIES
-        if contract_identity in _HISTORICAL_CONTRACT_IDENTITIES
+        if historical_cycle
         else None
     )
     expected_inventories = (

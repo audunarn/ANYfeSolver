@@ -1,10 +1,11 @@
 """Eight ordered, bounded G6 scientific evidence routes."""
 from hashlib import sha256
-import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import numpy as np
+
+from scripts import audit_beam_parity_matrix as parity
 
 from anyfesolver import (
     AnalysisSession, BoundaryCondition, FEModel, FixedSupport, LoadCase,
@@ -38,11 +39,15 @@ def _record(route, **checks):
 
 
 def test_01_complete_parity_register_is_source_and_evidence_bound():
-    matrix = json.loads((ROOT / "docs/reference_cases/ge_beam3_legacy_parity_matrix_v1.json").read_text())
+    matrix = parity.strict((ROOT / parity.MATRIX).read_bytes())
+    parity.validate_rows(matrix)
     assert [row["id"] for row in matrix["rows"]] == [
         *[f"P{i:02d}" for i in range(1, 33)], *[f"U{i:02d}" for i in range(1, 11)]
     ]
-    assert all((ROOT / source).is_file() for row in matrix["rows"] for source in row["sources"])
+    for row in matrix["rows"]:
+        for source in row["sources"]:
+            relative = PurePosixPath(source).relative_to("src/anysolver")
+            assert (ROOT / "src/anyfesolver" / relative).is_file(), source
     accepted = [ROOT / "docs/reference_cases" / name for name in (
         "ge_beam3_g5_completion_confirmation_v1.json",
         "ge_beam3_g5_completion_confirmation_review_v1.json",

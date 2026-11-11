@@ -310,13 +310,14 @@ def test_burn_in_contract_and_runtime_diagnostics_are_aligned() -> None:
         ],
         "success_commit_subject": "docs: record E4 PL Q1M clean burn-in gate 1",
     }
+    # The recorded repository identities belong to the original burn-in contract.
     assert contract["repository_cleanliness"] == {
         "ANYfem": "FULLY_CLEAN_INCLUDING_UNTRACKED",
         "ANYfileIO": "TRACKED_AND_INDEX_CLEAN_HEAD_ARCHIVE_UNTRACKED_EXCLUDED",
         "ANYgeometry": "TRACKED_AND_INDEX_CLEAN_HEAD_ARCHIVE_UNTRACKED_EXCLUDED",
         "ANYmaterial": "TRACKED_AND_INDEX_CLEAN_HEAD_ARCHIVE_UNTRACKED_EXCLUDED",
         "ANYmesh": "TRACKED_AND_INDEX_CLEAN_HEAD_ARCHIVE_UNTRACKED_EXCLUDED",
-        "ANYfeSolver": "FULLY_CLEAN_INCLUDING_UNTRACKED",
+        "ANYsolver": "FULLY_CLEAN_INCLUDING_UNTRACKED",
     }
     assert contract["sibling_authority"] == {
         "ANYfem": {
@@ -1535,7 +1536,20 @@ def test_blocked_cycles_remain_verifiable_under_immutable_authority() -> None:
             row["request_id"] for row in blocked_gate["resource_requests"]
         )
 
+    # A current repository name cannot authenticate a sealed record, and a
+    # modified authority cannot opt into the historical repository identity.
+    historical_contract = gate.strict_json_load(authority_path)
+    wrong_repository = copy.deepcopy(blocked_gate)
+    wrong_repository["candidate"]["repository"] = "ANYfeSolver"
+    with pytest.raises(gate.EvidenceError, match="candidate.repository must be ANYsolver"):
+        gate.validate_gate_result(wrong_repository, contract=historical_contract)
+    mutated_contract = dict(historical_contract, default="changed")
+    with pytest.raises(gate.EvidenceError, match="candidate.repository must be ANYfeSolver"):
+        gate.validate_gate_result(blocked_gate, contract=mutated_contract)
+
     live_contract = gate.strict_json_load(CONTRACT)
+    with pytest.raises(gate.EvidenceError, match="candidate.repository must be ANYfeSolver"):
+        gate.validate_gate_result(blocked_gate, contract=live_contract)
     live_request_ids = {
         authority["request_id"]
         for authority in live_contract["resource_requests"].values()
