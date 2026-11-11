@@ -139,13 +139,11 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
         with:
           repository-url: https://test.pypi.org/legacy/
-          packages-dir: dist/results
-          skip-existing: true
+          packages-dir: dist/results/
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
         with:
           repository-url: https://test.pypi.org/legacy/
-          packages-dir: dist/solver
-          skip-existing: true
+          packages-dir: dist/solver/
 
   alpha-publish:
     needs: alpha-stage
@@ -179,7 +177,7 @@ jobs:
           PY
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
         with:
-          packages-dir: dist/results
+          packages-dir: dist/results/
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
         with:
-          packages-dir: dist/solver
+          packages-dir: dist/solver/
