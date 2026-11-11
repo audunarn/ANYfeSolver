@@ -2,11 +2,17 @@ name: Publish
 
 on:
   workflow_dispatch:
+    inputs:
+      renamed_alpha:
+        description: Publish the four verified 0.5.0a1 and 2.2.0a1 preview artifacts
+        type: boolean
+        default: false
   release:
     types: [published]
 
 jobs:
   license-gate:
+    if: inputs.renamed_alpha != true && github.ref != 'refs/tags/v0.5.0a1'
     name: Verify release licensing
     runs-on: ubuntu-latest
     steps:
@@ -19,6 +25,7 @@ jobs:
       - run: python scripts/check_license_compliance.py
 
   dependency-gate:
+    if: inputs.renamed_alpha != true && github.ref != 'refs/tags/v0.5.0a1'
     name: Verify production sibling releases
     runs-on: ubuntu-latest
     steps:
@@ -100,3 +107,79 @@ jobs:
           name: python-package-distributions
           path: dist/
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
+
+  alpha-stage:
+    if: github.event_name == 'workflow_dispatch' && inputs.renamed_alpha && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Fetch the reviewed alpha artifacts and verify every digest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          gh release download v0.5.0a1 --repo "$GITHUB_REPOSITORY" -p '*.whl' -p '*.tar.gz'
+          test "$(ls -1 *.whl *.tar.gz | wc -l)" -eq 4
+          sha256sum -c <<'DIGESTS'
+          3e68fa5d570bde63ddb716e7bbc90f5f56f5bde824609944165c7aff92239bfd  anyfesolver_results-2.2.0a1-py3-none-any.whl
+          58ceb79bb5d38bbb54071865ad016c762aed820a71831ddf5b3512b2166bac00  anyfesolver_results-2.2.0a1.tar.gz
+          df5b685874d7e3c889af42e7267e946d17febc5abd35ac4b2f4f97df82a3fa4a  anyfesolver-0.5.0a1-py3-none-any.whl
+          ce6f877fec1330f2ba664bfabd46303a4dbfeb87ee17d05a0a9cd412fdc68deb  anyfesolver-0.5.0a1.tar.gz
+          DIGESTS
+          mkdir -p dist/results dist/solver
+          mv anyfesolver_results-* dist/results/
+          mv anyfesolver-* dist/solver/
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: verified-alpha
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist/results
+          skip-existing: true
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist/solver
+          skip-existing: true
+
+  alpha-publish:
+    needs: alpha-stage
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: verified-alpha
+          path: dist
+      - name: Verify TestPyPI serves the identical four files
+        run: |
+          python - <<'PY'
+          import hashlib, json, pathlib, time, urllib.request
+          for folder, project, version in [('results','ANYfeSolver-results','2.2.0a1'),('solver','ANYfeSolver','0.5.0a1')]:
+              expected = {p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in pathlib.Path('dist',folder).iterdir()}
+              assert len(expected) == 2
+              for attempt in range(8):
+                  try:
+                      with urllib.request.urlopen(f'https://test.pypi.org/pypi/{project}/{version}/json',timeout=15) as response:
+                          files = json.load(response)['urls']
+                      if {f['filename']:f['digests']['sha256'] for f in files} == expected:
+                          break
+                  except OSError:
+                      pass
+                  time.sleep(5)
+              else:
+                  raise SystemExit(f'TestPyPI hashes failed for {project}')
+          PY
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
+        with:
+          packages-dir: dist/results
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
+        with:
+          packages-dir: dist/solver
