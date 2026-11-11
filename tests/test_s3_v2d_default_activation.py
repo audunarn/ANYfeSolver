@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import copy
 import hashlib
 import json
@@ -193,7 +194,85 @@ def _git_blob(path: Path) -> str:
     return hashlib.sha1(f"blob {len(data)}\0".encode("ascii") + data).hexdigest()
 
 
-def test_activation_candidate_binds_accepted_v6w_and_unchanged_q4() -> None:
+Q4_SOURCE_BINDING_SUCCESSOR = (
+    ROOT / "docs" / "reference_cases" / "e4_pl_source_binding_20261111.json"
+)
+MANIFEST_TEST = ROOT / "tests" / "test_e4_pl_s3_mixed_mesh_manifest.py"
+
+
+def _adopted_successor_pin() -> str | None:
+    """Single source of truth: the pin assigned in the mixed-mesh manifest test."""
+
+    for node in ast.parse(MANIFEST_TEST.read_text(encoding="utf-8")).body:
+        if (
+            isinstance(node, ast.AnnAssign)
+            and isinstance(node.target, ast.Name)
+            and node.target.id == "Q4_SOURCE_BINDING_SUCCESSOR_SHA256"
+        ):
+            return ast.literal_eval(node.value)
+    raise AssertionError("successor pin assignment not found")
+
+
+def _q4_source_binding_successor() -> dict[str, object]:
+    pin = _adopted_successor_pin()
+    if pin is None:
+        pytest.fail(
+            "source-binding successor is not adopted: run "
+            "scripts/build_q4_source_binding_20261111.py --write, obtain independent "
+            "review outside the generating invocation, then pin it in "
+            "tests/test_e4_pl_s3_mixed_mesh_manifest.py",
+            pytrace=False,
+        )
+    raw = Q4_SOURCE_BINDING_SUCCESSOR.read_bytes()
+    assert hashlib.sha256(raw).hexdigest().upper() == pin
+    payload = json.loads(raw, object_pairs_hook=_strict_object)
+    assert payload["qualification_boundary"] == (
+        "SOURCE_BINDING_ONLY_NOT_SCIENTIFIC_QUALIFICATION"
+    )
+    assert all(value is False for value in payload["boundary_flags"].values())
+    return payload
+
+
+def _assert_live_sources_bound_through_successor(
+    q4_blob: str, s3_blob: str, runtime_successor: dict[str, object]
+) -> None:
+    """The V6 terminal blobs are historical; live bytes bind via the successor.
+
+    This is a mechanics-CHANGED link (October 23 assumed-strain work lies between
+    the runtime-guard terminal and the live source).  It does not extend the
+    terminal's "mechanics unchanged" assertion and grants no qualification.
+    """
+
+    record = _q4_source_binding_successor()
+    change = runtime_successor["change"]
+    for name, live_blob, key in (
+        ("e4_pl_element.py", q4_blob, "e4_pl_element"),
+        ("e4_pl_s3_element.py", s3_blob, "e4_pl_s3_element"),
+    ):
+        row = record["carriers"][name]
+        assert row["live_path"] == f"src/anyfesolver/{name}"
+        assert row["live_lf"]["git_blob"] == live_blob
+        assert row["v6_terminal_git_blob"] == change[key]["current_git_blob"]
+        assert row["live_lf_equals_v6_terminal"] is (
+            live_blob == change[key]["current_git_blob"]
+        )
+    link = record["links"]["L1_OCT19_AND_V6_TERMINAL_TO_QUALIFIED_Q4_R4"]
+    assert link["mechanics_changed"] is True
+    assert link["v6_terminal_mechanics_unchanged_claim_extended"] is False
+
+
+def test_successor_link_rejects_wrong_live_blob_and_unadopted_pin() -> None:
+    runtime_successor = _qualified_shell_runtime_guard_successor()
+    q4 = _git_blob(ROOT / "src" / "anyfesolver" / "e4_pl_element.py")
+    s3 = _git_blob(ROOT / "src" / "anyfesolver" / "e4_pl_s3_element.py")
+    _assert_live_sources_bound_through_successor(q4, s3, runtime_successor)
+    with pytest.raises(AssertionError):
+        _assert_live_sources_bound_through_successor("0" * 40, s3, runtime_successor)
+    with pytest.raises(AssertionError):
+        _assert_live_sources_bound_through_successor(q4, "0" * 40, runtime_successor)
+
+
+def test_activation_candidate_binds_accepted_v6w_and_historical_q4_terminal() -> None:
     raw = ACTIVATION.read_bytes()
     payload = json.loads(raw, object_pairs_hook=_strict_object)
     assert raw == (
@@ -220,10 +299,7 @@ def test_activation_candidate_binds_accepted_v6w_and_unchanged_q4() -> None:
     assert successor["correction"]["e4_pl_element_blob"] == runtime_successor[
         "change"
     ]["e4_pl_element"]["prior_git_blob"]
-    assert q4_blob == runtime_successor["change"]["e4_pl_element"]["current_git_blob"]
-    assert s3_blob == runtime_successor["change"]["e4_pl_s3_element"][
-        "current_git_blob"
-    ]
+    _assert_live_sources_bound_through_successor(q4_blob, s3_blob, runtime_successor)
     assert runtime_successor["qualification_boundary"][
         "mechanics_coefficients_or_operators_changed"
     ] is False
@@ -269,10 +345,7 @@ def test_integration_repair_preserves_qualification_and_q4_boundary() -> None:
     assert successor["correction"]["e4_pl_element_blob"] == runtime_successor[
         "change"
     ]["e4_pl_element"]["prior_git_blob"]
-    assert q4_blob == runtime_successor["change"]["e4_pl_element"]["current_git_blob"]
-    assert s3_blob == runtime_successor["change"]["e4_pl_s3_element"][
-        "current_git_blob"
-    ]
+    _assert_live_sources_bound_through_successor(q4_blob, s3_blob, runtime_successor)
     assert runtime_successor["qualification_boundary"][
         "mechanics_coefficients_or_operators_changed"
     ] is False

@@ -1,0 +1,1333 @@
+{
+  "C5_exception_transfer": false,
+  "CI_credit": false,
+  "external_arithmetic_dependencies": {
+    "_elastic_increment_module": {
+      "changed_this_slice": false,
+      "path": "src/anysolver/vectorized_nonlinear.py",
+      "sha256": "0510b93c71353c1631c642cc044dd93007fc16041a17c3543e752dc1e1264649",
+      "used_attributes": [
+        "compensated_elastic_batch_zero",
+        "elastic_shell_nonlinear_increment"
+      ]
+    },
+    "_elements_module": {
+      "changed_this_slice": false,
+      "path": "src/anysolver/elements.py",
+      "sha256": "fb3a3d82c0eb5b490399a6a856292389b26041b2937e55c33450f6cd1cf1285e",
+      "used_attributes": [
+        "_compensated_elastic_zero_tangent"
+      ]
+    },
+    "_local_contractions": {
+      "changed_this_slice": false,
+      "path": "src/anysolver/_compensated_contractions.py",
+      "sha256": "abed2ce18536e4854896c762c6c9745fcce63568a87f327f79821cb94d1d37bc",
+      "used_attributes": [
+        "product",
+        "sum_arrays",
+        "weighted_sum"
+      ]
+    }
+  },
+  "historical_authorities": {
+    "docs/reference_cases/e4_pl_q4_0_4_1_replay_hotfix.json": "A8ED4F41A6D609579F46B166909168CA795A7E7C38381DF0067964D908CE7340",
+    "docs/reference_cases/e4_pl_q4_0_4_2_replay_canonicalization.json": "C210BE974874D582D79B42D68FF27DFB3443FB3C690FC3D3BA58B03363953259",
+    "docs/reference_cases/e4_pl_s3_mixed_mesh_qualification_contract.json": "3F933786A334A876C1B53EF90891237F18C0970DE6B95F885CF5B775791E0A99"
+  },
+  "historical_current_source_matches": false,
+  "historical_difference": {
+    "added_symbols": [
+      "QualifiedE4PLShellElement._defining_class_input_snapshot_matches",
+      "QualifiedE4PLShellElement._elastic_increment_admitted",
+      "QualifiedE4PLShellElement._elastic_increment_response",
+      "QualifiedE4PLShellElement._is_compact_batch_constitutive_state",
+      "QualifiedE4PLShellElement._nonlinear_response_core",
+      "_Q4FastInputSnapshot",
+      "_Q4_COMPACT_REPLAY_MAX_ULPS",
+      "_Q4_FAST_COORDINATE_FLOAT64_TYPE",
+      "_Q4_FAST_ELEMENT_INPUT_NAMES",
+      "_Q4_FAST_ELEMENT_ITEMGETTER",
+      "_Q4_FAST_FORBIDDEN_INSTANCE_SHADOWS",
+      "_Q4_FAST_FORBIDDEN_MATERIAL_SHADOWS",
+      "_Q4_FAST_FORBIDDEN_MESH_SHADOWS",
+      "_Q4_FAST_MATERIAL_CLASS_ITEMGETTER",
+      "_Q4_FAST_MATERIAL_CLASS_NAMES",
+      "_Q4_FAST_MATERIAL_CLASS_VALUES",
+      "_Q4_FAST_MATERIAL_INPUT_NAMES",
+      "_Q4_FAST_MATERIAL_ITEMGETTER",
+      "_Q4_FAST_MATERIAL_TYPE",
+      "_Q4_FAST_MESH_TYPE",
+      "_Q4_FAST_NODE_ITEMGETTER",
+      "_Q4_FAST_NODE_TYPE",
+      "_Q4_FAST_OWNED_MESH_DERIVED_KEYS",
+      "_Q4_FAST_STATE_MAPPING_TYPE",
+      "_Q4_FAST_TOKEN_TYPE",
+      "_capture_q4_fast_array_authority",
+      "_capture_q4_fast_input_snapshot",
+      "_q4_compact_replay_last_place_equivalent",
+      "_require_q4_fast_array_authority",
+      "_require_q4_fast_base_authority"
+    ],
+    "changed_symbols": [
+      "QualifiedE4PLShellElement._compute_committed_current_tangent_components_unchecked",
+      "QualifiedE4PLShellElement._recover_planar_mixed_fields",
+      "QualifiedE4PLShellElement._replay_accepted_algorithmic_response",
+      "QualifiedE4PLShellElement.compute_nonlinear_response",
+      "QualifiedE4PLShellElement.compute_stiffness_components",
+      "QualifiedE4PLShellElement.compute_stresses",
+      "_stationary_blocks"
+    ],
+    "removed_symbols": []
+  },
+  "mechanics": {
+    "edges": {
+      "DIRECTOR_POLARITY_POLICY_ID": [],
+      "DIRECTOR_REVERSAL_TRANSFORM_ID": [],
+      "FORMULATION_ID": [],
+      "IMPLEMENTATION_ID": [],
+      "Q4_ACTIVITY_DISPOSITION_SCHEMA_ID": [],
+      "Q4_CURRENT_STATE_ALGORITHMIC_ORIGIN_SCHEMA_ID": [],
+      "Q4_CURRENT_STATE_BINDING_SCHEMA_ID": [],
+      "Q4_CURRENT_STATE_PROJECTION_POLICY_ID": [],
+      "Q4_CURRENT_STATE_TANGENT_DECOMPOSITION_POLICY_ID": [],
+      "Q4_DELETED_FROZEN_POLICY_ID": [],
+      "Q4_FAILED_STATE_POLICY_ID": [],
+      "Q4_QUADRATURE_AUTHORITY_ID": [],
+      "QualifiedE4PLShellElement.GAUSS_POINTS_1x1": [
+        "_Q4_QUADRATURE_CLASS_ARRAY_AUTHORITY"
+      ],
+      "QualifiedE4PLShellElement.GAUSS_POINTS_2x2": [
+        "_Q4_QUADRATURE_CLASS_ARRAY_AUTHORITY"
+      ],
+      "QualifiedE4PLShellElement.GAUSS_WEIGHTS_1x1": [
+        "_Q4_QUADRATURE_CLASS_ARRAY_AUTHORITY"
+      ],
+      "QualifiedE4PLShellElement.GAUSS_WEIGHTS_2x2": [
+        "_Q4_QUADRATURE_CLASS_ARRAY_AUTHORITY"
+      ],
+      "QualifiedE4PLShellElement._MITC4_SAMPLE_POINTS": [],
+      "QualifiedE4PLShellElement._accepted_algorithmic_update_fingerprint": [
+        "QualifiedE4PLShellElement._validated_algorithmic_origin",
+        "_Q4_CURRENT_STATE_ALGORITHMIC_ORIGIN_KEY",
+        "_qualified_q4_layer_count"
+      ],
+      "QualifiedE4PLShellElement._algorithmic_origin_payload": [
+        "Q4_CURRENT_STATE_ALGORITHMIC_ORIGIN_SCHEMA_ID",
+        "QualifiedE4PLShellElement._requires_algorithmic_return_map_origin",
+        "_qualified_q4_layer_count"
+      ],
+      "QualifiedE4PLShellElement._bind_qualified_component_guard": [
+        "Q4_QUADRATURE_AUTHORITY_ID"
+      ],
+      "QualifiedE4PLShellElement._committed_current_binding_payload": [
+        "Q4_CURRENT_STATE_ALGORITHMIC_ORIGIN_SCHEMA_ID",
+        "Q4_CURRENT_STATE_BINDING_SCHEMA_ID",
+        "Q4_CURRENT_STATE_PROJECTION_POLICY_ID",
+        "Q4_CURRENT_STATE_TANGENT_DECOMPOSITION_POLICY_ID",
+        "QualifiedE4PLShellElement._accepted_algorithmic_update_fingerprint",
+        "QualifiedE4PLShellElement._stable_state_identity_payload",
+        "_binary64_vector_fingerprint",
+        "_q4_state_payload"
+      ],
+      "QualifiedE4PLShellElement._compute_committed_current_tangent_components_unchecked": [
+        "Q4_CURRENT_STATE_ALGORITHMIC_ORIGIN_SCHEMA_ID",
+        "Q4_CURRENT_STATE_PROJECTION_POLICY_ID",
+        "Q4_CURRENT_STATE_TANGENT_DECOMPOSITION_POLICY_ID",
+        "QualifiedE4PLShellElement._elastic_increment_response",
+        "QualifiedE4PLShellElement._qualified_linear_correction",
+        "QualifiedE4PLShellElement._replay_accepted_algorithmic_response",
+        "QualifiedE4PLShellElement.validate_committed_current_tangent_state",
+        "_qualified_q4_layer_count"
+      ],
+      "QualifiedE4PLShellElement._constitutive_and_drill_stiffness": [
+        "QualifiedE4PLShellElement._generalized_section_in_frame"
+      ],
+      "QualifiedE4PLShellElement._current_state_cache_transaction": [],
+      "QualifiedE4PLShellElement._defining_class_input_snapshot_matches": [
+        "_Q4FastInputSnapshot",
+        "_Q4_FAST_COORDINATE_FLOAT64_TYPE",
+        "_Q4_FAST_ELEMENT_ITEMGETTER",
+        "_Q4_FAST_FORBIDDEN_MESH_SHADOWS",
+        "_Q4_FAST_MATERIAL_ITEMGETTER",
+        "_Q4_FAST_MATERIAL_TYPE",
+        "_Q4_FAST_MESH_TYPE",
+        "_Q4_FAST_NODE_ITEMGETTER",
+        "_Q4_FAST_NODE_TYPE",
+        "_Q4_FAST_STATE_MAPPING_TYPE",
+        "_Q4_FAST_TOKEN_TYPE"
+      ],
+      "QualifiedE4PLShellElement._elastic_increment_admitted": [
+        "QualifiedE4PLShellElement._defining_class_input_snapshot_matches",
+        "QualifiedE4PLShellElement.get_node_coordinates",
+        "_Q4_FAST_MATERIAL_TYPE",
+        "_Q4_FAST_MESH_TYPE",
+        "_Q4_INITIAL_STATE_KEYS",
+        "_capture_q4_fast_input_snapshot",
+        "_require_q4_fast_base_authority",
+        "equation7_frame"
+      ],
+      "QualifiedE4PLShellElement._elastic_increment_response": [
+        "QualifiedE4PLShellElement._defining_class_input_snapshot_matches",
+        "QualifiedE4PLShellElement._elastic_increment_admitted",
+        "QualifiedE4PLShellElement._nonlinear_geometry",
+        "QualifiedE4PLShellElement._validate_qualified_component_guard",
+        "QualifiedE4PLShellElement.compute_stiffness_matrix",
+        "_capture_q4_fast_input_snapshot"
+      ],
+      "QualifiedE4PLShellElement._generalized_section_in_frame": [
+        "QualifiedE4PLShellElement._physical_director_context"
+      ],
+      "QualifiedE4PLShellElement._inverse_planar_jacobian": [
+        "_characteristic_length"
+      ],
+      "QualifiedE4PLShellElement._is_compact_batch_constitutive_state": [
+        "_Q4_ACTIVITY_DISPOSITION_KEY",
+        "_Q4_CURRENT_STATE_ALGORITHMIC_ORIGIN_KEY",
+        "_Q4_CURRENT_STATE_BINDING_KEY",
+        "_Q4_CURRENT_STATE_DIGEST_KEY"
+      ],
+      "QualifiedE4PLShellElement._local_frame_and_derivatives": [
+        "_QUALIFIED_Q4_BASE_LOCAL_FRAME_KERNEL",
+        "_characteristic_length",
+        "_normalize"
+      ],
+      "QualifiedE4PLShellElement._mitc4_shear_b_matrix": [
+        "QualifiedE4PLShellElement._inverse_planar_jacobian",
+        "_QUALIFIED_Q4_BASE_MITC4_SHEAR_KERNEL",
+        "_characteristic_length"
+      ],
+      "QualifiedE4PLShellElement._nonlinear_geometry": [
+        "Q4_QUADRATURE_AUTHORITY_ID",
+        "QualifiedE4PLShellElement.GAUSS_POINTS_2x2",
+        "QualifiedE4PLShellElement.GAUSS_WEIGHTS_2x2",
+        "QualifiedE4PLShellElement._inverse_planar_jacobian",
+        "QualifiedE4PLShellElement._mitc4_shear_b_matrix",
+        "QualifiedE4PLShellElement.get_node_coordinates",
+        "_QUALIFIED_Q4_BASE_NONLINEAR_GEOMETRY",
+        "_freeze_qualified_component_cache",
+        "_validate_q4_quadrature_authority"
+      ],
+      "QualifiedE4PLShellElement._nonlinear_response_core": [
+        "QualifiedE4PLShellElement._elastic_increment_response",
+        "QualifiedE4PLShellElement._qualified_linear_correction",
+        "QualifiedE4PLShellElement.attach_current_tangent_algorithmic_origin",
+        "_QUALIFIED_Q4_BASE_NONLINEAR_KERNEL",
+        "_qualified_q4_layer_count",
+        "_validate_q4_quadrature_authority"
+      ],
+      "QualifiedE4PLShellElement._physical_director_context": [
+        "QualifiedE4PLShellElement.physical_reference_director"
+      ],
+      "QualifiedE4PLShellElement._qualified_linear_correction": [
+        "QualifiedE4PLShellElement.compute_stiffness_matrix",
+        "QualifiedE4PLShellElement.get_node_coordinates",
+        "_QUALIFIED_Q4_BASE_NONLINEAR_KERNEL",
+        "equation7_frame"
+      ],
+      "QualifiedE4PLShellElement._qualified_stiffness_cache_key": [
+        "DIRECTOR_POLARITY_POLICY_ID",
+        "DIRECTOR_REVERSAL_TRANSFORM_ID",
+        "IMPLEMENTATION_ID",
+        "QualifiedE4PLShellElement.get_node_coordinates",
+        "RECOVERY_POLICY_ID"
+      ],
+      "QualifiedE4PLShellElement._recover_planar_mixed_fields": [
+        "QualifiedE4PLShellElement._constitutive_and_drill_stiffness",
+        "QualifiedE4PLShellElement._elastic_increment_admitted",
+        "QualifiedE4PLShellElement.get_node_coordinates",
+        "_GAUSS",
+        "_coefficients",
+        "_compatible",
+        "_global_transform",
+        "_jacobian",
+        "_local_jacobian_scale",
+        "_solve_stationary_system",
+        "_source_fields",
+        "_stationary_blocks",
+        "equation7_frame"
+      ],
+      "QualifiedE4PLShellElement._recover_warped_generalized_section": [
+        "DIRECTOR_POLARITY_POLICY_ID",
+        "DIRECTOR_REVERSAL_TRANSFORM_ID",
+        "IMPLEMENTATION_ID",
+        "QualifiedE4PLShellElement._local_frame_and_derivatives",
+        "QualifiedE4PLShellElement._physical_director_context",
+        "QualifiedE4PLShellElement.get_node_coordinates",
+        "RECOVERY_POLICY_ID"
+      ],
+      "QualifiedE4PLShellElement._recover_warped_homogeneous_section": [
+        "DIRECTOR_POLARITY_POLICY_ID",
+        "DIRECTOR_REVERSAL_TRANSFORM_ID",
+        "IMPLEMENTATION_ID",
+        "QualifiedE4PLShellElement._local_frame_and_derivatives",
+        "QualifiedE4PLShellElement._physical_director_context",
+        "QualifiedE4PLShellElement.get_node_coordinates",
+        "RECOVERY_POLICY_ID"
+      ],
+      "QualifiedE4PLShellElement._reject_noncurrent_activity_disposition": [
+        "_FOREIGN_S3_ACTIVITY_DISPOSITION_KEY",
+        "_Q4_ACTIVITY_DISPOSITION_KEY"
+      ],
+      "QualifiedE4PLShellElement._replay_accepted_algorithmic_response": [
+        "QualifiedE4PLShellElement._is_compact_batch_constitutive_state",
+        "QualifiedE4PLShellElement._validated_algorithmic_origin",
+        "_q4_compact_replay_last_place_equivalent",
+        "_qualified_q4_layer_count",
+        "_validate_q4_quadrature_authority"
+      ],
+      "QualifiedE4PLShellElement._requires_algorithmic_return_map_origin": [],
+      "QualifiedE4PLShellElement._stable_state_identity_payload": [
+        "FORMULATION_ID",
+        "IMPLEMENTATION_ID",
+        "QualifiedE4PLShellElement.get_node_coordinates",
+        "QualifiedE4PLShellElement.to_dict",
+        "_binary64_vector_fingerprint"
+      ],
+      "QualifiedE4PLShellElement._validate_committed_current_kinematics": [
+        "QualifiedE4PLShellElement._nonlinear_geometry"
+      ],
+      "QualifiedE4PLShellElement._validate_committed_state_at_configuration": [
+        "QualifiedE4PLShellElement._committed_current_binding_payload",
+        "QualifiedE4PLShellElement._reject_noncurrent_activity_disposition",
+        "_Q4_CURRENT_STATE_BINDING_KEY",
+        "_Q4_CURRENT_STATE_DIGEST_KEY",
+        "_qualified_q4_layer_count"
+      ],
+      "QualifiedE4PLShellElement._validate_qualified_component_cache_identity": [],
+      "QualifiedE4PLShellElement._validate_qualified_component_guard": [
+        "Q4_QUADRATURE_AUTHORITY_ID",
+        "QualifiedE4PLShellElement._qualified_stiffness_cache_key",
+        "QualifiedE4PLShellElement._validate_qualified_component_cache_identity",
+        "QualifiedE4PLShellElement.get_node_coordinates",
+        "_validate_q4_quadrature_authority"
+      ],
+      "QualifiedE4PLShellElement._validated_algorithmic_origin": [
+        "Q4_CURRENT_STATE_ALGORITHMIC_ORIGIN_SCHEMA_ID",
+        "QualifiedE4PLShellElement._requires_algorithmic_return_map_origin",
+        "_Q4_CURRENT_STATE_ALGORITHMIC_ORIGIN_KEY",
+        "_Q4_INITIAL_STATE_KEYS",
+        "_qualified_q4_layer_count"
+      ],
+      "QualifiedE4PLShellElement._warped_generalized_drilling_correction": [
+        "QualifiedE4PLShellElement._generalized_section_in_frame",
+        "QualifiedE4PLShellElement._local_frame_and_derivatives",
+        "_invariant_generalized_drilling_scale"
+      ],
+      "QualifiedE4PLShellElement.attach_current_tangent_algorithmic_origin": [
+        "QualifiedE4PLShellElement._algorithmic_origin_payload",
+        "_Q4_CURRENT_STATE_ALGORITHMIC_ORIGIN_KEY"
+      ],
+      "QualifiedE4PLShellElement.compute_geometric_stiffness_matrix": [
+        "_QUALIFIED_Q4_BASE_GEOMETRIC_KERNEL",
+        "_validate_q4_quadrature_authority"
+      ],
+      "QualifiedE4PLShellElement.compute_mass_matrix": [
+        "_QUALIFIED_Q4_BASE_MASS_KERNEL",
+        "_validate_q4_quadrature_authority"
+      ],
+      "QualifiedE4PLShellElement.compute_nonlinear_response": [
+        "QualifiedE4PLShellElement._nonlinear_response_core"
+      ],
+      "QualifiedE4PLShellElement.compute_stiffness_components": [
+        "QualifiedE4PLShellElement._bind_qualified_component_guard",
+        "QualifiedE4PLShellElement._constitutive_and_drill_stiffness",
+        "QualifiedE4PLShellElement._elastic_increment_admitted",
+        "QualifiedE4PLShellElement._qualified_stiffness_cache_key",
+        "QualifiedE4PLShellElement._validate_qualified_component_cache_identity",
+        "QualifiedE4PLShellElement._warped_generalized_drilling_correction",
+        "QualifiedE4PLShellElement.get_node_coordinates",
+        "STATIONARY_SOLVE_POLICY_ID",
+        "_GAUSS",
+        "_QUALIFIED_Q4_BASE_STIFFNESS_KERNEL",
+        "_centre_taylor",
+        "_coefficients",
+        "_freeze_qualified_component_cache",
+        "_global_transform",
+        "_jacobian",
+        "_local_jacobian_scale",
+        "_residual_mode",
+        "_solve_stationary_system",
+        "_stationary_blocks",
+        "_validate_q4_quadrature_authority",
+        "equation7_frame"
+      ],
+      "QualifiedE4PLShellElement.compute_stiffness_matrix": [
+        "QualifiedE4PLShellElement._bind_qualified_component_guard",
+        "QualifiedE4PLShellElement.compute_stiffness_components"
+      ],
+      "QualifiedE4PLShellElement.compute_stresses": [
+        "DIRECTOR_POLARITY_POLICY_ID",
+        "DIRECTOR_REVERSAL_TRANSFORM_ID",
+        "IMPLEMENTATION_ID",
+        "QualifiedE4PLShellElement._physical_director_context",
+        "QualifiedE4PLShellElement._recover_planar_mixed_fields",
+        "QualifiedE4PLShellElement._recover_warped_generalized_section",
+        "QualifiedE4PLShellElement._recover_warped_homogeneous_section",
+        "QualifiedE4PLShellElement.get_node_coordinates",
+        "RECOVERY_POLICY_ID",
+        "_GAUSS",
+        "_validate_q4_quadrature_authority",
+        "equation7_frame"
+      ],
+      "QualifiedE4PLShellElement.get_node_coordinates": [
+        "_QUALIFIED_Q4_COORDINATE_SCALAR_TYPES"
+      ],
+      "QualifiedE4PLShellElement.numerical_internal_force": [
+        "QualifiedE4PLShellElement._validate_qualified_component_guard"
+      ],
+      "QualifiedE4PLShellElement.physical_reference_director": [],
+      "QualifiedE4PLShellElement.to_dict": [
+        "DIRECTOR_POLARITY_POLICY_ID",
+        "DIRECTOR_REVERSAL_TRANSFORM_ID",
+        "FORMULATION_ID",
+        "IMPLEMENTATION_ID",
+        "Q4_ACTIVITY_DISPOSITION_SCHEMA_ID",
+        "Q4_CURRENT_STATE_ALGORITHMIC_ORIGIN_SCHEMA_ID",
+        "Q4_CURRENT_STATE_BINDING_SCHEMA_ID",
+        "Q4_CURRENT_STATE_PROJECTION_POLICY_ID",
+        "Q4_CURRENT_STATE_TANGENT_DECOMPOSITION_POLICY_ID",
+        "Q4_DELETED_FROZEN_POLICY_ID",
+        "Q4_FAILED_STATE_POLICY_ID",
+        "Q4_QUADRATURE_AUTHORITY_ID",
+        "RECOVERY_POLICY_ID",
+        "STATIONARY_SOLVE_POLICY_ID",
+        "_q4_serialized_output_boundary"
+      ],
+      "QualifiedE4PLShellElement.validate_committed_current_tangent_binding": [
+        "QualifiedE4PLShellElement._reject_noncurrent_activity_disposition",
+        "QualifiedE4PLShellElement._validate_committed_state_at_configuration"
+      ],
+      "QualifiedE4PLShellElement.validate_committed_current_tangent_semantics": [
+        "QualifiedE4PLShellElement._current_state_cache_transaction",
+        "QualifiedE4PLShellElement._replay_accepted_algorithmic_response",
+        "QualifiedE4PLShellElement._validate_committed_current_kinematics",
+        "QualifiedE4PLShellElement.validate_committed_current_tangent_binding",
+        "_qualified_q4_layer_count",
+        "_validate_q4_quadrature_authority"
+      ],
+      "QualifiedE4PLShellElement.validate_committed_current_tangent_state": [
+        "QualifiedE4PLShellElement.validate_committed_current_tangent_semantics"
+      ],
+      "RECOVERY_POLICY_ID": [],
+      "STATIONARY_SOLVE_POLICY_ID": [],
+      "_FOREIGN_S3_ACTIVITY_DISPOSITION_KEY": [],
+      "_GAUSS": [
+        "_Q4_STIFFNESS_STATION_AUTHORITY"
+      ],
+      "_PLANAR_FORMULATION_ID": [],
+      "_Q4FastInputSnapshot": [],
+      "_Q4_ACTIVITY_DISPOSITION_KEY": [],
+      "_Q4_COMPACT_REPLAY_MAX_ULPS": [],
+      "_Q4_CURRENT_STATE_ALGORITHMIC_ORIGIN_KEY": [],
+      "_Q4_CURRENT_STATE_BINDING_KEY": [],
+      "_Q4_CURRENT_STATE_DIGEST_KEY": [],
+      "_Q4_FAST_COORDINATE_FLOAT64_TYPE": [],
+      "_Q4_FAST_ELEMENT_INPUT_NAMES": [],
+      "_Q4_FAST_ELEMENT_ITEMGETTER": [
+        "_Q4_FAST_ELEMENT_INPUT_NAMES"
+      ],
+      "_Q4_FAST_FORBIDDEN_INSTANCE_SHADOWS": [],
+      "_Q4_FAST_FORBIDDEN_MATERIAL_SHADOWS": [],
+      "_Q4_FAST_FORBIDDEN_MESH_SHADOWS": [],
+      "_Q4_FAST_MATERIAL_CLASS_ITEMGETTER": [
+        "_Q4_FAST_MATERIAL_CLASS_NAMES"
+      ],
+      "_Q4_FAST_MATERIAL_CLASS_NAMES": [],
+      "_Q4_FAST_MATERIAL_CLASS_VALUES": [
+        "_Q4_FAST_MATERIAL_CLASS_ITEMGETTER",
+        "_Q4_FAST_MATERIAL_TYPE"
+      ],
+      "_Q4_FAST_MATERIAL_INPUT_NAMES": [],
+      "_Q4_FAST_MATERIAL_ITEMGETTER": [
+        "_Q4_FAST_MATERIAL_INPUT_NAMES"
+      ],
+      "_Q4_FAST_MATERIAL_TYPE": [],
+      "_Q4_FAST_MESH_TYPE": [],
+      "_Q4_FAST_NODE_ITEMGETTER": [],
+      "_Q4_FAST_NODE_TYPE": [],
+      "_Q4_FAST_OWNED_MESH_DERIVED_KEYS": [],
+      "_Q4_FAST_STATE_MAPPING_TYPE": [],
+      "_Q4_FAST_TOKEN_TYPE": [],
+      "_Q4_GENERALIZED_SECTION_NAMESPACE_AUTHORITY": [],
+      "_Q4_INITIAL_STATE_KEYS": [],
+      "_Q4_QUADRATURE_ARRAY_AUTHORITY": [],
+      "_Q4_QUADRATURE_CLASS_ARRAY_AUTHORITY": [
+        "_owned_q4_quadrature_array"
+      ],
+      "_Q4_QUADRATURE_PROPERTY_AUTHORITY": [],
+      "_Q4_SERIALIZATION_CLASS_IDENTITY": [
+        "DIRECTOR_POLARITY_POLICY_ID",
+        "DIRECTOR_REVERSAL_TRANSFORM_ID",
+        "FORMULATION_ID",
+        "IMPLEMENTATION_ID",
+        "Q4_ACTIVITY_DISPOSITION_SCHEMA_ID",
+        "Q4_CURRENT_STATE_ALGORITHMIC_ORIGIN_SCHEMA_ID",
+        "Q4_CURRENT_STATE_BINDING_SCHEMA_ID",
+        "Q4_CURRENT_STATE_PROJECTION_POLICY_ID",
+        "Q4_CURRENT_STATE_TANGENT_DECOMPOSITION_POLICY_ID",
+        "Q4_DELETED_FROZEN_POLICY_ID",
+        "Q4_FAILED_STATE_POLICY_ID",
+        "Q4_QUADRATURE_AUTHORITY_ID",
+        "RECOVERY_POLICY_ID",
+        "STATIONARY_SOLVE_POLICY_ID"
+      ],
+      "_Q4_SERIALIZATION_GLOBAL_IDENTITY": [
+        "DIRECTOR_POLARITY_POLICY_ID",
+        "DIRECTOR_REVERSAL_TRANSFORM_ID",
+        "FORMULATION_ID",
+        "IMPLEMENTATION_ID",
+        "Q4_ACTIVITY_DISPOSITION_SCHEMA_ID",
+        "Q4_CURRENT_STATE_ALGORITHMIC_ORIGIN_SCHEMA_ID",
+        "Q4_CURRENT_STATE_BINDING_SCHEMA_ID",
+        "Q4_CURRENT_STATE_PROJECTION_POLICY_ID",
+        "Q4_CURRENT_STATE_TANGENT_DECOMPOSITION_POLICY_ID",
+        "Q4_DELETED_FROZEN_POLICY_ID",
+        "Q4_FAILED_STATE_POLICY_ID",
+        "Q4_QUADRATURE_AUTHORITY_ID",
+        "RECOVERY_POLICY_ID",
+        "STATIONARY_SOLVE_POLICY_ID",
+        "_PLANAR_FORMULATION_ID",
+        "_V5_IMPLEMENTATION_ID",
+        "_V6_CURRENT_STATE_BINDING_SCHEMA_ID",
+        "_V6_CURRENT_STATE_TANGENT_DECOMPOSITION_POLICY_ID",
+        "_V6_IMPLEMENTATION_ID"
+      ],
+      "_Q4_STIFFNESS_STATION_AUTHORITY": [],
+      "_QUALIFIED_Q4_BASE_ELEMENT_SERIALIZATION_KERNEL": [],
+      "_QUALIFIED_Q4_BASE_GEOMETRIC_KERNEL": [],
+      "_QUALIFIED_Q4_BASE_LOCAL_FRAME_KERNEL": [],
+      "_QUALIFIED_Q4_BASE_MASS_KERNEL": [],
+      "_QUALIFIED_Q4_BASE_MITC4_SHEAR_KERNEL": [],
+      "_QUALIFIED_Q4_BASE_NONLINEAR_GEOMETRY": [],
+      "_QUALIFIED_Q4_BASE_NONLINEAR_KERNEL": [],
+      "_QUALIFIED_Q4_BASE_SERIALIZATION_KERNEL": [],
+      "_QUALIFIED_Q4_BASE_STIFFNESS_KERNEL": [],
+      "_QUALIFIED_Q4_COORDINATE_SCALAR_TYPES": [],
+      "_STATIONARY_BACKWARD_ERROR_LIMIT": [],
+      "_STATIONARY_RUIZ_ITERATIONS": [],
+      "_STATIONARY_RUIZ_ROW_NORM_RATIO_LIMIT": [],
+      "_V5_IMPLEMENTATION_ID": [],
+      "_V6_CURRENT_STATE_BINDING_SCHEMA_ID": [],
+      "_V6_CURRENT_STATE_TANGENT_DECOMPOSITION_POLICY_ID": [],
+      "_V6_IMPLEMENTATION_ID": [],
+      "_WARPED_FORMULATIONS": [],
+      "_binary64_vector_fingerprint": [],
+      "_capture_q4_fast_array_authority": [],
+      "_capture_q4_fast_input_snapshot": [
+        "_Q4FastInputSnapshot",
+        "_Q4_FAST_COORDINATE_FLOAT64_TYPE",
+        "_Q4_FAST_ELEMENT_INPUT_NAMES",
+        "_Q4_FAST_ELEMENT_ITEMGETTER",
+        "_Q4_FAST_FORBIDDEN_INSTANCE_SHADOWS",
+        "_Q4_FAST_FORBIDDEN_MATERIAL_SHADOWS",
+        "_Q4_FAST_FORBIDDEN_MESH_SHADOWS",
+        "_Q4_FAST_MATERIAL_INPUT_NAMES",
+        "_Q4_FAST_MATERIAL_ITEMGETTER",
+        "_Q4_FAST_MATERIAL_TYPE",
+        "_Q4_FAST_MESH_TYPE",
+        "_Q4_FAST_NODE_ITEMGETTER",
+        "_Q4_FAST_NODE_TYPE",
+        "_Q4_FAST_OWNED_MESH_DERIVED_KEYS",
+        "_Q4_FAST_STATE_MAPPING_TYPE",
+        "_Q4_FAST_TOKEN_TYPE",
+        "_capture_q4_fast_array_authority",
+        "_require_q4_fast_array_authority"
+      ],
+      "_centre_taylor": [],
+      "_characteristic_length": [],
+      "_coefficients": [],
+      "_compatible": [
+        "_jacobian",
+        "_natural_shear",
+        "_shape_derivatives"
+      ],
+      "_freeze_qualified_component_cache": [],
+      "_global_transform": [],
+      "_invariant_generalized_drilling_scale": [],
+      "_jacobian": [],
+      "_local_jacobian_scale": [
+        "_characteristic_length"
+      ],
+      "_natural_shear": [
+        "_shape",
+        "_shape_derivatives"
+      ],
+      "_normalize": [],
+      "_owned_q4_quadrature_array": [],
+      "_q4_compact_replay_last_place_equivalent": [
+        "_Q4_COMPACT_REPLAY_MAX_ULPS"
+      ],
+      "_q4_quadrature_epoch_guard": [
+        "_q4_quadrature_epoch_manager",
+        "_validate_q4_quadrature_authority_exact"
+      ],
+      "_q4_quadrature_epoch_manager": [],
+      "_q4_serialized_output_boundary": [
+        "_validate_q4_quadrature_authority",
+        "_validate_q4_serialization_authority"
+      ],
+      "_q4_state_payload": [
+        "_Q4_CURRENT_STATE_BINDING_KEY",
+        "_Q4_CURRENT_STATE_DIGEST_KEY"
+      ],
+      "_qualified_q4_layer_count": [],
+      "_require_exact_readonly_float64_array": [],
+      "_require_q4_fast_array_authority": [],
+      "_require_q4_fast_base_authority": [
+        "_Q4_FAST_MATERIAL_CLASS_ITEMGETTER",
+        "_Q4_FAST_MATERIAL_CLASS_VALUES",
+        "_Q4_FAST_MATERIAL_TYPE"
+      ],
+      "_require_q4_quadrature_instance_authority": [
+        "_Q4_QUADRATURE_CLASS_ARRAY_AUTHORITY",
+        "_Q4_QUADRATURE_PROPERTY_AUTHORITY",
+        "_static_mro_attribute"
+      ],
+      "_require_q4_serialization_module_authority": [
+        "_Q4_GENERALIZED_SECTION_NAMESPACE_AUTHORITY",
+        "_Q4_SERIALIZATION_CLASS_IDENTITY",
+        "_Q4_SERIALIZATION_GLOBAL_IDENTITY",
+        "_QUALIFIED_Q4_BASE_ELEMENT_SERIALIZATION_KERNEL",
+        "_QUALIFIED_Q4_BASE_SERIALIZATION_KERNEL",
+        "_static_mro_attribute"
+      ],
+      "_residual_mode": [],
+      "_shape": [],
+      "_shape_derivatives": [],
+      "_solve_stationary_system": [
+        "_STATIONARY_BACKWARD_ERROR_LIMIT",
+        "_stationary_backward_error",
+        "_symmetric_ruiz_congruence"
+      ],
+      "_source_fields": [
+        "_jacobian",
+        "_tensor_transform"
+      ],
+      "_static_mro_attribute": [],
+      "_stationary_backward_error": [],
+      "_stationary_blocks": [
+        "_GAUSS",
+        "_compatible",
+        "_jacobian",
+        "_source_fields"
+      ],
+      "_symmetric_ruiz_congruence": [
+        "STATIONARY_SOLVE_POLICY_ID",
+        "_STATIONARY_RUIZ_ITERATIONS",
+        "_STATIONARY_RUIZ_ROW_NORM_RATIO_LIMIT"
+      ],
+      "_tensor_transform": [],
+      "_validate_q4_quadrature_authority": [
+        "Q4_QUADRATURE_AUTHORITY_ID",
+        "_q4_quadrature_epoch_guard",
+        "_require_q4_quadrature_instance_authority"
+      ],
+      "_validate_q4_quadrature_authority_exact": [
+        "Q4_QUADRATURE_AUTHORITY_ID",
+        "_GAUSS",
+        "_Q4_QUADRATURE_ARRAY_AUTHORITY",
+        "_Q4_QUADRATURE_CLASS_ARRAY_AUTHORITY",
+        "_Q4_QUADRATURE_PROPERTY_AUTHORITY",
+        "_Q4_STIFFNESS_STATION_AUTHORITY",
+        "_require_exact_readonly_float64_array",
+        "_static_mro_attribute"
+      ],
+      "_validate_q4_serialization_authority": [
+        "_Q4_GENERALIZED_SECTION_NAMESPACE_AUTHORITY",
+        "_Q4_SERIALIZATION_CLASS_IDENTITY",
+        "_Q4_SERIALIZATION_GLOBAL_IDENTITY",
+        "_QUALIFIED_Q4_BASE_ELEMENT_SERIALIZATION_KERNEL",
+        "_QUALIFIED_Q4_BASE_SERIALIZATION_KERNEL",
+        "_WARPED_FORMULATIONS",
+        "_require_q4_serialization_module_authority",
+        "_static_mro_attribute"
+      ],
+      "equation7_frame": [
+        "_characteristic_length",
+        "_normalize"
+      ]
+    },
+    "path": "src/anysolver/e4_pl_element.py",
+    "roots": [
+      "QualifiedE4PLShellElement.GAUSS_POINTS_1x1",
+      "QualifiedE4PLShellElement.GAUSS_POINTS_2x2",
+      "QualifiedE4PLShellElement.GAUSS_WEIGHTS_1x1",
+      "QualifiedE4PLShellElement.GAUSS_WEIGHTS_2x2",
+      "QualifiedE4PLShellElement._MITC4_SAMPLE_POINTS",
+      "QualifiedE4PLShellElement._compute_committed_current_tangent_components_unchecked",
+      "QualifiedE4PLShellElement._constitutive_and_drill_stiffness",
+      "QualifiedE4PLShellElement._generalized_section_in_frame",
+      "QualifiedE4PLShellElement._inverse_planar_jacobian",
+      "QualifiedE4PLShellElement._local_frame_and_derivatives",
+      "QualifiedE4PLShellElement._mitc4_shear_b_matrix",
+      "QualifiedE4PLShellElement._nonlinear_geometry",
+      "QualifiedE4PLShellElement._qualified_linear_correction",
+      "QualifiedE4PLShellElement._recover_planar_mixed_fields",
+      "QualifiedE4PLShellElement._recover_warped_generalized_section",
+      "QualifiedE4PLShellElement._recover_warped_homogeneous_section",
+      "QualifiedE4PLShellElement._warped_generalized_drilling_correction",
+      "QualifiedE4PLShellElement.compute_geometric_stiffness_matrix",
+      "QualifiedE4PLShellElement.compute_mass_matrix",
+      "QualifiedE4PLShellElement.compute_nonlinear_response",
+      "QualifiedE4PLShellElement.compute_stiffness_components",
+      "QualifiedE4PLShellElement.compute_stresses",
+      "QualifiedE4PLShellElement.numerical_internal_force",
+      "_GAUSS",
+      "_STATIONARY_BACKWARD_ERROR_LIMIT",
+      "_STATIONARY_RUIZ_ITERATIONS",
+      "_STATIONARY_RUIZ_ROW_NORM_RATIO_LIMIT",
+      "_centre_taylor",
+      "_characteristic_length",
+      "_coefficients",
+      "_compatible",
+      "_global_transform",
+      "_invariant_generalized_drilling_scale",
+      "_jacobian",
+      "_local_jacobian_scale",
+      "_natural_shear",
+      "_normalize",
+      "_residual_mode",
+      "_shape",
+      "_shape_derivatives",
+      "_solve_stationary_system",
+      "_source_fields",
+      "_stationary_backward_error",
+      "_stationary_blocks",
+      "_symmetric_ruiz_congruence",
+      "_tensor_transform",
+      "equation7_frame"
+    ],
+    "schema": "anysolver.python-ast-mechanics-closure-v1",
+    "symbols": {
+      "DIRECTOR_POLARITY_POLICY_ID": "24FBADE6A782FD20EE5AE426D7B8F8ABADA60F9075B909EE3AB5F1FC13933EBD",
+      "DIRECTOR_REVERSAL_TRANSFORM_ID": "27EA36BE70DC524A0509D7C2AC14310EA94F4142CBBD0FC1199C9C8695E408D9",
+      "FORMULATION_ID": "68BC5D9067886BA4983FC3CDE61F239017C41E95853076C5E86AA6B2F0EF4624",
+      "IMPLEMENTATION_ID": "E6912AECE2496A69D6EC30C55003CA54A8A4B4398148C3DF8C80E910BE7805F2",
+      "Q4_ACTIVITY_DISPOSITION_SCHEMA_ID": "16022FDB7472160CED1A4D67BFE0643A92AB5242277B4D5C8CAB8B2C40BCF061",
+      "Q4_CURRENT_STATE_ALGORITHMIC_ORIGIN_SCHEMA_ID": "B792337D12AD1ED030D9A3E3DDFC58AA07E78B70CE18C0B41A7F24ABC54B8317",
+      "Q4_CURRENT_STATE_BINDING_SCHEMA_ID": "19EB2FA057D8FEDB2631389D39D1605B52B98970A793DD4FA635E3A1F1B37242",
+      "Q4_CURRENT_STATE_PROJECTION_POLICY_ID": "51B51EE54605793ED15AB7A640722FE859A7759566E3C1252CED478D729122A1",
+      "Q4_CURRENT_STATE_TANGENT_DECOMPOSITION_POLICY_ID": "93332FEFF5AE309A156131863D9B37B4B17EA52C50A3C9DF6874BB704FE8EDF8",
+      "Q4_DELETED_FROZEN_POLICY_ID": "98E986395C5C3919EAB74EC383AFF75BD61555C1BEFCEC122D3E2473F73B6C7A",
+      "Q4_FAILED_STATE_POLICY_ID": "8E221CFCCD0F85B9EC5703C9D7076BEFDF4AD19CC45F21860724536D2BA8A4B1",
+      "Q4_QUADRATURE_AUTHORITY_ID": "FFFCD6F866B0277BB4831D929752828CBFDAA4DA07ADDE04CC733E3711E6241D",
+      "QualifiedE4PLShellElement.GAUSS_POINTS_1x1": "582849F858244BBCA8B50DFD4F59C6358E2E2FECF7C30FE53516FB18F1285918",
+      "QualifiedE4PLShellElement.GAUSS_POINTS_2x2": "AE70D777343C1F5F2E2DE28F1541F1989F57D30FE7573D7F1A29DE302E6FC907",
+      "QualifiedE4PLShellElement.GAUSS_WEIGHTS_1x1": "35A34ABA963A04E387B2FB824010F778BEEB56B5BB5E0C4AF34D7A0F04521511",
+      "QualifiedE4PLShellElement.GAUSS_WEIGHTS_2x2": "802076F1F43C9F344DE27FE0316C51BD5586F75CA1ABDF76C16AB9FC30536839",
+      "QualifiedE4PLShellElement._MITC4_SAMPLE_POINTS": "0CFD68C57D7EB153B81B6DDB01404DAEAA82F0DD80E6F61FEAD82453C730B439",
+      "QualifiedE4PLShellElement._accepted_algorithmic_update_fingerprint": "DFAF1A4638A50EA0D3FA47D78BCF04ABD6A0581025E6A56CFE40C1662E90EF75",
+      "QualifiedE4PLShellElement._algorithmic_origin_payload": "86138089CF989621301D91E773B7A403ECE2726C88F39F61D17D86ABC4B8BE23",
+      "QualifiedE4PLShellElement._bind_qualified_component_guard": "71C2C7BB334FBFAE3C57B12A02877501C45E663FD56FFCD50F88ED8EF2758512",
+      "QualifiedE4PLShellElement._committed_current_binding_payload": "43825C13F7EA9550C23598C187528DEF9AF5B4CF6CD7DC921C7325C1DD224B35",
+      "QualifiedE4PLShellElement._compute_committed_current_tangent_components_unchecked": "BDD158A7D7DA065658C2841CD6164EDBF28E956413B83CF6DCE2E9E59041ECB8",
+      "QualifiedE4PLShellElement._constitutive_and_drill_stiffness": "80C01B8F97F0CF8361B527BF45D66B7DBD06DD99D4D0F4EA36EDEEA25AED201B",
+      "QualifiedE4PLShellElement._current_state_cache_transaction": "2E9C557CD7E6D9E4777E6A5B3AF101A99181DACF0434AB1970546E6C47F0AA58",
+      "QualifiedE4PLShellElement._defining_class_input_snapshot_matches": "BAFC2DC67DA81109295E392C7714D636919173BCE78272ECFDC623020D223DBD",
+      "QualifiedE4PLShellElement._elastic_increment_admitted": "181A231BEC8A4BC3DD2B9D83BE1CBCB9CA3572D353EB0216EBFB5562BDF70D52",
+      "QualifiedE4PLShellElement._elastic_increment_response": "0EFF9DB4DA6AB320DDAA8A440FA91EAD1A81B8C1145CEF9B8373CCF2C1761609",
+      "QualifiedE4PLShellElement._generalized_section_in_frame": "E39AA6C13BB205EF599749F8C4B600B10B91389F728C7431B959D26BFEE36952",
+      "QualifiedE4PLShellElement._inverse_planar_jacobian": "388CB635DD5922C031E82B2C5DC4322F06B404CA92482C58E3A6BB7ADBDE37DC",
+      "QualifiedE4PLShellElement._is_compact_batch_constitutive_state": "EF6AD7F9620B26FD5644914DF1A99518D81FF30D8AB82DC64334BD1319E661C8",
+      "QualifiedE4PLShellElement._local_frame_and_derivatives": "CDC56246DAFEF34AA9674130859EFFDCF88C92A3D97F4DFA2BE8E52B6A8CCD31",
+      "QualifiedE4PLShellElement._mitc4_shear_b_matrix": "8F60FB9797220A8280211067CCDDF0A30C1E965827DC94E0C64839C0D6630A1B",
+      "QualifiedE4PLShellElement._nonlinear_geometry": "7EA2A4BCE7E48995431A58E274B21628ABE5F1F55EB96118AC3F08DA3538AC13",
+      "QualifiedE4PLShellElement._nonlinear_response_core": "D8473FD05059C05B3383A4E13A6BF13D8B8D082A9A9514E0F841DA81B02AB2B6",
+      "QualifiedE4PLShellElement._physical_director_context": "1E4C769B2D017E25475613E26F7695484615047711D6A3FF52FC72D86EB877A6",
+      "QualifiedE4PLShellElement._qualified_linear_correction": "221228A0BD08F4F6B78BB86094C69EB015FEFE3C8285B890EFC22CA2B5249C53",
+      "QualifiedE4PLShellElement._qualified_stiffness_cache_key": "5D619CCE4A471CA2E4A300FCF0A6673B88032F0171947773BEE10C7727D39E1B",
+      "QualifiedE4PLShellElement._recover_planar_mixed_fields": "6F72D7DFFF5A52032756CF5D3C4DB721285CD3C91AA9AB5EFB3CFE5C338F0338",
+      "QualifiedE4PLShellElement._recover_warped_generalized_section": "53CFB1688CE4E6BF3D1BE40899C75F62A3D760CF7293E29D7B7A63DF67D984B2",
+      "QualifiedE4PLShellElement._recover_warped_homogeneous_section": "66B16D18DDB97EEAD4110540CA4F2322120820046C85B699810C1413F7BFBD4C",
+      "QualifiedE4PLShellElement._reject_noncurrent_activity_disposition": "2D72537BC89733A9C30EBF229254D6597EFDFB1552A2D8783E798C2B43D45D2E",
+      "QualifiedE4PLShellElement._replay_accepted_algorithmic_response": "7A4EBA41D14BDFDC9F5E7863D1508424A673449C50DB08DCD5E7D16CE4650640",
+      "QualifiedE4PLShellElement._requires_algorithmic_return_map_origin": "40B2D2D62BA5A3F3A3E558473513A0CEF2FA552E0AF6B3BAFB27C6C253A166F2",
+      "QualifiedE4PLShellElement._stable_state_identity_payload": "C9A1B751809BAEC87C86CC73C479294EC84C6F9678A0DC7B4A4A928C13323147",
+      "QualifiedE4PLShellElement._validate_committed_current_kinematics": "54AA5E42F9A863A22DB99777D9D1233F03DB2924A7E92DFD7FAE884A4EA09C17",
+      "QualifiedE4PLShellElement._validate_committed_state_at_configuration": "6C7DDE06F660E1679E3EEF3AF6B7B252D355B0311A494AE0FC236F8A5AECBE83",
+      "QualifiedE4PLShellElement._validate_qualified_component_cache_identity": "A48DF8CC73BB3234FD2CB43098D7C46C1889CB1155FA9DEFF3704F6AB7425169",
+      "QualifiedE4PLShellElement._validate_qualified_component_guard": "3F79E9E4B186336AEF1B00E0181A353225F81703C23DF9B1480520080102C44E",
+      "QualifiedE4PLShellElement._validated_algorithmic_origin": "876003B4A702F9B9B8C1A13AB789320CC559E7AE6913CF7BE6925FC6463E4D37",
+      "QualifiedE4PLShellElement._warped_generalized_drilling_correction": "7182F41C3B57D39B5BD438BD0A83BAE3D3479F59A1B82F71D78F858721DCEBEB",
+      "QualifiedE4PLShellElement.attach_current_tangent_algorithmic_origin": "BD236A34DFBED4B84933442DC213900AA9905CB26600462740F5069D26A6CD00",
+      "QualifiedE4PLShellElement.compute_geometric_stiffness_matrix": "ED88FB6EFBBFF2A7F3238674EE9590E2945674FCED5E5A8A11CDBE719063478B",
+      "QualifiedE4PLShellElement.compute_mass_matrix": "94B6935ACC4E5924DC700815849275F842C3AD3CBB85BD03E6511E36BCBF4C45",
+      "QualifiedE4PLShellElement.compute_nonlinear_response": "D51D6178E7FB64AD47A6167B941386EF7CAB759CAF295AB521C195984CE71849",
+      "QualifiedE4PLShellElement.compute_stiffness_components": "772395F696B7667B8E391D25E9E7DFC613E801986CEBCBC0FBC9B41431CBB00B",
+      "QualifiedE4PLShellElement.compute_stiffness_matrix": "011434A73322E826188C0F18D63318B25C29600C328A5CCCED876E2AA2478453",
+      "QualifiedE4PLShellElement.compute_stresses": "8CB8E6AB573F619CD7DE71CCD745ED67255BF74201FF2034498F5F9760AC2F01",
+      "QualifiedE4PLShellElement.get_node_coordinates": "0E461353A19DA39F78FEED144AB37050AF8D081EF32D370A5756D8356EA3503B",
+      "QualifiedE4PLShellElement.numerical_internal_force": "E7B50FB6E06654007803832D0ADBB3B599F300B0D0EE532011E9DCA43A620343",
+      "QualifiedE4PLShellElement.physical_reference_director": "DD651C0D60E6026B4BBA29A4AFA405999D62FFF136B82DE6B3FB776EF6935CEE",
+      "QualifiedE4PLShellElement.to_dict": "C92349ED5BDB27E763CAA1BFE9EE1513B09E7CB0CD3E5B7CE8A842366BE263D9",
+      "QualifiedE4PLShellElement.validate_committed_current_tangent_binding": "8000EFAB0CA5E81856A37CCBE3F59185C7972DE2266A95E3A1A6A935EEF1ADE0",
+      "QualifiedE4PLShellElement.validate_committed_current_tangent_semantics": "65B908DDEA6DF6739EF0E6F842E6F90A3D6250D754F8DAE9DB75E25D589D5138",
+      "QualifiedE4PLShellElement.validate_committed_current_tangent_state": "AA90AB1B5C893982F6712BF3009CAC85A1D62301730B81E422684159C708A487",
+      "RECOVERY_POLICY_ID": "47FE28010A4063852F3007409B5806350B62B3D71937C34789C971CFE8BE44BD",
+      "STATIONARY_SOLVE_POLICY_ID": "6B2CAED2AC65BF41E19E9E054FAC98F69463CDE6F54B6692E597804D44026112",
+      "_FOREIGN_S3_ACTIVITY_DISPOSITION_KEY": "FCF112A985F56AE95EFF16F746905A7A6F1894EFACFDB981DF75E38130A830BF",
+      "_GAUSS": "9B6472DC3D2567636D7E39654D2A109B45350DAD4AE5F3E8B55176B443A7DAC3",
+      "_PLANAR_FORMULATION_ID": "B7FC645DC4A439E1EDF59DB204E39B0BE28E67706A7C8CB4BE54239C11A2D724",
+      "_Q4FastInputSnapshot": "4EF9A28047874004FE3F6A765D39835AEE6BCE0FF1408EC4E2D3D8DB4B9F4FAD",
+      "_Q4_ACTIVITY_DISPOSITION_KEY": "1136DE34B6EA5F3734F602BE539B3CB0550497D6B80A1ABC851944347380EF44",
+      "_Q4_COMPACT_REPLAY_MAX_ULPS": "B21D58F9DC39ACEF52F395D5131B5BC99427A1FC23C710A9C627C568921C1DA8",
+      "_Q4_CURRENT_STATE_ALGORITHMIC_ORIGIN_KEY": "6343AEC622F063D75280ED3AA3ADA32AE4F6A46773A13A6FF9CC586E278BACFC",
+      "_Q4_CURRENT_STATE_BINDING_KEY": "D3300AF17D68C17911D0709CA8BE621FF762D8FAD6D94A4EB13804D4312F5F6D",
+      "_Q4_CURRENT_STATE_DIGEST_KEY": "420EB270766605589FF7B6F675D78C34622868709FF149B58C1D63E5E44CD366",
+      "_Q4_FAST_COORDINATE_FLOAT64_TYPE": "674605C5F6072EF923C201433BC21C7DD94F7FA971E6E47FC2F1E5E84DB331E4",
+      "_Q4_FAST_ELEMENT_INPUT_NAMES": "726C915EACF17E36BF5C4EA55776F6368EB312F2114B9C1D30396C8EE60E7518",
+      "_Q4_FAST_ELEMENT_ITEMGETTER": "A760DDF2E068B6FF5B19E1CB11D9A52C579BACAD3D45C983C8E03115200F0BAD",
+      "_Q4_FAST_FORBIDDEN_INSTANCE_SHADOWS": "21857076D104AD1C91F0CE34DFDB8A3453927853EDFF5E41F4165A8BD1989709",
+      "_Q4_FAST_FORBIDDEN_MATERIAL_SHADOWS": "27B8F905D0B0BF674E13934088A4C4851235AC4F1C1024C243029D236EA1D527",
+      "_Q4_FAST_FORBIDDEN_MESH_SHADOWS": "30B8B779C02FDB2B4464E3066716B671A1931C971D498FCA1A94411BF5F59601",
+      "_Q4_FAST_MATERIAL_CLASS_ITEMGETTER": "68A6068789D43167951D2C39B3C529A741930DCD09545EBDC0EF87555017DCC0",
+      "_Q4_FAST_MATERIAL_CLASS_NAMES": "396996CC8FAF306631356EE063DB0DBC5BFE1E46695358EFE8E267BB60848D54",
+      "_Q4_FAST_MATERIAL_CLASS_VALUES": "DBA4DCAE39C154237CD5347DE5587F28E1D584091DEE2B2055D9C5092ECE7EEA",
+      "_Q4_FAST_MATERIAL_INPUT_NAMES": "1A2FE539EC8F89A5470554434D655F4E9B62F3A9A248103A1A8569BF75D8FE90",
+      "_Q4_FAST_MATERIAL_ITEMGETTER": "93D3E7FA669B898F3BAEB49212A7B8598F5F0B44B4711DEE8DF896C071648F5D",
+      "_Q4_FAST_MATERIAL_TYPE": "ED1EE96EE54B9E76F2128E7CCEA26374D732326A0AEA8ADDC4CBDAF04E4EF774",
+      "_Q4_FAST_MESH_TYPE": "7CDBF56FB1268B5EE0ED44CEAE135935E39A665125EFF65030D1807336936F40",
+      "_Q4_FAST_NODE_ITEMGETTER": "5E5C48CAF56343EB4761F4D07561A33D3D95C56A1D1EB12F065A655A8E8753E5",
+      "_Q4_FAST_NODE_TYPE": "BB7F40C580F191A5FD9678344DE5FA342B9841B3FB49C13B66FC21278C3A7AF1",
+      "_Q4_FAST_OWNED_MESH_DERIVED_KEYS": "51897182E61993A94AB925A47A2880AA46A5C86EBCAB60238CEF698D1BBC6BDC",
+      "_Q4_FAST_STATE_MAPPING_TYPE": "D670F4495A5DE98993F12A07805EFF3C6EDD112960AB3A79BE67C22DB12A4359",
+      "_Q4_FAST_TOKEN_TYPE": "DFE37AF7FF4B3BDA7CBFF1ACE65D4C070C19A5D9C6F96C1C914881D60DB3764A",
+      "_Q4_GENERALIZED_SECTION_NAMESPACE_AUTHORITY": "44FEF651F69FE3FE15E87B16FFC7222DABDC90330DC1E1B172EEE79FB9371EAD",
+      "_Q4_INITIAL_STATE_KEYS": "84AD55758991E7BAC7B711F884E671875947ADD51C1A960DEB00281DC6B833CA",
+      "_Q4_QUADRATURE_ARRAY_AUTHORITY": "A6272E5189AFD5EF869C8A295BD58AC36CF4C75E02ECC390ACAC4E047C791F6D",
+      "_Q4_QUADRATURE_CLASS_ARRAY_AUTHORITY": "07D49AFB7399C5191C7583A28AE7E43F0E4C59BD2E61E1C6732632E2E603FD78",
+      "_Q4_QUADRATURE_PROPERTY_AUTHORITY": "C3BC148DDD36399D2CF47BFD387B0BCE6EF625EAF39B6C714AF32B132FD6D5F6",
+      "_Q4_SERIALIZATION_CLASS_IDENTITY": "FD53DB331E5FEF8494B911D1663EC76122EF883008BEBF9BA896B50641D58A5A",
+      "_Q4_SERIALIZATION_GLOBAL_IDENTITY": "BE69EFC9877E53294225A31782C1586D04AF9CC9C39735366918F57B9062A214",
+      "_Q4_STIFFNESS_STATION_AUTHORITY": "32985D259CB90A7E1FB069179C3D748505CDA06AAEF0EC03EF6841C7F89488BE",
+      "_QUALIFIED_Q4_BASE_ELEMENT_SERIALIZATION_KERNEL": "12F40B5AB048AB090BA4FB727A40D8E4593EB1766F602FACE3367B8F8AFED48B",
+      "_QUALIFIED_Q4_BASE_GEOMETRIC_KERNEL": "F17B9BD67900F025A3E94EFFBAFDF93DA10797964DAC7A49B3DAD88B883B7D30",
+      "_QUALIFIED_Q4_BASE_LOCAL_FRAME_KERNEL": "F0808412F80A90FA180C78931E83E79ACBD59995091B48BA0A922F7869457F42",
+      "_QUALIFIED_Q4_BASE_MASS_KERNEL": "6A01B07FFAF490ECD144202CE42576ACF2D7BD9B13D67032039EB407EF70946A",
+      "_QUALIFIED_Q4_BASE_MITC4_SHEAR_KERNEL": "DC10080C2FCD3F7E2CEFB4C47F52F6B15A4A1C8A054D3D8BDF8169E933FD509F",
+      "_QUALIFIED_Q4_BASE_NONLINEAR_GEOMETRY": "CD4B504B9635A6C5F384E684F13476C909C959B66DADB679C0A2DF588A2E788B",
+      "_QUALIFIED_Q4_BASE_NONLINEAR_KERNEL": "822592C43B5F709A6B2EE33DDC1E92E6FB739AD5BAD0180CBC2A24879FEA9AC6",
+      "_QUALIFIED_Q4_BASE_SERIALIZATION_KERNEL": "7C7E533C553A06818F510786EE16335EF8E51D6C170018EF226C1045134A9AE5",
+      "_QUALIFIED_Q4_BASE_STIFFNESS_KERNEL": "FF7AFE7DE78510D4F806234C4AD173BD7FA22DB78FDD6A46EB1A20863CCA6AD7",
+      "_QUALIFIED_Q4_COORDINATE_SCALAR_TYPES": "62BA61A537A3611C8841F2EEF8B33B8C914A206D179ACF825F3F54B3FA877F5B",
+      "_STATIONARY_BACKWARD_ERROR_LIMIT": "CE09EA360BDED7520D2722C54DE027C1328F919299FFF9D98CCAAF769DFFB7B2",
+      "_STATIONARY_RUIZ_ITERATIONS": "DA8C97F0871B7865261251B93AC3BA7384A53433088410D1E62C06FB588FE6A3",
+      "_STATIONARY_RUIZ_ROW_NORM_RATIO_LIMIT": "0C8A1814D94666987F7F4A357A769442DF9CC5F34FA64289043174C0BC381A46",
+      "_V5_IMPLEMENTATION_ID": "D3102C03F47451E5269063FD1EA0532ECB84D1A32C773D2EEB599639BB570397",
+      "_V6_CURRENT_STATE_BINDING_SCHEMA_ID": "F1DDF2007C3DEE0C0423365C4632BCAD515934EED1DB7AB11F31CA468006ADB4",
+      "_V6_CURRENT_STATE_TANGENT_DECOMPOSITION_POLICY_ID": "CB69EB62CBC093F08115092EBB1796F4DC8F3A2A33AF71C33014B4A4D653022C",
+      "_V6_IMPLEMENTATION_ID": "A90F3A4DD539701BB2ECF5DF2221AFE69956B22AFDB022D90D9E5C3F6CD27F0B",
+      "_WARPED_FORMULATIONS": "AE90097F6596CD53934268853370551A1D434953AC1DE368EB0A9C20D1476C8F",
+      "_binary64_vector_fingerprint": "DC1275A227F30113669555E8C0A4E3BA1651740D88B58A49D31ACEA8FD104BCD",
+      "_capture_q4_fast_array_authority": "D3F3B7EC895F8B4CC6E5F555E50D69DABF14CCBCBA32B1A4673D25C5CAEE6DBE",
+      "_capture_q4_fast_input_snapshot": "5BAFACE30522E87ED41B4F04D0CB7A40ECF8AA0075AAA928E454FED51D1E20B1",
+      "_centre_taylor": "A4EBEE30A1BB6745A4818172ABB5972CEFA55E3F2B41925EEA7844AC74BD96C9",
+      "_characteristic_length": "9C66185F09517C950280ED575A38A13AA1A948CBF1595F06399BA8816B0D4D49",
+      "_coefficients": "E107C7F3C6A78728D002F3D5AED65A138CBFE02778ED5AAAF5413FF533E7534C",
+      "_compatible": "C56107FFA80452E55C4703E5B4F1E98D6FE339A4904169695F31E66BF8056187",
+      "_freeze_qualified_component_cache": "95B54BAF4F4858C49D9AAF5ABEE2CBB029085C9B596A8F9F9BDB35D3A872AC63",
+      "_global_transform": "D0310FA446C683BDD4D0C2ABA265F678EFDC840725F29DB5594B7E84A86C48B6",
+      "_invariant_generalized_drilling_scale": "044E3482E303D0E0855B8EB212CDCB4D6CD61641DFE460AE04D015F2900EBB85",
+      "_jacobian": "93C774DE7BEE9FB2432EAB2F8AEC287A10DC65E8E93D2607C0C49A6AE89975C9",
+      "_local_jacobian_scale": "1EA41F721B1BC849BD1CBDE267CD0A5EB0DAD69E3B4218D22B76CF474C0A02D9",
+      "_natural_shear": "DF29EF11AC584B74ACD932185929AF1B64EB484B36BBDA0FB9A797C150090466",
+      "_normalize": "4DFDCA5835C16CA5E7D1FA690A1418FD84440B9E4E9AB427C32B8F1337990436",
+      "_owned_q4_quadrature_array": "7A66C3B5AB12D2D426323106F31ABA29962F3BEB3A4D53C2BD8C0CD30F40DD8D",
+      "_q4_compact_replay_last_place_equivalent": "44AADA3FE157A00B770A9A81E9929D0C8FAB928C2D93BCA126D9D0B9F4FFD1F0",
+      "_q4_quadrature_epoch_guard": "495E22E1412D7CAB967188B9930AC5C9910AA0E48CF2453CBAB16B5F0ECA9E60",
+      "_q4_quadrature_epoch_manager": "64C02A8828128030E338DD22F46F4ABC4FE2BAF1A6AB066EA9026C20E76725F7",
+      "_q4_serialized_output_boundary": "F4EBE89B79457105DDBD2309B5E14BE621CF5CCDE42B0205ED4BC846B6DAFA73",
+      "_q4_state_payload": "7B8DEB51D11C69281E5ADD7896B51B7B4A25EF5A14511C14FBCF47EB1D1B1B90",
+      "_qualified_q4_layer_count": "972E8A85FCDED26370F5A316C06C112F846BE8BCF432FD545A515563769F4171",
+      "_require_exact_readonly_float64_array": "8679573FA5508E0195CA910B66B9C086804947A32DC93C2C0CE9B72FEC1EFF8B",
+      "_require_q4_fast_array_authority": "EDA147C139DCEE9D320A6EFD422CAE93172207F7E31F142F3E24E25D7905F5A5",
+      "_require_q4_fast_base_authority": "9A8E5CE424B3DB702B8F4F4AE28A256BE3718481E44BE0B990F5C2B68992B948",
+      "_require_q4_quadrature_instance_authority": "E43066E9BEA1D78E1CFF9057A837651F73AA2E43AFD629BF9F639AE0D321E3A6",
+      "_require_q4_serialization_module_authority": "EED856FEF1FB691BF13EA5E40399BD3ACA8D74D1FBBA6E97FA3ED7AFCFB90741",
+      "_residual_mode": "6CCD74BF95E6A87F18C97C419BA2CB393DB618FB41CC7244345EDCD8F285E74B",
+      "_shape": "9C7DD808A791D9035CB6D318AB9D1001956D63D8AB843C536BB454EF9250BCC2",
+      "_shape_derivatives": "5A09095FDD5B020F013A73DBAD6E6C2ED37DCABBC41CE983DA94B6D979693A42",
+      "_solve_stationary_system": "E9241411C54893A71E59CD952EC986FE321DC252533E5BB03D85641D82CB2A3F",
+      "_source_fields": "4572342DEC864F1F5F0393ED36F603A6DEBD11A8F0D3E3BAD5CA3BD9FCFFAEA9",
+      "_static_mro_attribute": "6E050C13689DFFC3D23EC5D352E91237C3D8C0C48542025A0D87E4108A074BAC",
+      "_stationary_backward_error": "C0A4E32C0D7156EA1AE1B7DE80F558F036750E6AD4B28B0C724643BE91899D2F",
+      "_stationary_blocks": "D45393BFF0B769C9D74D0F7184262840961B243695FEF91A682EE120B182AC79",
+      "_symmetric_ruiz_congruence": "8A6461C35D944AFD566218A16B89AE9E9E0F34E6AC7E1D3B7761CF58F918888B",
+      "_tensor_transform": "B7C35BE1CDC8019B107044D3A8C43D47EAFBF5FCB12BB8977B0110C482EF6CB8",
+      "_validate_q4_quadrature_authority": "323F88B4FD89E5E44F893627AFA37FE626E695A9FBC69DCB3D300C6D5E521FAC",
+      "_validate_q4_quadrature_authority_exact": "C3828E97840760FB4D83458284CD7B8D1BF4CAB060A30BFB0EB872664576BCB3",
+      "_validate_q4_serialization_authority": "869C1DDA1AF7F52996CF4328A87A23D3D65DA98E20621A74B8493BDFAA57FCF9",
+      "equation7_frame": "33C7A8D30CDF8C226F309BCF9C415525E1976BAE70FDA94B4CDCD09B822CDF2E"
+    }
+  },
+  "mechanics_aggregate_sha256": "996C94581594E958545D5D64F25D1864942941A5B766BE88A79A4991BD4DE95C",
+  "observed_focused_pre_reader_integration": {
+    "all_source_symbol_delta": {
+      "files": {
+        "src/anysolver/e4_pl_element.py": {
+          "added_symbols": {
+            "QualifiedE4PLShellElement._defining_class_input_snapshot_matches": [
+              "A1E66144D9E9343DE45F74A5FC3494367B95D39EE03BA3433404DBEDD9779845"
+            ]
+          },
+          "after_source_sha256": "3785607e88af2985bc702a908724d0d5cc23f3519583c1bf176b257dc3d1bcad",
+          "before_source_sha256": "cafaa89cd840c6d1b1b9b66cf890d0b5d3dd2f1b57c5e431760144530a942dcf",
+          "changed_symbols": {
+            "QualifiedE4PLShellElement": {
+              "after": [
+                "FC8F9009150DC6B2090C5C0BA19BB6EC950ED205308C72DB550CD9EA91DA86E6"
+              ],
+              "before": [
+                "E73427EA2AD6D3EA4F7ECDB09BCC196489F9B7B50AA347170C0095E13BADF034"
+              ]
+            },
+            "QualifiedE4PLShellElement._compute_prepared_nonlinear_response": {
+              "after": [
+                "52000ED290A7F0B0F51A1F56F7E8191AE728ACE5376E3B6F252545AF98FF35EB"
+              ],
+              "before": [
+                "5EAD4BF4FF6B662A95EE350AA9674976B1070C5BADC383772E5B6948C88BF3AB"
+              ]
+            },
+            "QualifiedE4PLShellElement._elastic_increment_admitted": {
+              "after": [
+                "AF1CC82F1B049B3AF5650805D1379FE178E92C7DE0D0CB3ADD6AB939EF2DA8C4"
+              ],
+              "before": [
+                "EF28AC85278BBAF47F8E72A85ABD3B64F8911DE8A1184570989F899FC79E28CA"
+              ]
+            },
+            "QualifiedE4PLShellElement._elastic_increment_response": {
+              "after": [
+                "78280014F13C27892FE471C8651C655610D1B019FCF37FC0FDBD94C0F3E72E79"
+              ],
+              "before": [
+                "26D37A2958D4DD9F31A70E69D467B82826CF5950B7B23AE18E6871AC919A1703"
+              ]
+            },
+            "QualifiedE4PLShellElement._prepare_nonlinear_linear_correction": {
+              "after": [
+                "D939884E95AC82F865DADC33D613A1187478ED071480928BB85BF60EC16EA7DD"
+              ],
+              "before": [
+                "03A22275FC67C5AE11955691AA1C1ACE3D19A398088EADF9150E5C0986A707FC"
+              ]
+            }
+          },
+          "removed_symbols": {},
+          "scope": "ALL source declarations/assignments, including symbols outside original qualification roots; containing ClassDef also changes when methods change"
+        },
+        "tests/test_e4_pl_s3_mixed_mesh_manifest.py": {
+          "added_symbols": {},
+          "after_source_sha256": "b28f9dc236583146d760ee3f9acddff4d78f2811da27a7bc7d42562ae2ebbef2",
+          "before_source_sha256": "5c70459c5279e5d4c5ee7be050673d27d690c445f3e7de0abe77d648c4bf721d",
+          "changed_symbols": {
+            "test_q4_mechanics_closure_binds_physical_director_dependency": {
+              "after": [
+                "E8CF745176A2744D7F634618A57598A09975C4B7EFFEFBB22170298219EDE009"
+              ],
+              "before": [
+                "D2D1720100DD061E2B7CBAC41FD9F4D8DE94E5814BB0AA4DC3D00773AB8F10E3"
+              ]
+            },
+            "test_q4_mechanics_symbol_authority_rejects_missing_duplicate_and_change": {
+              "after": [
+                "CC625AB6470EE15D36EEC5F5F9AF4C79289377309F895C312CD998F36392F0DD"
+              ],
+              "before": [
+                "BC7E4C5BBE26B3F5254DED7AE18B58E5F2A092533838984CEEC6FC0F734C8444"
+              ]
+            }
+          },
+          "removed_symbols": {},
+          "scope": "ALL source declarations/assignments, including symbols outside original qualification roots; containing ClassDef also changes when methods change"
+        },
+        "tests/test_general_contact_c5_elastic_increment.py": {
+          "added_symbols": {},
+          "after_source_sha256": "cbb3b879ed4e9eb6d0d8e746f7bdcfd0f3d5af0988986955d1fdc1b8e1066668",
+          "before_source_sha256": "65844f0b4cbf5cd4b1fefc67a8095658890e43fa56329220ba55345a4555dd9f",
+          "changed_symbols": {
+            "test_original_snapshot_spans_every_preparation_boundary": {
+              "after": [
+                "F9EFCE6A4824EE841F64099AF9339AC368310F0258F3CA0165DAF0D997FEC50C"
+              ],
+              "before": [
+                "95F658C009864918BD8FF1E53A4ACD7CC4CE67418433F0EC333B5D3595E79434"
+              ]
+            }
+          },
+          "removed_symbols": {},
+          "scope": "ALL source declarations/assignments, including symbols outside original qualification roots; containing ClassDef also changes when methods change"
+        },
+        "tests/test_general_contact_c5_numpy_coordinate_admission.py": {
+          "added_symbols": {
+            "test_defining_class_admission_authority_rebinding_refuses": [
+              "1F604A68D64FD9639005514FA7CB33CBBE63204C21D761F8B9776D275A56E32A"
+            ],
+            "test_defining_class_cell_change_refuses_and_restores": [
+              "B518D5CB024736B62155DF48875C09BE23061B394C1698322DC4B3FF9050689C"
+            ],
+            "test_defining_class_matcher_refuses_subclass_without_selectable_class": [
+              "DBC541ACC16402978B93A1FFBF44F4B6F2D38D324E358936299D788C51E4E4E0"
+            ]
+          },
+          "after_source_sha256": "6fef7b15c7fb7ea4560b45c62bbce91b10b9f12994d4965579b48720e91599c3",
+          "before_source_sha256": "7d32d02f0616891eac7c6061e81a7b569e5e99ad419e22edf08b32e537d910e8",
+          "changed_symbols": {
+            "test_numpy_coordinate_snapshot_detects_changes": {
+              "after": [
+                "24E7699A676546BB1E2F87F2B3BCCD50C73281CF044DA38C368C0077C87664CC"
+              ],
+              "before": [
+                "5DE74E53ABB8B8B6709F06F7D2303D00608DA108A0E6188AC47C75D181A09F15"
+              ]
+            },
+            "test_raw_numpy_signed_zero_and_snapshot_identity_are_preserved": {
+              "after": [
+                "6F850433C68158D70179DCF0FF812A3CF00F8E821E6E8E8FB079071936211CF7"
+              ],
+              "before": [
+                "599DCC09D6D70501C10EE6EAC665B0CEBC83AFB3D161265670F883295845010A"
+              ]
+            }
+          },
+          "removed_symbols": {},
+          "scope": "ALL source declarations/assignments, including symbols outside original qualification roots; containing ClassDef also changes when methods change"
+        }
+      },
+      "inventory_format": "SHA256_UTF8_AST_DUMP_ANNOTATED_FIELDS_WITHOUT_LOCATIONS_V1",
+      "no_arithmetic_source_edited": true,
+      "original_DAG_result_sha256": "f0d1bf4391a9e60e53a957b8dcc3ee4f29f4618fb5088cc4657974b6434ee8b1",
+      "original_DAG_reused_unchanged_source": true,
+      "qualification_accepted": false,
+      "status": "ACTUAL_ALL_SOURCE_SYMBOL_DELTA"
+    },
+    "case_count": 41,
+    "charged_seconds": 36.976900837438734,
+    "child_sha256": "65d48c8ecfde84a4b495bbb8145f7f505c628e1660cc1cbff5e0c69585a16580",
+    "final_reader_test_bytes_not_covered_by_this_observation": true,
+    "inventory_sha256": "272cb4584ed3097a5b9de5ef2cae3dc190048a6251c463ad302f82ae65d9d241",
+    "native_sha256": "675095d92f72f0d2d6974657c5761ccc5468834ad693e75c01e2946c77ae8af1",
+    "phase_count": 123,
+    "result_sha256": "e6d51526ffceb7f1fdcdc286dcea5c5448034615af0e9b3508c7532d9a5c3f3f",
+    "status": "PASS"
+  },
+  "original_collector_evidence": {
+    "actual_symbols": 159,
+    "closure_sha256": "01ebd604b86f3f595a69fb6e8842be605f98ce9b3b0a31fa1da25626e629cc6c",
+    "discriminator_sha256": "f0d1bf4391a9e60e53a957b8dcc3ee4f29f4618fb5088cc4657974b6434ee8b1",
+    "historical_symbols_actually_reachable": 129,
+    "result_sha256": "215a6de13549b6893e2046b070e0326e05ec83be7b996b1c5829ff1dbd63b7a6",
+    "roots": 47,
+    "scientific_acceptance": false
+  },
+  "parent_closure_delta": {
+    "added_symbols": [
+      "QualifiedE4PLShellElement._defining_class_input_snapshot_matches"
+    ],
+    "changed_symbols": [
+      "QualifiedE4PLShellElement._elastic_increment_admitted",
+      "QualifiedE4PLShellElement._elastic_increment_response"
+    ],
+    "edge_delta": {
+      "QualifiedE4PLShellElement": {
+        "after": null,
+        "before": [
+          "DIRECTOR_POLARITY_POLICY_ID",
+          "DIRECTOR_REVERSAL_TRANSFORM_ID",
+          "FORMULATION_ID",
+          "IMPLEMENTATION_ID",
+          "Q4_ACTIVITY_DISPOSITION_SCHEMA_ID",
+          "Q4_CURRENT_STATE_ALGORITHMIC_ORIGIN_SCHEMA_ID",
+          "Q4_CURRENT_STATE_BINDING_SCHEMA_ID",
+          "Q4_CURRENT_STATE_PROJECTION_POLICY_ID",
+          "Q4_CURRENT_STATE_TANGENT_DECOMPOSITION_POLICY_ID",
+          "Q4_DELETED_FROZEN_POLICY_ID",
+          "Q4_FAILED_STATE_POLICY_ID",
+          "Q4_QUADRATURE_AUTHORITY_ID",
+          "QualifiedE4PLShellElement.GAUSS_POINTS_2x2",
+          "QualifiedE4PLShellElement.GAUSS_WEIGHTS_2x2",
+          "QualifiedE4PLShellElement._accepted_algorithmic_update_fingerprint",
+          "QualifiedE4PLShellElement._algorithmic_origin_payload",
+          "QualifiedE4PLShellElement._bind_qualified_component_guard",
+          "QualifiedE4PLShellElement._canonicalize_compact_batch_constitutive_core",
+          "QualifiedE4PLShellElement._committed_current_binding_payload",
+          "QualifiedE4PLShellElement._compute_committed_current_tangent_components_unchecked",
+          "QualifiedE4PLShellElement._constitutive_and_drill_stiffness",
+          "QualifiedE4PLShellElement._current_state_cache_transaction",
+          "QualifiedE4PLShellElement._deleted_frozen_disposition_payload",
+          "QualifiedE4PLShellElement._elastic_increment_admitted",
+          "QualifiedE4PLShellElement._elastic_increment_response",
+          "QualifiedE4PLShellElement._failed_state_disposition_payload",
+          "QualifiedE4PLShellElement._generalized_section_in_frame",
+          "QualifiedE4PLShellElement._inverse_planar_jacobian",
+          "QualifiedE4PLShellElement._is_compact_batch_constitutive_state",
+          "QualifiedE4PLShellElement._local_frame_and_derivatives",
+          "QualifiedE4PLShellElement._mitc4_shear_b_matrix",
+          "QualifiedE4PLShellElement._nonlinear_geometry",
+          "QualifiedE4PLShellElement._nonlinear_response_core",
+          "QualifiedE4PLShellElement._physical_director_context",
+          "QualifiedE4PLShellElement._plan_invalidating_attributes",
+          "QualifiedE4PLShellElement._qualified_linear_correction",
+          "QualifiedE4PLShellElement._qualified_stiffness_cache_key",
+          "QualifiedE4PLShellElement._recover_planar_mixed_fields",
+          "QualifiedE4PLShellElement._recover_warped_generalized_section",
+          "QualifiedE4PLShellElement._recover_warped_homogeneous_section",
+          "QualifiedE4PLShellElement._reject_noncurrent_activity_disposition",
+          "QualifiedE4PLShellElement._replay_accepted_algorithmic_response",
+          "QualifiedE4PLShellElement._requires_algorithmic_return_map_origin",
+          "QualifiedE4PLShellElement._seal_committed_state_at_configuration",
+          "QualifiedE4PLShellElement._stable_state_identity_payload",
+          "QualifiedE4PLShellElement._validate_committed_current_kinematics",
+          "QualifiedE4PLShellElement._validate_committed_state_at_configuration",
+          "QualifiedE4PLShellElement._validate_qualified_component_cache_identity",
+          "QualifiedE4PLShellElement._validate_qualified_component_guard",
+          "QualifiedE4PLShellElement._validated_algorithmic_origin",
+          "QualifiedE4PLShellElement._warped_generalized_drilling_correction",
+          "QualifiedE4PLShellElement.attach_current_tangent_algorithmic_origin",
+          "QualifiedE4PLShellElement.compute_stiffness_components",
+          "QualifiedE4PLShellElement.compute_stiffness_matrix",
+          "QualifiedE4PLShellElement.get_node_coordinates",
+          "QualifiedE4PLShellElement.physical_reference_director",
+          "QualifiedE4PLShellElement.to_dict",
+          "QualifiedE4PLShellElement.validate_committed_current_tangent_binding",
+          "QualifiedE4PLShellElement.validate_committed_current_tangent_semantics",
+          "QualifiedE4PLShellElement.validate_committed_current_tangent_state",
+          "QualifiedQ4MigrationWarning",
+          "RECOVERY_POLICY_ID",
+          "STATIONARY_SOLVE_POLICY_ID",
+          "_FOREIGN_S3_ACTIVITY_DISPOSITION_KEY",
+          "_GAUSS",
+          "_PLANAR_FORMULATION_ID",
+          "_PreparedQ4LinearCorrection",
+          "_Q4_ACTIVITY_DISPOSITION_KEY",
+          "_Q4_CURRENT_STATE_ALGORITHMIC_ORIGIN_KEY",
+          "_Q4_CURRENT_STATE_BINDING_KEY",
+          "_Q4_CURRENT_STATE_DIGEST_KEY",
+          "_Q4_FAST_MATERIAL_TYPE",
+          "_Q4_FAST_MESH_TYPE",
+          "_Q4_INITIAL_STATE_KEYS",
+          "_Q4_QUADRATURE_CLASS_ARRAY_AUTHORITY",
+          "_QUALIFIED_Q4_BASE_GEOMETRIC_KERNEL",
+          "_QUALIFIED_Q4_BASE_LOCAL_FRAME_KERNEL",
+          "_QUALIFIED_Q4_BASE_MASS_KERNEL",
+          "_QUALIFIED_Q4_BASE_MITC4_SHEAR_KERNEL",
+          "_QUALIFIED_Q4_BASE_NONLINEAR_GEOMETRY",
+          "_QUALIFIED_Q4_BASE_NONLINEAR_KERNEL",
+          "_QUALIFIED_Q4_BASE_STIFFNESS_KERNEL",
+          "_QUALIFIED_Q4_COORDINATE_SCALAR_TYPES",
+          "_QUALIFIED_Q4_PROTECTED_CACHE_NAMES",
+          "_V5_IMPLEMENTATION_ID",
+          "_V6_CURRENT_STATE_BINDING_SCHEMA_ID",
+          "_V6_CURRENT_STATE_TANGENT_DECOMPOSITION_POLICY_ID",
+          "_V6_IMPLEMENTATION_ID",
+          "_WARPED_FORMULATIONS",
+          "_binary64_vector_fingerprint",
+          "_capture_q4_fast_input_snapshot",
+          "_centre_taylor",
+          "_characteristic_length",
+          "_coefficients",
+          "_compatible",
+          "_freeze_qualified_component_cache",
+          "_global_transform",
+          "_invariant_generalized_drilling_scale",
+          "_jacobian",
+          "_local_jacobian_scale",
+          "_normalize",
+          "_q4_compact_replay_last_place_equivalent",
+          "_q4_fast_input_snapshot_matches",
+          "_q4_serialized_input_boundary",
+          "_q4_serialized_output_boundary",
+          "_q4_state_payload",
+          "_qualified_q4_layer_count",
+          "_require_q4_fast_base_authority",
+          "_residual_mode",
+          "_solve_stationary_system",
+          "_source_fields",
+          "_stationary_blocks",
+          "_validate_q4_quadrature_authority",
+          "equation7_frame"
+        ]
+      },
+      "QualifiedE4PLShellElement._canonicalize_compact_batch_constitutive_core": {
+        "after": null,
+        "before": [
+          "QualifiedE4PLShellElement._is_compact_batch_constitutive_state"
+        ]
+      },
+      "QualifiedE4PLShellElement._defining_class_input_snapshot_matches": {
+        "after": [
+          "_Q4FastInputSnapshot",
+          "_Q4_FAST_COORDINATE_FLOAT64_TYPE",
+          "_Q4_FAST_ELEMENT_ITEMGETTER",
+          "_Q4_FAST_FORBIDDEN_MESH_SHADOWS",
+          "_Q4_FAST_MATERIAL_ITEMGETTER",
+          "_Q4_FAST_MATERIAL_TYPE",
+          "_Q4_FAST_MESH_TYPE",
+          "_Q4_FAST_NODE_ITEMGETTER",
+          "_Q4_FAST_NODE_TYPE",
+          "_Q4_FAST_STATE_MAPPING_TYPE",
+          "_Q4_FAST_TOKEN_TYPE"
+        ],
+        "before": null
+      },
+      "QualifiedE4PLShellElement._deleted_frozen_disposition_payload": {
+        "after": null,
+        "before": [
+          "Q4_ACTIVITY_DISPOSITION_SCHEMA_ID",
+          "Q4_DELETED_FROZEN_POLICY_ID",
+          "QualifiedE4PLShellElement._stable_state_identity_payload",
+          "_binary64_vector_fingerprint"
+        ]
+      },
+      "QualifiedE4PLShellElement._elastic_increment_admitted": {
+        "after": [
+          "QualifiedE4PLShellElement._defining_class_input_snapshot_matches",
+          "QualifiedE4PLShellElement.get_node_coordinates",
+          "_Q4_FAST_MATERIAL_TYPE",
+          "_Q4_FAST_MESH_TYPE",
+          "_Q4_INITIAL_STATE_KEYS",
+          "_capture_q4_fast_input_snapshot",
+          "_require_q4_fast_base_authority",
+          "equation7_frame"
+        ],
+        "before": [
+          "QualifiedE4PLShellElement",
+          "QualifiedE4PLShellElement.get_node_coordinates",
+          "_Q4_FAST_MATERIAL_TYPE",
+          "_Q4_FAST_MESH_TYPE",
+          "_Q4_INITIAL_STATE_KEYS",
+          "_capture_q4_fast_input_snapshot",
+          "_q4_fast_input_snapshot_matches",
+          "_require_q4_fast_base_authority",
+          "equation7_frame"
+        ]
+      },
+      "QualifiedE4PLShellElement._elastic_increment_response": {
+        "after": [
+          "QualifiedE4PLShellElement._defining_class_input_snapshot_matches",
+          "QualifiedE4PLShellElement._elastic_increment_admitted",
+          "QualifiedE4PLShellElement._nonlinear_geometry",
+          "QualifiedE4PLShellElement._validate_qualified_component_guard",
+          "QualifiedE4PLShellElement.compute_stiffness_matrix",
+          "_capture_q4_fast_input_snapshot"
+        ],
+        "before": [
+          "QualifiedE4PLShellElement._elastic_increment_admitted",
+          "QualifiedE4PLShellElement._nonlinear_geometry",
+          "QualifiedE4PLShellElement._validate_qualified_component_guard",
+          "QualifiedE4PLShellElement.compute_stiffness_matrix",
+          "_capture_q4_fast_input_snapshot",
+          "_q4_fast_input_snapshot_matches"
+        ]
+      },
+      "QualifiedE4PLShellElement._failed_state_disposition_payload": {
+        "after": null,
+        "before": [
+          "Q4_ACTIVITY_DISPOSITION_SCHEMA_ID",
+          "Q4_FAILED_STATE_POLICY_ID",
+          "QualifiedE4PLShellElement._stable_state_identity_payload",
+          "_binary64_vector_fingerprint",
+          "_q4_state_payload"
+        ]
+      },
+      "QualifiedE4PLShellElement._plan_invalidating_attributes": {
+        "after": null,
+        "before": []
+      },
+      "QualifiedE4PLShellElement._seal_committed_state_at_configuration": {
+        "after": null,
+        "before": [
+          "QualifiedE4PLShellElement._canonicalize_compact_batch_constitutive_core",
+          "QualifiedE4PLShellElement._committed_current_binding_payload",
+          "QualifiedE4PLShellElement._is_compact_batch_constitutive_state",
+          "QualifiedE4PLShellElement._reject_noncurrent_activity_disposition",
+          "QualifiedE4PLShellElement._replay_accepted_algorithmic_response",
+          "QualifiedE4PLShellElement._validate_committed_current_kinematics",
+          "_FOREIGN_S3_ACTIVITY_DISPOSITION_KEY",
+          "_Q4_CURRENT_STATE_BINDING_KEY",
+          "_Q4_CURRENT_STATE_DIGEST_KEY",
+          "_qualified_q4_layer_count"
+        ]
+      },
+      "QualifiedQ4MigrationWarning": {
+        "after": null,
+        "before": []
+      },
+      "_PreparedQ4LinearCorrection": {
+        "after": null,
+        "before": []
+      },
+      "_QUALIFIED_Q4_PROTECTED_CACHE_NAMES": {
+        "after": null,
+        "before": []
+      },
+      "_q4_fast_input_snapshot_matches": {
+        "after": null,
+        "before": [
+          "QualifiedE4PLShellElement",
+          "_Q4FastInputSnapshot",
+          "_Q4_FAST_COORDINATE_FLOAT64_TYPE",
+          "_Q4_FAST_ELEMENT_ITEMGETTER",
+          "_Q4_FAST_FORBIDDEN_MESH_SHADOWS",
+          "_Q4_FAST_MATERIAL_ITEMGETTER",
+          "_Q4_FAST_MATERIAL_TYPE",
+          "_Q4_FAST_MESH_TYPE",
+          "_Q4_FAST_NODE_ITEMGETTER",
+          "_Q4_FAST_NODE_TYPE",
+          "_Q4_FAST_STATE_MAPPING_TYPE",
+          "_Q4_FAST_TOKEN_TYPE"
+        ]
+      },
+      "_q4_serialized_input_boundary": {
+        "after": null,
+        "before": [
+          "_require_q4_serialization_module_authority",
+          "_validate_q4_quadrature_authority",
+          "_validate_q4_serialization_authority"
+        ]
+      }
+    },
+    "interpretation": "14 edge-delta entries:11 removed nominal-ClassDef expansion/legacy-matcher nodes,1 added matcher,2 changed callers. No historical required symbol removed. Unchanged state/canonicalization/disposition/serialization methods retain their runtime roles; full raw file binding covers outside-root callers. Collector and DAG rules unchanged."
+  },
+  "physical_acceptance_transfer": false,
+  "previous_source_binding": {
+    "path": "docs/reference_cases/e4_pl_q4_source_binding_20261016.json",
+    "sha256": "be903d0381248bec56b9c48e8ef90f119b0f15e133f1aebb9a5b89c341b8aa1b"
+  },
+  "qualification_boundary": "SOURCE_BINDING_ONLY_NOT_SCIENTIFIC_QUALIFICATION",
+  "reader_identity_binding": "FINAL_READER_TEST_BYTES_SEPARATELY_ROOT_REVIEWED_AND_PINNED_BY_WHOLE_MODULE_CARRIER_NO_SELF_HASH_CYCLE",
+  "schema": "anysolver.q4-source-binding-successor-v1",
+  "source": {
+    "coverage": "FULL_RAW_FILE_INCLUDING_PREPARATION_AND_PREPARED_RESPONSE_CALLERS_OUTSIDE_ORIGINAL_CLOSURE",
+    "path": "src/anysolver/e4_pl_element.py",
+    "sha256": "3785607E88AF2985BC702A908724D0D5CC23F3519583C1BF176B257DC3D1BCAD"
+  },
+  "source_binding_integration_review": {
+    "C5_exception_transfer": false,
+    "CI_credit": false,
+    "baseline_candidate": "e40298cc5f1fce3bc6a25b803874e32efb45dffd",
+    "changed_other_routes": "Beam yielding/condensed shear and finite rotating coupling are real changes; no whole-module/transitive numerical-equivalence claim.",
+    "changed_this_slice_semantics": "Metadata/reader-only slice; upstream carrier changes are explicitly recorded, not denied.",
+    "current_main": "4074eb8b163c1d04cd5e1faed742a237680c01fd",
+    "external_carrier_changed_since_predecessor": true,
+    "final_different_family_scientific_acceptance": "OPEN; supporting source review uses available OpenAI family",
+    "historical_41_case_observation": "Original pre-reader41cases/123phases and source/result identities retained from predecessor; not rerun, current science, or CI credit.",
+    "lifecycle_delta": {
+      "byte_reconciliation": "Exact committed LF bytes; previous CRLF working copy is LF-equal. No semantic change.",
+      "disposition": "Existing accepted immutable-vector identity/cache-lifecycle repair; review verifies exact current source identity. Not Q4 scientific qualification.",
+      "evidence": "docs/agent_plans/PR35_IMMUTABLE_VECTOR_SALVAGE_PLAN_20261016.md",
+      "path": "src/anysolver/fe_core.py",
+      "prior_windows_working_copy_sha256": "07549c53099a3f4b6ab91d3a4741bcda64a91126935450aa7e463ee0954932da",
+      "sha256": "2377a0b492113a6ac80b009cebc9849c83867f7ac367f0a7d5d15d6c26153c0a"
+    },
+    "physical_acceptance_transfer": false,
+    "prior_elements_sha256": "293966acf50b06add3039905b5f1b682e17168fe832fae57d2b1c12efe602dde",
+    "product_edited_in_this_binding_slice": false,
+    "review_path": "docs/reference_cases/Q4_SOURCE_BINDING_REVIEW_20261019.md",
+    "review_sha256": "946dd42285a4b0eb9df5c143ea1c648fe75e19f8bd12e90e5edcd7b49f8f3449",
+    "unchanged_scope": "Exact47-root/159-symbol Q4 payload/edges/aggregate; entire Element/ShellElement classes; compensated helper and its relevant arithmetic declarations/imports; other two full raw carriers."
+  },
+  "status": "ROOT_ADOPTED_PROSPECTIVE_SOURCE_BINDING_ONLY_20261019"
+}

@@ -1071,3 +1071,6 @@ src/anyfesolver/fe_core.py -text whitespace=blank-at-eol,-blank-at-eof,space-bef
 scripts/contact_candidate_slice2.json text eol=lf
 /tests/data/namespace_migration/*.json -text
 /scripts/contact_candidate_050.json text eol=lf
+# Restored original reader-pinned Q4 record: exact CRLF bytes (blob 99b59279...,
+# SHA-256 64B07F...).  Must follow the broad docs/reference_cases/e4_* rule above.
+/docs/reference_cases/e4_pl_q4_source_binding_20261019_as_reviewed.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
