@@ -60,6 +60,59 @@ def _native_preparation_allowed():
             and getattr(function, 'errcheck', None) is None)
 
 
+_S3_ORDER = 18
+_S3_TAIL_COLUMNS = (16, 17)
+
+
+def s3_congruence_product(transform, matrix):
+    """Fixed-order fused ``transform.T @ matrix @ transform`` for 18x18 S3 data.
+
+    This reproduces the archived S3 shell-stiffness globalization bits for the
+    contact checkpoints whose first product ``transform.T @ matrix`` and second
+    product ``first @ transform`` were observed on a SkylakeX OpenBLAS kernel.
+    It is a fixed arithmetic specification only; it makes no claim about any
+    BLAS kernel or any other operand set.
+
+    First product: every entry is an ascending-index fused accumulation from
+    +0. Second product: columns 0..15 use the same single ascending fused
+    accumulation; columns 16 and 17 use two independent accumulators, one for
+    even and one for odd inner indices, added once at the end. The result is
+    not symmetrized or rounded here.
+    """
+    left = np.asarray(transform, dtype=float)
+    right = np.asarray(matrix, dtype=float)
+    if left.shape != (_S3_ORDER, _S3_ORDER) or right.shape != left.shape:
+        raise ValueError('S3 congruence product requires 18x18 operands')
+    if not np.all(np.isfinite(left)) or not np.all(np.isfinite(right)):
+        raise ValueError('S3 congruence product requires finite operands')
+    t_columns = [list(map(float, column)) for column in left.T]   # rows of T.T
+    m_columns = [list(map(float, column)) for column in right.T]
+    first = np.empty((_S3_ORDER, _S3_ORDER))
+    for i, a_row in enumerate(t_columns):
+        for j, b_col in enumerate(m_columns):
+            acc = 0.
+            for a, b in zip(a_row, b_col):
+                acc = _fma(a, b, acc)
+            first[i, j] = acc
+    rows = [list(map(float, row)) for row in first]
+    t_cols = [list(map(float, column)) for column in left.T]
+    result = np.empty((_S3_ORDER, _S3_ORDER))
+    for i, a_row in enumerate(rows):
+        for j, b_col in enumerate(t_cols):
+            if j in _S3_TAIL_COLUMNS:
+                even = odd = 0.
+                for k in range(0, _S3_ORDER, 2):
+                    even = _fma(a_row[k], b_col[k], even)
+                    odd = _fma(a_row[k+1], b_col[k+1], odd)
+                result[i, j] = even + odd
+            else:
+                acc = 0.
+                for a, b in zip(a_row, b_col):
+                    acc = _fma(a, b, acc)
+                result[i, j] = acc
+    return result
+
+
 def gap_vector_product(matrix, vector):
     """The fixed 9x3 gap map applied to a three-component spatial vector."""
     matrix = np.asarray(matrix, dtype=float)

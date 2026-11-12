@@ -110,7 +110,8 @@ def _relative_center(high,low,cell,t,origin,arm=None):
 
 class _S3CandidateIntegration(NativeCurvedMaterialPlaneWork):
     """Disposable target data; no mutable candidate cache on the public adapter."""
-    def __init__(self,work,corners):
+    def __init__(self,work,corners,*,replay_norms=False):
+        self._replay_norms = replay_norms
         normal,dn,hn=_normal_derivatives(corners)
         # A represented corner is on the represented facet. A rounded centroid
         # need not lie on its plane at a large common origin.
@@ -207,6 +208,13 @@ class _S3CandidateIntegration(NativeCurvedMaterialPlaneWork):
         result[:42,:42]=spatial_jacobian(residual[:42],hessian[:42,:42])
         return result
 
+    def _bound_norm(self, values):
+        if self._replay_norms:
+            # Sum binary64 squares in a fixed order before taking the root.
+            # The archived enclosure uses the Euclidean (or Frobenius) norm.
+            return sqrt(fsum(float(x) * float(x) for x in values.flat))
+        return np.linalg.norm(values)
+
     def _root_work_bound(self,high,low,U,cell,width,angular_width,geometry,
                          settings,stiffness,normal,pad,*,fallback=False,interval=None,station=None,
                          declared_arc=False):
@@ -221,7 +229,7 @@ class _S3CandidateIntegration(NativeCurvedMaterialPlaneWork):
         w=self.shell_map*scale
         dn=self.dn@w;o=self.origin_map@w
         hn=np.einsum('ijk,ja,kb->iab',self.hn,w,w)
-        n1=np.linalg.norm(dn);n2=np.linalg.norm(hn);o1=np.linalg.norm(o,2)
+        n1=np.linalg.norm(dn);n2=self._bound_norm(hn);o1=np.linalg.norm(o,2)
         center=[_relative_center(high,low,cell,t,self.origin) for t in (0.,1.)]
         distance=max(deterministic_norm(v) for v in center)+arm
         chord=np.array([fsum((high[cell+1,i],low[cell+1,i],-high[cell,i],-low[cell,i]))
@@ -245,7 +253,7 @@ class _S3CandidateIntegration(NativeCurvedMaterialPlaneWork):
                        for arm in (base,base+U[cell]@(r*frame[:,1]),base+U[cell]@(r*frame[:,2]))]
             circular=np.column_stack((gradients[1]-gradients[0],gradients[2]-gradients[0]))
             angular=(_declared_arc_gradient_bound(gradients[0],circular,self.rule.definition['angle_range'])
-                     if declared_arc else np.linalg.norm(gradients[0])+np.linalg.norm(circular,2))
+                     if declared_arc else self._bound_norm(gradients[0])+np.linalg.norm(circular,2))
             tight=angular+max(abs(station-x) for x in interval)*gx
             g=min(g,tight*(1+8192*np.finfo(float).eps))
             if declared_arc:
@@ -453,11 +461,11 @@ class NativeCurvedMaterialS3Work(NativeRetainedMaterialS3Work):
             pending.extend(((left,mid),(mid,right)))
         return result(True,'whole curved source and moving-S3 gap/rim/orientation bounded')
 
-    def evaluate(self,positions,position_low,rotations,u):
+    def evaluate(self,positions,position_low,rotations,u,*,replay_norms=False):
         pose=self._configuration(positions,position_low,rotations,u)
         extent,clearance=self._geometry(pose)
         corners=self.shell.current_positions(u)
-        integral=_S3CandidateIntegration(self,corners).evaluate(positions,position_low,rotations)
+        integral=_S3CandidateIntegration(self,corners,replay_norms=replay_norms).evaluate(positions,position_low,rotations)
         residual=integral.residual
         bf=np.array([-residual[6*i:6*i+3] for i in range(3)])
         sf=-residual[42:][self.shell_translation_dofs]

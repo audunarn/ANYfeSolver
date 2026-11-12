@@ -213,8 +213,28 @@ _COMPONENT_CACHE_ENTRY_SCHEMA = (
 _COMPONENT_CACHE_CAPACITY = 512
 
 
-def _make_exact_component_compute_wrapper() -> Any:
-    """Create the sole cache surface with all mutable state closure-owned."""
+HOST_BLAS_ARITHMETIC = "host_blas"
+CONTACT_REPLAY_FUSED_ARITHMETIC = "contact_replay_fused_congruence_v1"
+
+
+def _make_exact_component_compute_wrapper(arithmetic: str = HOST_BLAS_ARITHMETIC) -> Any:
+    """Create one cache surface with all mutable state closure-owned.
+
+    ``arithmetic`` selects only how the final 18x18 congruence
+    ``T.T @ M @ T`` is evaluated.  The default is the host BLAS product used
+    since V2C was accepted.  The contact-replay option evaluates only that one
+    product with the fixed fused-multiply-add order of
+    ``general_contact.native_replay_arithmetic.s3_congruence_product``, an
+    order observed to reproduce archived matrices.  Geometry, operators and
+    the local products are unchanged and still use the host libraries, so this
+    is not a claim that the whole stiffness is host independent.  Each option
+    owns a separate closure cache, the option is part of every cache key, and
+    the fused option refuses a non-canonical receiver before touching its cache.
+    """
+
+    if arithmetic not in (HOST_BLAS_ARITHMETIC, CONTACT_REPLAY_FUSED_ARITHMETIC):
+        raise ValueError("strict-flat S3 V2 unknown congruence arithmetic")
+    fused_congruence = arithmetic == CONTACT_REPLAY_FUSED_ARITHMETIC
 
     entries: Dict[Tuple[Any, ...], Tuple[Any, ...]] = {}
     missing = object()
@@ -291,6 +311,7 @@ def _make_exact_component_compute_wrapper() -> Any:
             EQUATION_MAP_SHA256,
             QUADRATURE_AUTHORITY_ID,
             PL_COMPLETION_POLICY_ID,
+            arithmetic,
             array_identity(
                 geometry["local_coordinates"], (3, 2), "local-coordinate"
             ),
@@ -469,8 +490,18 @@ def _make_exact_component_compute_wrapper() -> Any:
         total_local = physical_local + pl_local
         transform = np.asarray(geometry["local_from_external"], dtype=np.float64)
 
+        if fused_congruence:
+            # Imported at call time: the arithmetic module lives in the
+            # general_contact package, which imports this element layer.
+            from .general_contact.native_replay_arithmetic import (
+                s3_congruence_product,
+            )
+
         def globalize(matrix: np.ndarray) -> np.ndarray:
-            made = transform.T @ matrix @ transform
+            if fused_congruence:
+                made = s3_congruence_product(transform, matrix)
+            else:
+                made = transform.T @ matrix @ transform
             return 0.5 * (made + made.T)
 
         membrane = globalize(membrane_local)
@@ -497,11 +528,39 @@ def _make_exact_component_compute_wrapper() -> Any:
             "relaxation_authority_sha256": RELAXATION_AUTHORITY_SHA256,
         }
 
+    route_names = (
+        "compute_stiffness_matrix",
+        "compute_stiffness_components",
+        "_geometry",
+        "_constitutive",
+        "_operators",
+        "_validate_configuration",
+        "_coordinates",
+        "_validate_model_scope",
+    )
+
+    def require_canonical_receiver(receiver: Any) -> None:
+        """Fused option only: refuse a receiver whose stiffness route could be
+        replaced. Runs before any cache access."""
+
+        kind = type(receiver)
+        if kind is StrictFlatLinearE4PLS3V2CShellElement:
+            return  # frozen class: its own guards reject instance shadows
+        from .e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
+
+        if kind is not NativeParityE4PLS3V2DShellElement:
+            fail("fused congruence receiver is not an exact V2C/V2D element")
+        namespace = object.__getattribute__(receiver, "__dict__")
+        if any(name in namespace for name in route_names):
+            fail("fused congruence receiver shadows a stiffness route")
+
     def compute_stiffness_components(
         self: Any,
         mesh: FEMesh,
         material: Material,
     ) -> Mapping[str, Any]:
+        if fused_congruence:
+            require_canonical_receiver(self)
         # Admission and all live instance/model/material guards deliberately run
         # before any cache observation.  Only exact validated numeric inputs
         # enter the closure-owned key.
@@ -530,8 +589,18 @@ def _make_exact_component_compute_wrapper() -> Any:
 
     compute_stiffness_components.__qualname__ = (
         "StrictFlatLinearE4PLS3V2CShellElement.compute_stiffness_components"
+        if not fused_congruence
+        else "compute_contact_replay_stiffness_components"
     )
     return compute_stiffness_components
+
+
+# Module-level (never installed on the guarded class): the same guarded
+# geometry/constitutive/operator path with the fixed fused congruence.  Call
+# with an exact V2C/V2D element; every admission guard runs inside.
+compute_contact_replay_stiffness_components = (
+    _make_exact_component_compute_wrapper(CONTACT_REPLAY_FUSED_ARITHMETIC)
+)
 
 
 def _validate_module_authority(

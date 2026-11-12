@@ -10,6 +10,29 @@ def _analysis(**kwargs):
     return runpy.run_path(str(Path(__file__).parents[1]/'examples/general_contact_native_curved_material_s3.py'))['analysis'](**kwargs)
 
 
+def test_s3_congruence_product_fixed_fused_order_and_refusals():
+    """Synthetic: the specified accumulation order, not a kernel equivalence."""
+    from anyfesolver.general_contact.native_replay_arithmetic import s3_congruence_product
+    eps = 2.**-53
+    # With M = I the first product is exactly T.T, so entry (i,j) of the result is
+    # sum_k T[k,i]*T[k,j] and only the accumulation order of the second product
+    # is observable. Row 0 of T.T is (eps, 1, eps, 0, ...); columns 15..17 are ones.
+    T = np.zeros((18, 18)); T[0, 0], T[1, 0], T[2, 0] = eps, 1., eps
+    T[:, 15:] = 1.
+    R = s3_congruence_product(T, np.eye(18))
+    assert R[0, 15] == 1.                     # ascending single accumulation: ties to 1
+    assert R[0, 16] == R[0, 17] == 1.+2*eps   # even (eps+eps) + odd (1) accumulators
+    # Exactly representable data: every order gives the exact product.
+    rng = np.random.default_rng(5)
+    A = rng.integers(-8, 9, (18, 18)).astype(float); B = rng.integers(-8, 9, (18, 18)).astype(float)
+    np.testing.assert_array_equal(s3_congruence_product(A, B), A.T @ B @ A)
+    for bad in (np.zeros((17, 18)), np.full((18, 18), np.nan)):
+        with pytest.raises(ValueError):
+            s3_congruence_product(bad, np.eye(18))
+        with pytest.raises(ValueError):
+            s3_congruence_product(np.eye(18), bad)
+
+
 def test_curved_s3_coupled_first_contact_complete_retained_and_target_work():
     owner=_analysis(targets=(1.,));run=owner.solve()
     path=os.environ.get('CONTACT_APP_RESULT_RECORD')
