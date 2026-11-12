@@ -136,17 +136,35 @@ jobs:
         with:
           name: verified-alpha
           path: dist/
-      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
+      - name: Verify the two previously staged results artifacts
+        run: |
+          python - <<'PY'
+          import hashlib, json, pathlib, urllib.request
+          files = pathlib.Path('dist/results').iterdir()
+          expected = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in files}
+          with urllib.request.urlopen('https://test.pypi.org/pypi/ANYfeSolver-results/2.2.0a1/json', timeout=30) as response:
+              observed = {f['filename']: f['digests']['sha256'] for f in json.load(response)['urls']}
+          if expected != observed or len(expected) != 2:
+              raise SystemExit('Staged results digests differ')
+          PY
+
+  alpha-stage-solver:
+    needs: alpha-stage
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          repository-url: https://test.pypi.org/legacy/
-          packages-dir: dist/results/
+          name: verified-alpha
+          path: dist
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
         with:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: dist/solver/
 
   alpha-publish:
-    needs: alpha-stage
+    needs: alpha-stage-solver
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -178,6 +196,17 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
         with:
           packages-dir: dist/results/
+
+  alpha-publish-solver:
+    needs: alpha-publish
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: verified-alpha
+          path: dist
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
         with:
           packages-dir: dist/solver/
