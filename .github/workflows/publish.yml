@@ -243,6 +243,27 @@ jobs:
         with:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: plan/results/
+
+  testpypi-solver:
+    name: Upload the stable solver to TestPyPI
+    needs: [validate, testpypi]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      # The release-SHA checkout supplies only the index-plan helper; the bytes
+      # to publish come exclusively from the artifact of this same run.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: release-050-distributions
+          path: stage/
+      - name: Verify the downloaded distributions
+        run: cd stage/dist && sha256sum -c ../SHA256SUMS
       - name: Plan the ANYfeSolver TestPyPI upload
         id: plan_solver
         run: >-
@@ -416,6 +437,26 @@ jobs:
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
         with:
           packages-dir: plan/results/
+
+  pypi-solver:
+    name: Upload the stable solver to PyPI
+    needs: [validate, pypi]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+          persist-credentials: false
+      # Same-run artifact written by the `stage` job after it re-verified the bytes.
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: release-050-promoted
+          path: stage/
+      - name: Verify the downloaded distributions
+        run: cd stage/dist && sha256sum -c ../SHA256SUMS
       - name: Plan the ANYfeSolver PyPI upload
         id: plan_solver
         run: >-

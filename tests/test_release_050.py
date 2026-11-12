@@ -239,7 +239,12 @@ def test_publish_workflow_policy() -> None:
     assert "release-050-distributions" not in pypi
     assert "retention-days: 30" in build
     assert "sha256sum -c" in testpypi and "sha256sum -c" in stage and "sha256sum -c" in pypi
-    assert text.count("sha256sum -c") == 3
+    for index, following in (("testpypi", "stage"), ("pypi", None)):
+        solver_job = job(f"{index}-solver", following)
+        assert f"needs: [validate, {index}]" in solver_job
+        assert "environment:" not in solver_job
+        assert "sha256sum -c" in solver_job and "id-token: write" in solver_job
+    assert text.count("sha256sum -c") == 5
     # PyPI promotion still needs TestPyPI to serve identical digests (no sleep loop beyond 5 tries).
     assert "--index https://test.pypi.org" in pypi and "--require-complete" in pypi
     loops = re.findall(r"for attempt in ([\d ]+);", text)
