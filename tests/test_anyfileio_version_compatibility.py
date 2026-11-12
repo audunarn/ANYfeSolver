@@ -404,8 +404,10 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
         "dependency-gate",
         "build",
         "testpypi",
+        "testpypi-solver",
         "stage",
         "pypi",
+        "pypi-solver",
     ]
 
     ci_hashes = set(re.findall(r"\b[0-9a-f]{40}\b", ci))
@@ -507,11 +509,10 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
     ):
         assert argument in build_block, argument
     assert "name: release-050-distributions" in build_block
-    for stage in ("testpypi", "pypi"):
+    for stage in ("testpypi", "testpypi-solver", "pypi", "pypi-solver"):
         assert action_sequence(job_block(publish, stage)) == [
             checkout_ref,
             download_ref,
-            publish_ref,
             publish_ref,
         ], stage
 
@@ -813,8 +814,15 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
     dependency_job = job_block(publish, "dependency-gate")
     assert "TARGET_INDEX_URL" not in dependency_job
     assert "--index-url https://pypi.org/simple" in dependency_job
-    testpypi_job = job_block(publish, "testpypi")
-    pypi_job = job_block(publish, "pypi")
+    for index_job in ("testpypi", "pypi"):
+        results = job_block(publish, index_job)
+        solver = job_block(publish, index_job + "-solver")
+        assert preamble_keys(solver)["needs"] == f"[validate, {index_job}]"
+        assert "environment:" not in solver
+        assert "packages-dir: plan/results/" in results and "packages-dir: plan/solver/" not in results
+        assert "packages-dir: plan/solver/" in solver and "packages-dir: plan/results/" not in solver
+    testpypi_job = job_block(publish, "testpypi") + job_block(publish, "testpypi-solver")
+    pypi_job = job_block(publish, "pypi") + job_block(publish, "pypi-solver")
     # One legacy-endpoint override per project upload step, TestPyPI only.
     assert testpypi_job.count(
         "repository-url: https://test.pypi.org/legacy/"
@@ -847,7 +855,7 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
     ), "PyPI promotion must require TestPyPI to serve the identical digests"
 
     # Least privilege: workflow read-only; only validate adds actions: read and
-    # only the two index jobs add id-token: write.
+    # only the four package upload jobs add id-token: write.
     def job_permissions(name: str) -> list[str] | None:
         match = re.search(
             r"(?m)^    permissions:\n((?:^      [^\n]*\n)+)",
@@ -861,7 +869,8 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
     ]
     assert job_permissions("stage") == job_permissions("validate")
     assert job_permissions("testpypi") == ["      contents: read", "      id-token: write"]
-    assert job_permissions("pypi") == ["      contents: read", "      id-token: write"]
+    for name in ("pypi", "testpypi-solver", "pypi-solver"):
+        assert job_permissions(name) == ["      contents: read", "      id-token: write"]
     for name in ("license-gate", "dependency-gate", "build"):
         assert job_permissions(name) is None, name
         assert "permissions:" not in job_block(publish, name)
