@@ -1,5 +1,6 @@
 """Independent small-motion check of ordinary displacement with a free S3 target."""
 
+import hashlib
 import json
 import os
 import subprocess
@@ -11,15 +12,18 @@ def test_free_target_ordinary_displacement_matches_independent_q1_kkt():
     root = Path(__file__).resolve().parents[1]
     environment = os.environ.copy()
     environment["PYTHONPATH"] = os.pathsep.join((
-        str(root / "src"), str(root), str(root / "docs" / "d1_review_support"),
+        str(root / "src"), str(root), str(root / "packages" / "results" / "src"),
     ))
     completed = subprocess.run(
-        [sys.executable, str(root / "docs" / "d1_review_support"
-                                   / "d1_two_body_displacement_compare.py")],
+        [sys.executable, str(root / "tests" / "fixtures" / "d1_two_body_displacement_compare.py")],
         cwd=root, env=environment, capture_output=True, text=True,
         check=True, timeout=120,
     )
     result = json.loads(completed.stdout)
+    assert Path(result["anyfesolver_module"]).resolve() == (root / "src/anyfesolver/__init__.py").resolve()
+    for key, path in (("oracle_source_sha256", "tests/fixtures/d1_two_body_displacement_oracle.py"),
+                      ("reference_oracle_source_sha256", "scripts/d1_reference_gap_work.py")):
+        assert result[key] == hashlib.sha256((root / path).read_bytes()).hexdigest()
     assert result["production_status"] == "completed"
     assert result["accepted_steps"] == 4
     assert result["has_checkpoint"]

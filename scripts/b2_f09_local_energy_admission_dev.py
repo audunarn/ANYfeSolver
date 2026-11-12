@@ -31,7 +31,7 @@ import numpy as np
 import psutil
 from threadpoolctl import threadpool_info, threadpool_limits
 
-from anysolver._b2_physical_flexibility_linear import (
+from anyfesolver._b2_physical_flexibility_linear import (
     ConditioningAdmissionError, LinearOperator, LinearSection,
     RepresentabilityError,
 )
@@ -40,7 +40,7 @@ from anysolver._b2_physical_flexibility_linear import (
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = (ROOT / "docs" / "agent_plans" /
           "B3_GE_E4_PL_G0_F09_LOCAL_ENERGY_ADMISSION_DEV_V1.json")
-SOURCE = ROOT / "src" / "anysolver" / "_b2_physical_flexibility_linear.py"
+SOURCE = ROOT / "src" / "anyfesolver" / "_b2_physical_flexibility_linear.py"
 EPSILON = F(1, 10**8)
 UNIT = F(1000)
 SECONDS_LIMIT = 120.

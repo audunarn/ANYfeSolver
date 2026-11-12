@@ -4,15 +4,15 @@ import numpy as np
 import pytest
 from docs.reference_cases.ge_beam3_generalized_virgin_chain import virgin_chain
 from docs.reference_cases.ge_beam3_decimal_chain_audit import factor_chain_modes
-from anysolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
-from anysolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-from anysolver import _ge_beam3_native_generalized_modal as modal
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._native_stationary_spectrum import solve_stationary_spectrum
-from anysolver.fe_core import FEModel
-from anysolver.boundary import BoundaryCondition
+from anyfesolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
+from anyfesolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+from anyfesolver import _ge_beam3_native_generalized_modal as modal
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._native_stationary_spectrum import solve_stationary_spectrum
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import BoundaryCondition
 from test_ge_beam3_schur_line_program import save
 
 @pytest.mark.parametrize('kind',('valid','stress','geometric','asymmetric','nonfinite','shape','indefinite'))

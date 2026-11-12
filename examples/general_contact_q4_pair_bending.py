@@ -1,13 +1,13 @@
 """Force-loaded two-body Q4 bending with admitted linearized director skins."""
 from dataclasses import replace
-from anysolver import BoundaryCondition,LoadCase,NonlinearConvergenceSettings,solve_static_nonlinear
-from anysolver.general_contact import resolve_automatic_contact_domain
+from anyfesolver import BoundaryCondition,LoadCase,NonlinearConvergenceSettings,solve_static_nonlinear
+from anyfesolver.general_contact import resolve_automatic_contact_domain
 from examples.general_contact_automatic_q4_pair import build as guided_build
 
 
 def build():
     # Reuse declarations/settings only; rebuild geometry/supports in a newmodel.
-    from anysolver import FEModel,create_shell_element
+    from anyfesolver import FEModel,create_shell_element
     _,domain,oldsettings,_,_=guided_build(sliding=False,path_predictor='none')
     model=FEModel('q4-pair-free-bending-force');model.add_material('elastic',1e5,.3,density=1.)
     source=tuple((x,y,.04) for y in (.1,1.1) for x in (.1,.6,1.1))

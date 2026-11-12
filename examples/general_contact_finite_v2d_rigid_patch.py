@@ -4,10 +4,10 @@ from dataclasses import asdict
 import json
 from pathlib import Path
 import numpy as np
-from anysolver import (FEModel, BoundaryCondition, ContactDefinition, ContactSurface,
+from anyfesolver import (FEModel, BoundaryCondition, ContactDefinition, ContactSurface,
     ContactInteraction, ContactSolverSettings, LoadCase, create_shell_element,
     NonlinearLoadProgram, NonlinearLoadStage, solve_static_nonlinear)
-from anysolver.general_contact.triangulated_rigid import TriangulatedRigidContactBody
+from anyfesolver.general_contact.triangulated_rigid import TriangulatedRigidContactBody
 
 SCHEMA='ANYSOLVER_FINITE_V2D_FIXED_RIGID_EXAMPLE_V1'
 
@@ -70,7 +70,7 @@ def json_value(value):
 
 
 def fixture(model,definition,settings,program,seed):
-    from anysolver.nonlinear_restart import load_case_descriptor
+    from anyfesolver.nonlinear_restart import load_case_descriptor
     return dict(nodes=4,elements=2,dofs=model.mesh.dof_manager.total_dofs,
         contact=asdict(definition),settings=asdict(settings),initial_displacements=seed.tolist(),
         initial_rotation_rad=.5,force_scale_N=1e-4,moment_scale_Nm=1e-4,

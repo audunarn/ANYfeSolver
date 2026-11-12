@@ -5,19 +5,19 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver.assembly import solve_linear
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.contact import (
+from anyfesolver.assembly import solve_linear
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.contact import (
     NonlinearTransientConfig,
     RigidSphereImpact,
     SphereContactConfig,
     _verification_contact_panel,
     solve_transient_sphere_impact,
 )
-from anysolver.dynamics import TransientConfig, solve_transient_newmark
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.material_curves import DNVC208MaterialCurve
+from anyfesolver.dynamics import TransientConfig, solve_transient_newmark
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.material_curves import DNVC208MaterialCurve
 
 
 def test_hht_alpha_config_validation_and_parameter_derivation() -> None:

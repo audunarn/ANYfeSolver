@@ -2,10 +2,10 @@
 from dataclasses import replace
 import numpy as np
 import pytest
-from anysolver._ge_beam3_retained_generalized_state import Context,Program
-from anysolver._ge_beam3_retained_generalized_program import solve
-from anysolver._ge_beam3_retained_generalized import RetainedGeneralizedOperator
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_retained_generalized_state import Context,Program
+from anyfesolver._ge_beam3_retained_generalized_program import solve
+from anyfesolver._ge_beam3_retained_generalized import RetainedGeneralizedOperator
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_retained_generalized_state import model,LOAD,resume
 
 @pytest.mark.parametrize('kind',('copy','foreign','changed','mutated'))

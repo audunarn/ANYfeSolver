@@ -106,7 +106,7 @@ def test_candidate_a_oracle_is_independent_and_deterministic() -> None:
         if isinstance(node, (ast.Import, ast.ImportFrom))
         for alias in node.names
     }
-    assert not any(name == "anysolver" or name.startswith("anysolver.") for name in imported)
+    assert not any(name == "anyfesolver" or name.startswith("anyfesolver.") for name in imported)
 
     emitted = _run("--emit-contract")
     assert emitted.returncode == 0, emitted.stderr.decode()

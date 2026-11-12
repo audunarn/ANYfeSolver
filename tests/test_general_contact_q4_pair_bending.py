@@ -77,7 +77,7 @@ def independent_linear_contact(model):
 
 
 def linear_reference(model,load):
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
     K=assemble_stiffness_matrix(model)[0].toarray();free=free_dofs(model);kf=K[np.ix_(free,free)]
     s,g,g0=independent_linear_contact(model);gf=g[:,free];force=load.get_load_vector(model.mesh,model.mesh.dof_manager)
     cf=np.linalg.solve(kf,gf.T);A=gf@cf;scaled=A/np.sqrt(s[:,None]*s[None,:]);eig,vec=np.linalg.eigh(scaled)
@@ -116,8 +116,8 @@ def exact_pose_gap(points):
 
 
 def test_reference_skin_signed_response_and_linearized_operator():
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.q4_q4_overlap_derivatives import q4_q4_overlap_derivatives
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.q4_q4_overlap_derivatives import q4_q4_overlap_derivatives
     model,domain,settings,resolution,load=build();ref=linear_reference(model,load);manager=GeneralS3PatchManager(model,resolution.definition,settings)
     zero=np.zeros(manager.n_dof);source,target=manager._positions(zero)
     local=np.zeros((6,manager.map.shape[0]));support=np.zeros(6)
@@ -144,8 +144,8 @@ def test_reference_skin_signed_response_and_linearized_operator():
 @pytest.mark.skipif(not os.environ.get('BENDING_STAGE'),
     reason='installed bending stage input BENDING_STAGE absent: staged bending solve requires the original workflow stage selection')
 def test_installed_bending_stage():
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
     stage=os.environ['BENDING_STAGE'].split('-')[0];evidence=Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])
     model,domain,settings,resolution,load=build();options={}
     if stage=='prefix':options['max_load_factor']=.5
@@ -194,7 +194,7 @@ def test_installed_bending_stage():
 @pytest.mark.skipif(not os.environ.get('AUTOMATIC_WORKFLOW_EVIDENCE') or not (Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])/'full-accuracy.json').is_file(),
     reason='archived bending input AUTOMATIC_WORKFLOW_EVIDENCE/full-accuracy.json absent: saved-pose replay requires the original evidence root')
 def test_exact_saved_pose_and_inventory():
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     evidence=Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE']);path=evidence/'full-accuracy.json';report=json.loads(path.read_text());assert report['verified']
     assert report['snapshot_inventory']==[.5,1.]
     model,domain,settings,resolution,load=build();manager=GeneralS3PatchManager(model,resolution.definition,settings)
@@ -205,7 +205,7 @@ def test_exact_saved_pose_and_inventory():
 
 
 def test_actual_restart_refusal_and_precancel():
-    from anysolver import CancellationToken,SolveCancelled
+    from anyfesolver import CancellationToken,SolveCancelled
     model,domain,settings,resolution,load=build();before=repr(model)
     token=CancellationToken();token.cancel('bending public precancel')
     with pytest.raises(SolveCancelled):solve(model,settings,resolution,load,cancellation_token=token)
@@ -217,7 +217,7 @@ def test_actual_restart_refusal_and_precancel():
     reason='archived bending input AUTOMATIC_WORKFLOW_EVIDENCE/prefix.json absent: restart-refusal replay requires the original staged checkpoint')
 def test_actual_archive_checkpoint_restart_refusals():
     from dataclasses import replace
-    from anysolver.general_contact.automatic_domain import resolve_automatic_contact_domain
+    from anyfesolver.general_contact.automatic_domain import resolve_automatic_contact_domain
     evidence=Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE']);path=evidence/'prefix.json';prefix=json.loads(path.read_text());assert prefix['verified']
     model,domain,settings,resolution,load=build();before=repr(model)
     changed=replace(domain,name='bending-provenance-refusal');changed_resolution=resolve_automatic_contact_domain(model,changed,settings,analysis_control='force')

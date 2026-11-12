@@ -6,7 +6,7 @@ elastic deformation in the accelerating frame. It supports one connected
 free-free linear beam/shell assembly, including homogeneous internal MPCs.
 
 ```python
-from anysolver import solve_inertia_relief
+from anyfesolver import solve_inertia_relief
 
 result = solve_inertia_relief(model, load_case)
 if result.converged:
@@ -163,7 +163,7 @@ See `examples/inertia_relief.py` for a complete free bar example.
 Both static batch interfaces accept explicit inertia relief:
 
 ```python
-from anysolver import AnalysisSession, StaticCase, iter_linear_batches, solve_linear_many
+from anyfesolver import AnalysisSession, StaticCase, iter_linear_batches, solve_linear_many
 
 with AnalysisSession(model) as session:
     for block in iter_linear_batches(

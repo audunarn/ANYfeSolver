@@ -6,8 +6,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-import anysolver._b2_physical_flexibility_linear as local
-from anysolver import stiffened_shell
+import anyfesolver._b2_physical_flexibility_linear as local
+from anyfesolver import stiffened_shell
 
 
 def _section():

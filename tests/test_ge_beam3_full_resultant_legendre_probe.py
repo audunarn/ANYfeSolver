@@ -1,9 +1,9 @@
 """Local numerical equivalence and analytic-variation checks, not qualification."""
 import numpy as np
 import pytest
-from anysolver._ge_beam3_centered_mixed import CenteredStationaryBeam
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._ge_beam3_p5_seeded import NativeP5BeamElement, DirectedHardeningSection
+from anyfesolver._ge_beam3_centered_mixed import CenteredStationaryBeam
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._ge_beam3_p5_seeded import NativeP5BeamElement, DirectedHardeningSection
 from docs.reference_cases.ge_beam3_full_resultant_legendre_probe import ElasticResultantProbe
 from test_ge_beam3_curved_contrast_probe import make_curved
 

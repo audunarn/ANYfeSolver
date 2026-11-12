@@ -4,9 +4,9 @@ from typing import Any
 
 import pytest
 
-import anysolver.matrix_assembly as matrix_assembly
-from anysolver.element_capabilities import ElementCapabilityError
-from anysolver.matrix_assembly import AssemblyError
+import anyfesolver.matrix_assembly as matrix_assembly
+from anyfesolver.element_capabilities import ElementCapabilityError
+from anyfesolver.matrix_assembly import AssemblyError
 
 
 def _install_rejecting_lease(monkeypatch: pytest.MonkeyPatch) -> None:

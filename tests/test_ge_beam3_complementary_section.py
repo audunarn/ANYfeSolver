@@ -3,9 +3,9 @@ from fractions import Fraction as F
 from math import fsum
 import numpy as np
 import pytest
-from anysolver._ge_beam3_complementary_section import ComplementaryDirectedSection
-from anysolver._ge_beam3_p5.section import DirectedHardeningSection, SectionHistory
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_complementary_section import ComplementaryDirectedSection
+from anyfesolver._ge_beam3_p5.section import DirectedHardeningSection, SectionHistory
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 
 
 def section(contrast=1.):

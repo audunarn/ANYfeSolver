@@ -3,14 +3,14 @@ from copy import deepcopy
 from dataclasses import replace
 import numpy as np
 import pytest
-from anysolver.fe_core import FEModel
-from anysolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
-from anysolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement,seal
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern,assemble_distributed_trial,_ACTIVE
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_generalized_static_boundary import solve_distributed_static,cell_couple_load
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver.fe_core import FEModel
+from anyfesolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
+from anyfesolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement,seal
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern,assemble_distributed_trial,_ACTIVE
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_generalized_static_boundary import solve_distributed_static,cell_couple_load
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
 from docs.reference_cases import ge_beam3_distributed_couple_oracle as oracle
 from test_ge_beam3_native_line_loading import problem as geometry_problem,independent_work
 from test_ge_beam3_native_fibre_static_element import store_for,sample
@@ -119,7 +119,7 @@ def test_wrong_load_and_foreign_store_cannot_commit(tmp_path):
 
 
 def test_post_assembly_failure_discards_trial(monkeypatch,tmp_path):
-    import anysolver.nonlinear_static as solver
+    import anyfesolver.nonlinear_static as solver
     m,e=problem();store=store_for(m,e);before=canonical(store.materialize());original=solver._assemble_nonlinear_system
     def changed(*args,**kwargs):
         result=original(*args,**kwargs);object.__setattr__(_ACTIVE.get().pattern,'signature','0'*64);return result
@@ -138,7 +138,7 @@ def test_internal_limits_and_unsupported_routes(monkeypatch,tmp_path):
     for name in ('compute_mass_matrix','compute_geometric_stiffness_matrix','compute_stresses','compute_native_current_pressure_load'):
         with pytest.raises(ValueError,match='not qualified'):getattr(e,name)(m.mesh,e.section)
     with pytest.raises(ValueError,match='range'):cell_couple_load(op,np.array([1e200,0.,0.]))
-    import anysolver._ge_beam3_generalized_static_boundary as module
+    import anyfesolver._ge_beam3_generalized_static_boundary as module
     ticks=[]
     def clock():ticks.append(1);return 61.*len(ticks)
     monkeypatch.setattr(module,'monotonic',clock)
@@ -151,7 +151,7 @@ def test_internal_limits_and_unsupported_routes(monkeypatch,tmp_path):
 def test_load_preflight_rejects_before_mechanics(bad,monkeypatch,tmp_path):
     m,e=problem();store=store_for(m,e);load=pattern()
     if bad=='old-pattern':
-        from anysolver._ge_beam3_native_distributed_loading import DistributedPattern as Old
+        from anyfesolver._ge_beam3_native_distributed_loading import DistributedPattern as Old
         load=Old(load.line,load.couples)
     elif bad=='absent-element':load=DistributedPattern(LinePattern(()),((99,.1,0.,0.),))
     else:object.__setattr__(load,'signature','0'*64)
@@ -164,7 +164,7 @@ def test_load_preflight_rejects_before_mechanics(bad,monkeypatch,tmp_path):
 
 
 def test_connected_native_pose_and_material_transactions(tmp_path):
-    from anysolver.nonlinear_state import NonlinearStateStore,create_model_native_rotation_store
+    from anyfesolver.nonlinear_state import NonlinearStateStore,create_model_native_rotation_store
     from test_ge_beam3_curved_contrast_probe import make_curved
     source=make_curved(100.)[0];m=FEModel('connected-native-generalized')
     for i,node in source.mesh.nodes.items():m.add_node(i,*node.coords())

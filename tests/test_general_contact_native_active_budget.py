@@ -1,8 +1,8 @@
 """Explicit budget policy preserves default identity and certified support."""
 import numpy as np
 import pytest
-from anysolver._ge_beam3_p5_seeded.core import sha
-import anysolver.general_contact.native_curved_s3_work as module
+from anyfesolver._ge_beam3_p5_seeded.core import sha
+import anyfesolver.general_contact.native_curved_s3_work as module
 from test_general_contact_native_curved_s3_work import _case
 
 

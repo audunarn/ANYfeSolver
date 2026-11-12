@@ -19,7 +19,7 @@ if not os.environ.get('NUMBA_CACHE_DIR'):
     raise RuntimeError('set an explicit writable NUMBA_CACHE_DIR before import')
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
-import anysolver
+import anyfesolver
 import numpy as np
 import scipy
 import numba
@@ -183,7 +183,7 @@ def main():
                            'probe_b3_ge_e4_pl_g0_f03_k2p.py')}
     (args.root/'manifest.json').write_text(json.dumps(
         {'purpose':'UNREGISTERED_LOCAL_DUAL_FALSIFICATION', 'cases':CASES,
-         'source_sha256':source, 'anysolver_import':str(Path(anysolver.__file__).resolve()),
+         'source_sha256':source, 'anyfesolver_import':str(Path(anyfesolver.__file__).resolve()),
          'python':sys.version, 'numpy':np.__version__, 'scipy':scipy.__version__,
          'numba':numba.__version__,
          'numba_cache_directory':os.environ['NUMBA_CACHE_DIR']},

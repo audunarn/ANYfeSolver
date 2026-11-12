@@ -2,9 +2,9 @@
 import numpy as np
 import pytest
 
-import anysolver as fs
-from anysolver.boundary import FixedSupport, LoadCase
-from anysolver.elements import BeamElement
+import anyfesolver as fs
+from anyfesolver.boundary import FixedSupport, LoadCase
+from anyfesolver.elements import BeamElement
 
 
 def _cantilever(elements, axis, load):

@@ -20,12 +20,12 @@ ENV = {name: '1' for name in ('OMP_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'MKL_NU
 ENV['PYTHONOPTIMIZE'] = '0'
 SOURCES = ('scripts/r8_f03_finite_local_dev.py', 'scripts/r8_f03_finite_inventory_dev.py',
            'scripts/r8_f03_finite_sparse_dev.py', 'scripts/r8_f03_finite_runner_dev.py',
-           'tests/test_r8_f03_finite_certificate_dev.py', 'src/anysolver/e4_pl_element.py',
-           'src/anysolver/_ge_beam3_retained_generalized.py',
-           'src/anysolver/_ge_beam3_generalized_cell.py',
-           'src/anysolver/_ge_beam3_p5/compensated.py',
-           'src/anysolver/_stiffened_shell_bl5_local_experimental.py',
-           'src/anysolver/_stiffened_shell_l1_local_experimental.py',
+           'tests/test_r8_f03_finite_certificate_dev.py', 'src/anyfesolver/e4_pl_element.py',
+           'src/anyfesolver/_ge_beam3_retained_generalized.py',
+           'src/anyfesolver/_ge_beam3_generalized_cell.py',
+           'src/anyfesolver/_ge_beam3_p5/compensated.py',
+           'src/anyfesolver/_stiffened_shell_bl5_local_experimental.py',
+           'src/anyfesolver/_stiffened_shell_l1_local_experimental.py',
            'scripts/b3_e4_bl5_riesz_controls_dev.py', 'scripts/r8_bl5_mixed_shell_h1_dev.py')
 
 

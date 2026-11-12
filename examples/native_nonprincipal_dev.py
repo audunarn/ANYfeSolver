@@ -3,10 +3,10 @@ import argparse
 import json
 import math
 import numpy as np
-from anysolver.dynamics import TransientConfig
-from anysolver.ge_beam3_native import define_beam,SELECTOR as BEAM,EllipsoidalGeneralizedSection
-from anysolver.ge_beam3_native_dynamics import create_analysis,SELECTOR,solve_transient
-from anysolver._ge_beam3_centered_so3_strain import POLICY
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.ge_beam3_native import define_beam,SELECTOR as BEAM,EllipsoidalGeneralizedSection
+from anyfesolver.ge_beam3_native_dynamics import create_analysis,SELECTOR,solve_transient
+from anyfesolver._ge_beam3_centered_so3_strain import POLICY
 from examples import native_nonprincipal_reference as ref
 
 

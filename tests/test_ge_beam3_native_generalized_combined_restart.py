@@ -3,14 +3,14 @@ from hashlib import sha256
 import json
 import numpy as np
 import pytest
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_native_generalized_program import _PROGRAM, solve_distributed_model
-from anysolver._ge_beam3_native_generalized_restart import LoadPoint as LinePoint
-from anysolver._ge_beam3_native_generalized_recovery import recover_native_fields
-from anysolver._ge_beam3_native_generalized_combined_restart import LoadPoint, encode_checkpoint, decode_checkpoint
-from anysolver._ge_beam3_native_generalized_combined_couples import solve_combined_static, _RUN
-from anysolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
-from anysolver._ge_beam3_p5_seeded.core import canonical, sha
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_native_generalized_program import _PROGRAM, solve_distributed_model
+from anyfesolver._ge_beam3_native_generalized_restart import LoadPoint as LinePoint
+from anyfesolver._ge_beam3_native_generalized_recovery import recover_native_fields
+from anyfesolver._ge_beam3_native_generalized_combined_restart import LoadPoint, encode_checkpoint, decode_checkpoint
+from anyfesolver._ge_beam3_native_generalized_combined_couples import solve_combined_static, _RUN
+from anyfesolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
+from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
 from test_ge_beam3_native_generalized_restart import make, scale as line_scale, CASES, EMPTY
 from test_ge_beam3_native_generalized_restart import pattern
 from test_ge_beam3_schur_line_program import save
@@ -149,8 +149,8 @@ def test_resealed_mutations(saved,mutation,tmp_path):
 
 @pytest.mark.parametrize('mutation',['duplicate','nonfinite','noncanonical','external-hash','constant-moment','constant-line','support'])
 def test_rejection_before_solver(saved,mutation,monkeypatch,tmp_path):
-    import anysolver._ge_beam3_native_generalized_combined_couples as module
-    from anysolver.boundary import BoundaryCondition
+    import anyfesolver._ge_beam3_native_generalized_combined_couples as module
+    from anyfesolver.boundary import BoundaryCondition
     case,_,line,moments,_,raw,_=saved;model=make(case);kwargs={}
     if mutation=='duplicate':raw=raw.replace(b'{',b'{"schema":"duplicate",',1)
     elif mutation=='nonfinite':raw=raw.replace(b'"parameter":0.0',b'"parameter":NaN',1)
@@ -167,7 +167,7 @@ def test_rejection_before_solver(saved,mutation,monkeypatch,tmp_path):
 
 
 def test_cross_schema_and_missing_hash_rejected(saved,tmp_path):
-    from anysolver._ge_beam3_native_generalized_restart import encode_checkpoint as encode_line
+    from anyfesolver._ge_beam3_native_generalized_restart import encode_checkpoint as encode_line
     case,_,line,moments,_,raw,_=saved;model=make(case)
     with pytest.raises(ValueError):solve_distributed_model(model,line,initial_checkpoint=raw,expected_sha256=sha256(raw).hexdigest())
     state={i:e.init_model_bound_nonlinear_state(model.mesh,e.section,1) for i,e in model.mesh.elements.items()}
@@ -180,7 +180,7 @@ def test_cross_schema_and_missing_hash_rejected(saved,tmp_path):
 
 
 def test_live_checkpoint_binding(saved,tmp_path):
-    from anysolver._ge_beam3_native_generalized_combined_couples import _Run,decode_active_restart
+    from anyfesolver._ge_beam3_native_generalized_combined_couples import _Run,decode_active_restart
     case,_,_,moments,_,raw,_=saved;model=make(case)
     run=_Run(model,moments,moments,restart_sha256='0'*64);token=_RUN.set(run)
     try:
@@ -190,7 +190,7 @@ def test_live_checkpoint_binding(saved,tmp_path):
 
 
 def test_validation_deadline(saved,monkeypatch,tmp_path):
-    import anysolver._ge_beam3_native_generalized_combined_restart as module
+    import anyfesolver._ge_beam3_native_generalized_combined_restart as module
     case,_,_,_,_,raw,_=saved;calls=[]
     def clock():
         calls.append(True);return 61.*len(calls)

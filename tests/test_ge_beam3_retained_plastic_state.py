@@ -3,10 +3,10 @@ import json
 from hashlib import sha256
 import numpy as np
 import pytest
-from anysolver.control import CancellationToken
-from anysolver._ge_beam3_retained_plastic_program import ForceProgram, solve_force_program
-from anysolver._ge_beam3_retained_plastic_state import Context
-from anysolver._ge_beam3_p5_seeded.core import canonical, sha
+from anyfesolver.control import CancellationToken
+from anyfesolver._ge_beam3_retained_plastic_program import ForceProgram, solve_force_program
+from anyfesolver._ge_beam3_retained_plastic_state import Context
+from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
 from test_ge_beam3_retained_plastic_force_probe import model_with_plasticity
 from docs.reference_cases.ge_beam3_retained_plastic_force_probe import solve as research_solve
 
@@ -150,7 +150,7 @@ def test_newton_limit_leaves_virgin_checkpoint_unchanged():
 
 
 def test_replay_does_not_advance_or_resolve_newton_steps(accepted, monkeypatch):
-    from anysolver._ge_beam3_retained_state import Context as Layout
+    from anyfesolver._ge_beam3_retained_state import Context as Layout
     p, original = accepted
     def forbidden(*args, **kwargs): raise AssertionError('restart must not advance mechanics')
     monkeypatch.setattr(Layout, 'advance', forbidden)
@@ -159,7 +159,7 @@ def test_replay_does_not_advance_or_resolve_newton_steps(accepted, monkeypatch):
 
 
 def test_elastic_capsule_is_not_a_plastic_hot_restart():
-    from anysolver._ge_beam3_retained_force_program import solve_force_program as elastic
+    from anyfesolver._ge_beam3_retained_force_program import solve_force_program as elastic
     p = program(); model = model_with_plasticity(1.)
     old = elastic(model, p, stop_after=0)
     assert old.status == 'paused'

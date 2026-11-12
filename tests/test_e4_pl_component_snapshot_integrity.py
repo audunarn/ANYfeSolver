@@ -8,13 +8,13 @@ from typing import Any
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     FEModel,
     QualifiedE4PLS3ShellElement,
     QualifiedE4PLShellElement,
 )
-import anysolver.e4_pl_element as q4_module
-import anysolver.e4_pl_s3_element as s3_module
+import anyfesolver.e4_pl_element as q4_module
+import anyfesolver.e4_pl_s3_element as s3_module
 
 
 def _q4_case() -> tuple[FEModel, QualifiedE4PLShellElement, Any]:

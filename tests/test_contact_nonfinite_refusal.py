@@ -1,7 +1,7 @@
 """Nonfinite sphere/contact inputs are refused at construction, not deep in the solve."""
 import pytest
 
-import anysolver as fs
+import anyfesolver as fs
 
 NAN, INF = float("nan"), float("inf")
 

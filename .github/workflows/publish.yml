@@ -1,212 +1,484 @@
 name: Publish
 
+# Tag v0.5.0 publishes ANYfeSolver-results 2.2.0 and ANYfeSolver 0.5.0.
+# STAGE: workflow_dispatch on the release tag builds once, verifies, and uploads
+# those exact bytes to TestPyPI (results first). The verified bytes stay as the
+# run artifact `release-050-distributions` (retention below).
+# PROMOTE: a published GitHub release on the same tag never rebuilds. The `stage`
+# job fetches the artifact of the successful dispatch run for the same SHA,
+# re-verifies it, and the `pypi` job (protected environment) uploads those exact
+# bytes. sdists are not byte-reproducible, so a rebuild would conflict with what
+# TestPyPI already holds; there is deliberately no rebuild path to production.
+# Every upload is planned per file against the index SHA-256: only absent files
+# are uploaded, a digest conflict or foreign file fails closed.
+# If the stage run is missing, failed, from another SHA/ref/repository, or its
+# artifact has expired, promotion fails closed; stage again (see the release note).
+
 on:
   workflow_dispatch:
-    inputs:
-      renamed_alpha:
-        description: Publish the four verified 0.5.0a1 and 2.2.0a1 preview artifacts
-        type: boolean
-        default: false
   release:
     types: [published]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: v0.5.0
+  SOLVER_VERSION: "0.5.0"
+  RESULTS_VERSION: "2.2.0"
+
 jobs:
+  validate:
+    name: Validate release tag, version, ref and CI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      sha: ${{ steps.identity.outputs.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.13"
+      - name: Require the release tag, its versions and a main-branch commit
+        id: identity
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_SHA: ${{ github.sha }}
+          RELEASE_DRAFT: ${{ github.event.release.draft }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+          RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          [ "$REF_TYPE" = "tag" ] || { echo "publishing requires a tag ref, got $REF_TYPE"; exit 1; }
+          [ "$REF_NAME" = "$RELEASE_TAG" ] || { echo "tag $REF_NAME is not $RELEASE_TAG"; exit 1; }
+          if [ "$EVENT_NAME" = "release" ]; then
+            [ "$RELEASE_TAG_NAME" = "$RELEASE_TAG" ] || { echo "release tag mismatch"; exit 1; }
+            [ "$RELEASE_DRAFT" = "false" ] && [ "$RELEASE_PRERELEASE" = "false" ] || { echo "release is draft or prerelease"; exit 1; }
+          fi
+          sha="$(git rev-parse HEAD)"
+          [ "$sha" = "$EVENT_SHA" ] || { echo "checked-out commit differs from the event SHA"; exit 1; }
+          [ "$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")" = "$sha" ] || { echo "tag does not resolve to the event SHA"; exit 1; }
+          git merge-base --is-ancestor "$sha" origin/main || { echo "release commit is not on main"; exit 1; }
+          python - <<'PY'
+          import os, tomllib
+          def version(path):
+              with open(path, "rb") as stream:
+                  project = tomllib.load(stream)["project"]
+              return project["name"], project["version"]
+          assert version("pyproject.toml") == ("ANYfeSolver", os.environ.get("SOLVER_VERSION", "0.5.0")), version("pyproject.toml")
+          assert version("packages/results/pyproject.toml") == ("ANYfeSolver-results", os.environ.get("RESULTS_VERSION", "2.2.0")), version("packages/results/pyproject.toml")
+          assert os.environ["RELEASE_TAG"] == "v" + version("pyproject.toml")[1]
+          PY
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - name: Require successful CI on the release SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.identity.outputs.sha }}
+        run: |
+          set -euo pipefail
+          # Only CI runs of this repository on main for exactly this SHA count.
+          # Pull-request runs and other events are never accepted as evidence.
+          gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${SHA}&status=completed&per_page=100" > ci-runs.json
+          python - <<'PY'
+          import json, os, sys
+          runs = json.load(open("ci-runs.json"))["workflow_runs"]
+          sha, repo = os.environ["SHA"], os.environ["GITHUB_REPOSITORY"]
+          trusted = [
+              run for run in runs
+              if run["head_sha"] == sha
+              and run["event"] in ("push", "workflow_dispatch")
+              and run["head_branch"] == "main"
+              and (run.get("head_repository") or {}).get("full_name") == repo
+          ]
+          if not trusted:
+              sys.exit("no trusted CI run exists for the release SHA")
+          latest = max(trusted, key=lambda run: run["created_at"])
+          if latest["conclusion"] != "success":
+              sys.exit(f"latest trusted CI run {latest['id']} concluded {latest['conclusion']}")
+          print(f"CI run {latest['id']} succeeded on {sha}")
+          PY
+
   license-gate:
-    if: inputs.renamed_alpha != true && github.ref != 'refs/tags/v0.5.0a1'
     name: Verify release licensing
+    needs: validate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          ref: ${{ needs.validate.outputs.sha }}
           persist-credentials: false
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
-          python-version: "3.x"
+          python-version: "3.13"
       - run: python scripts/check_license_compliance.py
 
   dependency-gate:
-    if: inputs.renamed_alpha != true && github.ref != 'refs/tags/v0.5.0a1'
     name: Verify production sibling releases
+    needs: validate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
-          python-version: "3.x"
-      - name: Require compatible production packages before ANYsolver
+          python-version: "3.13"
+      - name: Require compatible production packages before ANYfeSolver
         run: |
           python -m pip install --upgrade pip
-          python -m pip download --no-deps --dest sibling-distributions --index-url https://pypi.org/simple "ANYmaterial==0.2.0" "ANYgeometry==0.4.3" "ANYmesher==0.5.0" "ANYfileio==0.3.2"
+          python -m pip download --no-deps --dest sibling-distributions --index-url https://pypi.org/simple "ANYmaterial==0.2.0" "ANYgeometry==0.4.3" "ANYmesher==0.5.0" "ANYfileio==0.3.3"
 
   build:
-    needs: [dependency-gate, license-gate]
+    name: Build and verify the single artifact set (stage only)
+    if: github.event_name == 'workflow_dispatch'
+    needs: [validate, dependency-gate, license-gate]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          ref: ${{ needs.validate.outputs.sha }}
           persist-credentials: false
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
-          python-version: "3.x"
+          python-version: "3.13"
       - run: python -m pip install build twine
-      - run: python -m build
-      - run: python -m twine check dist/*
-      - name: Run the bounded 0.4.7 performance release gate
+      - name: Build both wheel/sdist pairs from this checkout
+        run: |
+          python -m build --outdir dist/results packages/results
+          python -m build --outdir dist/solver .
+          python -m twine check dist/results/* dist/solver/*
+      - name: Verify the pairs, sdist rebuilds, inventories and installed smoke
+        env:
+          EXPECTED_SHA: ${{ needs.validate.outputs.sha }}
         run: >-
-          python scripts/verify_release_047.py
-          --wheel dist/anysolver-0.4.7-py3-none-any.whl
-          --sdist dist/anysolver-0.4.7.tar.gz
-          --expected-commit ${{ github.sha }}
-          --output release-047-gate.json
-      - run: >-
+          python scripts/verify_release_050.py
+          --solver-wheel dist/solver/anyfesolver-${SOLVER_VERSION}-py3-none-any.whl
+          --solver-sdist dist/solver/anyfesolver-${SOLVER_VERSION}.tar.gz
+          --results-wheel dist/results/anyfesolver_results-${RESULTS_VERSION}-py3-none-any.whl
+          --results-sdist dist/results/anyfesolver_results-${RESULTS_VERSION}.tar.gz
+          --expected-commit "$EXPECTED_SHA"
+          --output release-050-gate.json
+      - name: Check licence metadata of the built artifacts
+        run: >-
           python scripts/check_license_compliance.py
-          --artifact dist/*.whl --artifact dist/*.tar.gz
+          --artifact dist/solver/*.whl --artifact dist/solver/*.tar.gz
+          --results-artifact dist/results/*.whl --results-artifact dist/results/*.tar.gz
       - name: Resolve the exact coordinated release graph
         run: >-
           python -m pip install --dry-run --only-binary=:all:
-          dist/*.whl ANYmaterial==0.2.0 ANYgeometry==0.4.3
-          ANYmesher==0.5.0 ANYfileio==0.3.2
+          dist/solver/*.whl dist/results/*.whl ANYmaterial==0.2.0 ANYgeometry==0.4.3
+          ANYmesher==0.5.0 ANYfileio==0.3.3
+      - name: Record the bytes that will be published
+        run: |
+          set -euo pipefail
+          [ "$(ls dist/results | wc -l)" = 2 ] && [ "$(ls dist/solver | wc -l)" = 2 ]
+          (cd dist && sha256sum results/* solver/*) > SHA256SUMS
+          cat SHA256SUMS
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: python-package-distributions
-          path: dist/
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: release-047-gate
-          path: release-047-gate.json
+          name: release-050-distributions
+          path: |
+            dist/
+            SHA256SUMS
+            release-050-gate.json
+          if-no-files-found: error
+          # Production promotion needs this artifact: a release published after
+          # this window fails closed and must be preceded by fresh staging.
+          retention-days: 30
 
   testpypi:
+    name: Publish to TestPyPI (results first)
     if: github.event_name == 'workflow_dispatch'
-    needs: build
+    needs: [validate, build]
     runs-on: ubuntu-latest
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/ANYsolver
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: python-package-distributions
-          path: dist/
-      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
-        with:
-          repository-url: https://test.pypi.org/legacy/
-
-  pypi:
-    if: github.event_name == 'release'
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/ANYsolver
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: python-package-distributions
-          path: dist/
-      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
-
-  alpha-stage:
-    if: github.event_name == 'workflow_dispatch' && inputs.renamed_alpha && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment: testpypi
+      url: https://test.pypi.org/p/ANYfeSolver
     permissions:
       contents: read
       id-token: write
     steps:
-      - name: Fetch the reviewed alpha artifacts and verify every digest
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -eu
-          gh release download v0.5.0a1 --repo "$GITHUB_REPOSITORY" -p '*.whl' -p '*.tar.gz'
-          test "$(ls -1 *.whl *.tar.gz | wc -l)" -eq 4
-          sha256sum -c <<'DIGESTS'
-          3e68fa5d570bde63ddb716e7bbc90f5f56f5bde824609944165c7aff92239bfd  anyfesolver_results-2.2.0a1-py3-none-any.whl
-          58ceb79bb5d38bbb54071865ad016c762aed820a71831ddf5b3512b2166bac00  anyfesolver_results-2.2.0a1.tar.gz
-          df5b685874d7e3c889af42e7267e946d17febc5abd35ac4b2f4f97df82a3fa4a  anyfesolver-0.5.0a1-py3-none-any.whl
-          ce6f877fec1330f2ba664bfabd46303a4dbfeb87ee17d05a0a9cd412fdc68deb  anyfesolver-0.5.0a1.tar.gz
-          DIGESTS
-          mkdir -p dist/results dist/solver
-          mv anyfesolver_results-* dist/results/
-          mv anyfesolver-* dist/solver/
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      # The release-SHA checkout supplies only the index-plan helper; the bytes
+      # to publish come exclusively from the artifact of this same run.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          name: verified-alpha
-          path: dist/
-      - name: Verify the two previously staged results artifacts
-        run: |
-          python - <<'PY'
-          import hashlib, json, pathlib, urllib.request
-          files = pathlib.Path('dist/results').iterdir()
-          expected = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in files}
-          with urllib.request.urlopen('https://test.pypi.org/pypi/ANYfeSolver-results/2.2.0a1/json', timeout=30) as response:
-              observed = {f['filename']: f['digests']['sha256'] for f in json.load(response)['urls']}
-          if expected != observed or len(expected) != 2:
-              raise SystemExit('Staged results digests differ')
-          PY
-
-  alpha-stage-solver:
-    needs: alpha-stage
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-    steps:
+          ref: ${{ needs.validate.outputs.sha }}
+          persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: verified-alpha
-          path: dist
-      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
+          name: release-050-distributions
+          path: stage/
+      - name: Re-verify the staged bytes and gate commit
+        env:
+          EXPECTED_SHA: ${{ needs.validate.outputs.sha }}
+        run: |
+          set -euo pipefail
+          (cd stage/dist && sha256sum -c ../SHA256SUMS)
+          python3 - <<'PY'
+          import json, os
+          gate = json.load(open("stage/release-050-gate.json"))
+          assert gate["candidate"]["commit"] == os.environ["EXPECTED_SHA"], "gate commit mismatch"
+          assert gate["terminal"].startswith("ANYFESOLVER_0_5_0_PACKAGING_GATE_PASSED")
+          PY
+      # Per project: compare each candidate file with the index by SHA-256, upload
+      # only files that are absent, and fail on any digest conflict or foreign
+      # file. Nothing is overwritten and no file is skipped by name alone.
+      - name: Plan the ANYfeSolver-results TestPyPI upload
+        id: plan_results
+        run: >-
+          python3 scripts/verify_release_050.py index-plan
+          --index https://test.pypi.org --name ANYfeSolver-results --version "$RESULTS_VERSION"
+          --dist-dir stage/dist/results --missing-dir plan/results --github-output "$GITHUB_OUTPUT"
+      - name: Publish missing ANYfeSolver-results files to TestPyPI
+        if: steps.plan_results.outputs.missing != '0'
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
         with:
           repository-url: https://test.pypi.org/legacy/
-          packages-dir: dist/solver/
+          packages-dir: plan/results/
 
-  alpha-publish:
-    needs: alpha-stage-solver
+  testpypi-solver:
+    name: Upload the stable solver to TestPyPI
+    needs: [validate, testpypi]
     runs-on: ubuntu-latest
-    environment: pypi
     permissions:
+      contents: read
       id-token: write
     steps:
+      # The release-SHA checkout supplies only the index-plan helper; the bytes
+      # to publish come exclusively from the artifact of this same run.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+          persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: verified-alpha
-          path: dist
-      - name: Verify TestPyPI serves the identical four files
+          name: release-050-distributions
+          path: stage/
+      - name: Verify the downloaded distributions
+        run: cd stage/dist && sha256sum -c ../SHA256SUMS
+      - name: Plan the ANYfeSolver TestPyPI upload
+        id: plan_solver
+        run: >-
+          python3 scripts/verify_release_050.py index-plan
+          --index https://test.pypi.org --name ANYfeSolver --version "$SOLVER_VERSION"
+          --dist-dir stage/dist/solver --missing-dir plan/solver --github-output "$GITHUB_OUTPUT"
+      - name: Publish missing ANYfeSolver files to TestPyPI
+        if: steps.plan_solver.outputs.missing != '0'
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: plan/solver/
+      - name: Confirm TestPyPI serves every candidate file with the identical digest
         run: |
-          python - <<'PY'
-          import hashlib, json, pathlib, time, urllib.request
-          for folder, project, version in [('results','ANYfeSolver-results','2.2.0a1'),('solver','ANYfeSolver','0.5.0a1')]:
-              expected = {p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in pathlib.Path('dist',folder).iterdir()}
-              assert len(expected) == 2
-              for attempt in range(8):
-                  try:
-                      with urllib.request.urlopen(f'https://test.pypi.org/pypi/{project}/{version}/json',timeout=15) as response:
-                          files = json.load(response)['urls']
-                      if {f['filename']:f['digests']['sha256'] for f in files} == expected:
-                          break
-                  except OSError:
-                      pass
-                  time.sleep(5)
-              else:
-                  raise SystemExit(f'TestPyPI hashes failed for {project}')
-          PY
-      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
-        with:
-          packages-dir: dist/results/
+          set -euo pipefail
+          for project in "ANYfeSolver-results $RESULTS_VERSION results" "ANYfeSolver $SOLVER_VERSION solver"; do
+            set -- $project
+            for attempt in 1 2 3 4 5; do
+              rc=0
+              python3 scripts/verify_release_050.py index-plan --index https://test.pypi.org --name "$1" --version "$2" --dist-dir "stage/dist/$3" --require-complete || rc=$?
+              [ "$rc" = 0 ] && break
+              [ "$rc" = 2 ] || exit 1
+              [ "$attempt" = 5 ] && { echo "TestPyPI did not serve every file of $1"; exit 1; }
+              sleep 30
+            done
+          done
 
-  alpha-publish-solver:
-    needs: alpha-publish
+  stage:
+    name: Retrieve and re-verify the staged bytes (promotion only)
+    if: github.event_name == 'release'
+    needs: [validate, dependency-gate, license-gate]
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
+      contents: read
+      actions: read
     steps:
+      - name: Find the successful dispatch stage run for this SHA and tag
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ needs.validate.outputs.sha }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, subprocess, sys
+          repo, sha, tag = os.environ["GITHUB_REPOSITORY"], os.environ["SHA"], os.environ["RELEASE_TAG"]
+          def api(path):
+              return json.loads(subprocess.check_output(["gh", "api", path], text=True))
+          repo_id = api(f"repos/{repo}")["id"]
+          runs = api(f"repos/{repo}/actions/workflows/publish.yml/runs?event=workflow_dispatch&status=completed&head_sha={sha}&per_page=100")["workflow_runs"]
+          def trusted(run):
+              return (
+                  run["path"].split("@", 1)[0] == ".github/workflows/publish.yml"
+                  and run["event"] == "workflow_dispatch"
+                  and run["status"] == "completed" and run["conclusion"] == "success"
+                  and run["head_sha"] == sha and run["head_branch"] == tag
+                  and not run.get("pull_requests")
+                  and run["repository"]["id"] == repo_id
+                  and (run.get("head_repository") or {}).get("id") == repo_id
+                  and not (run.get("head_repository") or {}).get("fork")
+                  and str(run["id"]) != os.environ["CURRENT_RUN_ID"]
+              )
+          candidates = [run for run in runs if trusted(run)]
+          if not candidates:
+              sys.exit("no successful same-repo dispatch stage run exists for this release SHA and tag; stage first")
+          run = max(candidates, key=lambda item: item["created_at"])
+          jobs = api(f"repos/{repo}/actions/runs/{run['id']}/jobs?per_page=100")["jobs"]
+          staged = [job for job in jobs if job["name"].startswith("Publish to TestPyPI")]
+          if len(staged) != 1 or staged[0]["conclusion"] != "success":
+              sys.exit("the stage run did not complete its TestPyPI job successfully")
+          artifacts = api(f"repos/{repo}/actions/runs/{run['id']}/artifacts?name=release-050-distributions&per_page=100")["artifacts"]
+          if len(artifacts) != 1:
+              sys.exit("the stage run does not have exactly one release-050-distributions artifact")
+          artifact = artifacts[0]
+          if artifact["expired"]:
+              sys.exit("the staged artifact has expired; stage again before releasing")
+          origin = artifact["workflow_run"]
+          if (origin["id"] != run["id"] or origin["head_sha"] != sha or origin["head_branch"] != tag
+                  or origin["head_repository_id"] != repo_id):
+              sys.exit("the staged artifact does not belong to the validated stage run")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as stream:
+              stream.write(f"run_id={run['id']}\n")
+          print(f"using stage run {run['id']}, artifact {artifact['id']}")
+          PY
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: verified-alpha
-          path: dist
-      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
+          name: release-050-distributions
+          path: staged/
+          run-id: ${{ steps.find.outputs.run_id }}
+          github-token: ${{ github.token }}
+      - name: Re-verify the staged bytes and manifest
+        env:
+          EXPECTED_SHA: ${{ needs.validate.outputs.sha }}
+        run: |
+          set -euo pipefail
+          (cd staged/dist && sha256sum -c ../SHA256SUMS)
+          python3 - <<'PY'
+          import json, os
+          sha = os.environ["EXPECTED_SHA"]
+          solver, results = os.environ["SOLVER_VERSION"], os.environ["RESULTS_VERSION"]
+          gate = json.load(open("staged/release-050-gate.json"))
+          assert gate["candidate"]["commit"] == sha, "manifest commit mismatch"
+          assert gate["terminal"].startswith("ANYFESOLVER_0_5_0_PACKAGING_GATE_PASSED")
+          assert gate["versions"] == {"ANYfeSolver": solver, "ANYfeSolver-results": results}
+          expected = {
+              f"results/anyfesolver_results-{results}-py3-none-any.whl",
+              f"results/anyfesolver_results-{results}.tar.gz",
+              f"solver/anyfesolver-{solver}-py3-none-any.whl",
+              f"solver/anyfesolver-{solver}.tar.gz",
+          }
+          listed = {line.split(None, 1)[1].strip().lstrip("*") for line in open("staged/SHA256SUMS") if line.strip()}
+          assert listed == expected, listed
+          for key in ("solver", "results"):
+              wheel = gate["wheels"][key]
+              digests = {l.split()[1].lstrip("*"): l.split()[0] for l in open("staged/SHA256SUMS") if l.strip()}
+              assert digests[f"{key}/{wheel['name']}"] == wheel["sha256"], key
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          packages-dir: dist/solver/
+          name: release-050-promoted
+          path: staged/
+          if-no-files-found: error
+          retention-days: 7
+
+  pypi:
+    name: Promote identical bytes to PyPI (results first)
+    if: github.event_name == 'release'
+    needs: [validate, license-gate, dependency-gate, stage]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/ANYfeSolver
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+          persist-credentials: false
+      # Same-run artifact written by the `stage` job after it re-verified the bytes.
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: release-050-promoted
+          path: stage/
+      - name: Re-verify the staged bytes and gate commit
+        env:
+          EXPECTED_SHA: ${{ needs.validate.outputs.sha }}
+        run: |
+          set -euo pipefail
+          (cd stage/dist && sha256sum -c ../SHA256SUMS)
+          python3 - <<'PY'
+          import json, os
+          gate = json.load(open("stage/release-050-gate.json"))
+          assert gate["candidate"]["commit"] == os.environ["EXPECTED_SHA"], "gate commit mismatch"
+          PY
+      - name: Require TestPyPI to already serve every candidate file with the identical digest
+        run: |
+          set -euo pipefail
+          python3 scripts/verify_release_050.py index-plan --index https://test.pypi.org --name ANYfeSolver-results --version "$RESULTS_VERSION" --dist-dir stage/dist/results --require-complete
+          python3 scripts/verify_release_050.py index-plan --index https://test.pypi.org --name ANYfeSolver --version "$SOLVER_VERSION" --dist-dir stage/dist/solver --require-complete
+      - name: Plan the ANYfeSolver-results PyPI upload
+        id: plan_results
+        run: >-
+          python3 scripts/verify_release_050.py index-plan
+          --index https://pypi.org --name ANYfeSolver-results --version "$RESULTS_VERSION"
+          --dist-dir stage/dist/results --missing-dir plan/results --github-output "$GITHUB_OUTPUT"
+      - name: Publish missing ANYfeSolver-results files to PyPI
+        if: steps.plan_results.outputs.missing != '0'
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
+        with:
+          packages-dir: plan/results/
+
+  pypi-solver:
+    name: Upload the stable solver to PyPI
+    needs: [validate, pypi]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+          persist-credentials: false
+      # Same-run artifact written by the `stage` job after it re-verified the bytes.
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: release-050-promoted
+          path: stage/
+      - name: Verify the downloaded distributions
+        run: cd stage/dist && sha256sum -c ../SHA256SUMS
+      - name: Plan the ANYfeSolver PyPI upload
+        id: plan_solver
+        run: >-
+          python3 scripts/verify_release_050.py index-plan
+          --index https://pypi.org --name ANYfeSolver --version "$SOLVER_VERSION"
+          --dist-dir stage/dist/solver --missing-dir plan/solver --github-output "$GITHUB_OUTPUT"
+      - name: Publish missing ANYfeSolver files to PyPI
+        if: steps.plan_solver.outputs.missing != '0'
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
+        with:
+          packages-dir: plan/solver/
+      - name: Confirm PyPI serves every candidate file with the identical digest
+        run: |
+          set -euo pipefail
+          for project in "ANYfeSolver-results $RESULTS_VERSION results" "ANYfeSolver $SOLVER_VERSION solver"; do
+            set -- $project
+            for attempt in 1 2 3 4 5; do
+              rc=0
+              python3 scripts/verify_release_050.py index-plan --index https://pypi.org --name "$1" --version "$2" --dist-dir "stage/dist/$3" --require-complete || rc=$?
+              [ "$rc" = 0 ] && break
+              [ "$rc" = 2 ] || exit 1
+              [ "$attempt" = 5 ] && { echo "PyPI did not serve every file of $1"; exit 1; }
+              sleep 30
+            done
+          done

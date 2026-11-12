@@ -2,10 +2,10 @@
 import json
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_generalized_cell as source
-from anysolver import _ge_beam3_cell_identity as identity
-from anysolver import _ge_beam3_retained_translation_control as control
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver import _ge_beam3_generalized_cell as source
+from anyfesolver import _ge_beam3_cell_identity as identity
+from anyfesolver import _ge_beam3_retained_translation_control as control
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from docs.reference_cases import ge_beam3_refined_controlled_case as case
 
 @pytest.fixture

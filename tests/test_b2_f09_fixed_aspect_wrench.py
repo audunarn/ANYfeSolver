@@ -14,10 +14,10 @@ from scipy import sparse
 from scipy.sparse.linalg import splu
 import pytest
 
-from anysolver import stiffened_shell
+from anyfesolver import stiffened_shell
 
-from anysolver._b2_physical_flexibility_linear import LinearSection
-from anysolver._b2_physical_linear_definition import PhysicalB2Member
+from anyfesolver._b2_physical_flexibility_linear import LinearSection
+from anyfesolver._b2_physical_linear_definition import PhysicalB2Member
 
 
 WIDTH_DEPTH_M = (

@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_pose_joint import RigidPoseJoint
+from anyfesolver._ge_beam3_pose_joint import RigidPoseJoint
 from scripts.b3_e4_e01_matching_point_canary import (
     SHELL, STATIONS, _beam_nodes, bond_rows, validate_work,
 )

@@ -4,10 +4,10 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
-from anysolver._stiffened_shell_staged_load_experimental import (
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver._stiffened_shell_staged_load_experimental import (
     decode_checkpoint, encode_checkpoint,
 )
 from test_stiffened_shell_ge_experimental import _panel
@@ -34,7 +34,7 @@ def _numeric_checkpoint(owner, raw):
     Stable Q4 snapshots are binary; the historical JSON path remains supported.
     Do not infer layout from untrusted snapshot metadata for corruption tests.
     """
-    from anysolver import _stiffened_shell_ge_checkpoint_binary as binary
+    from anyfesolver import _stiffened_shell_ge_checkpoint_binary as binary
     if not raw.startswith(binary.MAGIC):
         return json.loads(raw), lambda value:json.dumps(value,sort_keys=True,
             separators=(',',':')).encode('ascii')

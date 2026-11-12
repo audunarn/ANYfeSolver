@@ -19,7 +19,7 @@ REFERENCE = ROOT / "docs" / "reference_cases"
 PRODUCER = REFERENCE / "ge_beam3_curved_p4_reference_producer.py"
 CHECKER = REFERENCE / "ge_beam3_curved_p4_reference_checker.py"
 RUNNER = REFERENCE / "ge_beam3_curved_p4_reference_runner.py"
-REFERENCE_MODULE = ROOT / "src" / "anysolver" / "ge_beam3_curved_reference.py"
+REFERENCE_MODULE = ROOT / "src" / "anyfesolver" / "ge_beam3_curved_reference.py"
 CASES = REFERENCE / "ge_beam3_curved_p4_cases.json"
 CONTRACT = REFERENCE / "ge_beam3_curved_p4_contract.json"
 PASS = "PROVISIONAL_GO_GE_BEAM3_P4_PRIVATE_CURVED_REFERENCE_CORE"
@@ -114,14 +114,14 @@ def _complete_cycle(terminal: str) -> dict[str, object]:
 
 @pytest.fixture
 def external_tmp_path() -> Path:
-    with tempfile.TemporaryDirectory(prefix="anysolver-p4-disposable-") as directory:
+    with tempfile.TemporaryDirectory(prefix="anyfesolver-p4-disposable-") as directory:
         path = Path(directory).resolve()
         with pytest.raises(ValueError):
             path.relative_to(ROOT)
         yield path
 
 
-def test_independent_checker_imports_no_anysolver_or_mechanics_modules() -> None:
+def test_independent_checker_imports_no_anyfesolver_or_mechanics_modules() -> None:
     tree = ast.parse(CHECKER.read_text(encoding="utf-8"))
     imported: list[str] = []
     for node in ast.walk(tree):
@@ -129,7 +129,7 @@ def test_independent_checker_imports_no_anysolver_or_mechanics_modules() -> None
             imported.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom):
             imported.append(node.module or "")
-    assert not any(name == "anysolver" or name.startswith("anysolver.") for name in imported)
+    assert not any(name == "anyfesolver" or name.startswith("anyfesolver.") for name in imported)
     assert not any(token in name.lower() for name in imported for token in ("element", "mechanics", "corotational", "recovery"))
 
 
@@ -157,7 +157,7 @@ def test_authority_manifest_binds_all_programs_commits_and_protected_blobs() -> 
 
 @pytest.mark.parametrize(
     "path",
-    ("pyproject.toml", "src/anysolver/__init__.py", "src/anysolver/elements.py"),
+    ("pyproject.toml", "src/anyfesolver/__init__.py", "src/anyfesolver/elements.py"),
 )
 def test_added_baseline_blob_drift_is_rejected(
     monkeypatch: pytest.MonkeyPatch,

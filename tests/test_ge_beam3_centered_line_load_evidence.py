@@ -53,7 +53,7 @@ def test_preserved_source_mutation_fails_before_diagnostic_mechanics(monkeypatch
     original = diagnostic.binding
     def mutated(path):
         value = original(path)
-        if path == 'src/anysolver/_ge_beam3_centered_mixed.py': value = {**value,'sha256':'0'*64}
+        if path == 'src/anyfesolver/_ge_beam3_centered_mixed.py': value = {**value,'sha256':'0'*64}
         return value
     monkeypatch.setattr(diagnostic,'binding',mutated)
     import pytest

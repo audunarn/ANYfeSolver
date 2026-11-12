@@ -32,7 +32,7 @@ def test_curved_s3_active_restart_opens_and_preserves_prefix():
 
 @pytest.mark.parametrize('cancelled',(False,True))
 def test_curved_s3_active_prefix_survives_precommit_failure(cancelled):
-    from anysolver.control import CancellationToken
+    from anyfesolver.control import CancellationToken
     raw=_canonical_fixture_payload(ACTIVE);owner=_analysis();record=owner._record;token=CancellationToken()
     def injected(target,*args):
         staged=record(target,*args)

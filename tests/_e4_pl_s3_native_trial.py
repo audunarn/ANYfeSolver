@@ -6,7 +6,7 @@ from typing import Any
 
 import numpy as np
 
-from anysolver._native_rotation_state import (
+from anyfesolver._native_rotation_state import (
     NativeElementRotationView,
     NativeRotationStateStore,
     create_native_rotation_state_store,

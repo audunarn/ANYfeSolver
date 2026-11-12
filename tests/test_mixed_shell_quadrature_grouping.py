@@ -7,9 +7,9 @@ from collections.abc import Sequence
 import numpy as np
 import pytest
 
-import anysolver.matrix_assembly as matrix_assembly_module
-import anysolver.nonlinear_performance as nonlinear_performance_module
-from anysolver import (
+import anyfesolver.matrix_assembly as matrix_assembly_module
+import anyfesolver.nonlinear_performance as nonlinear_performance_module
+from anyfesolver import (
     FEModel,
     GeneralizedShellSection,
     QualifiedE4PLS3ShellElement,
@@ -17,10 +17,10 @@ from anysolver import (
     assemble_mass_matrix,
     assemble_stiffness_matrix,
 )
-from anysolver.activity import ElementActivity
-from anysolver.element_capabilities import ElementCapabilityError
-from anysolver.elements import LegacyShellElement, ShellElement
-from anysolver.matrix_assembly import (
+from anyfesolver.activity import ElementActivity
+from anyfesolver.element_capabilities import ElementCapabilityError
+from anyfesolver.elements import LegacyShellElement, ShellElement
+from anyfesolver.matrix_assembly import (
     assemble_external_load_tangent,
     assemble_geometric_stiffness_matrix,
     assemble_load_vector,

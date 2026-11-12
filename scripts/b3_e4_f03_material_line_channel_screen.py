@@ -14,7 +14,7 @@ from hashlib import sha256
 import subprocess
 import sys
 
-import anysolver
+import anyfesolver
 import numpy as np
 import scipy
 from scipy import sparse
@@ -329,10 +329,10 @@ def _one_topology(xs, ys, beam, *, mixed_s3: bool,
 
 
 def run(*, off_edge: bool = False) -> dict:
-    expected = (Path(__file__).resolve().parents[1]/"src"/"anysolver").resolve()
-    actual = Path(anysolver.__file__).resolve().parent
+    expected = (Path(__file__).resolve().parents[1]/"src"/"anyfesolver").resolve()
+    actual = Path(anyfesolver.__file__).resolve().parent
     if actual != expected:
-        raise RuntimeError("channel screen imported another ANYsolver checkout")
+        raise RuntimeError("channel screen imported another ANYfeSolver checkout")
     xs, ys = local_grid(2, transverse_cells=4)
     if off_edge:
         ys = ys.copy()
@@ -354,7 +354,7 @@ def run(*, off_edge: bool = False) -> dict:
     return {
         "classification": "private channel-compatible material-line loaded screen",
         "qualification": "development only; no multiplier selection or G0B pass",
-        "anysolver_import_path": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_import_path": str(Path(anyfesolver.__file__).resolve()),
         "python_version": sys.version.split()[0],
         "numpy_version": np.__version__,
         "scipy_version": scipy.__version__,
@@ -371,9 +371,9 @@ def run(*, off_edge: bool = False) -> dict:
 
 
 def run_beam_trace() -> dict:
-    expected = (Path(__file__).resolve().parents[1]/"src"/"anysolver").resolve()
-    if Path(anysolver.__file__).resolve().parent != expected:
-        raise RuntimeError("beam-trace screen imported another ANYsolver checkout")
+    expected = (Path(__file__).resolve().parents[1]/"src"/"anyfesolver").resolve()
+    if Path(anyfesolver.__file__).resolve().parent != expected:
+        raise RuntimeError("beam-trace screen imported another ANYfeSolver checkout")
     xs, ys = local_grid(8, transverse_cells=4)
     beam = build(12, z_offset=.0675,
                  torsion_constant=square_torsion_constant(),
@@ -381,7 +381,7 @@ def run_beam_trace() -> dict:
     return {
         "classification": "private fixed-primal joint native-trace image screen",
         "qualification": "development only; no multiplier selection or G0B pass",
-        "anysolver_import_path": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_import_path": str(Path(anyfesolver.__file__).resolve()),
         "python_version": sys.version.split()[0],
         "numpy_version": np.__version__,
         "scipy_version": scipy.__version__,
@@ -399,9 +399,9 @@ def run_beam_trace() -> dict:
 
 def run_shell_trace() -> dict:
     root = Path(__file__).resolve().parents[1]
-    expected = (root/"src"/"anysolver").resolve()
-    if Path(anysolver.__file__).resolve().parent != expected:
-        raise RuntimeError("shell-trace screen imported another ANYsolver checkout")
+    expected = (root/"src"/"anyfesolver").resolve()
+    if Path(anyfesolver.__file__).resolve().parent != expected:
+        raise RuntimeError("shell-trace screen imported another ANYfeSolver checkout")
     source_paths = (
         "scripts/b3_e4_f03_material_line_channel_screen.py",
         "scripts/b3_e4_f03_material_line_loaded.py",
@@ -417,7 +417,7 @@ def run_shell_trace() -> dict:
     return {
         "classification": "private fixed-primal shell-side trace image screen",
         "qualification": "development only; no multiplier selection or G0B pass",
-        "anysolver_import_path": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_import_path": str(Path(anyfesolver.__file__).resolve()),
         "python_version": sys.version.split()[0],
         "numpy_version": np.__version__,
         "scipy_version": scipy.__version__,
@@ -439,9 +439,9 @@ def run_shell_trace() -> dict:
 
 def run_complete_trace() -> dict:
     root = Path(__file__).resolve().parents[1]
-    expected = (root/"src"/"anysolver").resolve()
-    if Path(anysolver.__file__).resolve().parent != expected:
-        raise RuntimeError("complete-trace screen imported another ANYsolver checkout")
+    expected = (root/"src"/"anyfesolver").resolve()
+    if Path(anyfesolver.__file__).resolve().parent != expected:
+        raise RuntimeError("complete-trace screen imported another ANYfeSolver checkout")
     source_paths = (
         "scripts/b3_e4_f03_material_line_channel_screen.py",
         "scripts/b3_e4_f03_material_line_loaded.py",
@@ -459,7 +459,7 @@ def run_complete_trace() -> dict:
     return {
         "classification": "private fixed-primal maximal two-sided trace image screen",
         "qualification": "development only; no multiplier selection or G0B pass",
-        "anysolver_import_path": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_import_path": str(Path(anyfesolver.__file__).resolve()),
         "python_version": sys.version.split()[0],
         "numpy_version": np.__version__,
         "scipy_version": scipy.__version__,

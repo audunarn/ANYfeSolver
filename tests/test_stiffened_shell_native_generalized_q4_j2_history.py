@@ -3,12 +3,12 @@ from pathlib import Path
 from math import fsum
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken,SolveCancelled
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken,SolveCancelled
 from test_stiffened_shell_q4_pullback_owner import _definition
 from test_stiffened_shell_native_point_displacement import owner,native_state,OPTIONS,CONTROL,DIRECTION
 from test_stiffened_shell_native_generalized_adaptive_history import exact
-from anysolver._stiffened_shell_displacement_adaptive import decode
+from anyfesolver._stiffened_shell_displacement_adaptive import decode
 
 
 def test_generalized_q4_j2_adaptive_reload_exact_restart(request):

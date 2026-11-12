@@ -6,8 +6,8 @@ import math
 import numpy as np
 import pytest
 
-from anysolver.general_contact.event_subdivision import EventNeedsCutback
-from anysolver.general_contact.plane_newmark_events import (
+from anyfesolver.general_contact.event_subdivision import EventNeedsCutback
+from anyfesolver.general_contact.plane_newmark_events import (
     branch_path_admissible, hermite_branch_extrema, localize_endpoint_event,
 )
 

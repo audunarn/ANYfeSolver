@@ -3,14 +3,14 @@
 import numpy as np
 import pytest
 
-from anysolver.arc_length import ArcLengthControl, solve_static_arc_length
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver.nonlinear_static import (
+from anyfesolver.arc_length import ArcLengthControl, solve_static_arc_length
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver.nonlinear_static import (
     solve_static_nonlinear, DisplacementControl, NonlinearLoadStage, NonlinearLoadProgram,
     NonlinearConvergenceSettings,
 )
-from anysolver.boundary import LoadCase
-from anysolver.nonlinear_restart import canonical_checkpoint_json_bytes
+from anyfesolver.boundary import LoadCase
+from anyfesolver.nonlinear_restart import canonical_checkpoint_json_bytes
 from docs.reference_cases.ge_beam3_curved_p5_native_material_probe import canonical
 from test_ge_beam3_curved_p5_native_driver_probe import problem
 

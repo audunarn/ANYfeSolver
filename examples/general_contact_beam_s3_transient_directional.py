@@ -1,7 +1,7 @@
 """Exact binary axis-aligned full-line first touch; explicit V19 development profile."""
 from examples.general_contact_beam_s3_transient_rotational import build as rotational_build
-from anysolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
-from anysolver.dynamics import TransientConfig
+from anyfesolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
+from anyfesolver.dynamics import TransientConfig
 
 
 def build():

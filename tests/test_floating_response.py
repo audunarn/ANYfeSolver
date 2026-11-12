@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 
-from anysolver import floating_response as fr
+from anyfesolver import floating_response as fr
 
 RHO, G = 1025.0, 9.81
 

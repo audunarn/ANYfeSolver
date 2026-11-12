@@ -6,9 +6,9 @@ import numpy as np
 import pytest
 from scipy.optimize import brentq
 from scipy.integrate import quad
-from anysolver import BoundaryCondition, LoadCase, solve_static_nonlinear
-from anysolver.fe_core import FEModel
-from anysolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver import BoundaryCondition, LoadCase, solve_static_nonlinear
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
 from test_general_contact_hemisphere_cylinder_static import _support_case, _line_reference
 
 L=.2; EA=1.; A=.112; R=.11; P=.02; KE=1.

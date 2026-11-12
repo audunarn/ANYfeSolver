@@ -8,10 +8,10 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver.general_contact.q4_s3_overlap_derivatives import (
+from anyfesolver.general_contact.q4_s3_overlap_derivatives import (
     q4_s3_overlap_derivatives,
 )
-from anysolver.general_contact.q4_source_overlap import q4_source_overlap_integrals
+from anyfesolver.general_contact.q4_source_overlap import q4_source_overlap_integrals
 
 
 INTEGRATION = dict(area_tolerance=1.0e-9,

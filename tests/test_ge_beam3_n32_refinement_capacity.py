@@ -2,12 +2,12 @@ from types import SimpleNamespace
 from contextvars import Context
 import numpy as np
 import pytest
-from anysolver._ge_beam3_refinement_capacity import retained_limits,n32_refinement_capacity
-from anysolver._ge_beam3_native_generalized_program import model_identity,retained_model_identity
-from anysolver._ge_beam3_retained_generalized_state import _retained_size
-from anysolver._ge_beam3_elastic_seed_modal import _factor_size
-from anysolver._ge_beam3_native_generalized_restart import _model
-from anysolver._ge_beam3_precise_geometric_work import POLICY
+from anyfesolver._ge_beam3_refinement_capacity import retained_limits,n32_refinement_capacity
+from anyfesolver._ge_beam3_native_generalized_program import model_identity,retained_model_identity
+from anyfesolver._ge_beam3_retained_generalized_state import _retained_size
+from anyfesolver._ge_beam3_elastic_seed_modal import _factor_size
+from anyfesolver._ge_beam3_native_generalized_restart import _model
+from anyfesolver._ge_beam3_precise_geometric_work import POLICY
 from docs.reference_cases.ge_beam3_n32_controlled_case import model
 from docs.reference_cases.ge_beam3_n32_equilibrium import sample,guess_descriptor,write_native
 from docs.reference_cases.ge_beam3_refined_controlled_case import model as old_model
@@ -59,7 +59,7 @@ def test_one_sided_polynomial_sampling():
 @pytest.mark.parametrize('sign',('plus','minus'))
 def test_actual_bound_continuum_guess_native_shapes_frames_and_clamps(sign):
     from docs.reference_cases.ge_beam3_spatial_ritz_worker import source
-    from anysolver._ge_beam3_retained_generalized_state import Context as Physical,Mechanical
+    from anyfesolver._ge_beam3_retained_generalized_state import Context as Physical,Mechanical
     m=model(32,arithmetic_policy=POLICY);elements=tuple(sorted(m.mesh.elements.items()))
     positions=np.array([m.mesh.nodes[i].coords() for i in range(1,66)])
     frames=np.empty((65,3,3))
@@ -77,7 +77,7 @@ def test_actual_bound_continuum_guess_native_shapes_frames_and_clamps(sign):
     assert not initial.resultants.any() and not initial.position_low.any()
 
 def test_native_array_history_writer_roundtrip_exclusive_and_no_partial(tmp_path):
-    from anysolver._ge_beam3_p5_seeded.core import canonical
+    from anyfesolver._ge_beam3_p5_seeded.core import canonical
     from docs.reference_cases.ge_beam3_retained_prestress_protocol import strict_bytes
     m=old_model(2,arithmetic_policy=POLICY);history=m.mesh.elements[1].operator.cell.virgin()
     value=dict(mechanical=dict(cell_rotations=np.tile(np.eye(3),(2,2,1,1))),recovery=[dict(history=history,field=np.zeros(6))])

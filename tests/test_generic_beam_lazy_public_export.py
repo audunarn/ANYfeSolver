@@ -11,38 +11,38 @@ import pytest
 def test_stiffened_shell_lazy_public_identity(access):
     # Use the actual already-selected installed/source artifact in a clean child.
     # A repository test must not fall back to a historical checkout.
-    import anysolver
-    source = str(Path(anysolver.__file__).resolve().parent.parent)
+    import anyfesolver
+    source = str(Path(anyfesolver.__file__).resolve().parent.parent)
     code = '''
 import importlib, sys, types
 sys.path.insert(0, SOURCE)
-import anysolver
-assert 'stiffened_shell' in anysolver.__all__
-assert 'stiffened_shell' in dir(anysolver)
-assert 'stiffened_shell' not in vars(anysolver)
-assert 'anysolver.stiffened_shell' not in sys.modules
+import anyfesolver
+assert 'stiffened_shell' in anyfesolver.__all__
+assert 'stiffened_shell' in dir(anyfesolver)
+assert 'stiffened_shell' not in vars(anyfesolver)
+assert 'anyfesolver.stiffened_shell' not in sys.modules
 assert 'scipy.spatial.transform' not in sys.modules
 try:
-    anysolver._not_a_public_export
+    anyfesolver._not_a_public_export
 except AttributeError:
     pass
 else:
     raise AssertionError('unknown export accepted')
 if ACCESS == 'attribute':
-    module = anysolver.stiffened_shell
+    module = anyfesolver.stiffened_shell
 elif ACCESS == 'from_import':
-    from anysolver import stiffened_shell as module
+    from anyfesolver import stiffened_shell as module
 else:
-    module = importlib.import_module('anysolver.stiffened_shell')
+    module = importlib.import_module('anyfesolver.stiffened_shell')
 assert isinstance(module, types.ModuleType)
-assert module is anysolver.stiffened_shell
-assert module is sys.modules['anysolver.stiffened_shell']
-from anysolver import stiffened_shell
+assert module is anyfesolver.stiffened_shell
+assert module is sys.modules['anyfesolver.stiffened_shell']
+from anyfesolver import stiffened_shell
 assert stiffened_shell is module
-assert importlib.import_module('anysolver.stiffened_shell') is module
-assert vars(anysolver)['stiffened_shell'] is module
-assert 'stiffened_shell' in dir(anysolver)
-assert module.GEBeamLineAction is importlib.import_module('anysolver._stiffened_shell_ge_distributed_load').GEBeamLineAction
+assert importlib.import_module('anyfesolver.stiffened_shell') is module
+assert vars(anyfesolver)['stiffened_shell'] is module
+assert 'stiffened_shell' in dir(anyfesolver)
+assert module.GEBeamLineAction is importlib.import_module('anyfesolver._stiffened_shell_ge_distributed_load').GEBeamLineAction
 '''
     code = 'SOURCE = ' + repr(source) + '\nACCESS = ' + repr(access) + '\n' + code
     env = os.environ.copy()

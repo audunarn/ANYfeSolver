@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 import sys
 
-import anysolver
+import anyfesolver
 import numpy as np
 import scipy
 
@@ -23,10 +23,10 @@ from scripts.b3_e4_f03_square_section_control import square_torsion_constant
 
 
 def run() -> dict:
-    expected = (Path(__file__).resolve().parents[1]/"src"/"anysolver").resolve()
-    actual = Path(anysolver.__file__).resolve().parent
+    expected = (Path(__file__).resolve().parents[1]/"src"/"anyfesolver").resolve()
+    actual = Path(anyfesolver.__file__).resolve().parent
     if actual != expected:
-        raise RuntimeError("ratio screen imported another ANYsolver checkout")
+        raise RuntimeError("ratio screen imported another ANYfeSolver checkout")
     knots = (0., .25, .5, .75, 1.)
     results = {}
     for label, shell_cells, beam_half_cells in (
@@ -63,7 +63,7 @@ def run() -> dict:
     return {
         "classification": "private first reciprocal material-line ratio screen",
         "qualification": "development only; not mesh-uniform stability or G0B pass",
-        "anysolver_import_path": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_import_path": str(Path(anyfesolver.__file__).resolve()),
         "python_version": sys.version.split()[0],
         "numpy_version": np.__version__,
         "scipy_version": scipy.__version__,

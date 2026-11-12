@@ -2,7 +2,7 @@
 from fractions import Fraction as F
 import numpy as np
 import pytest
-from anysolver._dyadic_factor_chain import reassemble_chain_exact_binary64
+from anyfesolver._dyadic_factor_chain import reassemble_chain_exact_binary64
 
 
 def exact(a): return [[F(float(x)) for x in row] for row in a]

@@ -3,11 +3,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-import anysolver.e4_pl_s3_element as s3_module
-import anysolver.fe_core as fe_core_module
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from anysolver.elements import Element, ShellElement
-from anysolver.fe_core import FEMesh, Material
+import anyfesolver.e4_pl_s3_element as s3_module
+import anyfesolver.fe_core as fe_core_module
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+from anyfesolver.elements import Element, ShellElement
+from anyfesolver.fe_core import FEMesh, Material
 
 
 def _exact_case() -> tuple[FEMesh, QualifiedE4PLS3ShellElement, Material]:

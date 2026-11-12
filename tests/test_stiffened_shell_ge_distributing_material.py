@@ -4,10 +4,10 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import b3_ge, stiffened_shell as ss
+from anyfesolver import b3_ge, stiffened_shell as ss
 from anymaterial import DNVC208MaterialCurve
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_ge_checkpoint_binary import MAGIC, decode, encode
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import MAGIC, decode, encode
 from test_stiffened_shell_ge_distributing_finite_public import definition as elastic_definition
 
 
@@ -224,8 +224,8 @@ def test_continuation_and_complete_case_cancellation(completed):
 
 @pytest.mark.parametrize("failure", (RuntimeError, MemoryError))
 def test_candidate_and_checkpoint_failure_preserve_all_domains(completed, monkeypatch, failure):
-    from anysolver._stiffened_shell_ge_distributing_finite import PreparedFiniteDistributingAttachment
-    import anysolver._stiffened_shell_ge_finite_experimental as finite
+    from anyfesolver._stiffened_shell_ge_distributing_finite import PreparedFiniteDistributingAttachment
+    import anyfesolver._stiffened_shell_ge_finite_experimental as finite
     model, accepted, _ = completed
     owner = ss.create_analysis(definition=model)
     try:
@@ -255,7 +255,7 @@ def test_candidate_and_checkpoint_failure_preserve_all_domains(completed, monkey
 
 
 def test_cancel_during_prepared_snapshot_preserves_yielded_prefix(completed, monkeypatch):
-    import anysolver._stiffened_shell_ge_finite_experimental as finite
+    import anyfesolver._stiffened_shell_ge_finite_experimental as finite
     model, accepted, _ = completed
     owner = ss.create_analysis(definition=model)
     token = CancellationToken()

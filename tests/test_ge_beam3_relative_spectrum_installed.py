@@ -94,7 +94,7 @@ def test_relative_spectrum_wheel_two_fresh_processes(tmp_path):
         'from setuptools.build_meta import build_wheel; import sys; build_wheel(sys.argv[1])', str(wheels)], build, 'build')
     candidates = list(wheels.glob('*.whl')); assert len(candidates) == 1; wheel = candidates[0]
     with zipfile.ZipFile(wheel) as archive:
-        assert all('anysolver/'+name in archive.namelist() for name in (
+        assert all('anyfesolver/'+name in archive.namelist() for name in (
             '_relative_reference_svd.py', '_native_relative_reference_factor_spectrum.py',
             '_ge_beam3_relative_virgin_reference_modes.py'))
         assert not any(name.startswith(('docs/', 'tests/')) for name in archive.namelist())

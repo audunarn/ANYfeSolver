@@ -38,7 +38,7 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver import (
+from anyfesolver import (
     FEModel,
     BeamElement,
     LoadCase,
@@ -53,11 +53,11 @@ from anysolver import (
     generate_stiffened_panel_mesh,
     solve_static_nonlinear,
 )
-from anysolver.corotational import (
+from anyfesolver.corotational import (
     build_nonlinear_rotating_mpc_map,
     corotational_element_response,
 )
-from anysolver.mesh_gen import InterpolatedBeamShellMPCElement
+from anyfesolver.mesh_gen import InterpolatedBeamShellMPCElement
 
 from examples.elastic_sphere_stiffened_panel_mesh import (
     SPHERE_MIDSURFACE_RADIUS,
@@ -66,7 +66,7 @@ from examples.elastic_sphere_stiffened_panel_mesh import (
     SPHERE_TRIANGLES,
 )
 
-SCHEMA = "anysolver.elastic-sphere-stiffened-panel-initial-state-v1"
+SCHEMA = "anyfesolver.elastic-sphere-stiffened-panel-initial-state-v1"
 STATUS = "initial_state_prepared"
 IMPACT_STATUS = "unsupported"
 
@@ -534,15 +534,15 @@ def _global_balance(model: FEModel, recovery: dict) -> dict:
 
 
 def _runtime_identity() -> dict:
-    import anysolver
+    import anyfesolver
     import scipy
 
     return {
         "python": sys.version.split()[0],
         "executable": sys.executable,
         "platform": platform.platform(),
-        "anysolver_version": str(anysolver.__version__),
-        "anysolver_module": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_version": str(anyfesolver.__version__),
+        "anyfesolver_module": str(Path(anyfesolver.__file__).resolve()),
         "numpy_version": str(np.__version__),
         "scipy_version": str(scipy.__version__),
         "command": list(sys.argv),

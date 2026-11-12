@@ -52,18 +52,18 @@ def run(saved_root, output, site):
     if output.exists(): raise FileExistsError(output)
     output.mkdir()
     sys.path.insert(0, str(site.resolve()))
-    import anysolver
+    import anyfesolver
     import numba
     from threadpoolctl import threadpool_info
-    from anysolver import stiffened_shell as api
-    from anysolver._stiffened_shell_ge_experimental import _shell_reference
-    from anysolver._b2_physical_linear_batch_dev import _accurate_sparse_residual
-    if not Path(anysolver.__file__).resolve().is_relative_to(site.resolve()):
+    from anyfesolver import stiffened_shell as api
+    from anyfesolver._stiffened_shell_ge_experimental import _shell_reference
+    from anyfesolver._b2_physical_linear_batch_dev import _accurate_sparse_residual
+    if not Path(anyfesolver.__file__).resolve().is_relative_to(site.resolve()):
         raise ValueError("isolated installed solver required")
     pools = threadpool_info()
     if not pools or any(p["num_threads"] != 1 for p in pools) or not numba.config.DISABLE_JIT:
         raise ValueError("effective one-thread/JIT-off environment required")
-    report = dict(status="IN_PROGRESS", imported_solver=anysolver.__file__, pools=pools,
+    report = dict(status="IN_PROGRESS", imported_solver=anyfesolver.__file__, pools=pools,
         jit_disabled=True, numba_threads=numba.get_num_threads(), checks={}, cases={},
         scope="fixed flat Q4/c2 elastic native mixed fixture, development sensitivity only",
         perturbations=[1e-3, 1e-4], factorization_count=0, linear_solve_count=0)

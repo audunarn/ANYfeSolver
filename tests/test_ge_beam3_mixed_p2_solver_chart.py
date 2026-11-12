@@ -11,19 +11,19 @@ from typing import Any
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_mixed_ad import RotationDomainError
-from anysolver._native_rotation_state import (
+from anyfesolver._ge_beam3_mixed_ad import RotationDomainError
+from anyfesolver._native_rotation_state import (
     NativeRotationStateStore,
     create_native_rotation_state_store,
     rotation_exponential,
 )
-from anysolver.beam_sections import GeneralizedBeamSection
-from anysolver.fe_core import FEModel
-from anysolver.ge_beam3_mixed_element import (
+from anyfesolver.beam_sections import GeneralizedBeamSection
+from anyfesolver.fe_core import FEModel
+from anyfesolver.ge_beam3_mixed_element import (
     GeBeam3MixedLocalSolveError,
     GeometricallyExactBeam3D3NElement,
 )
-from anysolver.ge_beam3_mixed_state import (
+from anyfesolver.ge_beam3_mixed_state import (
     GeBeam3MixedCommittedStateError,
     deserialize_ge_beam3_mixed_state,
     seal_committed_ge_beam3_mixed_state,

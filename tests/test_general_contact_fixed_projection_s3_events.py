@@ -4,11 +4,11 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 from scipy import sparse
-from anysolver import FEModel,create_shell_element,ContactSurface,ContactDefinition,ContactInteraction
-from anysolver.general_contact.core import ContactSolverSettings
-from anysolver.general_contact.fixed_projection_s3_events import prepare_fixed_projection_s3_events
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.shell_pair_hermite_sweep import shell_pair_hermite_lower
+from anyfesolver import FEModel,create_shell_element,ContactSurface,ContactDefinition,ContactInteraction
+from anyfesolver.general_contact.core import ContactSolverSettings
+from anyfesolver.general_contact.fixed_projection_s3_events import prepare_fixed_projection_s3_events
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.shell_pair_hermite_sweep import shell_pair_hermite_lower
 
 GAP=.0002;KN=3.e8
 SUPPORT=np.array([1/3,1/6,1/3,1/6])

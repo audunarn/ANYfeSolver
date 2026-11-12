@@ -219,7 +219,7 @@ def register(case, output, *, reference='original'):
     if reference == 'exact_uniform':
         from scripts.r8_bl5_projected_uniform_modal_dev import uniform_projected_modal_bracket
         modal = uniform_projected_modal_bracket
-    if any(name.split('.')[0] == 'anysolver' for name in sys.modules):
+    if any(name.split('.')[0] == 'anyfesolver' for name in sys.modules):
         raise ValueError('scalar registration requires a product-free process')
     pools = threadpool_info()
     if not pools or any(pool['num_threads'] != 1 for pool in pools):

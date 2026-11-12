@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.triangle_mortar_energy import (
+from anyfesolver.general_contact.triangle_mortar_energy import (
     MovingS3PrimalMortarPenalty,
 )
 

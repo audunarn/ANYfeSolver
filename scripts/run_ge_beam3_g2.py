@@ -19,7 +19,7 @@ def main():
     if os.name != "nt" or any(t.split("::")[0] not in allowed for t in a.tests): raise ValueError("registered Windows development lane required")
     spec = importlib.util.spec_from_file_location("g2_bounds", ROOT/"docs/reference_cases/e4_pl_s3_v2_bounded_process.py")
     m = importlib.util.module_from_spec(spec); sys.modules[spec.name] = m; spec.loader.exec_module(m)
-    out = Path(tempfile.mkdtemp(prefix="anysolver-g2-development-")); print("DIAGNOSTICS "+str(out), flush=True)
+    out = Path(tempfile.mkdtemp(prefix="anyfesolver-g2-development-")); print("DIAGNOSTICS "+str(out), flush=True)
     env = dict(os.environ)
     for key in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS", "BLIS_NUM_THREADS", "NUMBA_NUM_THREADS", "TBB_NUM_THREADS"): env[key] = "1"
     env.update(PYTHONPATH=str(ROOT/"src")+os.pathsep+str(ROOT), PYTHONDONTWRITEBYTECODE="1", PYTEST_DISABLE_PLUGIN_AUTOLOAD="1", PYTEST_ADDOPTS="",

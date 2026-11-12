@@ -27,7 +27,7 @@ from scripts import r8_bl5_weak_continuum_reference as weak
 from scripts.r8_e02_double_output import read_double_output
 
 IDENTITY = "R8_BL5_CCX_WEAK_P0_EXECUTION_DEV_V1"
-CCX = Path("C:/Github/ANYsolver/.qualification/b3-ge-e4-pl/calculix-223/CalculiX-2.23.0-win-x64/bin/ccx.exe")
+CCX = Path("C:/Github/ANYfeSolver/.qualification/b3-ge-e4-pl/calculix-223/CalculiX-2.23.0-win-x64/bin/ccx.exe")
 MAX_CCX_SECONDS = 30.
 MAX_TOTAL_SECONDS = 60.
 MAX_TREE_RSS_BYTES = 2 * 1024**3

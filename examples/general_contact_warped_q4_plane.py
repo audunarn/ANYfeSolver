@@ -1,11 +1,11 @@
 """Opt-in small-rotation warped Q4/plane contact development example."""
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, LoadCase, RigidContactBody,
     create_shell_element, solve_static_nonlinear,
 )
-from anysolver.fe_core import FEModel
+from anyfesolver.fe_core import FEModel
 
 
 model = FEModel("warped_q4_plane_example")

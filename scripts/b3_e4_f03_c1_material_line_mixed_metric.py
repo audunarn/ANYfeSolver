@@ -15,7 +15,7 @@ from pathlib import Path
 import subprocess
 from time import monotonic
 
-import anysolver
+import anyfesolver
 import numpy as np
 from scipy import linalg
 from threadpoolctl import threadpool_info, threadpool_limits
@@ -100,9 +100,9 @@ def evaluate(shell_cells: int, kind: str, *, exact_drill_quotient: bool = False,
     if fz_riesz_audit and not (trace_only and exact_drill_quotient and
                                kind == "piecewise_constant"):
         raise ValueError("fz audit requires exact-quotient P0 trace metric")
-    expected = (Path(__file__).resolve().parents[1]/"src"/"anysolver").resolve()
-    if Path(anysolver.__file__).resolve().parent != expected:
-        raise RuntimeError("mixed metric imported another ANYsolver checkout")
+    expected = (Path(__file__).resolve().parents[1]/"src"/"anyfesolver").resolve()
+    if Path(anyfesolver.__file__).resolve().parent != expected:
+        raise RuntimeError("mixed metric imported another ANYfeSolver checkout")
     start = monotonic()
     deadline = start+120.
     xs, ys = local_grid(shell_cells, transverse_cells=4)
@@ -352,7 +352,7 @@ def evaluate(shell_cells: int, kind: str, *, exact_drill_quotient: bool = False,
         "runner_sha256": _hash(Path(__file__)),
         "source_git": subprocess.check_output(
             ["git", "rev-parse", "HEAD"], text=True).strip(),
-        "imported_anysolver": str(Path(anysolver.__file__).resolve()),
+        "imported_anyfesolver": str(Path(anyfesolver.__file__).resolve()),
         "effective_threadpools": threadpool_info(),
         "env": {name: os.environ.get(name) for name in (
             "NUMBA_DISABLE_JIT", "OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS")},

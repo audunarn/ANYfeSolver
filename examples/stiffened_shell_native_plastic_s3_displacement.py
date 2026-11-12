@@ -10,8 +10,8 @@ import argparse
 import json
 import numpy as np
 from anymaterial import DNVC208MaterialCurve
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken,SolveCancelled
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken,SolveCancelled
 from stiffened_shell_ge_point_zero_unload import definition as reference_definition
 
 

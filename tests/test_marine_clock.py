@@ -3,11 +3,11 @@ from dataclasses import FrozenInstanceError
 import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
-from anysolver.marine_rigid import RigidBody6D
-from anysolver.marine_contributions import (
+from anyfesolver.marine_rigid import RigidBody6D
+from anyfesolver.marine_contributions import (
     ContributionResult, ContributionSet, DynamicContribution,
     MarineContributionsError, StepInformation)
-from anysolver.marine_mechanical import (
+from anyfesolver.marine_mechanical import (
     MarineMechanicalModel, MarineMechanicalRunSpec, solve_marine_mechanical)
 
 

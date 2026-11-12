@@ -16,9 +16,9 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver.control import SolveCancelled
-from anysolver._stiffened_shell_increment_control import FiniteIncrementFailure
-from anysolver._stiffened_shell_ge_finite_experimental import (
+from anyfesolver.control import SolveCancelled
+from anyfesolver._stiffened_shell_increment_control import FiniteIncrementFailure
+from anyfesolver._stiffened_shell_ge_finite_experimental import (
     FinitePointDriver, BL5TrialDomainError)
 
 OLD = 0.06382978723404312

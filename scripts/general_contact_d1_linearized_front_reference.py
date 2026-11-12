@@ -17,10 +17,10 @@ from scipy import sparse
 from scipy.optimize import minimize
 from scipy.sparse.linalg import splu
 
-from anysolver import BoundaryCondition, create_shell_element
-from anysolver.assembly import build_constraint_transformation
-from anysolver.fe_core import FEModel
-from anysolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver import BoundaryCondition, create_shell_element
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.fe_core import FEModel
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
 from scripts.general_contact_d1_pressure_field_compare import _squared_norm
 
 

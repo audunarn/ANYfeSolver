@@ -7,10 +7,10 @@ on each disconnected component. Neither control permits artificial balancing.
 import argparse
 from contextlib import closing
 
-from anysolver import (AnalysisSession, EnvelopeReducer, LoadCase, RecoveryConfig,
+from anyfesolver import (AnalysisSession, EnvelopeReducer, LoadCase, RecoveryConfig,
     ResourceConfig, StaticBatchError, StaticCase, iter_linear_batches)
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
 
 
 def build_model(disconnected=False):

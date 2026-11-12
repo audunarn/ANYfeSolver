@@ -3,13 +3,13 @@ from copy import deepcopy
 from dataclasses import replace
 import numpy as np
 import pytest
-from anysolver.fe_core import FEModel
-from anysolver.boundary import BoundaryCondition,LoadCase
-from anysolver.nonlinear_state import NonlinearStateStore,create_model_native_rotation_store,StateTransactionError
-from anysolver.nonlinear_static import _assemble_nonlinear_system,solve_static_nonlinear
-from anysolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement,seal
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import BoundaryCondition,LoadCase
+from anyfesolver.nonlinear_state import NonlinearStateStore,create_model_native_rotation_store,StateTransactionError
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system,solve_static_nonlinear
+from anyfesolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement,seal
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_fibre_line_program import model as source_model
 from test_ge_beam3_schur_line_program import save
 

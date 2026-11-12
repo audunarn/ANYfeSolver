@@ -3,12 +3,12 @@ import json
 import numpy as np
 import pytest
 
-from anysolver.fe_core import FEModel
-from anysolver.boundary import BoundaryCondition
-from anysolver._ge_beam3_retained_fibre_element import NativeRetainedFibreElement
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._ge_beam3_p5.compensated_coordinates import split_sum
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import BoundaryCondition
+from anyfesolver._ge_beam3_retained_fibre_element import NativeRetainedFibreElement
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._ge_beam3_p5.compensated_coordinates import split_sum
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_curved_contrast_probe import make_curved
 from test_ge_beam3_fibre_section import section
 from test_ge_beam3_retained_plastic import args

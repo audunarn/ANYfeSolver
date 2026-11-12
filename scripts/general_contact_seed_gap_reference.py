@@ -2,7 +2,7 @@
 
 Scope: D1_SEED_GAP_DISCRIMINATOR_DEV420_V1 (Mistral-owned discriminator).
 
-This module is deliberately self-contained: stdlib only, no ``anysolver``
+This module is deliberately self-contained: stdlib only, no ``anyfesolver``
 import, and no production gap/witness kernel is called for any oracle
 value. It re-derives the physical source-normal gap of the captured pair
 path from the literal endpoint geometry and certifies it with exact

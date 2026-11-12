@@ -118,7 +118,7 @@ def test_hash_and_bounds_mutations_are_rejected(tmp_path: Path, runner) -> None:
 
 
 def test_defaults_and_q4_are_unchanged(runner) -> None:
-    source = (ROOT / "src/anysolver/elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src/anyfesolver/elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source
     assert runner.CHILD_TIMEOUT_SECONDS == 600

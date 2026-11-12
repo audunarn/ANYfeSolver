@@ -37,7 +37,7 @@ def test_observed_refinement_and_signs_not_full_qualification(saved):
 
 
 def test_saved_original_factor_ritz_and_zero_inertia_traces(saved):
-    from anysolver._dyadic_factor_chain import reassemble_chain_exact_binary64
+    from anyfesolver._dyadic_factor_chain import reassemble_chain_exact_binary64
     for cursor in (1,4):
         value=probe.parse(probe.read(OUTPUT/f'native-{cursor}.json')); p=value['packet']; modes=value['modes']
         assert p['identity']==modes['operator_identity']

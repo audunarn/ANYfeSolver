@@ -41,8 +41,8 @@ def test_v6f_audit_is_standard_library_only() -> None:
         "typing",
     }
     source = AUDIT_PATH.read_text(encoding="utf-8")
-    assert "import anysolver" not in source
-    assert "from anysolver" not in source
+    assert "import anyfesolver" not in source
+    assert "from anyfesolver" not in source
 
 
 def test_v6f_frozen_audit_preserves_the_three_reviewed_open_routes() -> None:

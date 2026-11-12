@@ -3,10 +3,10 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell as ss
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
-from anysolver._stiffened_shell_same_parent_trial import FixedTrialHandoff
-from anysolver.control import SolveCancelled
+from anyfesolver import stiffened_shell as ss
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver._stiffened_shell_same_parent_trial import FixedTrialHandoff
+from anyfesolver.control import SolveCancelled
 from scripts.experimental_stiffened_ge_multi_member_panel import make_definition, actions_for
 
 
@@ -165,7 +165,7 @@ def test_next_trial_observes_cancellation_before_handoff_validation(action):
 @pytest.mark.parametrize('target', ('module', 'code'))
 def test_changed_dispatch_invalidates_completed_payload(assembled, monkeypatch, target):
     _owner, driver, trial, pattern, _result, handoff = assembled
-    from anysolver import _stiffened_shell_ge_finite_experimental as module
+    from anyfesolver import _stiffened_shell_ge_finite_experimental as module
     if target == 'module':
         monkeypatch.setattr(module, 'q4_algorithmic_response', lambda *a, **kw: None)
     else:
@@ -205,13 +205,13 @@ def test_arithmetic_observers_remain_on_full_evaluation_path(assembled, mode):
 def test_nested_admitted_dispatch_invalidates_payload(assembled, monkeypatch, target):
     _owner, driver, trial, pattern, _result, handoff = assembled
     if target == 'compensated':
-        from anysolver._ge_beam3_p5 import compensated
+        from anyfesolver._ge_beam3_p5 import compensated
         monkeypatch.setattr(compensated, 'sum_jets', lambda *a: None)
     elif target == 'spatial':
-        from anysolver import _ge_beam3_generalized_static_boundary as module
+        from anyfesolver import _ge_beam3_generalized_static_boundary as module
         monkeypatch.setattr(module, '_array', lambda *a: None)
     else:
-        from anysolver._ge_beam3_mixed_ad import Jet2
+        from anyfesolver._ge_beam3_mixed_ad import Jet2
         monkeypatch.setattr(Jet2, '__mul__', lambda *a: None)
     assert handoff.take(driver, trial, .01, pattern) is None
 

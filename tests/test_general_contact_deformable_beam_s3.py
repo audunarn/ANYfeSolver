@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 from scipy.integrate import quad
 
-from anysolver.general_contact.deformable_beam_s3_line import DeformableBeamS3Line
+from anyfesolver.general_contact.deformable_beam_s3_line import DeformableBeamS3Line
 
 
 def fixture(count=3):

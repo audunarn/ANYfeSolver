@@ -42,7 +42,7 @@ def sha(path):
 
 
 def forbid_product_import():
-    if any(name == "anysolver" or name.startswith("anysolver.") for name in sys.modules):
+    if any(name == "anyfesolver" or name.startswith("anyfesolver.") for name in sys.modules):
         raise ValueError("independent external runner must not import product modules")
 
 

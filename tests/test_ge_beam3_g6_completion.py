@@ -1,25 +1,26 @@
 """Eight ordered, bounded G6 scientific evidence routes."""
 from hashlib import sha256
-import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import numpy as np
 
-from anysolver import (
+from scripts import audit_beam_parity_matrix as parity
+
+from anyfesolver import (
     AnalysisSession, BoundaryCondition, FEModel, FixedSupport, LoadCase,
     solve_linear_many,
 )
-from anysolver.beam_sections import GeneralizedBeamSection
-from anysolver.elements import QuadraticBeamElement, create_element
-from anysolver.ge_beam3_element import GeometricallyExactBeam3D3NElement
-from anysolver._ge_beam3_g1_elastic import ElasticSection
-from anysolver._ge_beam3_g6_domain import (
+from anyfesolver.beam_sections import GeneralizedBeamSection
+from anyfesolver.elements import QuadraticBeamElement, create_element
+from anyfesolver.ge_beam3_element import GeometricallyExactBeam3D3NElement
+from anyfesolver._ge_beam3_g1_elastic import ElasticSection
+from anyfesolver._ge_beam3_g6_domain import (
     ConsumerPolicy, GeneralizedInitialField, canonical, evaluate_initial_field,
     evidence,
 )
-from anysolver import ge_beam3_native as native
-from anysolver._ge_beam3_native_arc import solve_arc
+from anyfesolver import ge_beam3_native as native
+from anyfesolver._ge_beam3_native_arc import solve_arc
 from test_ge_beam3_g5_completion import _exercise_reference_family, _model
 from test_ge_beam3_g6_domain import (
     test_beam_contact_and_fracture_classification_cover_three_node_routes as _contact_route,
@@ -38,11 +39,15 @@ def _record(route, **checks):
 
 
 def test_01_complete_parity_register_is_source_and_evidence_bound():
-    matrix = json.loads((ROOT / "docs/reference_cases/ge_beam3_legacy_parity_matrix_v1.json").read_text())
+    matrix = parity.strict((ROOT / parity.MATRIX).read_bytes())
+    parity.validate_rows(matrix)
     assert [row["id"] for row in matrix["rows"]] == [
         *[f"P{i:02d}" for i in range(1, 33)], *[f"U{i:02d}" for i in range(1, 11)]
     ]
-    assert all((ROOT / source).is_file() for row in matrix["rows"] for source in row["sources"])
+    for row in matrix["rows"]:
+        for source in row["sources"]:
+            relative = PurePosixPath(source).relative_to("src/anysolver")
+            assert (ROOT / "src/anyfesolver" / relative).is_file(), source
     accepted = [ROOT / "docs/reference_cases" / name for name in (
         "ge_beam3_g5_completion_confirmation_v1.json",
         "ge_beam3_g5_completion_confirmation_review_v1.json",

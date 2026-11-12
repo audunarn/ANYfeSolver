@@ -3,12 +3,12 @@
 import numpy as np
 import pytest
 
-import anysolver.general_contact.q4_s3_overlap_derivatives as derivative_module
-from anysolver.general_contact.q4_s3_overlap_derivatives import (
+import anyfesolver.general_contact.q4_s3_overlap_derivatives as derivative_module
+from anyfesolver.general_contact.q4_s3_overlap_derivatives import (
     UnsupportedQ4S3Branch,
     q4_s3_overlap_derivatives,
 )
-from anysolver.general_contact.q4_source_overlap import q4_source_overlap_integrals
+from anyfesolver.general_contact.q4_source_overlap import q4_source_overlap_integrals
 
 
 REFERENCE = np.array([[0., 0., 0.], [2., 0., 0.],

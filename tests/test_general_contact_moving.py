@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.moving import (
+from anyfesolver.general_contact.moving import (
     TranslatedPairMortar,
     moving_mortar_state,
     moving_mortar_translation_residual,
@@ -11,7 +11,7 @@ from anysolver.general_contact.moving import (
     certify_moving_mortar_gap,
     bound_swept_moving_mortar_gap,
 )
-from anysolver.general_contact.overlap import PlanarFace
+from anyfesolver.general_contact.overlap import PlanarFace
 
 
 def _square(feature, x0, y0, z=0.0):

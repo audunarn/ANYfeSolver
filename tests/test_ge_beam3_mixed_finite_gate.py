@@ -364,7 +364,7 @@ def test_checker_import_boundary_is_independent() -> None:
             imported.update(alias.name.split(".")[0] for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module:
             imported.add(node.module.split(".")[0])
-    assert imported.isdisjoint({"anysolver", "sympy", "mpmath"})
+    assert imported.isdisjoint({"anyfesolver", "sympy", "mpmath"})
     text = CHECKER.read_text(encoding="utf-8")
-    assert "from anysolver" not in text
-    assert "import anysolver" not in text
+    assert "from anyfesolver" not in text
+    assert "import anyfesolver" not in text

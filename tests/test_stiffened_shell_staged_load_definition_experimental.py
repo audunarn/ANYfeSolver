@@ -7,8 +7,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver._stiffened_shell_ge_experimental import NodalAction
-from anysolver import _stiffened_shell_staged_load_experimental as staged
+from anyfesolver._stiffened_shell_ge_experimental import NodalAction
+from anyfesolver import _stiffened_shell_staged_load_experimental as staged
 
 
 MODEL = "ab" * 32

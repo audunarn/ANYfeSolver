@@ -8,9 +8,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from anysolver.fe_core import FEMesh, Material
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+from anyfesolver.fe_core import FEMesh, Material
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -182,7 +182,7 @@ def test_independent_reference_matches_every_d3_action_and_director_polarity(
     _compare_case(permutation, polarity, generalized=generalized)
 
 
-def test_reference_is_independent_of_anysolver_and_producer_mechanics() -> None:
+def test_reference_is_independent_of_anyfesolver_and_producer_mechanics() -> None:
     tree = ast.parse(REFERENCE_PATH.read_text(encoding="utf-8"))
     imports: set[str] = set()
     for node in ast.walk(tree):
@@ -191,8 +191,8 @@ def test_reference_is_independent_of_anysolver_and_producer_mechanics() -> None:
         elif isinstance(node, ast.ImportFrom) and node.module:
             imports.add(node.module.split(".", 1)[0])
     assert imports <= {"__future__", "dataclasses", "math", "typing", "numpy"}
-    assert "anysolver" not in REFERENCE_PATH.read_text(encoding="utf-8").lower().replace(
-        "anysolver module", ""
+    assert "anyfesolver" not in REFERENCE_PATH.read_text(encoding="utf-8").lower().replace(
+        "anyfesolver module", ""
     )
 
 

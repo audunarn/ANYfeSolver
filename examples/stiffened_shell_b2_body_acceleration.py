@@ -12,7 +12,7 @@ import json
 
 import numpy as np
 from scipy import sparse
-from anysolver import stiffened_shell as api
+from anyfesolver import stiffened_shell as api
 
 
 def definition(mesh="mixed"):

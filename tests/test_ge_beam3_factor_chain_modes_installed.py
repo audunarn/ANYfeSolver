@@ -103,7 +103,7 @@ def test_factor_chain_modes_wheel_two_fresh_processes(tmp_path):
         'from setuptools.build_meta import build_wheel; import sys; build_wheel(sys.argv[1])', str(wheels)], build, 'build')
     candidates = list(wheels.glob('*.whl')); assert len(candidates) == 1; wheel = candidates[0]
     with zipfile.ZipFile(wheel) as archive:
-        assert all('anysolver/'+name in archive.namelist() for name in (
+        assert all('anyfesolver/'+name in archive.namelist() for name in (
             '_native_factor_chain_modes.py', '_ge_beam3_factor_chain_modes.py', '_dyadic_factor_chain.py', '_ge_beam3_shared_kinematic_split.py'))
         assert not any(name.startswith(('docs/', 'tests/')) for name in archive.namelist())
     environment = tmp_path/'environment'

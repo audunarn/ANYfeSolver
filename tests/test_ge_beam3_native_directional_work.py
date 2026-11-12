@@ -3,7 +3,7 @@ from math import fsum
 import json
 import numpy as np
 import pytest
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_spatial_stability_factors import capture,seed
 from docs.reference_cases.ge_beam3_native_directional_work import evaluate,lift,adjudicate,STEPS
 

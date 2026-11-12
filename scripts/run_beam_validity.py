@@ -12,7 +12,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from anysolver.beam_validity import DEFAULT_BEAM_VALIDITY_PATH, write_beam_validity_report
+from anyfesolver.beam_validity import DEFAULT_BEAM_VALIDITY_PATH, write_beam_validity_report
 
 
 def _write_markdown(report: dict, path: Path) -> None:

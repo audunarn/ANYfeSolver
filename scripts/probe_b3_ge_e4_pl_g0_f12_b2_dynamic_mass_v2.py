@@ -77,8 +77,8 @@ def evaluate():
               all(c["scaled_eigen_equation_residual"] < 1e-8 and
                   c["minimum_reduced_mass_eigenvalue"] > 0 for c in cases))
     sources = [Path(__file__), Path(previous.__file__),
-        Path("src/anysolver/_b2_physical_flexibility_linear.py"),
-        Path("src/anysolver/_b2_physical_linear_definition.py")]
+        Path("src/anyfesolver/_b2_physical_flexibility_linear.py"),
+        Path("src/anyfesolver/_b2_physical_linear_definition.py")]
     return {"classification": "bounded F12 matched-continuum dynamic interpolation screen, not B2 spectral admission",
             "question": "Does the static-trace B2 mass converge to a separately assembled continuum Timoshenko mode rather than the shear-free EB asymptote?",
             "ritz": reference, "ritz_order_8_to_10_relative_change": reference_delta,

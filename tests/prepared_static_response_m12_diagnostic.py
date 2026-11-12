@@ -53,7 +53,7 @@ def run(family):
                     fields.extend(matvec((5./6.)*shear,strain[6:]))
                     expected_keys.extend(('shear_'+name,k) for name in ('xz','yz'))
             else:
-                from anysolver.elements import _beam_material_properties
+                from anyfesolver.elements import _beam_material_properties
                 element,mesh,material=recipe.execution_owner
                 L,T=element._beam_frame_and_transform(element.get_node_coordinates(mesh))
                 local=matvec(T,[ui[j] for j in mapping])

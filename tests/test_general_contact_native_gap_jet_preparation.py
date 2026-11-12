@@ -5,8 +5,8 @@ import builtins
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver.general_contact import native_replay_arithmetic as arithmetic
-from anysolver.general_contact import native_curved_s3_work as contact
+from anyfesolver.general_contact import native_replay_arithmetic as arithmetic
+from anyfesolver.general_contact import native_curved_s3_work as contact
 from test_general_contact_native_curved_s3_work import _case, _corners
 
 REFERENCE = Path(__file__).parent / 'fixtures' / 'native_gap_jet_reference'

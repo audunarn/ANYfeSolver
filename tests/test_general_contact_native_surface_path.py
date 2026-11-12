@@ -4,9 +4,9 @@ from dataclasses import replace
 import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
-from anysolver._ge_beam3_p5.compensated_coordinates import split_sum
+from anyfesolver._ge_beam3_p5.compensated_coordinates import split_sum
 
-from anysolver.general_contact.native_surface_path import (
+from anyfesolver.general_contact.native_surface_path import (
     certify_material_path, material_path_pose, locate_affine_contact_event,
 )
 from test_general_contact_native_surface_s3_friction import _case

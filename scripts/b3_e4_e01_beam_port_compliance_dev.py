@@ -22,7 +22,7 @@ CHANNELS = ("Fx", "Fy", "Fz", "Mx", "My", "Mz")
 def native_ports():
     import numpy as np
     from scipy.sparse.linalg import splu
-    from anysolver import _stiffened_shell_ge_experimental as ge
+    from anyfesolver import _stiffened_shell_ge_experimental as ge
     from b3_e4_e01_native_point_refinement_screen import definition
 
     panel, _ = definition(INTERVALS, 1, 4)

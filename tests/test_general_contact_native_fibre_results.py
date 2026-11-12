@@ -5,8 +5,8 @@ from fractions import Fraction as Q
 import json,os
 import numpy as np
 import pytest
-from anysolver.control import CancellationToken,SolveCancelled
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken,SolveCancelled
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_general_contact_native_curved_s3_static import _analysis
 from test_ge_beam3_fibre_section import exact_array,exact_pair,rational_fibre,integral
 
@@ -106,7 +106,7 @@ def test_station_recovery_interruption_leaves_committed_state(monkeypatch,cancel
 
 
 def test_cancellation_at_result_publication_returns_no_partial_report(monkeypatch):
-    import anysolver.general_contact.native_fibre_results as results
+    import anyfesolver.general_contact.native_fibre_results as results
     raw=_checkpoint();owner=_analysis(physical_fibres=True,plastic_fibres=True)
     token=CancellationToken();serialize=results.canonical;attempted=False
     initial=canonical(owner.initial.native_histories)
@@ -122,7 +122,7 @@ def test_cancellation_at_result_publication_returns_no_partial_report(monkeypatc
 
 def test_example_recovers_material_json_without_solving_new_target(monkeypatch,tmp_path,capsys):
     import examples.general_contact_native_curved_material_s3 as example
-    from anysolver.general_contact.native_multi_s3_static import NativeRetainedMultiS3Analysis
+    from anyfesolver.general_contact.native_multi_s3_static import NativeRetainedMultiS3Analysis
     source=Path(__file__).parent/'data/general_contact_native_fibre_s3_plastic_open_v1.checkpoint'
     output=tmp_path/'material.json'
     def forbidden_solve(*args,**kwargs):raise AssertionError('recovery must not advance the contact path')

@@ -17,16 +17,16 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'src'))
 sys.path.insert(0,str(ROOT/'tests'))
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 import scipy
 from threadpoolctl import threadpool_limits
 
-from anysolver._ge_beam3_g3c_local_shell import deformation
-from anysolver._ge_beam3_pose_joint import _exp_terms
-from anysolver._ge_beam3_shell_joint_state import decode
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_g3c_local_shell import deformation
+from anyfesolver._ge_beam3_pose_joint import _exp_terms
+from anyfesolver._ge_beam3_shell_joint_state import decode
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_coupled_modes import fixture
 
 
@@ -174,10 +174,10 @@ def main():
     commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
     source=Path(__file__).read_bytes()
     tracked=('scripts/'+Path(__file__).name,
-             'src/anysolver/_ge_beam3_g3c_local_shell.py',
-             'src/anysolver/_ge_beam3_pose_joint.py',
-             'src/anysolver/_ge_beam3_shell_joint_state.py',
-             'src/anysolver/_ge_beam3_shell_joint_trial.py',
+             'src/anyfesolver/_ge_beam3_g3c_local_shell.py',
+             'src/anyfesolver/_ge_beam3_pose_joint.py',
+             'src/anyfesolver/_ge_beam3_shell_joint_state.py',
+             'src/anyfesolver/_ge_beam3_shell_joint_trial.py',
              'tests/test_ge_beam3_coupled_modes.py',
              'tests/test_ge_beam3_coupled_free_beam.py')
     dirty=subprocess.check_output(['git','status','--porcelain','--untracked-files=no'],
@@ -188,7 +188,7 @@ def main():
               'tracked_sha256':hashes,'cases':CASES,'loaded_cursor':2,
               'relative_tolerance':1e-9,'normalization_floor':1.,
               'numba_cache':os.environ['NUMBA_CACHE_DIR'],'blas_threads':1,
-              'anysolver_import':str(Path(anysolver.__file__).resolve()),
+              'anyfesolver_import':str(Path(anyfesolver.__file__).resolve()),
               'python':sys.version,'numpy':np.__version__,'scipy':scipy.__version__,
               'numba':numba.__version__,'scope':'BOUNDED_REPRESENTATION_NOT_CHECKPOINT_REBASE'}
     args.root.mkdir(parents=True,exist_ok=False)

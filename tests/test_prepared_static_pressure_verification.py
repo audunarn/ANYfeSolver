@@ -2,9 +2,9 @@
 import sys
 import pytest
 from test_prepared_static_evaluator import _shell_model
-from anysolver import PreparedStaticCapabilityError
-from anysolver import prepared_static_loads as loads
-from anysolver import prepared_static_recovery as recovery
+from anyfesolver import PreparedStaticCapabilityError
+from anyfesolver import prepared_static_loads as loads
+from anyfesolver import prepared_static_recovery as recovery
 
 
 def test_pressure_verification_uses_one_owned_authority_span():
@@ -58,7 +58,7 @@ def test_verification_refuses_replaced_code_before_trusted_private_observation(m
 
 
 def test_owned_scope_postcheck_and_primary_error_precedence(monkeypatch):
-    from anysolver.elements import BeamElement
+    from anyfesolver.elements import BeamElement
     model = _shell_model()
     model.apply_boundary_conditions()
     maps = loads.compile_canonical_load_maps(model, families=('pressure',))

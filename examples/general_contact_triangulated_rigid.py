@@ -1,9 +1,9 @@
 """Finite planar tool, formulation-owned S3 skin, ordinary static driver."""
-from anysolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSurface, ContactSolverSettings, create_shell_element, LoadCase,
     solve_static_nonlinear)
-from anysolver.fe_core import FEModel
-from anysolver.general_contact import TriangulatedRigidContactBody
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact import TriangulatedRigidContactBody
 
 
 def case(diagonal=0):

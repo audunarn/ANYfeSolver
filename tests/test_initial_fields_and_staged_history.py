@@ -5,12 +5,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver.boundary import BoundaryCondition, FixedSupport, LoadCase
-from anysolver.elements import BeamElement, create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.imperfections import ImperfectionField
-from anysolver.material_curves import DNVC208MaterialCurve, FiberSectionPlasticityConfig
-from anysolver.nonlinear_static import (
+from anyfesolver.boundary import BoundaryCondition, FixedSupport, LoadCase
+from anyfesolver.elements import BeamElement, create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.imperfections import ImperfectionField
+from anyfesolver.material_curves import DNVC208MaterialCurve, FiberSectionPlasticityConfig
+from anyfesolver.nonlinear_static import (
     BeamInitialField,
     DisplacementControl,
     NonlinearLoadProgram,
@@ -144,7 +144,7 @@ def test_shell_bending_stress_and_prestrain_use_documented_layer_convention():
     model = _membrane_patch()
     element = model.mesh.get_element(1)
     material = model.get_material("steel")
-    from anysolver.nonlinear_static import _prepare_initial_states
+    from anyfesolver.nonlinear_static import _prepare_initial_states
 
     states, _ = _prepare_initial_states(
         model,
@@ -431,7 +431,7 @@ def test_fully_constrained_prescribed_model_without_restart_keeps_target_state()
 
 def test_field_bearing_restart_requires_matching_displacements():
     model = _membrane_patch()
-    from anysolver.nonlinear_static import _prepare_initial_states
+    from anyfesolver.nonlinear_static import _prepare_initial_states
 
     states, _ = _prepare_initial_states(
         model,
@@ -468,7 +468,7 @@ def test_initial_displacements_reject_nonfinite_values():
 
 def test_replacing_initial_field_clears_old_components_and_rejects_alpha_history():
     model = _membrane_patch()
-    from anysolver.nonlinear_static import _prepare_initial_states
+    from anyfesolver.nonlinear_static import _prepare_initial_states
 
     states, _ = _prepare_initial_states(
         model,
@@ -521,7 +521,7 @@ def test_replacing_initial_field_clears_old_components_and_rejects_alpha_history
 
 
 def test_new_initial_field_and_tangent_qualification_symbols_are_root_exports():
-    import anysolver
+    import anyfesolver
 
     for name in (
         "BeamInitialField",
@@ -530,8 +530,8 @@ def test_new_initial_field_and_tangent_qualification_symbols_are_root_exports():
         "algorithmic_tangent_performance_metrics",
         "global_newton_tangent_benchmark_metrics",
     ):
-        assert name in anysolver.__all__
-        assert getattr(anysolver, name) is not None
+        assert name in anyfesolver.__all__
+        assert getattr(anyfesolver, name) is not None
 
 
 def test_shell_initial_field_survives_plastic_commit_and_unloading():
@@ -539,7 +539,7 @@ def test_shell_initial_field_survives_plastic_commit_and_unloading():
     model.materials["steel"].hardening_curve = S355_CURVE
     element = model.mesh.get_element(1)
     material = model.get_material("steel")
-    from anysolver.nonlinear_static import _prepare_initial_states
+    from anyfesolver.nonlinear_static import _prepare_initial_states
 
     states, _ = _prepare_initial_states(
         model,
@@ -552,7 +552,7 @@ def test_shell_initial_field_survives_plastic_commit_and_unloading():
     # Owner decision 2026-10-23: plastic qualified Q4 outside the assumed-strain
     # route scope is refused (the compatible-strain plastic route with the
     # qualified correction is unstable once layers yield).
-    from anysolver._q4_assumed_strain_plasticity import UnsupportedQ4PlasticRouteError
+    from anyfesolver._q4_assumed_strain_plasticity import UnsupportedQ4PlasticRouteError
     with pytest.raises(UnsupportedQ4PlasticRouteError, match="active initial"):
         element.compute_nonlinear_response(
             model.mesh, material, loading, states[1], num_layers=3, tangent=True

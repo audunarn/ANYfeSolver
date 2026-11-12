@@ -22,13 +22,13 @@ ENV['PYTHONOPTIMIZE'] = '0'
 SOURCES = ('scripts/r8_f03_physical_interval_dev.py', 'scripts/r8_f03_physical_interval_runner_dev.py',
     'tests/test_r8_f03_physical_interval_dev.py', 'tests/test_r8_f03_finite_certificate_dev.py', 'scripts/r8_f03_finite_local_dev.py',
     'scripts/r8_f03_finite_inventory_dev.py', 'scripts/r8_f03_finite_sparse_dev.py',
-    'src/anysolver/e4_pl_element.py', 'src/anysolver/_stiffened_shell_ge_experimental.py',
-    'src/anysolver/_stiffened_shell_q4_reference.py', 'src/anysolver/_ge_beam3_retained_generalized.py',
-    'src/anysolver/_ge_beam3_generalized_cell.py', 'src/anysolver/_ge_beam3_generalized_ellipsoid_section.py',
-    'src/anysolver/_ge_beam3_centered_reference.py', 'src/anysolver/_ge_beam3_p5/compensated.py',
-    'src/anysolver/_ge_beam3_generalized_static_boundary.py', 'src/anysolver/_stiffened_shell_l1_assembly_experimental.py',
-    'src/anysolver/_stiffened_shell_bl5_local_experimental.py', 'src/anysolver/_stiffened_shell_l1_local_experimental.py',
-    'src/anysolver/linalg.py', 'scripts/_b3_e4_f03_local_scientific_supervisor.py')
+    'src/anyfesolver/e4_pl_element.py', 'src/anyfesolver/_stiffened_shell_ge_experimental.py',
+    'src/anyfesolver/_stiffened_shell_q4_reference.py', 'src/anyfesolver/_ge_beam3_retained_generalized.py',
+    'src/anyfesolver/_ge_beam3_generalized_cell.py', 'src/anyfesolver/_ge_beam3_generalized_ellipsoid_section.py',
+    'src/anyfesolver/_ge_beam3_centered_reference.py', 'src/anyfesolver/_ge_beam3_p5/compensated.py',
+    'src/anyfesolver/_ge_beam3_generalized_static_boundary.py', 'src/anyfesolver/_stiffened_shell_l1_assembly_experimental.py',
+    'src/anyfesolver/_stiffened_shell_bl5_local_experimental.py', 'src/anyfesolver/_stiffened_shell_l1_local_experimental.py',
+    'src/anyfesolver/linalg.py', 'scripts/_b3_e4_f03_local_scientific_supervisor.py')
 
 
 def save(path, value):

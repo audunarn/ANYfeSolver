@@ -9,12 +9,12 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import RecoveryConfig, prepare_static_response_evaluator, prepare_static_evaluator
-from anysolver import prepared_static_vectorized as vector_module
-from anysolver.analysis_session import _immutable_array, _immutable_csr
-from anysolver.assembly import _backward_error
-from anysolver.prepared_static import _block_norm_data, _certified_backward_error, _operator_norm_data
-from anysolver.prepared_static_recovery import _planned_compact
+from anyfesolver import RecoveryConfig, prepare_static_response_evaluator, prepare_static_evaluator
+from anyfesolver import prepared_static_vectorized as vector_module
+from anyfesolver.analysis_session import _immutable_array, _immutable_csr
+from anyfesolver.assembly import _backward_error
+from anyfesolver.prepared_static import _block_norm_data, _certified_backward_error, _operator_norm_data
+from anyfesolver.prepared_static_recovery import _planned_compact
 from test_prepared_static_response_m26 import _grid_model
 
 STRESS = RecoveryConfig(include_displacements=False, include_stresses=True, include_reactions=True)
@@ -189,7 +189,7 @@ def test_replaced_backward_error_function_is_honoured():
 def test_rebound_assembly_function_is_called_as_is(monkeypatch):
     # M31b (review): the original is the function captured at import, so a rebound
     # module attribute is an injected implementation like any other.
-    import anysolver.assembly as assembly_module
+    import anyfesolver.assembly as assembly_module
     a = _immutable_csr(sparse.csr_matrix(np.array([[2.0, 1.0], [1.0, 3.0]])))
     monkeypatch.setattr(assembly_module, '_backward_error', lambda *args: 7.0)
     assert _certified_backward_error(a, np.ones(2), np.ones(2), _operator_norm_data(a), assembly_module._backward_error) == 7.0
@@ -200,7 +200,7 @@ def test_rebound_assembly_function_is_called_as_is(monkeypatch):
 # --------------------------------------------------------------------------- vector maps
 
 def _reference_evaluate_groups(vector, full):  # pre-M30
-    from anysolver.prepared_static_vectorized import PreparedStaticError, _split, derived_fields
+    from anyfesolver.prepared_static_vectorized import PreparedStaticError, _split, derived_fields
     columns = full.shape[1]
     outputs = []
     for group in vector.groups:
@@ -282,9 +282,9 @@ def test_vector_maps_raise_and_warn_as_before(grid_owner, state, kind, monkeypat
 def test_certification_in_the_evaluator_equals_the_original(monkeypatch):
     # M31b (review): every certification equals assembly._backward_error at the time
     # of the call; the norm is computed per block (again after a canonical solve).
-    from anysolver import PatternCase
-    from anysolver import prepared_static as static_module
-    from anysolver import prepared_static_response as response_module
+    from anyfesolver import PatternCase
+    from anyfesolver import prepared_static as static_module
+    from anyfesolver import prepared_static_response as response_module
     agreed, norms, fail_once, used = [], {'static': 0, 'response': 0}, [True], []
     for label, module in (('static', static_module), ('response', response_module)):
         certify, norm = module._certified_backward_error, module._block_norm_data
@@ -338,7 +338,7 @@ def test_reinterpreted_parts_take_the_original():
 
 
 def test_another_floating_point_environment_takes_the_original(monkeypatch):
-    from anysolver import prepared_static as static_module
+    from anyfesolver import prepared_static as static_module
     x, b = np.array([1.0, 2.0]), np.array([0.5, 7.0])
     frozen = _immutable_csr(sparse.csr_matrix(np.array([[2.0, 1.0], [1.0, 3.0]])))
     norm = _block_norm_data(frozen, _backward_error)

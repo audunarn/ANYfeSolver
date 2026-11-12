@@ -4,10 +4,10 @@ import hashlib,json,os
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver.general_contact import (TransientContactResults,ContactResults,
+from anyfesolver.general_contact import (TransientContactResults,ContactResults,
     TransientContactArchiveError as Error,serialize_transient_contact_results as serialize,
     read_transient_contact_results as read)
-from anysolver.general_contact.transient_results_archive import CONVENTIONS,MAX_BYTES,_types
+from anyfesolver.general_contact.transient_results_archive import CONVENTIONS,MAX_BYTES,_types
 
 
 def sample():
@@ -79,7 +79,7 @@ def test_refusal_schema_integrity_dimensions_duplicates_and_resources():
 
 
 def test_free_body_and_contact_variant_record_inventory():
-    from anysolver.general_contact.free_rigid import FreeRigidBodyState
+    from anyfesolver.general_contact.free_rigid import FreeRigidBodyState
     state=FreeRigidBodyState((0.,0.,0.),(1.,0.,0.),(0.,0.,0.),
         ((1.,0.,0.),(0.,1.,0.),(0.,0.,1.)),(0.,0.,0.),(0.,0.,0.),.5,(1.,0.,0.),(0.,0.,0.))
     value=replace(sample(),free_rigid_bodies=({'sphere':state},{'sphere':state}))
@@ -127,7 +127,7 @@ def test_public_plane_impact_archive_release_reactions_and_restart_payload():
 
 
 def variant_records():
-    from anysolver.general_contact.transient import (_PairResults,_PatchResults,_BeamPlaneResults,
+    from anyfesolver.general_contact.transient import (_PairResults,_PatchResults,_BeamPlaneResults,
         _RadialResults,MultipleBeamRigidResults,MultipleShellPlaneResults)
     def simple(cls):
         values={}
@@ -156,7 +156,8 @@ def variant_records():
 def test_every_contact_variant_exact_fields_summary_and_nested_pairs(index):
     original=variant_records()[index]
     decoded=read(serialize(replace(sample(),contact=(original,original)))).to_dict()['contact'][0]
-    assert decoded['record_type']==type(original).__module__+'.'+type(original).__qualname__
+    module = type(original).__module__.replace('anyfesolver.', 'anysolver.', 1)
+    assert decoded['record_type']==module+'.'+type(original).__qualname__
     assert set(decoded['fields'])=={f.name for f in fields(original)}
     assert decoded['summary']==original.to_dict()
     for f in fields(original):
@@ -170,8 +171,8 @@ def test_every_contact_variant_exact_fields_summary_and_nested_pairs(index):
 
 
 def test_preflight_before_summary_clone_and_unknown_deepcopy(monkeypatch):
-    from anysolver.general_contact.transient import _PatchResults
-    from anysolver.nonlinear_state import NonlinearStateStore
+    from anyfesolver.general_contact.transient import _PatchResults
+    from anyfesolver.nonlinear_state import NonlinearStateStore
     patch=next(x for x in variant_records() if type(x) is _PatchResults)
     patch=replace(patch,reference_support_m2=np.zeros(2_000_001))
     monkeypatch.setattr(_PatchResults,'to_dict',lambda self:pytest.fail('summary ran before oversized fields refused'))
@@ -194,7 +195,7 @@ def test_record_scalar_pressure_roles_and_astral_preflight(monkeypatch):
                         ('active_pressure_dofs',1.),('gap_tolerance_met',1)):
         malformed=replace(sample().contact[0],**{field:value})
         with pytest.raises(Error):serialize(replace(sample(),contact=(malformed,malformed)))
-    from anysolver.general_contact.transient import _PatchResults
+    from anyfesolver.general_contact.transient import _PatchResults
     patch=next(x for x in variant_records() if type(x) is _PatchResults)
     for field in ('numerical_pressure_pa','reference_support_m2','normalized_weighted_gap_m'):
         malformed=replace(patch,**{field:('not-a-number',)})
@@ -202,7 +203,7 @@ def test_record_scalar_pressure_roles_and_astral_preflight(monkeypatch):
     valid=replace(sample().contact[0],penalty_energy=np.float64(-.0),
         active_pressure_dofs=np.int64(0),gap_tolerance_met=np.bool_(True))
     assert read(serialize(replace(sample(),contact=(valid,valid)))).to_dict()['contact'][0]['fields']['gap_tolerance_met']
-    import anysolver.general_contact.transient_results_archive as codec
+    import anyfesolver.general_contact.transient_results_archive as codec
     monkeypatch.setattr(codec,'_canonical',lambda x:pytest.fail('canonical allocation before oversized Unicode refusal'))
     with pytest.raises(Error):serialize(replace(sample(),profile='\U0001f600'*1000),max_bytes=10_000)
     with pytest.raises(Error):codec._encode('\U0001f600'*1000,codec._Budget(11_000),{})

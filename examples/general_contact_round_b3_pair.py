@@ -1,12 +1,12 @@
 """Opt-in distributed static contact between two classical round B3 beams."""
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, DisplacementControl, LoadCase,
     solve_static_nonlinear,
 )
-from anysolver.elements import QuadraticBeamElement
-from anysolver.fe_core import FEModel
+from anyfesolver.elements import QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
 
 
 model = FEModel("round_b3_pair_example")

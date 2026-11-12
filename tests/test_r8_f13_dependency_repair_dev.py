@@ -6,8 +6,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 from scipy import sparse
-from anysolver import stiffened_shell as api
-from anysolver._stiffened_shell_b2_q4_panel_experimental import ExperimentalB2Q4PanelAnalysis
+from anyfesolver import stiffened_shell as api
+from anyfesolver._stiffened_shell_b2_q4_panel_experimental import ExperimentalB2Q4PanelAnalysis
 from scripts import r8_f13_static_feasibility as frozen
 
 ROOT = Path(__file__).resolve().parents[1]

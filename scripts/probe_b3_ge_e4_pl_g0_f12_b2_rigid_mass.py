@@ -13,8 +13,8 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver._b2_physical_flexibility_linear import LinearSection
-from anysolver._b2_physical_linear_definition import MassMetadata, PhysicalB2Member
+from anyfesolver._b2_physical_flexibility_linear import LinearSection
+from anyfesolver._b2_physical_linear_definition import MassMetadata, PhysicalB2Member
 
 
 LENGTH = 2.

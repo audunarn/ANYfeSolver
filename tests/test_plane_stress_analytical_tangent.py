@@ -5,13 +5,13 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver.plasticity import (
+from anyfesolver.plasticity import (
     PlaneStressConvergenceError,
     plane_stress_numerical_tangent,
     plane_stress_return_map,
     plane_stress_tangent_diagnostics,
 )
-from anysolver.plasticity_qualification import (
+from anyfesolver.plasticity_qualification import (
     E_STEEL,
     NU_STEEL,
     algorithmic_tangent_path_metrics,
@@ -168,7 +168,7 @@ def test_numerical_oracle_uses_representable_steps_near_stability_boundary() -> 
 
 
 def test_invalid_analytical_tangent_mask_retains_guarded_fallback() -> None:
-    from anysolver.plasticity import _analytical_tangent_fallback_mask
+    from anyfesolver.plasticity import _analytical_tangent_fallback_mask
 
     tangent = np.eye(3, dtype=float)[None, :, :]
     tangent[0, 1, 1] = np.nan
@@ -206,7 +206,7 @@ def test_safeguarded_local_solve_recovers_newton_iteration_exhaustion() -> None:
 
 
 def test_local_convergence_guard_fails_closed_on_invalid_status() -> None:
-    from anysolver.plasticity import _require_local_convergence
+    from anyfesolver.plasticity import _require_local_convergence
 
     with pytest.raises(PlaneStressConvergenceError, match="maximum scaled residual"):
         _require_local_convergence(

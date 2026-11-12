@@ -12,8 +12,8 @@ import sys
 
 import numpy as np
 
-from anysolver._b2_physical_flexibility_linear import LinearSection
-from anysolver._b2_physical_linear_definition import MassMetadata, PhysicalB2Member
+from anyfesolver._b2_physical_flexibility_linear import LinearSection
+from anyfesolver._b2_physical_linear_definition import MassMetadata, PhysicalB2Member
 
 
 def _skew(x):
@@ -96,7 +96,7 @@ def evaluate():
                  p["translation_rotation_coupling_norm"] > 0
                  for p in probes)
     source = Path(__file__)
-    definition = Path("src/anysolver/_b2_physical_linear_definition.py")
+    definition = Path("src/anyfesolver/_b2_physical_linear_definition.py")
     return {
         "classification": "bounded F12 physical metadata feasibility; not mass or spectral admission",
         "question": "Can eccentric-section inertia at the beam reference axis retain direct particle kinetic work under frame rotation and reversal?",

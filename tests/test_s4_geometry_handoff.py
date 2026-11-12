@@ -13,7 +13,7 @@ import sys
 import numpy as np
 import pytest
 
-from anysolver.shell_formulations.geometry_provenance import (
+from anyfesolver.shell_formulations.geometry_provenance import (
     FORWARD_GEOMETRY_SCHEMA,
     SUPPORTED_ANYGEOMETRY_API,
     CompactSourceHandle,
@@ -379,7 +379,7 @@ def test_session_fingerprint_changes_for_geometry_numeric_or_mapping_revision() 
 
 
 def test_production_handoff_modules_have_no_geometry_package_imports() -> None:
-    root = Path("src/anysolver/shell_formulations")
+    root = Path("src/anyfesolver/shell_formulations")
     for name in ("geometry_provenance.py", "director_field.py", "mitc4_plus_d_quality.py"):
         tree = ast.parse((root / name).read_text(encoding="utf-8"), filename=name)
         imported_roots: set[str] = set()

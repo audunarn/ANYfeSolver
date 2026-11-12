@@ -24,7 +24,7 @@ CANDIDATE_ARCHIVE_SHA256 = (
 
 
 def _default_formulations() -> dict[str, str]:
-    tree = ast.parse((ROOT / "src/anysolver/elements.py").read_text(encoding="utf-8"))
+    tree = ast.parse((ROOT / "src/anyfesolver/elements.py").read_text(encoding="utf-8"))
     made: dict[str, str] = {}
     for node in tree.body:
         if not isinstance(node, (ast.Assign, ast.AnnAssign)):
@@ -216,7 +216,7 @@ def test_v6i_request_preview_is_deterministic_but_cannot_publish(
             "request_id": request_id,
             "requested_at": "2099-01-01T00:00:00+00:00",
             "status": "PENDING",
-            "task": f"ANYsolver S3 V2D Stage 4A bounded wave {wave_index + 1:02d}",
+            "task": f"ANYfeSolver S3 V2D Stage 4A bounded wave {wave_index + 1:02d}",
         }
         raw_request = publisher.canonical_bytes(request)
         rows.append(
@@ -261,7 +261,7 @@ def test_v6i_registered_execution_fails_before_outputs_without_v6j_authority(
                 "request_id": request_id,
                 "requested_at": "FROZEN_BY_SUCCESSOR_AUTHORITY",
                 "status": "PENDING",
-                "task": "ANYsolver S3 V2D Stage 4A bounded wave 01",
+                "task": "ANYfeSolver S3 V2D Stage 4A bounded wave 01",
             }
         )
     )

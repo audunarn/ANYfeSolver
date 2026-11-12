@@ -7,7 +7,7 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     ContactDefinition,
     ContactInteraction,
@@ -21,15 +21,15 @@ from anysolver import (
     create_shell_element,
     solve_transient_contact,
 )
-from anysolver.fe_core import FEModel
-from anysolver.algebraic_dynamics import build_declared_algebraic_basis
-from anysolver.assembly import assemble_mass_matrix, build_constraint_transformation
-from anysolver.matrix_assembly import assemble_load_vector, assemble_stiffness_matrix
-from anysolver.nonlinear_static import _assemble_nonlinear_system
-from anysolver.general_contact.core import (
+from anyfesolver.fe_core import FEModel
+from anyfesolver.algebraic_dynamics import build_declared_algebraic_basis
+from anyfesolver.assembly import assemble_mass_matrix, build_constraint_transformation
+from anyfesolver.matrix_assembly import assemble_load_vector, assemble_stiffness_matrix
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver.general_contact.core import (
     _PlanarQ4PlaneManager, active_contact_manager, contact_scope,
 )
-from anysolver.general_contact.transient import _minimum_hermite_gap
+from anyfesolver.general_contact.transient import _minimum_hermite_gap
 
 
 def _guided_plate():

@@ -1,6 +1,6 @@
 """Contact-aware spherical continuation of a connected physical S3 patch."""
 from examples.general_contact_triangulated_rigid_patch import case
-from anysolver import LoadCase, solve_static_arc_length, ArcLengthControl
+from anyfesolver import LoadCase, solve_static_arc_length, ArcLengthControl
 
 
 def analysis(steps=4, restart_checkpoint=None):

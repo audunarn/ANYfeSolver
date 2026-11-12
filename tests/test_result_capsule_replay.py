@@ -2,7 +2,7 @@
 import copy
 import numpy as np
 import pytest
-from anysolver_results import (reconstruct_response,prepare_response,reconstruct_prepared_response,
+from anyfesolver_results import (reconstruct_response,prepare_response,reconstruct_prepared_response,
                               validate_capsule,derive_field,ReconstructionError,CapsuleValidationError)
 ORDERED='ordered_float64/1'
 
@@ -47,13 +47,17 @@ def test_legacy_public_defaults_and_ordered_signed_zero_overflow_refusals():
 
 
 def test_confirmed_f2_input_ordered_tiles_and_prepared_exact_bits():
-    # Recreate the frozen synthetic input, checking its published byte identity.
-    # This is an arithmetic discriminator, not a physical solver certificate.
+    # NumPy's lognormal exponential varies by platform. Replay the original
+    # Windows F2 basis and the 20 weights drawn immediately afterward.
     import hashlib
-    rng=np.random.default_rng(72319)
-    basis=np.ascontiguousarray(rng.normal(size=(1307,21))*rng.lognormal(0,4,size=(1307,1)))
+    from pathlib import Path
+    with np.load(Path(__file__).parent/'data/confirmed_f2_replay.npz',allow_pickle=False) as fixture:
+        basis=fixture['basis']
+        weights=fixture['weights']
+    assert basis.shape==(1307,21) and weights.shape==(20,)
+    assert basis.dtype==weights.dtype==np.dtype('<f8')
     assert hashlib.sha256(basis.tobytes()).hexdigest()=='072b419c92146fcc920823896d76a045ac9fb50e202c756e17f58adbdf96844c'
-    weights=rng.normal(size=20)
+    assert hashlib.sha256(weights.tobytes()).hexdigest()=='8dff1f57f5589fa1b156c445ce4fc9d38e180ba9cc742b5a42f8f63631c48262'
     active=np.array([20,1,11,3,7,15,2,9,6,19,4,12,8,14,10,17,16,13,18,5])
     packed=weights[active-1]
     expected=reconstruct_response(basis,packed,active_indices=active,combination=ORDERED)
@@ -88,13 +92,13 @@ def capsule_component(capsule,index,key):
 
 @pytest.mark.parametrize('fixture',['beam2','beam3','shell'])
 def test_runtime2_actual_source_every_field_uint64_and_spectral_storage(fixture):
-    from anysolver import (PatternCase,RecoveryConfig,FixedSupport,BoundaryCondition,
+    from anyfesolver import (PatternCase,RecoveryConfig,FixedSupport,BoundaryCondition,
                           prepare_static_response_evaluator,export_recovery_capsule)
     from test_prepared_static_evaluator import _bar,_case,_shell_case
     from test_result_capsule_export import _rotated_shell_model,_reference_fields
     from test_generalized_beam_sections import _model,_stiffness
-    from anysolver.elements import QuadraticBeamElement
-    from anysolver.beam_sections import GeneralizedBeamSection
+    from anyfesolver.elements import QuadraticBeamElement
+    from anyfesolver.beam_sections import GeneralizedBeamSection
     if fixture=='shell':
         model=_rotated_shell_model()
         patterns={f'p{i}':_shell_case(i+1,pressure=(i+1)*.7).load_case for i in range(4)}
@@ -148,11 +152,11 @@ def test_runtime2_actual_source_every_field_uint64_and_spectral_storage(fixture)
 
 @pytest.mark.parametrize('target',['runtime_alias','runtime_module','numpy_add','numpy_multiply'])
 def test_real_sink_callback_replay_mutation_refuses_and_reports_once(target,monkeypatch):
-    from anysolver import PatternCase,RecoveryConfig,prepare_static_response_evaluator,export_recovery_capsule_to_sink,PreparedStaticCapabilityError
-    import anysolver_results as runtime
-    from anysolver_results import capsule as implementation
+    from anyfesolver import PatternCase,RecoveryConfig,prepare_static_response_evaluator,export_recovery_capsule_to_sink,PreparedStaticCapabilityError
+    import anyfesolver_results as runtime
+    from anyfesolver_results import capsule as implementation
     from test_prepared_static_evaluator import _bar,_case
-    from anysolver.result_capsule import _MemorySink
+    from anyfesolver.result_capsule import _MemorySink
     class Sink(_MemorySink):
         failures=[]
         def capsule_case(self,record,coefficients):
@@ -172,8 +176,8 @@ def test_real_sink_callback_replay_mutation_refuses_and_reports_once(target,monk
 
 def test_missing_actual_rows_and_overflow_use_truthful_unavailability_or_correction():
     """Synthetic damage to a genuine source record/basis tests publication admission."""
-    from anysolver import PatternCase,RecoveryConfig,prepare_static_response_evaluator
-    from anysolver.result_capsule import _CapsuleExport
+    from anyfesolver import PatternCase,RecoveryConfig,prepare_static_response_evaluator
+    from anyfesolver.result_capsule import _CapsuleExport
     from test_prepared_static_evaluator import _bar,_case
     cases=[PatternCase('a',{'p':2.,'q':2.})]
     with prepare_static_response_evaluator(_bar(),{'p':_case(1).load_case,'q':_case(2).load_case},recovery_config=RecoveryConfig(include_stresses=True),stress_execution='certified_library') as evaluator:
@@ -196,7 +200,7 @@ def test_missing_actual_rows_and_overflow_use_truthful_unavailability_or_correct
 
 
 def test_new_geometry_dense_indices_and_legacy_admission():
-    from anysolver import PatternCase,RecoveryConfig,prepare_static_response_evaluator,export_recovery_capsule
+    from anyfesolver import PatternCase,RecoveryConfig,prepare_static_response_evaluator,export_recovery_capsule
     from test_prepared_static_evaluator import _bar,_case
     geometry={'positions':np.array([[0.,0.,0.],[1.,0.,0.]]),'lines':np.array([[0,1]],dtype=np.int64),
               'line_to_element':np.array([0],dtype=np.int64),'element_ids':np.array([101],dtype=np.int64)}
@@ -218,9 +222,9 @@ def test_new_geometry_dense_indices_and_legacy_admission():
 
 
 def test_source_delegate_preserves_original_scalar_and_array_bits():
-    from anysolver.prepared_static_vectorized import _shell_von_mises,_beam_von_mises
-    from anysolver.prepared_static_measures import SHELL_LINEAR_COMPONENTS
-    from anysolver_results.formulas import BEAM_VON_MISES_COMPONENTS
+    from anyfesolver.prepared_static_vectorized import _shell_von_mises,_beam_von_mises
+    from anyfesolver.prepared_static_measures import SHELL_LINEAR_COMPONENTS
+    from anyfesolver_results.formulas import BEAM_VON_MISES_COMPONENTS
     rng=np.random.default_rng(41)
     for shape in ((),(7,),(3,7)):
         fields={name:rng.normal(size=shape)*.017 for name in SHELL_LINEAR_COMPONENTS}
@@ -240,7 +244,7 @@ def test_source_delegate_preserves_original_scalar_and_array_bits():
 
 def test_variant_dependency_noncontiguous_ids_preserves_native_order_and_cached_selector():
     from types import SimpleNamespace
-    from anysolver.result_capsule import _CapsuleExport,_Layout
+    from anyfesolver.result_capsule import _CapsuleExport,_Layout
     owner=object.__new__(_CapsuleExport)
     source,target=_Layout(),_Layout()
     for eid,size in ((101,2),(7,1),(303,3)): source.add(eid,size)
@@ -259,7 +263,7 @@ def test_variant_dependency_noncontiguous_ids_preserves_native_order_and_cached_
 
 
 def test_source_near_and_exact_tie_identity_is_preserved_by_corrected_runtime2_fields():
-    from anysolver import PatternCase,RecoveryConfig,prepare_static_response_evaluator,export_recovery_capsule
+    from anyfesolver import PatternCase,RecoveryConfig,prepare_static_response_evaluator,export_recovery_capsule
     from test_prepared_static_evaluator import _bar,_case
     config=RecoveryConfig(include_stresses=True,include_reactions=False,components=['axial_stress','von_mises'])
     coefficients=[1.5,np.nextafter(1.5,np.inf),np.nextafter(1.5,np.inf)]

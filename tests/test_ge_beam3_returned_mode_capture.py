@@ -2,8 +2,8 @@
 import sys
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_native_generalized_factor_modal as factor
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver import _ge_beam3_native_generalized_factor_modal as factor
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from docs.reference_cases.ge_beam3_returned_mode_capture import capture_failure, analyze
 from test_ge_beam3_generalized_slenderness_diagnostic import make
 from test_ge_beam3_schur_line_program import save

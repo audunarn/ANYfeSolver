@@ -15,11 +15,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_release_043_history_is_preserved_after_successor_release():
     metadata = tomllib.loads((ROOT / 'pyproject.toml').read_text())
-    tree = ast.parse((ROOT / 'src/anysolver/__init__.py').read_text())
+    tree = ast.parse((ROOT / 'src/anyfesolver/__init__.py').read_text())
     version = next(ast.literal_eval(n.value) for n in tree.body
                    if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name)
                    and t.id == '__version__' for t in n.targets))
-    assert metadata['project']['version'] == version == '0.4.7'
+    assert metadata['project']['name'] == 'ANYfeSolver'
+    assert metadata['project']['version'] == version == '0.5.0'
     assert json.loads((ROOT / 'dependency-licenses.json').read_text())['release'] == version
     assert '## 0.4.3 - 2026-09-09' in (ROOT / 'CHANGELOG.md').read_text()
     assert (ROOT / 'scripts/release_043_runtime.json').is_file()

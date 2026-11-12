@@ -15,19 +15,19 @@ from typing import Any
 import numpy as np
 import pytest
 
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from anysolver.fe_core import (
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+from anyfesolver.fe_core import (
     FEModel,
     _freeze_qualified_element_vector_inputs,
     _is_canonical_qualified_vector,
 )
-from anysolver.matrix_assembly import assemble_stiffness_matrix
-from anysolver.recovery import (
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.recovery import (
     RecoveryConfig,
     ResourceConfig,
     recover_element_stresses_with_report,
 )
-from anysolver.s3_reference_batch import MIN_REFERENCE_S3_RECOVERY_GROUP
+from anyfesolver.s3_reference_batch import MIN_REFERENCE_S3_RECOVERY_GROUP
 
 
 def _canonical_bytes_vector(values: tuple[float, ...]) -> np.ndarray:

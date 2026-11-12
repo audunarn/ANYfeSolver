@@ -153,7 +153,7 @@ def test_checker_import_boundary_excludes_production_and_legacy_mechanics() -> N
         "pathlib",
         "typing",
     }
-    assert "anysolver" not in imports
+    assert "anyfesolver" not in imports
 
 
 def test_checker_cli_writes_malformed_record_and_uses_exclusive_output(

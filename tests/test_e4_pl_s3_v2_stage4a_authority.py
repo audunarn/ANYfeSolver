@@ -136,9 +136,9 @@ def test_stage4a_authority_preserves_defaults_and_mechanics_boundaries(authority
     extent = authority["allowed_extent"]
     assert extent["q4_or_v1_mechanics_change_authorized"] is False
     assert extent["v2_matrix_or_equation_change_authorized"] is False
-    assert "src/anysolver/e4_pl_element.py" not in extent["implementation_paths"]
-    assert "src/anysolver/e4_pl_s3_element.py" not in extent["implementation_paths"]
-    assert "src/anysolver/boundary.py" not in extent["implementation_paths"]
+    assert "src/anyfesolver/e4_pl_element.py" not in extent["implementation_paths"]
+    assert "src/anyfesolver/e4_pl_s3_element.py" not in extent["implementation_paths"]
+    assert "src/anyfesolver/boundary.py" not in extent["implementation_paths"]
     assert "tests/test_e4_pl_s3_v2_component_cache.py" in extent["implementation_paths"]
 
 
@@ -850,7 +850,7 @@ def test_stage4a_correction7_dependency_authority_is_exact(authority) -> None:
                 "commit": "de2be5819dd07b9ad9c02d87335d61482808bcec",
                 "name": "ANYmaterial",
                 "path": (
-                    "C:\\Github\\ANYsolver\\.perf2-worktrees\\"
+                    "C:\\Github\\ANYfeSolver\\.perf2-worktrees\\"
                     "s3-v2-stage4a-anymaterial-dependency"
                 ),
                 "source_file_count": 15,
@@ -858,7 +858,7 @@ def test_stage4a_correction7_dependency_authority_is_exact(authority) -> None:
                     "AA316B42C0D4053F4A468C2D453EA6BFAC8EA7A17ABC1F7F0BFDD4F4F343C109"
                 ),
                 "source_path": (
-                    "C:\\Github\\ANYsolver\\.perf2-worktrees\\"
+                    "C:\\Github\\ANYfeSolver\\.perf2-worktrees\\"
                     "s3-v2-stage4a-anymaterial-dependency\\src"
                 ),
                 "tree": "e1e75423f623e9aad787bf584b3f0c9a6fe2360a",
@@ -867,7 +867,7 @@ def test_stage4a_correction7_dependency_authority_is_exact(authority) -> None:
                 "commit": "b2c4df0892025963623201b27e45a1e9af615d8e",
                 "name": "ANYgeometry",
                 "path": (
-                    "C:\\Github\\ANYsolver\\.perf2-worktrees\\"
+                    "C:\\Github\\ANYfeSolver\\.perf2-worktrees\\"
                     "s3-v2-stage4a-anygeometry-dependency"
                 ),
                 "source_file_count": 37,
@@ -875,7 +875,7 @@ def test_stage4a_correction7_dependency_authority_is_exact(authority) -> None:
                     "60AEC025D7659B5714A9588150B1EFABF74DA3398FAA9297420BB2E1D0A29149"
                 ),
                 "source_path": (
-                    "C:\\Github\\ANYsolver\\.perf2-worktrees\\"
+                    "C:\\Github\\ANYfeSolver\\.perf2-worktrees\\"
                     "s3-v2-stage4a-anygeometry-dependency\\src"
                 ),
                 "tree": "8ee3a63ade1127f45245bf9f0b1c442717ec34d5",
@@ -884,7 +884,7 @@ def test_stage4a_correction7_dependency_authority_is_exact(authority) -> None:
                 "commit": "ffeb538f6f1422cd7c8f3f2b86610c29dc26e078",
                 "name": "ANYmesh",
                 "path": (
-                    "C:\\Github\\ANYsolver\\.perf2-worktrees\\"
+                    "C:\\Github\\ANYfeSolver\\.perf2-worktrees\\"
                     "s3-v2-stage4a-anymesh-dependency"
                 ),
                 "source_file_count": 50,
@@ -892,7 +892,7 @@ def test_stage4a_correction7_dependency_authority_is_exact(authority) -> None:
                     "7226109CD4986C4F18828F72B0DAA80EEDD37DA86AC9FEBB908CA4779F21F324"
                 ),
                 "source_path": (
-                    "C:\\Github\\ANYsolver\\.perf2-worktrees\\"
+                    "C:\\Github\\ANYfeSolver\\.perf2-worktrees\\"
                     "s3-v2-stage4a-anymesh-dependency\\src"
                 ),
                 "tree": "c6092a1fce57a7182d647c34d393838ef700a846",
@@ -901,7 +901,7 @@ def test_stage4a_correction7_dependency_authority_is_exact(authority) -> None:
                 "commit": "9b1e5adea77a20155bbc23866af8c9aad853ddfd",
                 "name": "ANYfileIO",
                 "path": (
-                    "C:\\Github\\ANYsolver\\.perf2-worktrees\\"
+                    "C:\\Github\\ANYfeSolver\\.perf2-worktrees\\"
                     "s3-v2-stage4a-anyfileio-dependency"
                 ),
                 "source_file_count": 24,
@@ -909,7 +909,7 @@ def test_stage4a_correction7_dependency_authority_is_exact(authority) -> None:
                     "FCDECDEFAF7E1DC370287215D6C2EE705332C721360C0D95B477E6F003F9512D"
                 ),
                 "source_path": (
-                    "C:\\Github\\ANYsolver\\.perf2-worktrees\\"
+                    "C:\\Github\\ANYfeSolver\\.perf2-worktrees\\"
                     "s3-v2-stage4a-anyfileio-dependency\\src"
                 ),
                 "tree": "70b406be2574adceab4a7b688c0e489e0937df5d",

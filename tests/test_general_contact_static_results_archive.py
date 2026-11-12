@@ -4,10 +4,10 @@ import hashlib, json, os, struct
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver.nonlinear_static import NonlinearStaticResult, NonlinearStaticStep, NonlinearIncrementSnapshot
-from anysolver.general_contact import (StaticContactArchiveError as Error,
+from anyfesolver.nonlinear_static import NonlinearStaticResult, NonlinearStaticStep, NonlinearIncrementSnapshot
+from anyfesolver.general_contact import (StaticContactArchiveError as Error,
     serialize_static_contact_results as serialize, read_static_contact_results as read)
-from anysolver.general_contact import transient_results_archive as codec
+from anyfesolver.general_contact import transient_results_archive as codec
 
 
 def sample():
@@ -40,7 +40,7 @@ def test_exact_detached_and_refusal():
 
 
 def test_active_store_rejected_before_callback(monkeypatch):
-    from anysolver.nonlinear_state import NonlinearStateStore
+    from anyfesolver.nonlinear_state import NonlinearStateStore
     store=NonlinearStateStore()
     monkeypatch.setattr(NonlinearStateStore,'has_active_trial',property(lambda self:True))
     monkeypatch.setattr(NonlinearStateStore,'materialize_owned',lambda self:pytest.fail('copy callback'))
@@ -54,14 +54,15 @@ def test_active_store_rejected_before_callback(monkeypatch):
 
 def assert_producer_data(expected, actual):
     """Independent preservation oracle; no archive encode/decode helpers."""
-    from anysolver.nonlinear_state import NonlinearStateStore
+    from anyfesolver.nonlinear_state import NonlinearStateStore
     if type(expected) is NonlinearStateStore:
         assert not expected.has_active_trial
         expected = expected.materialize_owned()
     if is_dataclass(expected) and not isinstance(expected, type):
         assert type(actual) is dict
         assert set(actual) == {'record_type', 'fields', 'summary'}
-        assert actual['record_type'] == type(expected).__module__ + '.' + type(expected).__qualname__
+        module = type(expected).__module__.replace('anyfesolver.', 'anysolver.', 1)
+        assert actual['record_type'] == module + '.' + type(expected).__qualname__
         assert_producer_data({field.name:getattr(expected,field.name) for field in fields(expected)},
                              actual['fields'])
         summary = expected.to_dict() if hasattr(expected, 'to_dict') else None
@@ -129,7 +130,7 @@ def test_closed_roles_and_wire_compatibility():
         assert baseline and Path(baseline).resolve()==Path(expected_baseline).resolve()
     if baseline:
         import importlib.util
-        spec=importlib.util.spec_from_file_location('anysolver.general_contact._legacy_archive',baseline)
+        spec=importlib.util.spec_from_file_location('anyfesolver.general_contact._legacy_archive',baseline)
         module=importlib.util.module_from_spec(spec)
         import sys
         sys.modules[spec.name]=module;spec.loader.exec_module(module)

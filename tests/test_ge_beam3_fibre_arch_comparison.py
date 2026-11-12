@@ -117,4 +117,4 @@ def test_no_production_or_discrete_mechanics_imports():
                    if isinstance(node, (ast.Import, ast.ImportFrom))]
         for node in imports:
             names = [node.module or ''] if isinstance(node, ast.ImportFrom) else [a.name for a in node.names]
-            assert not any(name.startswith('anysolver') for name in names)
+            assert not any(name.startswith('anyfesolver') for name in names)

@@ -6,11 +6,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver import (BoundaryCondition, CoupledBeamShellElement, FEModel,
+from anyfesolver import (BoundaryCondition, CoupledBeamShellElement, FEModel,
                        InterpolatedBeamShellMPCElement, LoadCase, MeshConfig,
                        PanelGeometry, generate_stiffened_panel_mesh, solve_static_nonlinear)
-from anysolver.elements import BeamElement
-import anysolver.mesh_gen as mesh_gen
+from anyfesolver.elements import BeamElement
+import anyfesolver.mesh_gen as mesh_gen
 
 
 def test_documented_complete_example_executes():

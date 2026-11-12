@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import numpy as np
 from scipy.sparse import csr_matrix
 
-from anysolver.general_contact.s3_sliding_friction import S3SlidingFrictionManager
+from anyfesolver.general_contact.s3_sliding_friction import S3SlidingFrictionManager
 
 import json,os
 import pytest
@@ -21,9 +21,9 @@ def _save(data):
 
 def test_moving_normal_unit():
     from examples.general_contact_s3_moving_normal_friction import build_case,TILT
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager,S3_MONOLITHIC_PROFILE
-    from anysolver.general_contact.s3_friction_static import create_s3_friction_manager
-    from anysolver.general_contact.semismooth import linearize,reference_nodal_support
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager,S3_MONOLITHIC_PROFILE
+    from anyfesolver.general_contact.s3_friction_static import create_s3_friction_manager
+    from anyfesolver.general_contact.semismooth import linearize,reference_nodal_support
     model,definition,settings,friction,program,reference=build_case()
     normal=GeneralS3PatchManager(model,definition,settings)
     assert normal.profile==S3_MONOLITHIC_PROFILE
@@ -36,7 +36,7 @@ def test_moving_normal_unit():
     raw=linearize(manager,u,z,tangent=True)
     # Independent manufactured physical point-force comparison at closure.
     expected=reference['manufactured_force']
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
     expected=expected-assemble_stiffness_matrix(model)[0]@u
     translations=np.asarray([model.mesh.dof_manager.get_node_dofs(i)[:3] for i in (2,3,4,6,7,8)]).reshape(-1)
     np.testing.assert_allclose(raw.force[translations],expected[translations],rtol=1e-6,atol=1e-12)
@@ -58,7 +58,7 @@ def test_moving_normal_unit():
     # Source-ray outside control: target orthogonal projection is inside but
     # source-directed projection is outside. Independent determinant is -.04.
     assert -F(1,5)*F(3,5)+F(1,10)*F(4,5)==-F(1,25)
-    from anysolver.general_contact.s3_friction_moving_coverage import full_moving_coverage
+    from anyfesolver.general_contact.s3_friction_moving_coverage import full_moving_coverage
     target=SimpleNamespace(reference_positions=np.array([[0.,0.,0.],[1.,0.,0.],[0.,1.,0.]]),
                            work_map=csr_matrix((9,1)))
     source=SimpleNamespace(reference_positions=np.array([[.1,.1,.2],[.1,.12,.2],[.084,.1,.212]]),
@@ -72,8 +72,8 @@ def test_moving_normal_unit():
 
 
 def _pose_gate(model,definition,settings,friction,u,z):
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.s3_friction_static import create_s3_friction_manager
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_friction_static import create_s3_friction_manager
     normal=GeneralS3PatchManager(model,definition,settings)
     manager=create_s3_friction_manager(model,normal,friction)
     source,target=normal._positions(u)
@@ -219,10 +219,10 @@ def test_finite_gap_projected_anchor_countercontrols():
 def test_moving_normal_saved_proof():
     """Recompute gates from saved poses without another coupled solve."""
     from examples.general_contact_s3_moving_normal_friction import build_case
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.s3_friction_static import create_s3_friction_manager
-    from anysolver.general_contact.semismooth import linearize
-    from anysolver.nonlinear_static import _assemble_nonlinear_system
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_friction_static import create_s3_friction_manager
+    from anyfesolver.general_contact.semismooth import linearize
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system
     evidence=Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])
     saved=json.loads((evidence/'A6.json').read_text())
     case=build_case();model,definition,settings,friction,program,_=case
@@ -303,10 +303,10 @@ def test_moving_normal_saved_proof():
 def test_moving_normal_rollback(monkeypatch):
     import copy,pytest
     from examples.general_contact_s3_moving_normal_friction import build_case
-    from anysolver import solve_static_nonlinear
-    from anysolver.control import CancellationToken,SolveCancelled
-    from anysolver.general_contact.runtime import active_contact_manager
-    import anysolver.general_contact.s3_friction_static as factory
+    from anyfesolver import solve_static_nonlinear
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.general_contact.runtime import active_contact_manager
+    import anyfesolver.general_contact.s3_friction_static as factory
     evidence=Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])
     checkpoint=json.loads((evidence/'A3.json').read_text())['checkpoint']
     immutable=copy.deepcopy(checkpoint);expected=checkpoint['path_state']['friction_state']
@@ -344,11 +344,11 @@ def test_moving_normal_rollback(monkeypatch):
 def test_moving_normal_refusal(monkeypatch):
     import copy,pytest
     from examples.general_contact_s3_moving_normal_friction import build_case
-    from anysolver import solve_static_nonlinear
-    from anysolver.control import CancellationToken,SolveCancelled
-    from anysolver.general_contact.s3_sliding_friction import S3SlidingFrictionSettings
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.s3_friction_static import create_s3_friction_manager
+    from anyfesolver import solve_static_nonlinear
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.general_contact.s3_sliding_friction import S3SlidingFrictionSettings
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_friction_static import create_s3_friction_manager
     case=build_case();model,definition,settings,friction,program,_=case;before=repr(model)
     token=CancellationToken();token.cancel('moving friction precancel')
     with pytest.raises(SolveCancelled):
@@ -358,7 +358,7 @@ def test_moving_normal_refusal(monkeypatch):
     normal=GeneralS3PatchManager(model,definition,settings)
     with pytest.raises(ValueError):
         create_s3_friction_manager(model,normal,S3SlidingFrictionSettings(.3,1000.,(2e-8,)*48,145))
-    import anysolver.general_contact.static_path as path_driver
+    import anyfesolver.general_contact.static_path as path_driver
     with monkeypatch.context() as patch:
         patch.setattr(path_driver,'_assemble_nonlinear_system',
             lambda *a,**k: (_ for _ in ()).throw(AssertionError('wrong subtype reached material')))
@@ -381,7 +381,7 @@ def test_moving_normal_archive_checkpoint_refusals():
     import copy,pytest,hashlib
     from dataclasses import replace
     from examples.general_contact_s3_moving_normal_friction import build_case
-    from anysolver import solve_static_nonlinear
+    from anyfesolver import solve_static_nonlinear
     evidence=Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])
     from test_general_contact_s3_sliding_friction import _manager
     old=_manager()[-1]

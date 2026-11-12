@@ -46,9 +46,9 @@ def test_force_program_checkpoint_is_bound_and_nonqualifying():
 
 
 @pytest.mark.parametrize('path',[
-    'src/anysolver/_ge_beam3_load_program.py',
+    'src/anyfesolver/_ge_beam3_load_program.py',
     'tests/test_ge_beam3_load_program.py',
-    'src/anysolver/linalg.py',
+    'src/anyfesolver/linalg.py',
 ])
 def test_changed_bound_source_is_rejected(monkeypatch,path):
     original = source
@@ -58,11 +58,11 @@ def test_changed_bound_source_is_rejected(monkeypatch,path):
 
 
 def test_private_driver_uses_no_research_or_legacy_mechanics_imports():
-    tree = ast.parse(source('src/anysolver/_ge_beam3_load_program.py'))
+    tree = ast.parse(source('src/anyfesolver/_ge_beam3_load_program.py'))
     modules = []
     for node in ast.walk(tree):
         if isinstance(node,ast.Import): modules.extend(alias.name for alias in node.names)
         elif isinstance(node,ast.ImportFrom): modules.append(node.module or '')
     assert not any(name.split('.')[0] in ('docs','tests') for name in modules)
     assert not any('quadratic_beam' in name or 'corotational' in name for name in modules)
-    assert b'_ge_beam3_load_program' not in source('src/anysolver/__init__.py')
+    assert b'_ge_beam3_load_program' not in source('src/anyfesolver/__init__.py')

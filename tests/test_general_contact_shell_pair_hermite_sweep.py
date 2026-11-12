@@ -4,7 +4,7 @@ import math
 import numpy as np
 import pytest
 
-from anysolver.general_contact.shell_pair_hermite_sweep import shell_pair_hermite_lower
+from anyfesolver.general_contact.shell_pair_hermite_sweep import shell_pair_hermite_lower
 
 
 TRIANGLE = np.array([[0., 0., 0.], [1., 0., 0.], [0., 1., 0.]])

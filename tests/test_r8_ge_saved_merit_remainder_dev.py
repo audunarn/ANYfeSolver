@@ -36,5 +36,5 @@ def test_source_inventory_no_mechanics():
     assert len(d.SOURCE_NAMES)==4 and set(d.SOURCE_NAMES)==functions
     forbidden={'spsolve','solve','inv','pinv','evaluate','correct','_assemble','_advance','rotation','restore_ge_checkpoint_binary','solve_ge_displacement'}
     assert not any(isinstance(n,ast.Call) and isinstance(n.func,ast.Attribute) and n.func.attr in forbidden for n in ast.walk(tree))
-    assert not any(isinstance(n,(ast.Import,ast.ImportFrom)) and any(part in ast.unparse(n) for part in ('numpy','scipy','anysolver')) for n in ast.walk(tree))
+    assert not any(isinstance(n,(ast.Import,ast.ImportFrom)) and any(part in ast.unparse(n) for part in ('numpy','scipy','anyfesolver')) for n in ast.walk(tree))
     assert 'endpoint_tangent_trapezoid_remainder' in source and 'one finite pair/trapezoid cannot prove' in source

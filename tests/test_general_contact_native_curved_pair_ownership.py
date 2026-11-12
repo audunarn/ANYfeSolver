@@ -9,16 +9,16 @@ import os
 import json
 from pathlib import Path
 
-from anysolver._ge_beam3_centered_reference import (
+from anyfesolver._ge_beam3_centered_reference import (
     CenteredCurvedBeam3ReferenceGeometry,
 )
-from anysolver.general_contact.beam_curve_pair import _curve, closest_on_b3
-from anysolver.general_contact.native_retained_whole_pair import (
+from anyfesolver.general_contact.beam_curve_pair import _curve, closest_on_b3
+from anyfesolver.general_contact.native_retained_whole_pair import (
     NativeRetainedWholeCurvePair, _CurvedOwnershipUnionSearch, _joined_owned_pieces,
     _active_gap_correspondence_upper,
     _exact_tiny_cell_omission_bound,
 )
-from anysolver.general_contact.native_curved_pair_partition import (
+from anyfesolver.general_contact.native_curved_pair_partition import (
     curved_ownership_partition, physical_point_map, _near_junction_band,
 )
 
@@ -83,7 +83,7 @@ def test_exact_open_strip_has_zero_energy_work_and_tangent_bound():
 
 def test_any_rounded_open_jet_discards_partial_rule_and_preserves_analytic_work(monkeypatch):
     from dataclasses import replace
-    import anysolver.general_contact.native_retained_whole_pair as product
+    import anyfesolver.general_contact.native_retained_whole_pair as product
     a, b = _reference(.09999, (0., 1., 2.24)), _reference(0., (0., 1.12, 2.24))
     kernel = _kernel(a, b, certify_open_intervals=True, certify_curved_ownership=True)
     actual = product.b3_distance_jet
@@ -112,7 +112,7 @@ def test_saved_curved_pose_quadrature_inventory(monkeypatch):
     import runpy
     import sys
     import time
-    import anysolver.general_contact.native_retained_whole_pair as product
+    import anyfesolver.general_contact.native_retained_whole_pair as product
     saved = json.loads(Path(os.environ["CONTACT_CURVED_SAVED_POSE"]).read_text())
     builder = runpy.run_path(str(Path(__file__).parents[1]/"examples"
                                 /"general_contact_native_retained_whole_pair.py"))["analysis"]

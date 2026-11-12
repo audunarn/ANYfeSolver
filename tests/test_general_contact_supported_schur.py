@@ -5,8 +5,8 @@ import pytest
 import json
 from pathlib import Path
 
-from anysolver.general_contact import supported_schur
-from anysolver.general_contact.supported_schur import propose_supported_schur_step
+from anyfesolver.general_contact import supported_schur
+from anyfesolver.general_contact.supported_schur import propose_supported_schur_step
 
 
 def test_nineteen_supported_active_modes_take_a_bounded_projected_root_step():

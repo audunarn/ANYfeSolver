@@ -13,7 +13,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from anysolver import (  # noqa: E402
+from anyfesolver import (  # noqa: E402
     BoundaryCondition,
     FEModel,
     FixedSupport,
@@ -22,7 +22,7 @@ from anysolver import (  # noqa: E402
     generate_simple_panel_mesh,
     solve_free_vibration,
 )
-from anysolver.elements import BeamElement  # noqa: E402
+from anyfesolver.elements import BeamElement  # noqa: E402
 
 
 DEFAULT_OUTPUT = Path("reports/mass_modal/mass_modal_validity_report.json")

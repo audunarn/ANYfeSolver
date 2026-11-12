@@ -132,11 +132,11 @@ def installed_samples(attempt,plan,size,ordinals,*,smoke=False):
     require((smoke is True and size==3 and ordinals==[]) or (smoke is False and len(ordinals)>0 and all(type(n) is int and 1<=n<=5 for n in ordinals) and len(set(ordinals))==len(ordinals)),'smoke or warm sample ordinals')
     site=Path(plan['package_site']).resolve()
     sys.path[:]=[str(site)]+[x for x in sys.path if not Path(x or '.').resolve().is_relative_to(ROOT/'src')
-        and not Path(x or '.').resolve().is_relative_to(Path('C:/Github/ANYsolver/src'))]
+        and not Path(x or '.').resolve().is_relative_to(Path('C:/Github/ANYfeSolver/src'))]
     # Imports and persistence are outside all measured owner constructions.
     import numpy as np
-    from anysolver import stiffened_shell as api
-    from anysolver._stiffened_shell_b2_assembly_diagnostics import capture_assembly
+    from anyfesolver import stiffened_shell as api
+    from anyfesolver._stiffened_shell_b2_assembly_diagnostics import capture_assembly
     from anyfem.solve.stiffened_shell_b2 import ExperimentalB2PhysicalRigidFootprintPanel,SCHEMA_PHYSICAL_FOOTPRINT_SPARSE_V2,save_case,load_case
     from anyfem.model.project import Project
     from anyfem.model.records import AnalysisDefinition
@@ -418,7 +418,7 @@ def public_caller_contract(plan,runner_source=None):
     This is static admission, not caller execution or a replacement for smoke.
     """
     with ZipFile(plan['solver_wheel']) as z:
-        solver=ast.parse(z.read('anysolver/_stiffened_shell_b2_q4_panel_experimental.py').decode())
+        solver=ast.parse(z.read('anyfesolver/_stiffened_shell_b2_q4_panel_experimental.py').decode())
     with ZipFile(plan['consumer_wheel']) as z:
         consumer=ast.parse(z.read('anyfem/solve/stiffened_shell_b2.py').decode())
         project_io=ast.parse(z.read('anyfem/io/project_file.py').decode())
@@ -477,7 +477,7 @@ def ready():
     p['historical_v6']={n:sha(PREVIOUS/n) for n in ('EXECUTABLE_PREPARED.json','EXECUTION_SELECTED_PATHS.json','SERIES_LEDGER.json','EXECUTION_HANDOFF.json','EXECUTION_TERMINAL_TREE.json')}
     p['verified_lifetime']={n:sha(LIFETIME/n) for n in ('SELECTED_PATHS.json','HANDOFF.json','ledger.json','ARTIFACT.json','ROOT_ADOPTION.json','ROOT_ORIGINAL_SOURCE_RECONCILIATION.json','REPORT_COUNT_CORRECTION.md')}
     p['source'].update({n:sha(ROOT/n) for n in ('scripts/r8_b2_assembly_series_v7_dev.py','tests/test_r8_b2_assembly_series_v7_dev.py','scripts/r8_b2_assembly_series_v7_preflight_dev.py',
-        'src/anysolver/e4_pl_element.py','src/anysolver/_stiffened_shell_b2_q4_panel_experimental.py','src/anysolver/_stiffened_shell_b2_assembly_diagnostics.py')})
+        'src/anyfesolver/e4_pl_element.py','src/anyfesolver/_stiffened_shell_b2_q4_panel_experimental.py','src/anyfesolver/_stiffened_shell_b2_assembly_diagnostics.py')})
     p['question']='Does real private-owner retirement allow unchanged connected cold+fivewarm2500/5000/10000 under2GiB? Fresh-constructor/backend peak may still fail.'
     p['caller_contract']=public_caller_contract(p)
     p['predecessor_prepared_sha256']=sha(BASE/'PREPARED.json')

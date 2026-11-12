@@ -1,12 +1,12 @@
 import numpy as np
 import pytest
 
-from anysolver import audit_constraints, constraint_residual_summary
-from anysolver.assembly import build_constraint_transformation
-import anysolver.assembly as assembly_module
-from anysolver.boundary import BoundaryCondition
-from anysolver.fe_core import FEModel
-from anysolver.mesh_gen import InterpolatedBeamShellMPCElement
+from anyfesolver import audit_constraints, constraint_residual_summary
+from anyfesolver.assembly import build_constraint_transformation
+import anyfesolver.assembly as assembly_module
+from anyfesolver.boundary import BoundaryCondition
+from anyfesolver.fe_core import FEModel
+from anyfesolver.mesh_gen import InterpolatedBeamShellMPCElement
 
 
 class MPCElement:

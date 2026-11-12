@@ -2,11 +2,11 @@
 from dataclasses import replace
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_stiffened_shell_ge_experimental import _panel
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
-from anysolver._stiffened_shell_ge_body_load import encode_checkpoint, decode_checkpoint
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver._stiffened_shell_ge_body_load import encode_checkpoint, decode_checkpoint
 
 
 def owner(request):
@@ -98,7 +98,7 @@ def test_finite_body_work_restart_rebase_and_rejection(request, monkeypatch):
 
 def test_eccentric_native_load_scatter_matches_actual_update_derivative(request):
     from test_stiffened_shell_ge_reference_modal import _definition
-    from anysolver._ge_beam3_p5.algebra import rotation
+    from anyfesolver._ge_beam3_p5.algebra import rotation
     analysis = ss.create_analysis(definition=replace(_definition(), q4_pullback_policy=ss.Q4_ALGORITHMIC_PULLBACK_V1))
     request.addfinalizer(analysis.close)
     driver = FinitePointDriver(analysis)

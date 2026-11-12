@@ -4,18 +4,18 @@ import json
 import numpy as np
 import pytest
 
-from anysolver.fe_core import FEModel
-from anysolver.boundary import BoundaryCondition
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
-from anysolver._ge_beam3_retained_fibre_element import NativeRetainedFibreElement
-from anysolver._ge_beam3_fibre_section import PhysicalFibreSection, Fibre, FlowCurve
-from anysolver._ge_beam3_seeded_load_program import ForceProgram
-from anysolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
-from anysolver import _ge_beam3_spatial_fibre_program as native
-from anysolver._ge_beam3_retained_fibre_state import Layout, Context as OriginalContext
-from anysolver._ge_beam3_seeded_fibre_control import spatial_jacobian
-from anysolver._ge_beam3_p5.algebra import rotation, log_rotation, skew
-from anysolver._ge_beam3_p5_seeded.core import canonical, sha
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import BoundaryCondition
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+from anyfesolver._ge_beam3_retained_fibre_element import NativeRetainedFibreElement
+from anyfesolver._ge_beam3_fibre_section import PhysicalFibreSection, Fibre, FlowCurve
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram
+from anyfesolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
+from anyfesolver import _ge_beam3_spatial_fibre_program as native
+from anyfesolver._ge_beam3_retained_fibre_state import Layout, Context as OriginalContext
+from anyfesolver._ge_beam3_seeded_fibre_control import spatial_jacobian
+from anyfesolver._ge_beam3_p5.algebra import rotation, log_rotation, skew
+from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
 
 
 def model(common=None, *, plastic=False, coupled=False):
@@ -164,7 +164,7 @@ def test_all_six_load_components_physical_plasticity_reactions_and_restart(coupl
 
 
 def test_cancellation_before_commit_preserves_last_accepted_capsule(coupled_plastic):
-    from anysolver.control import CancellationToken
+    from anyfesolver.control import CancellationToken
     p,moments,_=coupled_plastic; token=CancellationToken()
     paused=native.solve_force_program(model(plastic=True,coupled=True),p,nodal_moments=moments,stop_after=1)
     def cancel(event):
@@ -190,7 +190,7 @@ def test_moment_authority_and_program_mutations_do_not_replay(coupled_plastic):
 def test_existing_six_macro_checkpoint_replays_without_new_equilibrium_solve():
     from pathlib import Path
     from docs.reference_cases import ge_beam3_fibre_arch_refinement as family
-    from anysolver import _ge_beam3_seeded_fibre_control as old
+    from anyfesolver import _ge_beam3_seeded_fibre_control as old
     path=Path('C:/Users/AudunArnesenNyhus/AppData/Local/ANYrelease/ge-beam3-fibre-arch6-20260907-v1/checkpoint-diagnostic.json')
     if not path.is_file(): pytest.skip('Preserved external development checkpoint not installed; not qualification')
     raw=path.read_bytes()

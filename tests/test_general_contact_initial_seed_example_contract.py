@@ -24,8 +24,8 @@ from dataclasses import asdict, replace
 
 import numpy as np
 
-from anysolver import validate_general_contact
-from anysolver.general_contact.core import _contact_settings_contract
+from anyfesolver import validate_general_contact
+from anyfesolver.general_contact.core import _contact_settings_contract
 
 from test_general_contact_admission_globalization_driver_small_patch import (
     _ANCHOR_NODES,

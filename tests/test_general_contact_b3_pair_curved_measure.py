@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.beam_curve_pair import B3PairPotential
+from anyfesolver.general_contact.beam_curve_pair import B3PairPotential
 
 
 def _reference(y_shift):

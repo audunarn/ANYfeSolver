@@ -1,17 +1,17 @@
 """Force-controlled shell contact with a dimensional gap budget.
 
-Run with ANYsolver installed: python examples/general_contact_sphere_tight_gap.py
+Run with ANYfeSolver installed: python examples/general_contact_sphere_tight_gap.py
 The large sphere radius makes this a well-resolved, nearly flat benchmark.
 """
 
 import json
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, LoadCase, RigidContactBody,
     create_shell_element, solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.fe_core import FEModel
+from anyfesolver.fe_core import FEModel
 
 
 def main() -> None:

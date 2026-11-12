@@ -54,7 +54,7 @@ class G3ContractTests(unittest.TestCase):
             if kind=="allowlist": f["admission"]["accepted_cross_family_rotational_adapters"]=["owned-joint"]
             elif kind=="fallback": f["admission"]["implicit_fallback"]=True
             elif kind=="positive": f["admission"]["s17_positive_status"]="QUALIFIED"
-            else: f["families"]["S3"]["class"]="anysolver.e4_pl_s3_element.QualifiedE4PLS3ShellElement"
+            else: f["families"]["S3"]["class"]="anyfesolver.e4_pl_s3_element.QualifiedE4PLS3ShellElement"
             with self.subTest(kind=kind),self.assertRaises(ValueError): a.validate_fixtures(f)
 
     def test_limits_and_tolerance_mutations(self):
@@ -94,7 +94,7 @@ class G3ContractTests(unittest.TestCase):
             with self.assertRaises(subprocess.CalledProcessError): a.expected()
 
     def test_source_extent_rejects_production_edit(self):
-        with patch.object(a,"git",side_effect=[b'',b'src/anysolver/elements.py\n',b'']):
+        with patch.object(a,"git",side_effect=[b'',b'src/anyfesolver/elements.py\n',b'']):
             with self.assertRaises(ValueError): a.check_extent()
 
     def test_actual_planning_only_extent(self):

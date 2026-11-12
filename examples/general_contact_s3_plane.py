@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     ContactDefinition,
     ContactInteraction,
@@ -18,7 +18,7 @@ from anysolver import (
     create_shell_element,
     solve_static_nonlinear,
 )
-from anysolver.fe_core import FEModel
+from anyfesolver.fe_core import FEModel
 
 
 def main() -> None:

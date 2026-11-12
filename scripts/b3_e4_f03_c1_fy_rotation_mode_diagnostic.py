@@ -9,7 +9,7 @@ from pathlib import Path
 import subprocess
 from time import monotonic
 
-import anysolver
+import anyfesolver
 import numpy as np
 from scipy import linalg
 from threadpoolctl import threadpool_info, threadpool_limits
@@ -31,8 +31,8 @@ def evaluate() -> dict:
     started = monotonic()
     deadline = started + 120.
     source = Path(__file__).resolve().parents[1]
-    if Path(anysolver.__file__).resolve().parent != (source / "src" / "anysolver").resolve():
-        raise RuntimeError("wrong ANYsolver checkout")
+    if Path(anyfesolver.__file__).resolve().parent != (source / "src" / "anyfesolver").resolve():
+        raise RuntimeError("wrong ANYfeSolver checkout")
     xs, ys = local_grid(8, transverse_cells=4)
     shell, _ = raw_e4_tangent(xs, ys, thickness=.035)
     beam = build(14, z_offset=.0675,
@@ -122,7 +122,7 @@ def evaluate() -> dict:
     return {
         "status": "DEVELOPMENT_DIAGNOSTIC_COMPLETE", "source_git": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
         "runner_sha256": _digest(Path(__file__)), "base_runner_sha256": _digest(source / "scripts" / "b3_e4_f03_c1_material_line_mixed_metric.py"),
-        "imported_anysolver": str(Path(anysolver.__file__).resolve()),
+        "imported_anyfesolver": str(Path(anyfesolver.__file__).resolve()),
         "rows": total_rows, "constraint_rows": len(C), "beam_bond_halves": bonded,
         "beam_layout": beam_layout, "beta": float(singular[-1]),
         "dual_norm_sq": dual_norm, "shell_work_sq": shell_work, "beam_work_sq": beam_work,

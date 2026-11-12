@@ -3,10 +3,10 @@ from pathlib import Path
 import math
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken,SolveCancelled
-from anysolver._stiffened_shell_displacement_adaptive import decode,encode
-from anysolver._stiffened_shell_displacement_checkpoint import decode_snapshot,encode_snapshot
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken,SolveCancelled
+from anyfesolver._stiffened_shell_displacement_adaptive import decode,encode
+from anyfesolver._stiffened_shell_displacement_checkpoint import decode_snapshot,encode_snapshot
 from examples.stiffened_shell_coupled_s3_adaptive_history import definition,activity,DIRECTION,CONTROL,OPTIONS
 from test_stiffened_shell_native_point_displacement import owner
 from test_stiffened_shell_native_plastic_s3_displacement import compare

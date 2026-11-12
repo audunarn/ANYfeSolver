@@ -213,7 +213,7 @@ def _timed(callable_: Any, route: str, modes: int) -> dict[str, Any]:
 
 
 def _modal_model(config: Any, generated: Any) -> Any:
-    from anysolver import anystructure_fem_mode as backend  # type: ignore
+    from anyfesolver import anystructure_fem_mode as backend  # type: ignore
     backend_config = backend.AnyStructureFEMConfig(
         pressure_pa=abs(float(config.pressure_pa)), pressure_sign=-1.0, load_scale=1.0,
         num_buckling_modes=int(config.num_buckling_modes), solver_type="direct", stress_percentile=95.0,
@@ -229,8 +229,8 @@ def _run_actual(args: argparse.Namespace, mode_artifact: Path | None = None, pro
     adapter_root, solver_root = Path(args.adapter_root), Path(args.solver_root)
     prepared_started = time.perf_counter()
     fem, snapshot, options, config, generated, geometry, digest = _fixture_inputs(adapter_root, solver_root, args.fixture, args.fidelity, args.modes)
-    import anysolver  # type: ignore
-    if not Path(anysolver.__file__).resolve().is_relative_to(solver_root.resolve() / "src"):
+    import anyfesolver  # type: ignore
+    if not Path(anyfesolver.__file__).resolve().is_relative_to(solver_root.resolve() / "src"):
         raise RuntimeError("solver import escaped the bound checkout")
     if not Path(fem.__file__).resolve().is_relative_to(adapter_root.resolve()):
         raise RuntimeError("adapter import escaped the bound checkout")
@@ -240,12 +240,12 @@ def _run_actual(args: argparse.Namespace, mode_artifact: Path | None = None, pro
     _checkpoint("model.end")
     preparation_seconds = time.perf_counter() - prepared_started
     if args.route == "modal":
-        from anysolver import AnalysisSession, solve_free_vibration  # type: ignore
+        from anyfesolver import AnalysisSession, solve_free_vibration  # type: ignore
         cold = lambda: solve_free_vibration(model, num_modes=args.modes)
         retained_session = AnalysisSession(model)
         retained = lambda: solve_free_vibration(model, num_modes=args.modes, session=retained_session)
     else:
-        from anysolver.runtime import RuntimeAnalysisContext  # type: ignore
+        from anyfesolver.runtime import RuntimeAnalysisContext  # type: ignore
         original_run = fem.fe_solver.run_production_fem
         captured = []
         def observed_run(*positional, **keywords):
@@ -308,7 +308,7 @@ def _run_actual(args: argparse.Namespace, mode_artifact: Path | None = None, pro
         "preparation": {"seconds": preparation_seconds, "scope": "real adapter fixture + generated geometry" + (" + modal model build" if args.route == "modal" else "")},
         "timed_scope": "solve_free_vibration only; model preparation is reported separately" if args.route == "modal" else "adapter run_runtime_fem with precomputed generated geometry",
         "mode_vectors_artifact": vector_artifact,
-        "modules": {"adapter": _module_provenance(fem, "anystructure"), "solver": _module_provenance(anysolver, "anysolver")},
+        "modules": {"adapter": _module_provenance(fem, "anystructure"), "solver": _module_provenance(anyfesolver, "anyfesolver")},
         "numerical_versions": {name: importlib.metadata.version(name) for name in ("numpy", "scipy", "numba", "psutil")},
         "thread_environment": {name: os.environ.get(name) for name in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS", "NUMBA_NUM_THREADS")},
     }

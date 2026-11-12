@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from scripts.r8_e02_rigid_tip_reference import build_deck, parse_result, CCX_SHA256
 
-CCX = Path("C:/Github/ANYsolver/.qualification/b3-ge-e4-pl/calculix-223/"
+CCX = Path("C:/Github/ANYfeSolver/.qualification/b3-ge-e4-pl/calculix-223/"
            "CalculiX-2.23.0-win-x64/bin/ccx.exe")
 ARCHIVE = ROOT / "docs/agent_plans/development/r8-e02-rigid-tip-reference-20261001/raw-v1.zip"
 ARCHIVE_MEMBER = "r8-e02-rigid-tip-dev-v3/external-ccx-20x8-s1/Mx/"

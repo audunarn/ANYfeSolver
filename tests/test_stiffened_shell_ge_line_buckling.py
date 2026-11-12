@@ -6,15 +6,15 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 from scipy.linalg import eig
-from anysolver import stiffened_shell as public
-from anysolver import _stiffened_shell_ge_point_buckling as buckling
-from anysolver._ge_beam3_pose_joint import _exp_terms
-from anysolver._ge_beam3_retained_generalized_state import Mechanical
-from anysolver._stiffened_shell_ge_finite_experimental import _position_pair
-from anysolver.control import CancellationToken
-from anysolver import _ge_beam3_mixed_ad as ad
-from anysolver._stiffened_shell_rotation_charts import physical_frames
-from anysolver._stiffened_shell_bl5_local_experimental import BL5LocalOperator
+from anyfesolver import stiffened_shell as public
+from anyfesolver import _stiffened_shell_ge_point_buckling as buckling
+from anyfesolver._ge_beam3_pose_joint import _exp_terms
+from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
+from anyfesolver._stiffened_shell_ge_finite_experimental import _position_pair
+from anyfesolver.control import CancellationToken
+from anyfesolver import _ge_beam3_mixed_ad as ad
+from anyfesolver._stiffened_shell_rotation_charts import physical_frames
+from anyfesolver._stiffened_shell_bl5_local_experimental import BL5LocalOperator
 from test_stiffened_shell_bl5_finite import _model
 from test_stiffened_shell_ge_point_buckling import dense_full_hessian, _MockInverse
 

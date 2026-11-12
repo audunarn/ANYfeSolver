@@ -19,7 +19,11 @@ EXPECTED_LICENSE_SHA256 = (
     "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5"
 )
 EXPECTED_PROJECT_LICENSE = "MPL-2.0"
-EXPECTED_RELEASE = "0.4.7"
+EXPECTED_RELEASE = "0.5.0"
+EXPECTED_PROJECT_NAME = "ANYfeSolver"
+EXPECTED_RESULTS_NAME = "ANYfeSolver-results"
+EXPECTED_RESULTS_RELEASE = "2.2.0"
+EXPECTED_RESULTS_REQUIREMENT = "ANYfeSolver-results>=2.2,<3"
 REQUIRED_NOTICE_FILES = {"LICENSE", "COPYRIGHT", "THIRD_PARTY_NOTICES.md"}
 REQUIRED_SDIST_FILES = REQUIRED_NOTICE_FILES | {
     "LICENSING.md",
@@ -77,8 +81,33 @@ def validate_repository(root: Path = ROOT) -> None:
 
     with (root / "pyproject.toml").open("rb") as stream:
         project = tomllib.load(stream)["project"]
+    if project.get("name") != EXPECTED_PROJECT_NAME:
+        errors.append(f"project name is not {EXPECTED_PROJECT_NAME}")
     if project.get("version") != EXPECTED_RELEASE:
         errors.append(f"project version is not {EXPECTED_RELEASE}")
+    if EXPECTED_RESULTS_REQUIREMENT not in project.get("dependencies", ()):
+        errors.append(f"project lacks dependency {EXPECTED_RESULTS_REQUIREMENT}")
+
+    results_toml = root / "packages" / "results" / "pyproject.toml"
+    with results_toml.open("rb") as stream:
+        results = tomllib.load(stream)["project"]
+    if results.get("name") != EXPECTED_RESULTS_NAME:
+        errors.append(f"results name is not {EXPECTED_RESULTS_NAME}")
+    if results.get("version") != EXPECTED_RESULTS_RELEASE:
+        errors.append(f"results version is not {EXPECTED_RESULTS_RELEASE}")
+    if results.get("license") != EXPECTED_PROJECT_LICENSE:
+        errors.append("results license is not MPL-2.0")
+    if set(results.get("license-files", ())) != REQUIRED_NOTICE_FILES:
+        errors.append("results license-files does not bind every required notice")
+    for notice in sorted(REQUIRED_NOTICE_FILES):
+        if not (root / "packages" / "results" / notice).is_file():
+            errors.append(f"results notice file is missing: {notice}")
+    # The results package carries its own LICENSE copy; it must be the same text.
+    results_license = root / "packages" / "results" / "LICENSE"
+    if results_license.is_file():
+        results_hash = hashlib.sha256(_normalized_license_bytes(results_license)).hexdigest()
+        if results_hash != EXPECTED_LICENSE_SHA256:
+            errors.append(f"results LICENSE hash mismatch: {results_hash}")
     if project.get("license") != EXPECTED_PROJECT_LICENSE:
         errors.append(f"project license is not {EXPECTED_PROJECT_LICENSE}")
     if set(project.get("license-files", ())) != REQUIRED_NOTICE_FILES:
@@ -95,9 +124,9 @@ def validate_repository(root: Path = ROOT) -> None:
         "schema",
     }:
         errors.append("dependency inventory top-level schema is incorrect")
-    if inventory.get("schema") != "anysolver.dependency-licences-v1":
+    if inventory.get("schema") != "anyfesolver.dependency-licences-v1":
         errors.append("dependency inventory schema ID is incorrect")
-    if inventory.get("project") != "ANYsolver":
+    if inventory.get("project") != EXPECTED_PROJECT_NAME:
         errors.append("dependency inventory project is incorrect")
     if inventory.get("project_licence") != EXPECTED_PROJECT_LICENSE:
         errors.append("dependency inventory project licence is incorrect")
@@ -151,6 +180,8 @@ def validate_repository(root: Path = ROOT) -> None:
     if "licensed under the Mozilla Public\nLicense 2.0" not in readme:
         errors.append("README MPL-2.0 statement is missing")
     changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
+    if "## 0.5.0 - " not in changelog:
+        errors.append("0.5.0 changelog section is missing")
     if "## 0.4.7 - 2026-09-21" not in changelog:
         errors.append("0.4.7 changelog section is missing")
     if "## 0.4.6 - 2026-09-16" not in changelog:
@@ -165,7 +196,7 @@ def validate_repository(root: Path = ROOT) -> None:
         errors.append("0.4.0 relicensing note is missing")
     if "GPL-3.0-or-later" in (root / "pyproject.toml").read_text(encoding="utf-8"):
         errors.append("obsolete GPL project metadata remains")
-    for filename in (*REQUIRED_SDIST_FILES, "README.md"):
+    for filename in (*REQUIRED_SDIST_FILES, "README.md", "docs/releases/ANYfeSolver_0.5.0.md"):
         if not (root / filename).is_file():
             errors.append(f"required release file is missing: {filename}")
 
@@ -189,21 +220,30 @@ def _artifact_members(path: Path) -> tuple[set[str], str | None]:
     raise ComplianceError(f"unsupported release artifact: {path.name}")
 
 
-def validate_artifact(path: Path) -> None:
+def validate_artifact(
+    path: Path,
+    *,
+    name: str = EXPECTED_PROJECT_NAME,
+    release: str = EXPECTED_RELEASE,
+    results: bool = False,
+) -> None:
     if not path.is_file() or path.stat().st_size <= 0:
         raise ComplianceError(f"release artifact is missing or empty: {path}")
     names, metadata = _artifact_members(path)
-    basenames = {Path(name).name for name in names}
-    required = REQUIRED_NOTICE_FILES if path.suffix == ".whl" else REQUIRED_SDIST_FILES
+    basenames = {Path(member).name for member in names}
+    if path.suffix == ".whl" or results:
+        required = REQUIRED_NOTICE_FILES
+    else:
+        required = REQUIRED_SDIST_FILES
     missing = sorted(required - basenames)
     if missing:
         raise ComplianceError(f"artifact {path.name} is missing: {', '.join(missing)}")
     if metadata is not None:
-        if f"Version: {EXPECTED_RELEASE}\n" not in metadata.replace("\r\n", "\n"):
-            raise ComplianceError(
-                f"wheel metadata version is not {EXPECTED_RELEASE}"
-            )
         normalized = metadata.replace("\r\n", "\n")
+        if f"Version: {release}\n" not in normalized:
+            raise ComplianceError(f"wheel metadata version is not {release}")
+        if f"Name: {name}\n" not in normalized:
+            raise ComplianceError(f"wheel metadata name is not {name}")
         if not any(
             marker in normalized
             for marker in ("License-Expression: MPL-2.0\n", "License: MPL-2.0\n")
@@ -214,15 +254,26 @@ def validate_artifact(path: Path) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--artifact", action="append", default=[], type=Path)
+    parser.add_argument("--results-artifact", action="append", default=[], type=Path)
     args = parser.parse_args(argv)
     try:
         validate_repository()
         for artifact in args.artifact:
             validate_artifact(artifact.resolve())
+        for artifact in args.results_artifact:
+            validate_artifact(
+                artifact.resolve(),
+                name=EXPECTED_RESULTS_NAME,
+                release=EXPECTED_RESULTS_RELEASE,
+                results=True,
+            )
     except (ComplianceError, OSError, KeyError, TypeError, ValueError) as error:
         print(f"license compliance failed: {error}", file=sys.stderr)
         return 1
-    print(f"license compliance passed for ANYsolver {EXPECTED_RELEASE}")
+    print(
+        f"license compliance passed for {EXPECTED_PROJECT_NAME} {EXPECTED_RELEASE} "
+        f"and {EXPECTED_RESULTS_NAME} {EXPECTED_RESULTS_RELEASE}"
+    )
     return 0
 
 

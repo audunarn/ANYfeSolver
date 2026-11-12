@@ -14,13 +14,13 @@ if str(SRC) not in sys.path:
 import numpy as np
 from scipy import sparse
 
-from anysolver import nonlinear_performance
-from anysolver.mesh_gen import generate_simple_panel_mesh
-from anysolver.nonlinear_performance_batch_c import (
+from anyfesolver import nonlinear_performance
+from anyfesolver.mesh_gen import generate_simple_panel_mesh
+from anyfesolver.nonlinear_performance_batch_c import (
     assemble_reduced_system,
     build_reduced_assembly_plan,
 )
-from anysolver.nonlinear_performance_bootstrap import (
+from anyfesolver.nonlinear_performance_bootstrap import (
     clear_nonlinear_assembly_cache,
     get_nonlinear_assembly_plan,
     install_nonlinear_performance_optimizations,

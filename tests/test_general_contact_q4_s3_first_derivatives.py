@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-import anysolver.general_contact.q4_s3_overlap_derivatives as derivative_module
-from anysolver.general_contact.q4_s3_overlap_derivatives import (
+import anyfesolver.general_contact.q4_s3_overlap_derivatives as derivative_module
+from anyfesolver.general_contact.q4_s3_overlap_derivatives import (
     Q4S3OverlapFirstDerivatives,
     UnsupportedQ4S3Branch,
     q4_s3_overlap_derivatives,

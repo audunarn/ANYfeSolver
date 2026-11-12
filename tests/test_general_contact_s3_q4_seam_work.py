@@ -6,11 +6,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver.general_contact.curved_s3_q4_work import INTEGRATION_CONTROLS
-from anysolver.general_contact.overlap import PlanarFace
-from anysolver.general_contact.q4_target_overlap import q4_target_overlap_integrals
-from anysolver.general_contact.q4_s3_overlap_derivatives import UnsupportedQ4S3Branch
-from anysolver.general_contact.s3_q4_overlap_derivatives import (
+from anyfesolver.general_contact.curved_s3_q4_work import INTEGRATION_CONTROLS
+from anyfesolver.general_contact.overlap import PlanarFace
+from anyfesolver.general_contact.q4_target_overlap import q4_target_overlap_integrals
+from anyfesolver.general_contact.q4_s3_overlap_derivatives import UnsupportedQ4S3Branch
+from anyfesolver.general_contact.s3_q4_overlap_derivatives import (
     s3_q4_overlap_derivatives, _s3_q4_first_order_work,
 )
 

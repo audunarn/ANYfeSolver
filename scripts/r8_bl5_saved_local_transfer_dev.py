@@ -11,13 +11,13 @@ import hashlib
 import json
 from pathlib import Path
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 import psutil
 from threadpoolctl import threadpool_info
 
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from scripts import r8_bl5_ccx_native_fy_mx_compare_dev as compare
 from scripts import r8_bl5_ccx_weak_p0_dev as deck
 from scripts import r8_bl5_matched_native_reference as native
@@ -131,7 +131,7 @@ def _native(owner, case: str, *, expected_rows: int = 20) -> dict:
 
 def evaluate(cases: dict[str, tuple[Path, Path]]) -> dict:
     pools = threadpool_info()
-    if (Path(anysolver.__file__).resolve().parent != ROOT / "src" / "anysolver" or
+    if (Path(anyfesolver.__file__).resolve().parent != ROOT / "src" / "anyfesolver" or
             psutil.Process().cpu_affinity() != [0] or numba.config.DISABLE_JIT != 1 or
             numba.get_num_threads() != 1 or not pools or
             any(item["num_threads"] != 1 for item in pools)):
@@ -167,7 +167,7 @@ def evaluate(cases: dict[str, tuple[Path, Path]]) -> dict:
                                   "numba_disable_jit": int(numba.config.DISABLE_JIT),
                                   "numba_threads": int(numba.get_num_threads()),
                                   "threadpools": pools,
-                                  "anysolver_import": str(Path(anysolver.__file__).resolve())},
+                                  "anyfesolver_import": str(Path(anyfesolver.__file__).resolve())},
             "source_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
             "limitations": ["One coarse matched geometry and two loads only.",
                             "Continuum face traction and native tip wrench need not do identical warping work.",

@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     LoadCase,
     PressurePatch,
     TransientConfig,
@@ -13,10 +13,10 @@ from anysolver import (
     generate_simple_panel_mesh,
     solve_transient_newmark,
 )
-from anysolver.boundary import BoundaryCondition, FixedSupport
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
-from anysolver.validation import load_vector_resultant
+from anyfesolver.boundary import BoundaryCondition, FixedSupport
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.validation import load_vector_resultant
 
 
 def test_pressure_patch_centroid_selection_and_resultant() -> None:

@@ -6,10 +6,10 @@ import math
 import numpy as np
 import pytest
 
-from anysolver._b2_physical_flexibility_linear import (
+from anyfesolver._b2_physical_flexibility_linear import (
     ConditioningAdmissionError, LinearSection, _flexibility, _inverse_spd,
 )
-from anysolver._b2_physical_linear_definition import PhysicalB2Member
+from anyfesolver._b2_physical_linear_definition import PhysicalB2Member
 
 
 def _inverse(matrix):

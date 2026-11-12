@@ -3,9 +3,9 @@ from threading import RLock
 from types import SimpleNamespace
 import numpy as np
 import pytest
-from anysolver.control import CancellationToken,SolveCancelled
-from anysolver import _stiffened_shell_arc_trial as arc
-from anysolver._stiffened_shell_arc_metric import PhysicalChordMetric
+from anyfesolver.control import CancellationToken,SolveCancelled
+from anyfesolver import _stiffened_shell_arc_trial as arc
+from anyfesolver._stiffened_shell_arc_metric import PhysicalChordMetric
 
 
 def context():
@@ -47,7 +47,7 @@ def test_return_rechecks_after_attempt_observation(monkeypatch,change):
 
 
 def test_unit_physical_normal_has_unit_origin_derivative():
-    from anysolver._ge_beam3_p5.algebra import rotation
+    from anyfesolver._ge_beam3_p5.algebra import rotation
     metric=PhysicalChordMetric([.3,.7],2.)
     translations=np.array([[.3,.1,.2],[-.2,.4,.1]])
     spins=np.array([[.2,-.1,.3],[.1,.2,-.4]])

@@ -7,9 +7,9 @@ from contextlib import contextmanager
 import numpy as np
 import pytest
 
-from anysolver import e4_pl_element as qualified
-from anysolver.general_contact.core import suspend_contact
-from anysolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver import e4_pl_element as qualified
+from anyfesolver.general_contact.core import suspend_contact
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
 from scripts.general_contact_d1_free_target_press_probe import build_free_target_case
 
 
@@ -59,7 +59,7 @@ def observe_direct_returns():
 @contextmanager
 def observe_single_law_and_direct_returns():
     """Observe the single-law kernel and the retired direct body (no replacement)."""
-    from anysolver import _q4_assumed_strain_plasticity as assumed
+    from anyfesolver import _q4_assumed_strain_plasticity as assumed
 
     kernel_code = assumed.kernel_batch.__code__
     direct_code = inspect.getclosurevars(

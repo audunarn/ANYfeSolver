@@ -6,11 +6,11 @@ are saved before construction/solve. No automatic repairs or parameter tuning.
 from __future__ import annotations
 import argparse,json,pathlib,time,traceback,hashlib,os,platform
 import numpy as np
-import anysolver as fs
-from anysolver.elements import create_shell_element,BeamElement
-from anysolver.boundary import BoundaryCondition,FixedSupport,LoadCase
-from anysolver.nonlinear_static import _assemble_nonlinear_system
-from anysolver.matrix_assembly import assemble_load_vector
+import anyfesolver as fs
+from anyfesolver.elements import create_shell_element,BeamElement
+from anyfesolver.boundary import BoundaryCondition,FixedSupport,LoadCase
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver.matrix_assembly import assemble_load_vector
 from threadpoolctl import threadpool_info
 
 
@@ -86,7 +86,7 @@ def static(c):
 
 
 def impact(c):
-    from anysolver.contact import _verification_contact_panel
+    from anyfesolver.contact import _verification_contact_panel
     build_start=time.perf_counter();m=_verification_contact_panel()
     if c.get('deform'):m.add_boundary_condition(BoundaryCondition('pin',[1],{'uz':0.}))
     k=c.get('stiffness',40000.);damping=c.get('damping',0.);height=c.get('height',.205)

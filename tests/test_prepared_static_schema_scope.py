@@ -2,9 +2,9 @@
 import sys
 import numpy as np
 import pytest
-from anysolver import RecoveryConfig, PreparedStaticCapabilityError
-from anysolver import prepared_static_envelopes as envelopes
-from anysolver import prepared_static_recovery as recovery
+from anyfesolver import RecoveryConfig, PreparedStaticCapabilityError
+from anyfesolver import prepared_static_envelopes as envelopes
+from anyfesolver import prepared_static_recovery as recovery
 from test_prepared_static_evaluator import _shell_model
 
 
@@ -54,7 +54,7 @@ def test_unknown_schema_component_refuses_and_revokes_scope():
 
 
 def test_schema_source_mutation_refused_before_capture(monkeypatch):
-    from anysolver.elements import BeamElement
+    from anyfesolver.elements import BeamElement
     model = _shell_model()
     model.apply_boundary_conditions()
     seen = []
@@ -67,7 +67,7 @@ def test_schema_source_mutation_refused_before_capture(monkeypatch):
 
 @pytest.mark.parametrize('name', ['principal_stresses', 'shell_surface_tensor'])
 def test_schema_principal_helper_inplace_code_mutation_refused(monkeypatch, name):
-    from anysolver import prepared_static_measures as measures
+    from anyfesolver import prepared_static_measures as measures
     model = _shell_model()
     model.apply_boundary_conditions()
     def foreign(*args):

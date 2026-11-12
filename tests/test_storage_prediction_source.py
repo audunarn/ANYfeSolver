@@ -3,9 +3,9 @@ from importlib.util import find_spec
 from copy import deepcopy
 import numpy as np
 import pytest
-from anysolver import (PatternCase,LoadCase,RecoveryConfig,ResourceConfig,prepare_static_response_evaluator,
+from anyfesolver import (PatternCase,LoadCase,RecoveryConfig,ResourceConfig,prepare_static_response_evaluator,
     export_recovery_capsule,export_recovery_capsule_to_sink)
-from anysolver_results import validate_storage_prediction,CapsuleValidationError,validate_capsule
+from anyfesolver_results import validate_storage_prediction,CapsuleValidationError,validate_capsule
 from test_native_affinity_fallback import original_fixture,prepare
 
 def test_dense_twenty_pattern_source_actual_rows_and_metadata(tmp_path):
@@ -53,7 +53,7 @@ def test_storage_allocation_refused_before_numeric_plan_or_publication(tmp_path)
     if find_spec("anypost") is None:
         pytest.importorskip("anypost")
     from anypost import ArchiveSink
-    from anysolver.recovery import ResourcePolicyError
+    from anyfesolver.recovery import ResourcePolicyError
     with prepare(True,numerical_affinity_fallback=True) as evaluator:
         evaluator._resource_config=ResourceConfig(memory_limit_bytes=1)
         path=tmp_path/'previous.h5';path.write_bytes(b'previous')
@@ -64,8 +64,8 @@ def test_storage_allocation_refused_before_numeric_plan_or_publication(tmp_path)
         assert sink.diagnostics['state']=='aborted'
 
 def test_storage_validator_entrypoint_mutation_from_real_callback_refuses(tmp_path,monkeypatch):
-    import anysolver_results as runtime
-    from anysolver.prepared_static_loads import PreparedStaticError
+    import anyfesolver_results as runtime
+    from anyfesolver.prepared_static_loads import PreparedStaticError
     if find_spec("anypost") is None:
         pytest.importorskip("anypost")
     from anypost import ArchiveSink
@@ -85,7 +85,7 @@ def test_storage_validator_entrypoint_mutation_from_real_callback_refuses(tmp_pa
         assert path.read_bytes()==b'previous' and native.diagnostics['state']=='aborted'
 
 def test_cancel_after_new_codec_stored_callback_retains_previous_target(tmp_path):
-    from anysolver import CancellationToken,SolveCancelled
+    from anyfesolver import CancellationToken,SolveCancelled
     if find_spec("anypost") is None:
         pytest.importorskip("anypost")
     from anypost import ArchiveSink
@@ -129,7 +129,7 @@ def test_all_failed_public_input_aborts_without_success_archive(tmp_path):
     if find_spec("anypost") is None:
         pytest.importorskip("anypost")
     from anypost import ArchiveSink
-    from anysolver import PreparedStaticError
+    from anyfesolver import PreparedStaticError
     with prepare(True,numerical_affinity_fallback=True) as evaluator:
         path=tmp_path/'previous.h5';path.write_bytes(b'previous')
         with pytest.raises(PreparedStaticError),ArchiveSink(path) as sink:
@@ -139,7 +139,7 @@ def test_all_failed_public_input_aborts_without_success_archive(tmp_path):
         assert json.loads(open(sink.diagnostic_path).read())['input_case_ids']==['failed']
 
 def test_failed_dto_unused_role_has_no_fabricated_stored_fields():
-    from anysolver.result_capsule import _CapsuleExport
+    from anyfesolver.result_capsule import _CapsuleExport
     with prepare(True,numerical_affinity_fallback=True) as evaluator:
         exporter=_CapsuleExport(evaluator,[PatternCase('failed',{})],model_identity='m',mesh_identity='s')
         record,_=exporter._process_case(0,{'status':'failed','error':'source refusal','solver_info':{'status':'failed'}})

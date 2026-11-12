@@ -142,7 +142,7 @@ def assess(root,registration,output,wheel):
     data,_,actual,_,c,_,_,beam_work,fixed,_,records,*_=compile_saved_projection(root)
     if c.shape!=(80,2940):raise ValueError('declared fine operator dimensions required')
     for name,module in sys.modules.copy().items():
-        if name.split('.')[0]=='anysolver' and getattr(module,'__file__',None):
+        if name.split('.')[0]=='anyfesolver' and getattr(module,'__file__',None):
             path=Path(module.__file__).resolve();site=Path(owner['site']).resolve()
             if not path.is_relative_to(site) or sha(path)!=owner['module_sha256'].get(path.relative_to(site).as_posix()):
                 raise ValueError('changed installed product import: '+name)
@@ -219,7 +219,7 @@ def assess(root,registration,output,wheel):
         registration_sha256=sha(registration),source_sha256=sha(__file__),helper_sha256=helpers()|
             {Path(compile_saved_projection.__code__.co_filename).name:sha(compile_saved_projection.__code__.co_filename)},
         input_sha256={name:sha(root/'native'/name) for name in ('inputs.json','operators.npz')},wheel_sha256=sha(wheel),
-        imported_anysolver=sys.modules['anysolver'].__file__,
+        imported_anyfesolver=sys.modules['anyfesolver'].__file__,
         limitations='ONE joint32 development level; no interlacing/coarseGram reuse, mechanical kernel claim, uniform stability or formalF03')
     output.write_text(json.dumps(result,indent=2,allow_nan=False)+'\n');return result
 

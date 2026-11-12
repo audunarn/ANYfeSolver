@@ -34,8 +34,8 @@ INVENTORIES = {
 }
 EXPECTED_NODES = {'guard': 10, 'diagnostic': 1, 'bridge': 18}
 EXTRA = [
-    'src/anysolver/_ge_beam3_g3c_stable/__init__.py',
-    'src/anysolver/_ge_beam3_g3c_stable/authority.py',
+    'src/anyfesolver/_ge_beam3_g3c_stable/__init__.py',
+    'src/anyfesolver/_ge_beam3_g3c_stable/authority.py',
     'scripts/run_ge_beam3_g3c_stable.py',
     'tests/test_ge_beam3_g3c_stable_implementation.py', GUARD,
     'docs/GE_BEAM3_G3C_STABLE_IMPLEMENTATION.md',
@@ -126,7 +126,7 @@ def worker(out, expected):
         raise ValueError('unregistered lane')
     # Full candidate and environment were verified before any numerical import.
     sys.path[:0] = [str(ROOT/'src'), str(ROOT), str(infrastructure.CAPSULE.parent/'site')]
-    from anysolver._ge_beam3_g3c_stable import authority as runtime
+    from anyfesolver._ge_beam3_g3c_stable import authority as runtime
     runtime.capture(raw)
     import pytest
     inventory = Inventory(EXPECTED_NODES[lane])
@@ -177,7 +177,7 @@ def main():
     if os.name != 'nt' or not (sys.flags.isolated and sys.flags.no_site and sys.dont_write_bytecode):
         raise ValueError('Windows -I -S -B runner required')
     candidate, frozen, review = authority(args.review, args.review_sha256)
-    out = Path(tempfile.mkdtemp(prefix='anysolver-g3c-stable-'))
+    out = Path(tempfile.mkdtemp(prefix='anyfesolver-g3c-stable-'))
     print('DIAGNOSTICS '+str(out), flush=True)
     with (out/'review.json').open('xb') as stream:
         stream.write(review)

@@ -1,11 +1,11 @@
 """M22: review repairs (F1-F4, F8) and output-identical speed-ups (S1, S2a, S5, S8)."""
 import numpy as np
 import pytest
-from anysolver import (PatternCase, prepare_static_response_evaluator, prepare_static_evaluator, RecoveryConfig,
+from anyfesolver import (PatternCase, prepare_static_response_evaluator, prepare_static_evaluator, RecoveryConfig,
     LoadCase, BoundaryCondition, PreparedStaticError, PreparedStaticCapabilityError)
-from anysolver.prepared_static_recovery import (constraint_force_diagnostics, ReactionPlan,
+from anyfesolver.prepared_static_recovery import (constraint_force_diagnostics, ReactionPlan,
     planned_constraint_force_diagnostics)
-from anysolver.static_batch import StaticCase
+from anyfesolver.static_batch import StaticCase
 from test_prepared_static_evaluator import _bar, _case, _shell_model, _shell_case
 from test_prepared_static_independent import model as independent_model
 import prepared_static_response_m16_assessment as assessment
@@ -94,7 +94,7 @@ def test_compiled_disagreement_falls_back_with_native_load():
 
 
 def test_new_bindings_are_pinned_by_response_guard(monkeypatch):
-    import anysolver.prepared_static_vectorized as vector_module
+    import anyfesolver.prepared_static_vectorized as vector_module
     patterns = {'p': _shell_case(0, pressure=2.).load_case}
     with prepare_static_response_evaluator(_shell_model(), patterns, recovery_config=STRESS, **VECTOR) as owner:
         monkeypatch.setattr(vector_module, 'evaluate_load_vector', lambda *args: pytest.fail('replaced helper executed'))
@@ -103,7 +103,7 @@ def test_new_bindings_are_pinned_by_response_guard(monkeypatch):
 
 
 def test_vector_memory_checked_before_allocation():
-    from anysolver import prepared_static_vectorized as vector
+    from anyfesolver import prepared_static_vectorized as vector
     with prepare_static_response_evaluator(_shell_model(), {'p': _shell_case(0, pressure=2.).load_case},
                                            recovery_config=STRESS) as owner:
         union = owner._library_elements(owner._snapshot)

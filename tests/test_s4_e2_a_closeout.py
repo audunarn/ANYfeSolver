@@ -103,15 +103,15 @@ NEW_PATHS = {
 }
 
 PRODUCTION = {
-    "src/anysolver/__init__.py": (
+    "src/anyfesolver/__init__.py": (
         24779,
         "0C782CCE93C1346F8A9B6DB832156A4F2689B33460C58F5966E9DE2169C2B8F0",
     ),
-    "src/anysolver/anystructure_fem_mode.py": (
+    "src/anyfesolver/anystructure_fem_mode.py": (
         60057,
         "2FEACAAFD2A516B8ACCD919124A18614B0C3096EC0EEAF02DF6BC4280A80616E",
     ),
-    "src/anysolver/elements.py": (
+    "src/anyfesolver/elements.py": (
         190422,
         "5D0AF716CD2E466EB831B1896553DE06236AC1BA80A84BD1B09C7E4CEBBDE670",
     ),

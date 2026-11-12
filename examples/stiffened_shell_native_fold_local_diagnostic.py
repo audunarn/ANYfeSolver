@@ -8,12 +8,12 @@ from threading import get_ident
 from types import FunctionType
 
 import numpy as np
-from anysolver import stiffened_shell as ss
-from anysolver import _stiffened_shell_ge_finite_experimental as finite
-from anysolver import _stiffened_shell_q4_algorithmic_pullback as q4
-from anysolver import _ge_beam3_variational_shell as shell_map
-from anysolver import _ge_beam3_g3c_so3_numerics as stable_log
-from anysolver.control import cancellation_safe_point
+from anyfesolver import stiffened_shell as ss
+from anyfesolver import _stiffened_shell_ge_finite_experimental as finite
+from anyfesolver import _stiffened_shell_q4_algorithmic_pullback as q4
+from anyfesolver import _ge_beam3_variational_shell as shell_map
+from anyfesolver import _ge_beam3_g3c_so3_numerics as stable_log
+from anyfesolver.control import cancellation_safe_point
 from examples import stiffened_shell_native_capacity as case
 from examples import stiffened_shell_native_fold_assessment as fold
 

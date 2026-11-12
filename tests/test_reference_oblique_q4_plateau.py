@@ -25,7 +25,7 @@ def test_reference_source_has_no_solver_material_or_builder_imports():
     modules = [node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)]
     modules += [alias.name for node in ast.walk(tree) if isinstance(node, ast.Import)
                 for alias in node.names]
-    assert all(not name.startswith(('anysolver', 'anymaterial', 'tests', 'examples')) for name in modules)
+    assert all(not name.startswith(('anyfesolver', 'anymaterial', 'tests', 'examples')) for name in modules)
 
 
 @pytest.mark.parametrize('method', ['exponential', 'dop853'])

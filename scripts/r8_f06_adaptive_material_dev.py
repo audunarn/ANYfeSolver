@@ -9,7 +9,7 @@ DOC=ROOT/'docs/agent_plans/development/r8-f06-log-domain-20261010/adaptive-mater
 PREFIX=cyclic.DOC/'attempt-source-bend-z2/failure-state.bin'
 
 def bindings():
- paths=[ROOT/'src/anysolver'/name for name in (*infra.PRODUCTS,'_stiffened_shell_increment_control.py','_stiffened_shell_staged_load_experimental.py')]
+ paths=[ROOT/'src/anyfesolver'/name for name in (*infra.PRODUCTS,'_stiffened_shell_increment_control.py','_stiffened_shell_staged_load_experimental.py')]
  paths += [Path(__file__),ROOT/'tests/test_r8_f06_adaptive_material_dev.py',PREFIX,
   ROOT/'scripts/r8_f06_cyclic_material_dev.py',ROOT/'scripts/r8_f06_native_material_breadth_dev.py',
   ROOT/'scripts/r8_f06_fibre_log_domain_dev.py',ROOT/'scripts/r8_f06_log_domain_check_dev.py']
@@ -18,7 +18,7 @@ def bindings():
  return {p.relative_to(ROOT).as_posix():sha(p) for p in paths}
 
 def programme(owner):
- from anysolver import stiffened_shell as ss
+ from anyfesolver import stiffened_shell as ss
  return ss.StagedDeadLoadProgramme(owner.preflight()['identity'],tuple(cyclic.actions('bend-z',a) for a in (.4,.2,-.4,-.41)))
 
 def paired_value(row, offset=0):
@@ -29,7 +29,7 @@ def persist_accepted(out,owner,result,index):
  """Durably record a published endpoint before observer checks can fail."""
  import numpy as np
  from dataclasses import asdict
- from anysolver._stiffened_shell_beam_history import arrays as history_arrays
+ from anyfesolver._stiffened_shell_beam_history import arrays as history_arrays
  d=owner._finite_driver;prefix=out/('accepted-%02d.bin'%index)
  prefix.write_bytes(owner.checkpoint())
  np.savez(out/('histories-%02d.npz'%index),**dict(history_arrays(owner._beam_parts,d._beam_predecessors,'origin')+

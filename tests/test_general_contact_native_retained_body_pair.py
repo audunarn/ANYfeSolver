@@ -6,8 +6,8 @@ import json, os, time
 import numpy as np
 import pytest
 from examples.general_contact_native_retained_body_pair import analysis
-from anysolver.general_contact.native_retained_body_pair import omitted_cell_dominated
-from anysolver.general_contact.native_replay_diagnostics import replay_difference_message
+from anyfesolver.general_contact.native_retained_body_pair import omitted_cell_dominated
+from anyfesolver.general_contact.native_replay_diagnostics import replay_difference_message
 
 
 def test_complete_line_potential_work_crossblocks_and_refusals():
@@ -44,7 +44,7 @@ def test_endpoint_plateau_refusal_and_internal_motion():
 
 def test_default_saved_curved_energy_and_identity():
     from test_general_contact_native_curved_fibre_pair_static import _curved_owner, _saved_curved_fixture
-    from anysolver._ge_beam3_p5_seeded.codec import _load
+    from anyfesolver._ge_beam3_p5_seeded.codec import _load
     owner=_curved_owner()
     raw,_=_saved_curved_fixture()
     capsule=_load(raw.decode('ascii'))
@@ -56,7 +56,7 @@ def test_default_saved_curved_energy_and_identity():
     mechanical=owner.context.make(record['mechanical'],decoded=True)
     _,replayed=owner._record(record['target'],mechanical,owner.initial.histories,
         record['previous_sha256'])
-    from anysolver._ge_beam3_p5_seeded.core import canonical
+    from anyfesolver._ge_beam3_p5_seeded.core import canonical
     assert canonical(record)==canonical(replayed), replay_difference_message(record, replayed, 'full record')
     state,records=owner._restore(raw,sha256(raw).hexdigest())
     assert state.contact.potential_j>0
@@ -76,8 +76,8 @@ def test_default_saved_curved_energy_and_identity():
 def test_saved_curved_full_record_replay_is_exact():
     """CI4 requires every saved field and the unchanged production restore."""
     from test_general_contact_native_curved_fibre_pair_static import _curved_owner, _saved_curved_fixture
-    from anysolver._ge_beam3_p5_seeded.codec import _load
-    from anysolver._ge_beam3_p5_seeded.core import canonical
+    from anyfesolver._ge_beam3_p5_seeded.codec import _load
+    from anyfesolver._ge_beam3_p5_seeded.core import canonical
     owner = _curved_owner()
     raw, _ = _saved_curved_fixture()
     capsule = _load(raw.decode('ascii'))

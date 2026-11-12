@@ -7,8 +7,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BINDINGS = {
-    'src/anysolver/elements.py': 'f8c59792947a3c9b84416c61a4d9db98e42926d1bf21e74e736afbf6a9a88b37',
-    'src/anysolver/_ge_beam3_g3c_recovery.py': 'a2100556f3ed682d6880b0387d5f7c2131ac6a869aa2d8b60a2844fa22d6691a',
+    'src/anyfesolver/elements.py': 'f8c59792947a3c9b84416c61a4d9db98e42926d1bf21e74e736afbf6a9a88b37',
+    'src/anyfesolver/_ge_beam3_g3c_recovery.py': 'a2100556f3ed682d6880b0387d5f7c2131ac6a869aa2d8b60a2844fa22d6691a',
     'docs/GE_BEAM3_G3C_LOCAL_RECOVERY_EQUATIONS.md': '0f81a43804b4874402d7ff09dc158de95888bc4f7e3c734e76548688f7235e67',
     'docs/GE_BEAM3_G3C_MATRIX_SHELL_CONTRACT.md': '59a09dc7db6256a145520ae7b4f2d325dee1abca5d5b5c381a7ada57a2ad92fd',
 }
@@ -96,7 +96,7 @@ def witness(source, area=F('1e-14'), axis='v'):
 
 def audit():
     bound = sources()
-    source = bound['src/anysolver/elements.py']
+    source = bound['src/anyfesolver/elements.py']
     clamped = [witness(source, axis=axis) for axis in ('v', 'w')]
     controls = [witness(source, area=area, axis=axis)
                 for area in (F('2e-12'), F('1e-10')) for axis in ('v', 'w')]

@@ -469,16 +469,16 @@ def test_authority_topology_incident_archive_and_protected_mechanics_are_exact()
         ]
 
     protected = {
-        "src/anysolver/ge_beam3_element.py": "70542da7fea26dcb2da5b5f9da5fc0b0b8d484ab",
-        "src/anysolver/ge_beam3_mixed_element.py": "f49062b55b4bf749a1654100cf3a4ed6ffb61d37",
-        "src/anysolver/ge_beam3_mixed_state.py": "74caa1814448245f907bd3efdb6c8a1cc1d2269d",
-        "src/anysolver/ge_beam3_state.py": "ba8f65761197c62cb2b7ce74bf488e75f2c24818",
+        "src/anyfesolver/ge_beam3_element.py": "70542da7fea26dcb2da5b5f9da5fc0b0b8d484ab",
+        "src/anyfesolver/ge_beam3_mixed_element.py": "f49062b55b4bf749a1654100cf3a4ed6ffb61d37",
+        "src/anyfesolver/ge_beam3_mixed_state.py": "74caa1814448245f907bd3efdb6c8a1cc1d2269d",
+        "src/anyfesolver/ge_beam3_state.py": "ba8f65761197c62cb2b7ce74bf488e75f2c24818",
     }
     for path, blob in protected.items():
         assert _git_text("rev-parse", f"{C5}:{path}") == blob
         assert _git_text("rev-parse", f"{P3}:{path}") == blob
     assert _git_text("diff", "--name-only", P3, C5, "--", "src").splitlines() == [
-        "src/anysolver/ge_beam3_curved_reference.py"
+        "src/anyfesolver/ge_beam3_curved_reference.py"
     ]
     assert _git_text("diff", "--name-only", P3, C5, "--", "pyproject.toml", ".github") == ""
 

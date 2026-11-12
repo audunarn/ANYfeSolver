@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 from scipy import linalg
 
-from anysolver.ge_beam3_curved_reference import p2_shape_functions
+from anyfesolver.ge_beam3_curved_reference import p2_shape_functions
 
 
 def trace(s: float, beam_elements: int, shell_elements: int) -> tuple[np.ndarray, np.ndarray]:

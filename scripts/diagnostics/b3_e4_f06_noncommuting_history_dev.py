@@ -15,8 +15,8 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver import b3_ge, stiffened_shell
-from anysolver.e4_pl_s3_state import canonical_json_bytes
+from anyfesolver import b3_ge, stiffened_shell
+from anyfesolver.e4_pl_s3_state import canonical_json_bytes
 from test_stiffened_shell_ge_experimental import _panel
 
 

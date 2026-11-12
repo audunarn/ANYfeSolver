@@ -5,15 +5,15 @@ import json
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_native_analysis import NativeBeamAnalysis, NativeBeamAnalysisError, NativeBeamWorkflowError
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_native_generalized_program import solve_distributed_model
-from anysolver._ge_beam3_native_generalized_modal import solve_modes
-from anysolver.nonlinear_static import solve_static_nonlinear
-from anysolver.boundary import LoadCase, BoundaryCondition
+from anyfesolver._ge_beam3_native_analysis import NativeBeamAnalysis, NativeBeamAnalysisError, NativeBeamWorkflowError
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_native_generalized_program import solve_distributed_model
+from anyfesolver._ge_beam3_native_generalized_modal import solve_modes
+from anyfesolver.nonlinear_static import solve_static_nonlinear
+from anyfesolver.boundary import LoadCase, BoundaryCondition
 from test_ge_beam3_native_generalized import problem as generalized_problem, pattern
 from test_ge_beam3_native_fibre_static_element import problem as fibre_problem
 from test_ge_beam3_native_generalized_modal import make as modal_model

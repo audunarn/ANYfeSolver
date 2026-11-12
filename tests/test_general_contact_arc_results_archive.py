@@ -4,11 +4,11 @@ import hashlib,json,os,importlib.util,sys
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver.arc_length import ArcLengthResult,ArcLengthStep
-from anysolver.nonlinear_static import NonlinearIncrementSnapshot
-from anysolver.general_contact import (ArcContactArchiveError as Error,
+from anyfesolver.arc_length import ArcLengthResult,ArcLengthStep
+from anyfesolver.nonlinear_static import NonlinearIncrementSnapshot
+from anyfesolver.general_contact import (ArcContactArchiveError as Error,
     serialize_arc_contact_results as serialize,read_arc_contact_results as read)
-from anysolver.general_contact import transient_results_archive as codec
+from anyfesolver.general_contact import transient_results_archive as codec
 from test_general_contact_static_results_archive import assert_producer_data
 
 
@@ -49,7 +49,7 @@ def test_unknown_and_active_material_before_callbacks(monkeypatch):
     class Malicious:
         def __deepcopy__(self,memo):pytest.fail('untrusted copy callback')
     with pytest.raises(Error):serialize(replace(sample(),element_states={1:Malicious()}))
-    from anysolver.nonlinear_state import NonlinearStateStore
+    from anyfesolver.nonlinear_state import NonlinearStateStore
     store=NonlinearStateStore();monkeypatch.setattr(NonlinearStateStore,'has_active_trial',property(lambda self:True))
     monkeypatch.setattr(NonlinearStateStore,'materialize_owned',lambda *a,**k:pytest.fail('active copy'))
     with pytest.raises(Error):serialize(replace(sample(),element_states=store))
@@ -83,12 +83,12 @@ def test_actual_arc_producer_consumer():
 def test_legacy_static_and_transient_wire_unchanged():
     from test_general_contact_static_results_archive import sample as static_sample
     from test_general_contact_transient_results_archive import sample as transient_sample
-    from anysolver.general_contact import static_results_archive as static
+    from anyfesolver.general_contact import static_results_archive as static
     baseline=Path(os.environ['ARC_ARCHIVE_LEGACY_ROOT'])
     rows=[]
     for name,producer,current in (('transient_results_archive',transient_sample,codec),
                                   ('static_results_archive',static_sample,static)):
-        path=baseline/(name+'.py');alias='anysolver.general_contact._legacy_'+name
+        path=baseline/(name+'.py');alias='anyfesolver.general_contact._legacy_'+name
         spec=importlib.util.spec_from_file_location(alias,path);module=importlib.util.module_from_spec(spec)
         sys.modules[alias]=module
         try:

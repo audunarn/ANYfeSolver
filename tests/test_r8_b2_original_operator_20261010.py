@@ -8,9 +8,9 @@ import numpy as np
 import pytest
 from scipy import sparse, linalg
 
-from anysolver import stiffened_shell as api
-from anysolver.control import CancellationToken
-from anysolver._stiffened_shell_b2_q4_panel_experimental import (
+from anyfesolver import stiffened_shell as api
+from anyfesolver.control import CancellationToken
+from anyfesolver._stiffened_shell_b2_q4_panel_experimental import (
     ExperimentalB2Q4PanelAnalysis, _NumericalFailure,
 )
 from examples.stiffened_shell_b2_physical_rigid_footprint import definition, preload

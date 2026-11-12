@@ -19,24 +19,24 @@ def test_no_contact_static_route_leaves_contact_kernel_unloaded():
         from pathlib import Path
         import sys
 
-        import anysolver
+        import anyfesolver
         source = Path(os.environ["ANYSOLVER_TEST_SOURCE"]).resolve()
-        assert Path(anysolver.__file__).resolve().is_relative_to(source)
-        assert "anysolver.general_contact" not in sys.modules
+        assert Path(anyfesolver.__file__).resolve().is_relative_to(source)
+        assert "anyfesolver.general_contact" not in sys.modules
 
-        from anysolver.boundary import LoadCase
-        from anysolver.mesh_gen import generate_beam_mesh
+        from anyfesolver.boundary import LoadCase
+        from anyfesolver.mesh_gen import generate_beam_mesh
         model = generate_beam_mesh(1.0, num_divisions=1)
         load = LoadCase("axial")
         load.add_nodal_load(2, [10.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-        result = anysolver.solve_static_nonlinear(
+        result = anyfesolver.solve_static_nonlinear(
             model, load, num_steps=1, max_iterations=5,
         )
         assert result.status == "completed", result.failure_reason
-        assert "anysolver.general_contact.core" not in sys.modules
+        assert "anyfesolver.general_contact.core" not in sys.modules
 
-        import anysolver.general_contact as package
-        from anysolver.general_contact import core, runtime
+        import anyfesolver.general_contact as package
+        from anyfesolver.general_contact import core, runtime
         for name in (
             "ContactDefinition", "ContactInteraction", "ContactPathControl",
             "ContactPathNodalForce", "ContactPathProgram", "ContactResults",
@@ -46,7 +46,7 @@ def test_no_contact_static_route_leaves_contact_kernel_unloaded():
             "TransientContactResults", "TransientContactSettings",
             "solve_transient_contact", "validate_general_contact",
         ):
-            assert getattr(anysolver, name) is getattr(package, name), name
+            assert getattr(anyfesolver, name) is getattr(package, name), name
         assert core._ACTIVE_CONTACT is runtime._ACTIVE_CONTACT
         assert core.active_contact_manager is runtime.active_contact_manager
         assert core.suspend_contact is runtime.suspend_contact

@@ -11,17 +11,17 @@ PRODUCTS=('_ge_beam3_retained_fibre.py','_ge_beam3_native_fibre_static_element.p
  '_stiffened_shell_beam_history.py','_stiffened_shell_f06_increment_arithmetic.py')
 
 def bindings():
- paths=[ROOT/'src/anysolver'/p for p in PRODUCTS]+[Path(__file__),
+ paths=[ROOT/'src/anyfesolver'/p for p in PRODUCTS]+[Path(__file__),
   ROOT/'tests/test_r8_f06_fibre_log_domain_dev.py',ROOT/'scripts/r8_f06_log_domain_check_dev.py',ROOT/'tests/conftest.py',
   ROOT/'tests/test_ge_beam3_native_definition.py',ROOT/'tests/test_ge_beam3_native_fibre_static_element.py']
  return {p.relative_to(ROOT).as_posix():sha(p) for p in paths}
 
 def element(*,paired=True,family='axial'):
  import numpy as np
- from anysolver._ge_beam3_fibre_section import PhysicalFibreSection,Fibre,FlowCurve
- from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
- from anysolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
- from anysolver._stiffened_shell_f06_increment_arithmetic import POLICY
+ from anyfesolver._ge_beam3_fibre_section import PhysicalFibreSection,Fibre,FlowCurve
+ from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+ from anyfesolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
+ from anyfesolver._stiffened_shell_f06_increment_arithmetic import POLICY
  if family=='axial':fibres=(Fibre('0',0.,0.,.01,1e6,FlowCurve((0.,),(10.,),1e5)),)
  else:raise ValueError('this development fixture establishes axial fibres only')
  section=PhysicalFibreSection(fibres,np.diag(np.sqrt((0.,4e3,4e3,100.,100.,100.))))
@@ -30,9 +30,9 @@ def element(*,paired=True,family='axial'):
 
 def definition(*,paired=True):
  import numpy as np
- from anysolver import stiffened_shell as ss
- from anysolver._ge_beam3_native_definition import NativeBeamDefinition
- from anysolver._stiffened_shell_q4_algorithmic_pullback import POLICY
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+ from anyfesolver._stiffened_shell_q4_algorithmic_pullback import POLICY
  shell=ss.ShellPanel((1,2,3,4),((0.,-.5,0.),(1.,-.5,0.),(1.,.5,0.),(0.,.5,0.)),
   ((1,2,3,4),),.07,1e6,.3,1000.)
  return ss.LinearDefinition(ss.B3_GE_E4_PL_STIFFENED_SHELL_V1,shell,
@@ -41,7 +41,7 @@ def definition(*,paired=True):
   tuple(ss.FixedCoordinate('shell',n,k) for n in (1,4) for k in range(6)),q4_pullback_policy=POLICY)
 
 def actions():
- from anysolver import stiffened_shell as ss
+ from anyfesolver import stiffened_shell as ss
  return (ss.NodalAction('beam',103,(50.,0.,10.,0.,0.,0.)),)
 
 def child(out,stage):
@@ -53,7 +53,7 @@ def child(out,stage):
   import shutil
   snapshot=package/'snapshot';snapshot.mkdir(parents=True)
   source={}
-  for p in (ROOT/'src/anysolver').rglob('*.py'):
+  for p in (ROOT/'src/anyfesolver').rglob('*.py'):
    rel=p.relative_to(ROOT);target=snapshot/rel;target.parent.mkdir(parents=True,exist_ok=True)
    content=p.read_bytes();target.write_bytes(content);source[rel.as_posix()]=sha(p)
    assert sha(target)==source[rel.as_posix()]

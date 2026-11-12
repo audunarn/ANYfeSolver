@@ -6,7 +6,7 @@ remain in the raw evidence record.
 """
 import numpy as np
 import pytest
-from anysolver.general_contact import q4_overlap_local_bound as bounds
+from anyfesolver.general_contact import q4_overlap_local_bound as bounds
 
 BUDGET=5e-5
 

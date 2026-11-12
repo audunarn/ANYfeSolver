@@ -6,10 +6,10 @@ import math
 import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver import _stiffened_shell_ge_finite_experimental as finite
-from anysolver._stiffened_shell_beam_history import arrays as history_arrays
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver import _stiffened_shell_ge_finite_experimental as finite
+from anyfesolver._stiffened_shell_beam_history import arrays as history_arrays
 from test_stiffened_shell_native_coupled_material import definition_for
 from test_stiffened_shell_ge_finite_experimental import _q4_shell_j2_panel
 

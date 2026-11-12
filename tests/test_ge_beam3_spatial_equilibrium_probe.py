@@ -23,7 +23,7 @@ def test_no_invented_history():
 
 def test_trial_border_does_not_weaken_virgin_history_owner():
     import numpy as np
-    from anysolver import _ge_beam3_retained_translation_control as control
+    from anyfesolver import _ge_beam3_retained_translation_control as control
     from docs.reference_cases.ge_beam3_refined_controlled_case import model
     programme=control.Program((.003,),2,(0.,0.,1.),control.NodalDeadForces(((3,0.,-1.,0.),)))
     with pytest.raises(np.linalg.LinAlgError):control.Context(model(2),programme)
@@ -33,7 +33,7 @@ def test_trial_border_does_not_weaken_virgin_history_owner():
 
 @pytest.mark.parametrize('kind',('row','node','model'))
 def test_trial_control_guard(kind):
-    from anysolver import _ge_beam3_retained_translation_control as control
+    from anyfesolver import _ge_beam3_retained_translation_control as control
     from docs.reference_cases.ge_beam3_refined_controlled_case import model
     trial=p.elastic_control(model(2),control.Program((.003,),2,(0.,0.,1.),control.NodalDeadForces(((3,0.,-1.,0.),))))
     if kind=='row':trial.row=-trial.row

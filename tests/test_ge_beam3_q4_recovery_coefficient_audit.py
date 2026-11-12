@@ -29,9 +29,9 @@ from ge_beam3_q4_recovery_coefficient_producer import audit
 
 SCIENTIFIC_RECORDS = []
 SOURCE_BINDINGS = {
-    'src/anysolver/e4_pl_element.py': (293258, '7fc46a18046e043512a5fb2c3f61ed0b95b834e4dde764f63c500a885e87ea38'),
-    'src/anysolver/elements.py': (244692, 'f8c59792947a3c9b84416c61a4d9db98e42926d1bf21e74e736afbf6a9a88b37'),
-    'src/anysolver/_ge_beam3_g3c_local_shell.py': (19430, '69d9f27a96ed7e9a5959a42a081eeafbbe72021de6e4da1f91355c5fb3850f10'),
+    'src/anyfesolver/e4_pl_element.py': (293258, '7fc46a18046e043512a5fb2c3f61ed0b95b834e4dde764f63c500a885e87ea38'),
+    'src/anyfesolver/elements.py': (244692, 'f8c59792947a3c9b84416c61a4d9db98e42926d1bf21e74e736afbf6a9a88b37'),
+    'src/anyfesolver/_ge_beam3_g3c_local_shell.py': (19430, '69d9f27a96ed7e9a5959a42a081eeafbbe72021de6e4da1f91355c5fb3850f10'),
     'docs/GE_BEAM3_G3C_MATRIX_SHELL_CONTRACT.md': (9625, '59a09dc7db6256a145520ae7b4f2d325dee1abca5d5b5c381a7ada57a2ad92fd'),
     'docs/GE_BEAM3_G3C_MO16_SOURCE_ASSESSMENT.md': (7666, 'e6b702fba5c32ef22537a137fc150fa54b63028c6910df96c5c5f0c6a722026e'),
 }

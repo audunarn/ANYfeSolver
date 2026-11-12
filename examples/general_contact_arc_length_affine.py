@@ -1,6 +1,6 @@
 """Affine support plus optional equilibrium preload, using the public arc route."""
 from examples.general_contact_triangulated_rigid_patch import case
-from anysolver import BoundaryCondition, LoadCase, ArcLengthControl, solve_static_arc_length
+from anyfesolver import BoundaryCondition, LoadCase, ArcLengthControl, solve_static_arc_length
 
 
 def build(preload=False,preload_force=.001):

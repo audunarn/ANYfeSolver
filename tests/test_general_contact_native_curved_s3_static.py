@@ -3,11 +3,34 @@ import json,os,runpy
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver.general_contact.native_multi_s3_static import CURVED_MATERIAL_PROFILE
+from anyfesolver.general_contact.native_multi_s3_static import CURVED_MATERIAL_PROFILE
 
 
 def _analysis(**kwargs):
     return runpy.run_path(str(Path(__file__).parents[1]/'examples/general_contact_native_curved_material_s3.py'))['analysis'](**kwargs)
+
+
+def test_s3_congruence_product_fixed_fused_order_and_refusals():
+    """Synthetic: the specified accumulation order, not a kernel equivalence."""
+    from anyfesolver.general_contact.native_replay_arithmetic import s3_congruence_product
+    eps = 2.**-53
+    # With M = I the first product is exactly T.T, so entry (i,j) of the result is
+    # sum_k T[k,i]*T[k,j] and only the accumulation order of the second product
+    # is observable. Row 0 of T.T is (eps, 1, eps, 0, ...); columns 15..17 are ones.
+    T = np.zeros((18, 18)); T[0, 0], T[1, 0], T[2, 0] = eps, 1., eps
+    T[:, 15:] = 1.
+    R = s3_congruence_product(T, np.eye(18))
+    assert R[0, 15] == 1.                     # ascending single accumulation: ties to 1
+    assert R[0, 16] == R[0, 17] == 1.+2*eps   # even (eps+eps) + odd (1) accumulators
+    # Exactly representable data: every order gives the exact product.
+    rng = np.random.default_rng(5)
+    A = rng.integers(-8, 9, (18, 18)).astype(float); B = rng.integers(-8, 9, (18, 18)).astype(float)
+    np.testing.assert_array_equal(s3_congruence_product(A, B), A.T @ B @ A)
+    for bad in (np.zeros((17, 18)), np.full((18, 18), np.nan)):
+        with pytest.raises(ValueError):
+            s3_congruence_product(bad, np.eye(18))
+        with pytest.raises(ValueError):
+            s3_congruence_product(np.eye(18), bad)
 
 
 def test_curved_s3_coupled_first_contact_complete_retained_and_target_work():
@@ -46,7 +69,7 @@ def test_curved_s3_active_checkpoint_for_bounded_three_target_continuation():
 
 
 def test_curved_s3_driver_forwards_cancellation_and_preserves_initial_prefix():
-    from anysolver.control import CancellationToken
+    from anyfesolver.control import CancellationToken
     owner=_analysis(targets=(1.,));token=CancellationToken()
     initial=owner._checkpoint(())
     owner._assemble=lambda *args:(np.zeros(owner.context.count+len(owner.initial.shell_displacement)),
@@ -63,7 +86,7 @@ def test_curved_s3_driver_forwards_cancellation_and_preserves_initial_prefix():
 
 
 def test_curved_s3_owner_uses_authoritative_path_increment_columns():
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.control import CancellationToken,SolveCancelled
     owner=_analysis(targets=(1.,));start=owner.initial.mechanical;u=owner.initial.shell_displacement
     step=np.zeros(owner.context.count+len(u));step[12:15]=(.001,-.002,.001)
     step[owner.context.count:]=np.linspace(.001,-.002,len(u))
@@ -82,7 +105,7 @@ def test_curved_s3_owner_uses_authoritative_path_increment_columns():
 
 
 def test_shared_swept_wrapper_preserves_historical_subclass_dispatch():
-    from anysolver.general_contact.native_multi_s3_static import NativeRetainedMultiS3Analysis
+    from anyfesolver.general_contact.native_multi_s3_static import NativeRetainedMultiS3Analysis
     # Exact wrapper contract check; historical subclass need not accept a token.
     class Historical:
         _curved_mode=False
@@ -94,8 +117,8 @@ def test_shared_swept_wrapper_preserves_historical_subclass_dispatch():
 
 def test_curved_s3_checkpoint_binding_field_classification_and_valid_restore():
     from hashlib import sha256
-    from anysolver._ge_beam3_p5_seeded.core import canonical, sha
-    from anysolver._ge_beam3_p5_seeded.codec import _load
+    from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
+    from anyfesolver._ge_beam3_p5_seeded.codec import _load
     owner=_analysis(targets=(1.,));initial=owner._checkpoint(())
     # Matching valid checkpoint restore through the real caller: no target
     # trajectory is needed, the initial checkpoint already suffices.

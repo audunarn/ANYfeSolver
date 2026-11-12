@@ -10,8 +10,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_mixed_ad import Jet2, constant_matrix
-from anysolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
+from anyfesolver._ge_beam3_mixed_ad import Jet2, constant_matrix
+from anyfesolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
 from docs.reference_cases.ge_beam3_curved_p5_centered_chord import (
     CenteredChordMixedProbe, CenteredChordAssemblyHistoryProbe, SCHEMA,
 )

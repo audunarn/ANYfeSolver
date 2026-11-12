@@ -2,15 +2,15 @@
 import json
 import numpy as np
 import pytest
-from anysolver._ge_beam3_station_resultant_cell import StationResultantCell
+from anyfesolver._ge_beam3_station_resultant_cell import StationResultantCell
 from docs.reference_cases.ge_beam3_station_resultant_cell import StationResultantCell as ResearchCell
-from anysolver._ge_beam3_retained_plastic import RetainedPlasticOperator
-from anysolver._ge_beam3_retained_elastic import RetainedElasticOperator
-from anysolver._ge_beam3_p5_seeded import NativeP5BeamElement
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._ge_beam3_p5.section import DirectedHardeningSection
-from anysolver._ge_beam3_p5.compensated_coordinates import split_sum
+from anyfesolver._ge_beam3_retained_plastic import RetainedPlasticOperator
+from anyfesolver._ge_beam3_retained_elastic import RetainedElasticOperator
+from anyfesolver._ge_beam3_p5_seeded import NativeP5BeamElement
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._ge_beam3_p5.section import DirectedHardeningSection
+from anyfesolver._ge_beam3_p5.compensated_coordinates import split_sum
 from test_ge_beam3_station_resultant_cell import data_for
 from test_ge_beam3_complementary_section import section
 from test_ge_beam3_curved_contrast_probe import make_curved

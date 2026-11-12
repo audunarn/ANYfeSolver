@@ -10,9 +10,9 @@ import pytest
 
 
 def test_public_friction_settings_export_identity_and_listing():
-    import anysolver.general_contact as package
-    from anysolver.general_contact import S3SlidingFrictionSettings
-    from anysolver.general_contact import s3_sliding_friction
+    import anyfesolver.general_contact as package
+    from anyfesolver.general_contact import S3SlidingFrictionSettings
+    from anyfesolver.general_contact import s3_sliding_friction
 
     assert "S3SlidingFrictionSettings" in package.__all__
     assert "S3SlidingFrictionSettings" in dir(package)
@@ -21,7 +21,7 @@ def test_public_friction_settings_export_identity_and_listing():
 
 
 def test_keyword_construction_matches_positional_and_validates():
-    from anysolver.general_contact import S3SlidingFrictionSettings
+    from anyfesolver.general_contact import S3SlidingFrictionSettings
 
     keyword = S3SlidingFrictionSettings(friction_coefficient=.3,
         tangential_stiffness_Pa_per_m=1000., steps_by_dof=(2e-7,)*60,
@@ -61,13 +61,13 @@ def test_public_friction_settings_export_stays_lazy():
         from pathlib import Path
         import sys
 
-        import anysolver
+        import anyfesolver
         source = Path(os.environ["ANYSOLVER_TEST_SOURCE"]).resolve()
-        assert Path(anysolver.__file__).resolve().is_relative_to(source)
-        assert "anysolver.general_contact" not in sys.modules
+        assert Path(anyfesolver.__file__).resolve().is_relative_to(source)
+        assert "anyfesolver.general_contact" not in sys.modules
 
-        from anysolver.general_contact import S3SlidingFrictionSettings
-        from anysolver.general_contact import s3_sliding_friction
+        from anyfesolver.general_contact import S3SlidingFrictionSettings
+        from anyfesolver.general_contact import s3_sliding_friction
         assert S3SlidingFrictionSettings is s3_sliding_friction.S3SlidingFrictionSettings
         settings = S3SlidingFrictionSettings(friction_coefficient=.3,
             tangential_stiffness_Pa_per_m=1000., steps_by_dof=(2e-7,)*60,

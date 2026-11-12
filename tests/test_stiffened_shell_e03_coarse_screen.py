@@ -19,10 +19,10 @@ def prepared(tmp_path, monkeypatch):
     monkeypatch.setattr(screen, "MODULE_MANIFEST", "modules.json")
     case = reference.build_case(0, 1)
     provider = tmp_path/"site"
-    origin = provider/"anysolver/__init__.py"
+    origin = provider/"anyfesolver/__init__.py"
     origin.parent.mkdir(parents=True)
     origin.write_bytes(b"synthetic installed origin")
-    (tmp_path/"modules.json").write_text(json.dumps({"source_modules":{"anysolver/__init__.py":sha(origin.read_bytes())}}))
+    (tmp_path/"modules.json").write_text(json.dumps({"source_modules":{"anyfesolver/__init__.py":sha(origin.read_bytes())}}))
     resource = tmp_path/"resource.json"
     resource.write_bytes(b'{"status":"synthetic"}')
     bindings = dict(phase="native", case_id=case["case_id"], source_root=str(tmp_path),
@@ -44,8 +44,8 @@ def prepared(tmp_path, monkeypatch):
         "command", "wheel_sha256", "source_sha256", "module_manifest_sha256")}
     receipt.update(deck_sha256=json.loads((folder/"metadata.json").read_text())["deck_sha256"],
         exit_code=0, timed_out=False, process_wall_seconds=.01, resource_receipt_path=str(resource),
-        resource_receipt_sha256=sha(resource.read_bytes()), anysolver_origin=str(origin),
-        anysolver_origin_sha256=sha(origin.read_bytes()))
+        resource_receipt_sha256=sha(resource.read_bytes()), anyfesolver_origin=str(origin),
+        anyfesolver_origin_sha256=sha(origin.read_bytes()))
     return folder, receipt, result
 
 
@@ -160,7 +160,7 @@ def test_nonfinite_receipt_preserves_raw(prepared):
 
 
 def test_actual_child_origin_hash_mismatch(prepared):
-    prepared[1]["anysolver_origin_sha256"] = "wrong"
+    prepared[1]["anyfesolver_origin_sha256"] = "wrong"
     with pytest.raises(ValueError, match="origin must match"):
         finish(prepared)
     assert (prepared[0]/"received/native_result.raw").is_file()

@@ -4,8 +4,8 @@ import json
 import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_stiffened_shell_curved_reference_seam import curved_panel
 
 
@@ -67,7 +67,7 @@ def test_zero_change_and_owned_pose_data():
 
 
 def test_zero_change_material_reference_retains_material_policy():
-    from anysolver._stiffened_shell_stress_free_reference import MATERIAL_POLICY
+    from anyfesolver._stiffened_shell_stress_free_reference import MATERIAL_POLICY
     from test_stiffened_shell_curved_material import curved_material_panel
 
     source = curved_material_panel()
@@ -121,7 +121,7 @@ def test_cancel_after_target_compile_closes_both_owners(monkeypatch):
     def tracked(**kwargs):
         value=actual(**kwargs);created.append(value);return value
     monkeypatch.setattr(ss,'create_analysis',tracked)
-    from anysolver import _stiffened_shell_stress_free_reference as reference
+    from anyfesolver import _stiffened_shell_stress_free_reference as reference
     safe=reference.cancellation_safe_point
     token=CancellationToken()
     def cancelling(value,where):
@@ -141,7 +141,7 @@ def test_cancel_after_target_compile_closes_both_owners(monkeypatch):
 
 
 def test_native_policy_and_reference_tolerances_are_preserved():
-    from anysolver._ge_beam3_precise_geometric_work import POLICY
+    from anyfesolver._ge_beam3_precise_geometric_work import POLICY
     source=curved_panel();beams=[]
     for raw in source.beams:
         element,inertia=raw.instantiate();ref=element.operator.reference

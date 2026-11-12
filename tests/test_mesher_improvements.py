@@ -1,12 +1,12 @@
-"""ANYsolver integration tests for meshes now owned by ANYmesher."""
+"""ANYfeSolver integration tests for meshes now owned by ANYmesher."""
 
 from __future__ import annotations
 
 import numpy as np
 
 import anymesher
-import anysolver.mesh_gen as mesh_gen
-from anysolver.elements import BeamElement, ShellElement
+import anyfesolver.mesh_gen as mesh_gen
+from anyfesolver.elements import BeamElement, ShellElement
 
 
 def _panel() -> mesh_gen.PanelGeometry:

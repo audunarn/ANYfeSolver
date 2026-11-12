@@ -4,8 +4,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-import anysolver.corotational as cr
-from anysolver import _corotational_batch as batch
+import anyfesolver.corotational as cr
+from anyfesolver import _corotational_batch as batch
 from test_corotational_work_conjugate import (
     _make_beam_model, _make_q4_shell_model, _make_s3_shell_model,
     _superimpose_se3_motion,

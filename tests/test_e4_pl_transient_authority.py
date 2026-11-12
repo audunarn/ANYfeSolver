@@ -3,8 +3,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-import anysolver.dynamics as dynamics
-from anysolver import (
+import anyfesolver.dynamics as dynamics
+from anyfesolver import (
     AnalysisSession,
     BoundaryCondition,
     ElementActivity,
@@ -13,11 +13,11 @@ from anysolver import (
     PressurePatch,
     TransientConfig,
 )
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from anysolver.element_capabilities import ElementCapabilityError
-from anysolver.elements import ShellElement
-from anysolver.control import CancellationToken
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+from anyfesolver.element_capabilities import ElementCapabilityError
+from anyfesolver.elements import ShellElement
+from anyfesolver.control import CancellationToken
 
 
 def _qualified_q4_model(

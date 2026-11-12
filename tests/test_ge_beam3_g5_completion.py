@@ -4,24 +4,24 @@ from hashlib import sha256
 import numpy as np
 import pytest
 
-import anysolver
-from anysolver import (
+import anyfesolver
+from anyfesolver import (
     BoundaryCondition, FEModel, FixedSupport, LoadCase, TransientConfig,
     assemble_damping_matrix, assemble_load_vector, assemble_mass_matrix,
     assemble_stiffness_matrix, solve_eigenvalue_buckling,
     solve_free_vibration, solve_linear, solve_transient_newmark,
 )
-from anysolver.beam_sections import GeneralizedBeamSection
-from anysolver.boundary import LoadCombination
-from anysolver.elements import BeamElement, QuadraticBeamElement, create_element
-from anysolver.ge_beam3_element import (
+from anyfesolver.beam_sections import GeneralizedBeamSection
+from anyfesolver.boundary import LoadCombination
+from anyfesolver.elements import BeamElement, QuadraticBeamElement, create_element
+from anyfesolver.ge_beam3_element import (
     GE_BEAM3_QUALIFIED_FORMULATION_ID, GeBeam3IntegrationError,
     GeometricallyExactBeam3D3NElement,
 )
-from anysolver.ge_beam3_mixed_element import GeBeam3MixedStateError
-from anysolver._ge_beam3_g5_completion import evidence
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver import ge_beam3_native as native
+from anyfesolver.ge_beam3_mixed_element import GeBeam3MixedStateError
+from anyfesolver._ge_beam3_g5_completion import evidence
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver import ge_beam3_native as native
 from test_ge_beam3_public_workflows import make as native_owner
 
 
@@ -222,7 +222,7 @@ def test_selector_and_provenance_boundary_remains_additive(tmp_path):
     assert type(b2) is BeamElement and type(b3) is QuadraticBeamElement
     assert create_element("beam", 7, [1, 2], "mat").__class__ is BeamElement
     assert create_element("quadratic_beam", 8, [1, 2, 3], "mat").__class__ is QuadraticBeamElement
-    assert "ge-beam3" not in anysolver.elements.ELEMENT_TYPES
+    assert "ge-beam3" not in anyfesolver.elements.ELEMENT_TYPES
     with pytest.raises((ValueError, GeBeam3IntegrationError)):
         native.create_analysis("beam", (), ())
     _record(tmp_path, "SELECTOR_AND_PROVENANCE_BOUNDARY", explicit_ge_only=True,

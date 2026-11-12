@@ -3,10 +3,10 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 from scipy import sparse
-from anysolver._stiffened_shell_increment_control import (
+from anyfesolver._stiffened_shell_increment_control import (
     AdaptiveIncrementControl, FiniteIncrementFailure, IncrementAttempt,
     _AdaptiveState, validate_control)
-from anysolver._stiffened_shell_ge_finite_experimental import (
+from anyfesolver._stiffened_shell_ge_finite_experimental import (
     FinitePointDriver, _RotationStepTooLarge, BL5TrialDomainError,
     DistributingPoseDomainError)
 
@@ -243,7 +243,7 @@ def test_probe_domain_failure_at_production_hook_preserves_parent_direction():
 
 
 def test_cancellation_is_observed_around_the_probe_without_partial_commit():
-    from anysolver.control import SolveCancelled
+    from anyfesolver.control import SolveCancelled
 
     class Token:
         def __init__(self, stage):

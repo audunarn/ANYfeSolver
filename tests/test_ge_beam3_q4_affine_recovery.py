@@ -20,13 +20,13 @@ import ge_beam3_q4_affine_recovery_producer as producer
 SCIENTIFIC_RECORDS=[]
 FIXTURES=('AFFINE_Q4_SQUARE','AFFINE_Q4_RECTANGLE','AFFINE_Q4_RHOMBUS')
 SOURCE_BINDINGS={
- 'src/anysolver/e4_pl_element.py':'7fc46a18046e043512a5fb2c3f61ed0b95b834e4dde764f63c500a885e87ea38',
- 'src/anysolver/elements.py':'f8c59792947a3c9b84416c61a4d9db98e42926d1bf21e74e736afbf6a9a88b37',
- 'src/anysolver/_ge_beam3_g3c_local_shell.py':'69d9f27a96ed7e9a5959a42a081eeafbbe72021de6e4da1f91355c5fb3850f10',
+ 'src/anyfesolver/e4_pl_element.py':'7fc46a18046e043512a5fb2c3f61ed0b95b834e4dde764f63c500a885e87ea38',
+ 'src/anyfesolver/elements.py':'f8c59792947a3c9b84416c61a4d9db98e42926d1bf21e74e736afbf6a9a88b37',
+ 'src/anyfesolver/_ge_beam3_g3c_local_shell.py':'69d9f27a96ed7e9a5959a42a081eeafbbe72021de6e4da1f91355c5fb3850f10',
  'docs/GE_BEAM3_G3C_MATRIX_SHELL_CONTRACT.md':'59a09dc7db6256a145520ae7b4f2d325dee1abca5d5b5c381a7ada57a2ad92fd',
  'docs/GE_BEAM3_G3C_MO16_SOURCE_ASSESSMENT.md':'e6b702fba5c32ef22537a137fc150fa54b63028c6910df96c5c5f0c6a722026e',
  'docs/reference_cases/ge_beam3_g3c_fixtures_v1.json':'d5fecc80c3203ac7d191b4031d64bf35c56d2900066cb01fc1dfa4276d24c006',
- 'src/anysolver/_ge_beam3_g3c_definition.py':'4b46b870fec010e3378df83c374d763f858d8f25820c14f9704dc6f0a656f0c2'}
+ 'src/anyfesolver/_ge_beam3_g3c_definition.py':'4b46b870fec010e3378df83c374d763f858d8f25820c14f9704dc6f0a656f0c2'}
 
 
 def canonical(value):

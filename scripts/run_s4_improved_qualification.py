@@ -25,7 +25,7 @@ from typing import Any, Iterable, Sequence
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 REPORT_ROOT = ROOT / "reports" / "s4_improved"
-SCHEMA_NAME = "anysolver.s4_improved.qualification"
+SCHEMA_NAME = "anyfesolver.s4_improved.qualification"
 SCHEMA_VERSION = 1
 PERF_LEASE_ENV = "ANYSOLVER_PERF_LEASE"
 
@@ -659,12 +659,12 @@ def _activation_diagnostics() -> dict[str, Any]:
         "live_geometry_objects_allowed": False,
     }
     try:
-        jit = importlib.import_module("anysolver.jit_compiler")
+        jit = importlib.import_module("anyfesolver.jit_compiler")
         result["jit"] = jit.jit_diagnostics()
     except Exception as exc:  # pragma: no cover - environment diagnostic
         result["jit"] = {"enabled": False, "disabled_reason": repr(exc)}
     for name in ("mitc4_plus_d_batch", "mitc4_plus_d_recovery"):
-        module_name = f"anysolver.shell_formulations.{name}"
+        module_name = f"anyfesolver.shell_formulations.{name}"
         try:
             module = importlib.import_module(module_name)
             diagnostics = getattr(module, "kernel_diagnostics", None)

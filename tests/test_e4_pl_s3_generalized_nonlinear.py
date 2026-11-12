@@ -6,17 +6,17 @@ import itertools
 import numpy as np
 import pytest
 
-import anysolver.e4_pl_s3_element as s3
+import anyfesolver.e4_pl_s3_element as s3
 
-from anysolver._native_rotation_state import (
+from anyfesolver._native_rotation_state import (
     NativeElementRotationView,
     create_native_rotation_state_store,
     rotation_exponential,
 )
-from anysolver.arc_length import ArcLengthControl, solve_static_arc_length
-from anysolver.boundary import BoundaryCondition, FixedSupport, LoadCase
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from anysolver.e4_pl_s3_state import (
+from anyfesolver.arc_length import ArcLengthControl, solve_static_arc_length
+from anyfesolver.boundary import BoundaryCondition, FixedSupport, LoadCase
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+from anyfesolver.e4_pl_s3_state import (
     GENERALIZED_NONLINEAR_STATE_SCHEMA,
     GENERALIZED_STATE_MODE,
     S3CommittedStateError,
@@ -24,9 +24,9 @@ from anysolver.e4_pl_s3_state import (
     seal_committed_s3_state,
     strict_canonical_json_loads,
 )
-from anysolver.fe_core import FEModel
-from anysolver.nonlinear_static import solve_static_nonlinear
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.fe_core import FEModel
+from anyfesolver.nonlinear_static import solve_static_nonlinear
+from anyfesolver.shell_sections import GeneralizedShellSection
 from _e4_pl_s3_native_trial import native_trial_for_increment
 
 

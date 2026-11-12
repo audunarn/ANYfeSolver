@@ -4,21 +4,21 @@ This explicit elastic interior profile is not engineering acceptance.
 """
 import json
 import numpy as np
-from anysolver import create_shell_element
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-from anysolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_retained_nodal_loading import NodalDeadForces, Program
-from anysolver.boundary import BoundaryCondition, FixedSupport
-from anysolver.fe_core import FEModel
-from anysolver.general_contact import NativeS3ContactPair, create_native_contact_analysis
-from anysolver.general_contact.native_retained_line_s3 import NativeRetainedRoundLineS3Interior
-from anysolver.general_contact.native_retained_line_s3_work import NativeRetainedLineS3Work
-from anysolver.general_contact.overlap import reference_shell_face
-from anysolver.general_contact.s3_skin_work import S3SkinWorkAdapter
+from anyfesolver import create_shell_element
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+from anyfesolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_retained_nodal_loading import NodalDeadForces, Program
+from anyfesolver.boundary import BoundaryCondition, FixedSupport
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact import NativeS3ContactPair, create_native_contact_analysis
+from anyfesolver.general_contact.native_retained_line_s3 import NativeRetainedRoundLineS3Interior
+from anyfesolver.general_contact.native_retained_line_s3_work import NativeRetainedLineS3Work
+from anyfesolver.general_contact.overlap import reference_shell_face
+from anyfesolver.general_contact.s3_skin_work import S3SkinWorkAdapter
 
 
 def analysis(*, beams=1, iterations=24, targets=(.5, 1.), line_stiffness_n_per_m2=10000.,
@@ -74,7 +74,7 @@ def analysis(*, beams=1, iterations=24, targets=(.5, 1.), line_stiffness_n_per_m
 
 def tight_gap_analysis(*, beams=1):
     """Explicit stronger line law and activation controls; development only."""
-    from anysolver.general_contact import NativeContactActivationSettings
+    from anyfesolver.general_contact import NativeContactActivationSettings
     return analysis(beams=beams, targets=(.25,.5,.75,1.),
         line_stiffness_n_per_m2=1.2e6, gap_tolerance_m=5e-5,
         activation_settings=NativeContactActivationSettings(1e-7 if beams==1 else 1e-6,64))

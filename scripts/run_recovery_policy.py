@@ -11,7 +11,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from anysolver.recovery_policy import DEFAULT_RECOVERY_POLICY_PATH, write_recovery_policy_report
+from anyfesolver.recovery_policy import DEFAULT_RECOVERY_POLICY_PATH, write_recovery_policy_report
 
 
 def main() -> int:

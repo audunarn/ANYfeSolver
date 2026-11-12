@@ -7,13 +7,13 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.core import (
+from anyfesolver import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.core import (
     ContactDefinition, ContactInteraction, ContactSolverSettings, ContactSurface,
 )
-from anysolver.general_contact.pair import _PlanarShellPairManager
-from anysolver.general_contact.guided_pair_transient_geometry import (
+from anyfesolver.general_contact.pair import _PlanarShellPairManager
+from anyfesolver.general_contact.guided_pair_transient_geometry import (
     guided_shell_pair_path_minimum_gap, prepare_guided_shell_pair_transient,
 )
 

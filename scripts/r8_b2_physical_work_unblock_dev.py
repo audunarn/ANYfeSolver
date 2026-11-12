@@ -24,10 +24,10 @@ ENV['PYTHONOPTIMIZE'] = '0'
 CAPS = dict(seconds=60., rss_bytes=2*1024**3, operations=50000000,
     bits=4096, fill=4000000, factor_fill=50000000, row_terms=8192)
 SOURCES = ('scripts/r8_b2_physical_work_unblock_dev.py',
-    'src/anysolver/_stiffened_shell_b2_q4_panel_experimental.py',
-    'src/anysolver/_b2_physical_linear_batch_dev.py',
-    'src/anysolver/_stiffened_shell_b2_affine_resolution.py',
-    'src/anysolver/linalg.py', 'src/anysolver/threading_policy.py',
+    'src/anyfesolver/_stiffened_shell_b2_q4_panel_experimental.py',
+    'src/anyfesolver/_b2_physical_linear_batch_dev.py',
+    'src/anyfesolver/_stiffened_shell_b2_affine_resolution.py',
+    'src/anyfesolver/linalg.py', 'src/anyfesolver/threading_policy.py',
     'scripts/_b3_e4_f03_local_scientific_supervisor.py',
     'scripts/_b3_e4_f03_local_scientific_cases.py')
 
@@ -49,10 +49,10 @@ def save(path, value):
 def static_binding():
     reg = json.loads((OLD/'registration.json').read_text())
     require(sha(ARCHIVE) == reg['saved_state_sha256'], 'original archive drift')
-    require(sha(ROOT/'src/anysolver/linalg.py') == reg['old_linalg_source_sha256'],
+    require(sha(ROOT/'src/anyfesolver/linalg.py') == reg['old_linalg_source_sha256'],
         'same factor implementation required')
-    frozen = ROOT/'docs/agent_plans/development/r8-b2-refinement-installed-20261009/site-v2/anysolver'
-    require(sha(ROOT/'src/anysolver/threading_policy.py') == sha(frozen/'threading_policy.py'),
+    frozen = ROOT/'docs/agent_plans/development/r8-b2-refinement-installed-20261009/site-v2/anyfesolver'
+    require(sha(ROOT/'src/anyfesolver/threading_policy.py') == sha(frozen/'threading_policy.py'),
         'factor thread policy drift')
     segments = []
     for p in (ROOT/SOURCES[1], frozen/'_stiffened_shell_b2_q4_panel_experimental.py'):
@@ -137,8 +137,8 @@ def child(attempt):
     import scipy
     import numba
     from threadpoolctl import threadpool_info
-    import anysolver._stiffened_shell_b2_q4_panel_experimental as panel
-    from anysolver.linalg import MatrixClass, factorize_cached
+    import anyfesolver._stiffened_shell_b2_q4_panel_experimental as panel
+    from anyfesolver.linalg import MatrixClass, factorize_cached
 
     def runtime():
         value=dict(affinity=psutil.Process().cpu_affinity(),environment={k:os.environ.get(k) for k in ENV},

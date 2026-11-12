@@ -6,10 +6,10 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver.boundary import LoadCase
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._stiffened_shell_ge_experimental import ShellPanel, _shell_reference
-from anysolver._stiffened_shell_ge_pressure_load import (
+from anyfesolver.boundary import LoadCase
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._stiffened_shell_ge_experimental import ShellPanel, _shell_reference
+from anyfesolver._stiffened_shell_ge_pressure_load import (
     GEShellPressureAction as Action, GEShellPressureLoad as Request,
     decode_checkpoint,
 )

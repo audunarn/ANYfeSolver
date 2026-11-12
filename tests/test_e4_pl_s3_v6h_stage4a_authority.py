@@ -11,7 +11,7 @@ import sys
 
 import pytest
 
-from anysolver.elements import DEFAULT_Q4_FORMULATION, DEFAULT_S3_FORMULATION
+from anyfesolver.elements import DEFAULT_Q4_FORMULATION, DEFAULT_S3_FORMULATION
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -82,7 +82,7 @@ def _one_percent_record() -> dict[str, object]:
 
 
 def test_v6h_adapter_builds_exact_v2d_and_restores_public_factory() -> None:
-    import anysolver.elements as element_factory
+    import anyfesolver.elements as element_factory
 
     adapter = _module(ADAPTER, "v6h_adapter_build")
     original = element_factory.create_shell_element
@@ -111,7 +111,7 @@ def test_v6h_adapter_builds_exact_v2d_and_restores_public_factory() -> None:
 
 
 def test_v6h_adapter_restores_factory_when_model_build_fails() -> None:
-    import anysolver.elements as element_factory
+    import anyfesolver.elements as element_factory
 
     adapter = _module(ADAPTER, "v6h_adapter_failure")
     original = element_factory.create_shell_element

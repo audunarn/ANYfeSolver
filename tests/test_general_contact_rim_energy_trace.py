@@ -12,9 +12,9 @@ from pathlib import Path
 import numpy as np
 from numpy.testing import assert_allclose
 
-from anysolver.elements import QuadraticBeamElement
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.beam_hemisphere_cylinder_work import hemisphere_cylinder_work
+from anyfesolver.elements import QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.beam_hemisphere_cylinder_work import hemisphere_cylinder_work
 
 
 def test_fixed_tip_bubble_changes_rim_energy_at_vanishing_structural_cost():

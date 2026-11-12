@@ -45,7 +45,7 @@ def main(registration_path: Path, result_path: Path, verdict_path: Path) -> None
                          default=float("inf")) for field in (
         "normal_force_difference_n", "minimum_gap_difference_m",
         "pressure_change_difference_pa")}
-    module_path = Path(result["anysolver_module"]).resolve()
+    module_path = Path(result["anyfesolver_module"]).resolve()
     checks = {
         "wheel_sha256": _sha256(wheel_path)
         == registration["wheel_sha256"],

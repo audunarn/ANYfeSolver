@@ -3,11 +3,11 @@ import gc
 import weakref
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as api
-from anysolver.control import CancellationToken
-import anysolver._stiffened_shell_b2_q4_panel_experimental as product
-from anysolver.e4_pl_element import _retire_q4_private_mesh_caches
-from anysolver._stiffened_shell_b2_assembly_diagnostics import Capture,DiagnosticRefusal,capture_assembly,active_capture
+from anyfesolver import stiffened_shell as api
+from anyfesolver.control import CancellationToken
+import anyfesolver._stiffened_shell_b2_q4_panel_experimental as product
+from anyfesolver.e4_pl_element import _retire_q4_private_mesh_caches
+from anyfesolver._stiffened_shell_b2_assembly_diagnostics import Capture,DiagnosticRefusal,capture_assembly,active_capture
 from examples.stiffened_shell_b2_physical_rigid_footprint import definition,preload
 
 

@@ -12,7 +12,7 @@ def test_history():
  from dataclasses import asdict
  from scripts.r8_f06_coupled_staged_dev import DOC,INPUT,write
  from scripts.r8_f06_cyclic_material_dev import definition,actions
- from anysolver import stiffened_shell as ss
+ from anyfesolver import stiffened_shell as ss
  out=Path(os.environ['F06_COUPLED_STAGED_OUTPUT']);peak=os.environ['F06_COUPLED_STAGED_STAGE'].endswith('peak')
  source=INPUT if peak else DOC/'attempt-installed-peak1/accepted.bin';target=.4 if peak else .41
  model=definition('coupled');owner=ss.create_analysis(definition=model)
@@ -63,9 +63,9 @@ def test_rollback():
  from dataclasses import asdict
  from scripts.r8_f06_coupled_staged_dev import DOC,write
  from scripts.r8_f06_cyclic_material_dev import definition,actions
- from anysolver import stiffened_shell as ss
- from anysolver.control import CancellationToken,SolveCancelled
- from anysolver._stiffened_shell_increment_control import FiniteIncrementFailure,AdaptiveIncrementControl
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver.control import CancellationToken,SolveCancelled
+ from anyfesolver._stiffened_shell_increment_control import FiniteIncrementFailure,AdaptiveIncrementControl
  out=Path(os.environ['F06_COUPLED_STAGED_OUTPUT']);owner=ss.create_analysis(definition=definition('coupled'))
  try:
   owner.restore((DOC/'attempt-installed-peak1/accepted.bin').read_bytes());before=identity(owner)
@@ -92,7 +92,7 @@ def test_rollback():
 def test_tamper():
  from scripts.r8_f06_coupled_staged_dev import DOC,write
  from scripts.r8_f06_cyclic_material_dev import definition
- from anysolver import stiffened_shell as ss
+ from anyfesolver import stiffened_shell as ss
  out=Path(os.environ['F06_COUPLED_STAGED_OUTPUT']);raw=(DOC/'attempt-installed-reload1/accepted.bin').read_bytes()
  fresh=ss.create_analysis(definition=definition('coupled'))
  try:

@@ -12,8 +12,8 @@ import json
 from pathlib import Path
 import subprocess
 
-import anysolver
-from anysolver import stiffened_shell
+import anyfesolver
+from anyfesolver import stiffened_shell
 import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import splu
@@ -202,8 +202,8 @@ def _same_shell_action(owner, rows, q, lam, external):
 def main(external_path: Path, output: Path):
     if output.exists():
         raise FileExistsError("preserve prior nodal comparator evidence")
-    expected = (ROOT / "src" / "anysolver" / "__init__.py").resolve()
-    if Path(anysolver.__file__).resolve() != expected:
+    expected = (ROOT / "src" / "anyfesolver" / "__init__.py").resolve()
+    if Path(anyfesolver.__file__).resolve() != expected:
         raise RuntimeError("native nodal comparator imported another checkout")
     external_bytes = external_path.read_bytes()
     external = json.loads(external_bytes)
@@ -219,7 +219,7 @@ def main(external_path: Path, output: Path):
             ("git", "rev-parse", "HEAD"), cwd=ROOT, text=True).strip(),
         "runner_sha256": sha256(Path(__file__).read_bytes()).hexdigest(),
         "external_sha256": sha256(external_bytes).hexdigest(),
-        "imported_anysolver": str(expected),
+        "imported_anyfesolver": str(expected),
         "cases": [],
         "limitations": ("Reference-linear same-native-K comparison. The five-row "
                         "nodal comparator omits native retained-port work, "

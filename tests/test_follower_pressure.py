@@ -6,29 +6,29 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver.arc_length import ArcLengthControl, solve_static_arc_length
-from anysolver.boundary import BoundaryCondition, FixedSupport, LoadCase
-from anysolver.buckling import solve_eigenvalue_buckling
-from anysolver.cylinder_benchmarks import (
+from anyfesolver.arc_length import ArcLengthControl, solve_static_arc_length
+from anyfesolver.boundary import BoundaryCondition, FixedSupport, LoadCase
+from anyfesolver.buckling import solve_eigenvalue_buckling
+from anyfesolver.cylinder_benchmarks import (
     CylinderBenchmarkConfig,
     build_cylindrical_shell_benchmark_model,
 )
-from anysolver.elements import (
+from anyfesolver.elements import (
     CoupledBeamShellElement,
     LegacyQ4DeprecationWarning,
     LegacyShellElement,
     ShellElement,
     create_shell_element,
 )
-from anysolver.fe_core import FEModel
-from anysolver.matrix_assembly import (
+from anyfesolver.fe_core import FEModel
+from anyfesolver.matrix_assembly import (
     assemble_external_load_tangent,
     assemble_geometric_stiffness_matrix,
     assemble_load_vector,
 )
-from anysolver.mesh_gen import generate_simple_panel_mesh
-from anysolver.nonlinear_static import solve_static_nonlinear
-from anysolver.validation import validate_production_model
+from anyfesolver.mesh_gen import generate_simple_panel_mesh
+from anyfesolver.nonlinear_static import solve_static_nonlinear
+from anyfesolver.validation import validate_production_model
 
 
 def _single_shell(node_count: int = 4) -> tuple[FEModel, ShellElement]:

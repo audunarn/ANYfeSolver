@@ -125,7 +125,7 @@ def test_finite_reversal_transports_condensed_tangent_and_moment_work():
 
 
 def test_finite_straight_limit_matches_p3_local_solve_and_response():
-    from anysolver.ge_beam3_mixed_element import GeometricallyExactBeam3D3NElement as P3
+    from anyfesolver.ge_beam3_mixed_element import GeometricallyExactBeam3D3NElement as P3
     ref = reference(0.)
     x, q, _ = perturbed(ref)
     made = CurvedFiniteProbe(ref, section()).evaluate(x, q)

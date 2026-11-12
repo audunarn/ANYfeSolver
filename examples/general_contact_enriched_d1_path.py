@@ -10,9 +10,9 @@ import json
 import os
 from pathlib import Path
 import numpy as np
-from anysolver.e4_pl_enriched import EnrichedProfileError
-from anysolver.general_contact.enriched_overlap import QuadraturePolicy
-from anysolver.general_contact.enriched_path import EnrichedPathOwner
+from anyfesolver.e4_pl_enriched import EnrichedProfileError
+from anyfesolver.general_contact.enriched_overlap import QuadraturePolicy
+from anyfesolver.general_contact.enriched_path import EnrichedPathOwner
 
 INPUT=Path(__file__).resolve().parents[1]/'docs/reference_cases/enriched_d1_registered_inputs_20261019.json'
 

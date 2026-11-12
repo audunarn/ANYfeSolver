@@ -38,14 +38,14 @@
     {
       "distribution": "ANYfileio",
       "licence": "MPL-2.0",
-      "requirement": "ANYfileio>=0.3.2,<0.4",
+      "requirement": "ANYfileio>=0.3.3,<0.4",
       "scope": "runtime",
       "status": "not-bundled"
     },
     {
-      "distribution": "ANYsolver-results",
+      "distribution": "ANYfeSolver-results",
       "licence": "MPL-2.0",
-      "requirement": "ANYsolver-results>=2.1,<3",
+      "requirement": "ANYfeSolver-results>=2.2,<3",
       "scope": "runtime",
       "status": "not-bundled"
     },
@@ -113,6 +113,13 @@
       "status": "not-bundled"
     },
     {
+      "distribution": "setuptools",
+      "licence": "MIT",
+      "requirement": "setuptools>=77",
+      "scope": "development",
+      "status": "not-bundled"
+    },
+    {
       "distribution": "twine",
       "licence": "Apache-2.0",
       "requirement": "twine>=5",
@@ -120,8 +127,8 @@
       "status": "not-bundled"
     }
   ],
-  "project": "ANYsolver",
+  "project": "ANYfeSolver",
   "project_licence": "MPL-2.0",
-  "release": "0.4.7",
-  "schema": "anysolver.dependency-licences-v1"
+  "release": "0.5.0",
+  "schema": "anyfesolver.dependency-licences-v1"
 }

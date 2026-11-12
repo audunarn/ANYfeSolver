@@ -232,7 +232,7 @@ def stationary_system(prepared):
     return s,prepared.cx
 
 def reduced_state(prepared,load):
-    from anysolver._b2_physical_linear_batch_dev import _accurate_sparse_residual
+    from anyfesolver._b2_physical_linear_batch_dev import _accurate_sparse_residual
     load=np.asarray(load);require(load.shape==(prepared.snapshot.k.shape[0],) and np.isfinite(load).all(),'complete finite applied load required')
     require(np.max(np.abs(load[prepared.p]),initial=0.)==0.,'loaded resultant coordinates are outside stationary zero-RHS scope')
     s,c=stationary_system(prepared);a=sparse.bmat([[s,c.T],[c,None]],format='csc')
@@ -245,7 +245,7 @@ def reduced_state(prepared,load):
     return prepared.lift(value[:len(prepared.x)]),value[len(prepared.x):]
 
 def state_metrics(snapshot,q,lm,load):
-    from anysolver._stiffened_shell_ge_experimental import _linear_equilibrium,_scaled_constraint_gap
+    from anyfesolver._stiffened_shell_ge_experimental import _linear_equilibrium,_scaled_constraint_gap
     residual=snapshot.k@q+snapshot.c.T@lm-load;work=float(q@load)
     require(np.isfinite(residual).all() and math.isfinite(work) and work!=0.,'nonzero finite physical work denominator required')
     reactions=np.zeros_like(q);reactions[snapshot.fixed]=residual[snapshot.fixed]
@@ -286,7 +286,7 @@ def family_case(level,output):
     owner=None
     record=dict(status='FAILED',qualification=False,family=spec['model_arguments'],requested_case=spec,stage='imports')
     try:
-        from anysolver import stiffened_shell
+        from anyfesolver import stiffened_shell
         from scripts.b3_e4_bl5_coherent_aggregation_dev import model
         record['source_producers']=construction_provenance(model)
         record['stage']='model-construction'
@@ -339,9 +339,9 @@ def family_case(level,output):
         physical=all(v['equilibrium']<=1e-8 and v['weak_gap']<=1e-9 and
             max(v['energy_work_relative'],v['compatible_work_relative'],v['ground_work_relative'])<=1e-8 for v in (owner_metrics,reduced_metrics))
         parity_ok=all(v<=1e-10 for v in parity.values())
-        modules={n:str(Path(m.__file__).resolve()) for n,m in sys.modules.items() if n.startswith(('anysolver','scripts.')) and getattr(m,'__file__',None)}
+        modules={n:str(Path(m.__file__).resolve()) for n,m in sys.modules.items() if n.startswith(('anyfesolver','scripts.')) and getattr(m,'__file__',None)}
         root=Path(__file__).resolve().parents[1]
-        require(all(Path(p).is_relative_to(root/'src' if n.startswith('anysolver') else root/'scripts') for n,p in modules.items()),'import escaped assigned source')
+        require(all(Path(p).is_relative_to(root/'src' if n.startswith('anyfesolver') else root/'scripts') for n,p in modules.items()),'import escaped assigned source')
         record.update(status=case_disposition(physical,parity_ok,probes),stop_family_progression=True,
             stage='completed',physical_parity_pass=bool(physical and parity_ok),
             owner_metrics=owner_metrics,reduced_metrics=reduced_metrics,parity=parity,probes=probes,kernel_positive=None,inertia=None,

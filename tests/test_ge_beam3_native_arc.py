@@ -5,17 +5,17 @@ import json
 import numpy as np
 import pytest
 from scipy import sparse
-from anysolver._ge_beam3_native_arc import ArcProgram,solve_arc,direction,capture,_ARC
-from anysolver._ge_beam3_native_arc_restart import encode_checkpoint,decode_checkpoint
-from anysolver._ge_beam3_native_translation import _PATH
-from anysolver._ge_beam3_native_generalized_program import _PROGRAM
-from anysolver._ge_beam3_native_generalized_combined_couples import _RUN
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern,_ACTIVE
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
-from anysolver._ge_beam3_native_generalized_recovery import recover_native_fields
-from anysolver._ge_beam3_p5_seeded.core import canonical,sha
-from anysolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._ge_beam3_native_arc import ArcProgram,solve_arc,direction,capture,_ARC
+from anyfesolver._ge_beam3_native_arc_restart import encode_checkpoint,decode_checkpoint
+from anyfesolver._ge_beam3_native_translation import _PATH
+from anyfesolver._ge_beam3_native_generalized_program import _PROGRAM
+from anyfesolver._ge_beam3_native_generalized_combined_couples import _RUN
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern,_ACTIVE
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
+from anyfesolver._ge_beam3_native_generalized_recovery import recover_native_fields
+from anyfesolver._ge_beam3_p5_seeded.core import canonical,sha
+from anyfesolver._ge_beam3_p5.algebra import rotation
 from test_ge_beam3_native_translation import bar as source_bar
 from test_ge_beam3_native_generalized_restart import make,pattern
 from test_ge_beam3_schur_line_program import save
@@ -96,9 +96,9 @@ def test_fold_predictor_orientation(tmp_path):
 
 
 def test_rigid_frame_covariance(tmp_path):
-    from anysolver.fe_core import FEModel
-    from anysolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+    from anyfesolver.fe_core import FEModel
+    from anyfesolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
     m,_=bar();load=DistributedPattern(LinePattern(((1,.4,-.1,.15),)),());moments=SpatialNodalMoments(((3,.1,.15,-.12),))
     p=ArcProgram((.15,.2),1.,load,moments);r=solve_arc(m,p);assert r.status=='completed',r.failure
     s=rotation([.4,-.2,.7]);shift=np.array([2.,-3.,1.]);moved=FEModel('native-arc-rotated')

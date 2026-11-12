@@ -26,15 +26,15 @@ import sys
 
 import numpy as np
 import pytest
-from anysolver import PreparedStaticCapabilityError
-from anysolver import e4_pl_element as q4_module
-from anysolver import e4_pl_s3_element as s3_module
-from anysolver import prepared_static_recovery as recovery
-from anysolver.boundary import LoadCase
-from anysolver.control import SolveCancelled
-from anysolver.elements import BeamElement
-from anysolver.fe_core import _QualifiedStateMapping
-from anysolver.prepared_static_recovery import (_capture_owned_local_recovery, _recover_owned_local,
+from anyfesolver import PreparedStaticCapabilityError
+from anyfesolver import e4_pl_element as q4_module
+from anyfesolver import e4_pl_s3_element as s3_module
+from anyfesolver import prepared_static_recovery as recovery
+from anyfesolver.boundary import LoadCase
+from anyfesolver.control import SolveCancelled
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import _QualifiedStateMapping
+from anyfesolver.prepared_static_recovery import (_capture_owned_local_recovery, _recover_owned_local,
                                                 owned_recovery_scope)
 import prepared_static_response_m16_assessment  # noqa: F401  (adds scripts/ to sys.path)
 from benchmark_static_batches import mixed_free_model
@@ -184,9 +184,7 @@ def _clone_from_traceback(excinfo):
     return None
 
 
-@pytest.mark.parametrize('kind', ['q4_staged', 'q4_warped', 's3', 'q4_pressure', 's3_pressure'])
-def test_trusted_capture_runs_warmups_on_native_trusted_path(kind):
-    model, element, options, staged = _case(kind)
+def _capture_with_guard_counts(model, element, **options):
     # Original-input policy admission precedes the private clone/trusted span,
     # and final policy revalidation follows it. Account for both real guard
     # costs separately; every clone warm-up guard is still counted. This does
@@ -216,6 +214,13 @@ def test_trusted_capture_runs_warmups_on_native_trusted_path(kind):
     assert sys.getprofile() is previous_profile
     assert policy_depth == 0
     assert policy_calls == 2 * int(type(element) is Q4 and options.get('warm_stress', True))
+    return recipe, counts, policy_counts
+
+
+@pytest.mark.parametrize('kind', ['q4_staged', 'q4_warped', 's3', 'q4_pressure', 's3_pressure'])
+def test_trusted_capture_runs_warmups_on_native_trusted_path(kind):
+    model, element, options, staged = _case(kind)
+    recipe, counts, policy_counts = _capture_with_guard_counts(model, element, **options)
     if kind == 'q4_staged':
         assert _calls(policy_counts, 'post_observation_guard') > 0
     assert _calls(counts, 'post_observation_guard') == 0, counts
@@ -254,7 +259,7 @@ _FRESH_CAPTURES = """
 import json, sys
 sys.path[:0] = json.loads(sys.argv[2])
 import test_prepared_static_response_m25 as m25
-from anysolver import prepared_static_recovery as recovery
+from anyfesolver import prepared_static_recovery as recovery
 made = []
 with recovery.trusted_capture_scope(sys.argv[1] == 'trusted'):
     for kind in m25.KINDS:
@@ -485,7 +490,7 @@ _DEFAULT_SCOPE_WITH_PLANTED_KEY = """
 import json, sys
 sys.path[:0] = json.loads(sys.argv[1])
 import test_prepared_static_response_m25 as m25
-from anysolver import prepared_static_recovery as recovery
+from anyfesolver import prepared_static_recovery as recovery
 model, element, _options, _staged = m25._case('q4_staged')
 with recovery.trusted_capture_scope(False):
     recipe = recovery._capture_owned_local_recovery(model, element)
@@ -562,20 +567,25 @@ def test_error_inside_capture_span_matches_guarded_route_and_revokes(kind):
         with pytest.raises(ValueError) as trusted_error:
             _capture_owned_local_recovery(model, element)
         clone = _clone_from_traceback(trusted_error)
-        assert clone is not None and not _accepts(clone)  # the failed clone's lease was revoked
+        if kind == 'q4_staged':
+            # Original-input Q4 policy rejects collapsed diagonals before cloning.
+            assert clone is None and 'diagonals are degenerate' in str(trusted_error.value)
+        else:
+            assert clone is not None and not _accepts(clone)
         with _foreign_error_handler():
             with pytest.raises(ValueError) as guarded_error:
                 _capture_owned_local_recovery(model, element)
         assert (type(trusted_error.value), str(trusted_error.value)) == (type(guarded_error.value), str(guarded_error.value))
     finally:
         third.x, third.y, third.z = saved
-    _recipe, counts = _profiled(lambda: _capture_owned_local_recovery(model, element))
+    _recipe, counts, _policy_counts = _capture_with_guard_counts(model, element)
     assert _calls(counts, 'trusted_post_observation_guard') > 0 and _calls(counts, 'post_observation_guard') == 0
 
 
 @pytest.mark.parametrize('kind', ['q4_staged', 'q4_warped', 's3'])
-def test_cancellation_inside_capture_span_propagates_and_revokes(kind):
-    """A cancellation raised inside the span (injected at the stage compile) propagates
+@pytest.mark.parametrize('failure', [SolveCancelled, ValueError])
+def test_cancellation_inside_capture_span_propagates_and_revokes(kind, failure):
+    """An exception raised inside the span (injected at the stage compile) propagates
     unchanged, the clone's lease is revoked, and a later capture is trusted again."""
     model, element, _options, _staged = _case(kind)
     previous = sys.gettrace()
@@ -586,19 +596,19 @@ def test_cancellation_inside_capture_span_propagates_and_revokes(kind):
             caller = frame.f_back
             owned = caller.f_locals.get('owned_element') if caller is not None else None
             inside.append(owned is not None and _accepts(owned))
-            raise SolveCancelled('injected cancellation')
+            raise failure('injected capture failure')
         return None
 
     sys.settrace(tracer)
     try:
-        with pytest.raises(SolveCancelled, match='injected cancellation') as cancelled:
+        with pytest.raises(failure, match='injected capture failure') as cancelled:
             _capture_owned_local_recovery(model, element)
     finally:
         sys.settrace(previous)
     assert inside == [True]  # the cancellation was raised inside the trusted span
     clone = _clone_from_traceback(cancelled)
     assert clone is not None and not _accepts(clone)
-    _recipe, counts = _profiled(lambda: _capture_owned_local_recovery(model, element))
+    _recipe, counts, _policy_counts = _capture_with_guard_counts(model, element)
     assert _calls(counts, 'trusted_post_observation_guard') > 0 and _calls(counts, 'post_observation_guard') == 0
 
 
@@ -696,14 +706,14 @@ def test_hook_installed_inside_span_is_refused_at_exit(monkeypatch):
 
 
 def test_late_module_hook_is_pinned(monkeypatch):
-    """Blocker 2: the anysolver package's own __getattr__ is pinned after first use; a
+    """Blocker 2: the anyfesolver package's own __getattr__ is pinned after first use; a
     replacement that merely looks canonical (same globals, file name and function
     name) removes trust, and the module __file__ is never compared through __eq__."""
     import types
-    import anysolver
+    import anyfesolver
     model, element, options, _staged = _case('q4_pressure')
     _capture_owned_local_recovery(model, element, **options)  # pins the late hooks
-    namespace = vars(anysolver)
+    namespace = vars(anyfesolver)
     code = compile('def __getattr__(name):\n    raise AttributeError(name)\n', namespace['__file__'], 'exec')
     lookalike = types.FunctionType(next(c for c in code.co_consts if isinstance(c, types.CodeType)), namespace, '__getattr__')
     compared = []
@@ -725,7 +735,7 @@ def test_span_module_prepared_static_q4_is_tracked(change, monkeypatch):
     """Blocker 4: the stage-compile module (imported after the old table) is tracked,
     for module hooks and for its sys.modules binding."""
     import types
-    from anysolver import prepared_static_q4 as q4_kernels
+    from anyfesolver import prepared_static_q4 as q4_kernels
     model, element, _options, _staged = _case('q4_staged')
     if change == 'hook':
         def hook(name):
@@ -836,7 +846,7 @@ def test_opt_in_is_revoked_in_contexts_copied_during_preparation(outcome):
     """Opt-in review: a context copied during an opted-in preparation must not keep
     the opt-in after that preparation ends (normally or by an exception)."""
     import contextvars
-    from anysolver import prepare_static_evaluator, RecoveryConfig
+    from anyfesolver import prepare_static_evaluator, RecoveryConfig
     every = RecoveryConfig(include_displacements=False, include_stresses=True, include_reactions=True)
     copied = []
 
@@ -851,7 +861,7 @@ def test_opt_in_is_revoked_in_contexts_copied_during_preparation(outcome):
 
     with recovery.trusted_capture_scope(False):  # no outer opt-in for this test
         if outcome == 'failure':
-            from anysolver import PreparedStaticError
+            from anyfesolver import PreparedStaticError
             with pytest.raises((Stop, PreparedStaticError)):  # snapshot capture wraps the callback's error
                 prepare_static_evaluator(mixed_free_model()[0], recovery_config=every, envelope_recovery_config=every,
                                          trusted_capture=True, progress_callback=progress)
@@ -867,7 +877,7 @@ def test_opt_in_is_revoked_in_contexts_copied_during_preparation(outcome):
 
 
 def test_evaluator_option_controls_trusted_capture_and_keeps_the_snapshot():
-    from anysolver import prepare_static_evaluator, RecoveryConfig
+    from anyfesolver import prepare_static_evaluator, RecoveryConfig
     every = RecoveryConfig(include_displacements=False, include_stresses=True, include_reactions=True)
     made = {}
     for flag in (None, False, True):
@@ -886,13 +896,13 @@ def test_evaluator_option_controls_trusted_capture_and_keeps_the_snapshot():
 
 @pytest.mark.parametrize('value', [1, 0, 'yes', None, np.bool_(True)])
 def test_trusted_capture_option_must_be_bool(value):
-    from anysolver import prepare_static_evaluator
+    from anyfesolver import prepare_static_evaluator
     with pytest.raises(ValueError, match='trusted_capture must be True or False'):
         prepare_static_evaluator(mixed_free_model()[0], trusted_capture=value)
 
 
 def test_response_evaluator_accepts_the_option():
-    from anysolver import PatternCase, prepare_static_response_evaluator, RecoveryConfig
+    from anyfesolver import PatternCase, prepare_static_response_evaluator, RecoveryConfig
     patterns = assessment._shell_patterns()
     stress = RecoveryConfig(include_stresses=True, include_reactions=True, components=assessment.SHELL_COMPONENTS)
     for flag in (False, True):
@@ -946,8 +956,8 @@ if kind == 'hash_collision_key':
     vars(hostile)[Key()] = 0
 sys.modules['numpy.capture_probe'] = hostile
 sys.path[:0] = json.loads(sys.argv[1])
-import anysolver.prepared_static_response
-from anysolver import prepared_static_recovery as recovery
+import anyfesolver.prepared_static_response
+from anyfesolver import prepared_static_recovery as recovery
 after_import = list(calls)  # the default path (import) inspects nothing
 admissible = recovery._capture_modules_unhooked()  # first opt-in admission builds the table
 print(json.dumps({'calls_after_import': after_import, 'calls': calls, 'opt_in_admissible': admissible}))
@@ -985,7 +995,7 @@ def test_uninspectable_module_entry_keeps_guarded_route_without_running_it(monke
 _COLLIDING_SYS_MODULES_KEY = """
 import json, sys
 calls = []
-target = 'anysolver.prepared_static_recovery'
+target = 'anyfesolver.prepared_static_recovery'
 class Key(str):
     def __hash__(self):
         return hash(target)
@@ -997,7 +1007,7 @@ class Key(str):
     __ne__ = str.__ne__
 sys.modules[Key('capture-probe-colliding-key')] = None
 sys.path[:0] = json.loads(sys.argv[1])
-import anysolver.prepared_static_response
+import anyfesolver.prepared_static_response
 print(json.dumps({'calls_from_this_module': calls}))
 """
 
@@ -1025,8 +1035,8 @@ class HostileModule(types.ModuleType):
         return plain.__get__(self)
 warnings.__class__ = HostileModule
 sys.path[:0] = json.loads(sys.argv[1])
-import anysolver.prepared_static_response
-from anysolver import prepared_static_recovery as recovery
+import anyfesolver.prepared_static_response
+from anyfesolver import prepared_static_recovery as recovery
 after_import = list(calls)
 admissible = recovery._capture_modules_unhooked()
 during_check = list(calls)
@@ -1048,8 +1058,8 @@ def test_capture_state_inspection_is_not_done_at_import():
 _RELOAD_WITH_PLANTED_KEY = """
 import dis, importlib, json, sys
 sys.path[:0] = json.loads(sys.argv[1])
-import anysolver.prepared_static_response
-from anysolver import boundary, prepared_static_recovery as recovery
+import anyfesolver.prepared_static_response
+from anyfesolver import boundary, prepared_static_recovery as recovery
 calls, import_statements = [], []
 def opname(frame):
     for instruction in dis.get_instructions(frame.f_code):

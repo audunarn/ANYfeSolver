@@ -2,13 +2,13 @@
 from dataclasses import replace
 import numpy as np
 import pytest
-from anysolver import (FEModel, create_shell_element, BoundaryCondition, ContactSurface,
+from anyfesolver import (FEModel, create_shell_element, BoundaryCondition, ContactSurface,
     ContactInteraction, ContactDefinition, ContactPathControl, ContactPathProgram,
     validate_general_contact, solve_static_nonlinear)
-from anysolver.general_contact.s3_patch_static import (
+from anyfesolver.general_contact.s3_patch_static import (
     GeneralS3PatchManager, S3_Q4_PROJECTED_PENALTY_PROFILE,
 )
-from anysolver.general_contact.s3_q4_swept import s3_q4_affine_lower
+from anyfesolver.general_contact.s3_q4_swept import s3_q4_affine_lower
 from test_general_contact_projected_penalty import _candidate
 
 
@@ -104,7 +104,7 @@ def test_existing_path_press_slide_open_recontact_and_target_motion(tmp_path):
     assert all(item['contact']['gap_tolerance_met'] for item in history)
     assert result.restart_checkpoint is not None
     assert result.info['contact_path']['profile']=='S3_Q4_PROJECTED_FINITE_PENALTY_PATH_STATIC_DEV_V0'
-    from anysolver.nonlinear_restart import canonical_checkpoint_json_bytes, load_nonlinear_checkpoint
+    from anyfesolver.nonlinear_restart import canonical_checkpoint_json_bytes, load_nonlinear_checkpoint
     model,definition,settings=build()
     opened=solve_static_nonlinear(model,contact=definition,contact_settings=settings,
         contact_path_program=program,max_load_factor=.75,emit_restart_checkpoint=True)
@@ -148,8 +148,8 @@ def test_rotated_negative_gap_bound_against_independent_decimal_corners():
 def test_structurally_deforming_target_against_independent_fixed_geometry_kkt(load):
     from itertools import product
     from math import factorial
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
-    from anysolver.general_contact.static_path import ContactPathNodalForce
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.general_contact.static_path import ContactPathNodalForce
     model,definition,settings=build(target_rigid_normal=False)
     # Reduce the registered clearance to1um and press1.3um. This limits the
     # von Karman vs linear reference discrepancy; no stiffness/gap relaxation.
@@ -224,7 +224,7 @@ def test_structurally_deforming_target_against_independent_fixed_geometry_kkt(lo
 
 def test_zero_predictor_keeps_legacy_and_uncontrolled_mechanism_rejection():
     from scipy import sparse
-    from anysolver.general_contact.static_path import _elastic_displacement_force_predictor
+    from anyfesolver.general_contact.static_path import _elastic_displacement_force_predictor
     stiffness=sparse.diags((0.,2.),format='csr')
     transform=sparse.eye(2,format='csr');row=np.array(((1.,0.),));target=np.array(((.1,),))
     with pytest.raises(ValueError,match='unresolved'):
@@ -237,8 +237,8 @@ def test_zero_predictor_keeps_legacy_and_uncontrolled_mechanism_rejection():
 def test_zero_predictor_tiny_positive_controlled_null_and_injection_refusals(monkeypatch):
     from types import SimpleNamespace
     from scipy import sparse
-    import anysolver.general_contact.static_path as path_driver
-    from anysolver.general_contact.static_path import _elastic_displacement_force_predictor
+    import anyfesolver.general_contact.static_path as path_driver
+    from anyfesolver.general_contact.static_path import _elastic_displacement_force_predictor
     transform=sparse.eye(2,format='csr');row=np.array(((1.,0.),));target=np.array(((.5,),))
     # A tiny positive diagonal reaction stays positive and exact under both
     # allowance values; no floor or snapping replaces it.

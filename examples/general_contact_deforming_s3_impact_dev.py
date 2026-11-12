@@ -9,8 +9,8 @@ import json
 from pathlib import Path
 import runpy
 import numpy as np
-from anysolver import ContactTransientSolverControls, TransientConfig, solve_transient_contact
-from anysolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver import ContactTransientSolverControls, TransientConfig, solve_transient_contact
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
 
 _fixture = runpy.run_path(str(Path(__file__).with_name('general_contact_nonuniform_s3_impact_dev.py')))
 SUPPORT, KN, GAP = (_fixture[key] for key in ('SUPPORT','KN','GAP'))

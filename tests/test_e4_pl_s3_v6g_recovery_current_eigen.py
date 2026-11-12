@@ -7,25 +7,25 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver.boundary import BoundaryCondition, FixedSupport
-from anysolver.buckling import solve_eigenvalue_buckling
-from anysolver.corotational import corotational_element_response
-from anysolver.current_state_tangent import (
+from anyfesolver.boundary import BoundaryCondition, FixedSupport
+from anyfesolver.buckling import solve_eigenvalue_buckling
+from anyfesolver.corotational import corotational_element_response
+from anyfesolver.current_state_tangent import (
     S3_V2D_CURRENT_STATE_PROJECTION_POLICY_ID,
     S3_V2D_CURRENT_STATE_TANGENT_DECOMPOSITION_POLICY_ID,
     assemble_committed_current_tangent_components,
 )
-from anysolver.e4_pl_s3_v2d_element import (
+from anyfesolver.e4_pl_s3_v2d_element import (
     FORMULATION_ID,
     IMPLEMENTATION_ID,
     NativeParityE4PLS3V2DShellElement,
 )
-from anysolver.e4_pl_s3_v2d_state import canonical_json_bytes
-from anysolver.element_capabilities import ElementCapabilityError
-from anysolver.elements import DEFAULT_Q4_FORMULATION, DEFAULT_S3_FORMULATION, create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.modal import solve_free_vibration
-from anysolver.recovery import PatchRecoveryConfig, recover_stress_result
+from anyfesolver.e4_pl_s3_v2d_state import canonical_json_bytes
+from anyfesolver.element_capabilities import ElementCapabilityError
+from anyfesolver.elements import DEFAULT_Q4_FORMULATION, DEFAULT_S3_FORMULATION, create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.modal import solve_free_vibration
+from anyfesolver.recovery import PatchRecoveryConfig, recover_stress_result
 
 
 ROOT = Path(__file__).resolve().parents[1]

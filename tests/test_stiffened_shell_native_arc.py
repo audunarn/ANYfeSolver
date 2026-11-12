@@ -2,9 +2,9 @@
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken,SolveCancelled
-from anysolver._stiffened_shell_arc_checkpoint import decode_snapshot,encode_snapshot,identities,NATIVE_CHART_POLICY
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken,SolveCancelled
+from anyfesolver._stiffened_shell_arc_checkpoint import decode_snapshot,encode_snapshot,identities,NATIVE_CHART_POLICY
 from test_stiffened_shell_native_point_displacement import owner,native_state
 from test_stiffened_shell_native_generalized_adaptive_history import exact
 from test_stiffened_shell_q4_pullback_owner import _definition
@@ -45,7 +45,7 @@ def test_native_arc_fixed_predecessor_restart_and_cancel(request,monkeypatch,fam
     if rebase:analysis.rebase_rotations(analysis._generation)
     seed_raw=analysis.checkpoint();generation=analysis._generation
     # Native generalized/fibre increments must bypass BL5 event-cell selection.
-    import anysolver._stiffened_shell_branch_event_trial as events
+    import anyfesolver._stiffened_shell_branch_event_trial as events
     def forbidden(*args,**kwargs):raise AssertionError('native arc used BL5 event fractions')
     monkeypatch.setattr(events,'trial_fraction',forbidden)
     token=CancellationToken();seen=[]
@@ -73,7 +73,7 @@ def test_native_arc_fixed_predecessor_restart_and_cancel(request,monkeypatch,fam
     assert final.free_equilibrium_ratio<=1e-8 and final.constraint_max<=1e-9
     assert not final.production_qualified
     # Cancellation after isolated preparation leaves the live endpoint intact.
-    import anysolver._stiffened_shell_arc_publication as publication
+    import anyfesolver._stiffened_shell_arc_publication as publication
     prefix=analysis.checkpoint();driver=analysis._finite_driver;token=CancellationToken()
     safe=publication.cancellation_safe_point
     def cancel_at_commit(value,stage):
@@ -114,8 +114,8 @@ def test_native_arc_corrupted_replay_is_atomic(request,family):
 def test_stable_elastic_s3_force_seed_arc_and_historical_rejection(request,monkeypatch):
     from test_stiffened_shell_native_fibre_s3_displacement import fibre_model
     from test_stiffened_shell_native_point_displacement import OPTIONS,DIRECTION
-    from anysolver._stiffened_shell_ge_checkpoint_binary import decode,encode
-    from anysolver._stiffened_shell_beam_history import shapes
+    from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode,encode
+    from anyfesolver._stiffened_shell_beam_history import shapes
     model=fibre_model();analysis=owner(request,model);legacy=owner(request,model)
     zero=(ss.NodalAction('beam',105,(0.,0.,0.,0.,0.,0.)),)
     analysis.solve(zero,(1.,),**OPTIONS)
@@ -139,8 +139,8 @@ def test_stable_elastic_s3_force_seed_arc_and_historical_rejection(request,monke
     resumed=owner(request,model);restored=resumed.restore(analysis.checkpoint())
     compare_arc(result,restored)
     assert resumed._finite_driver._stable_s3 and resumed.checkpoint()==analysis.checkpoint()
-    from anysolver import _stiffened_shell_arc_control as controller
-    from anysolver._stiffened_shell_arc_trial import correct
+    from anyfesolver import _stiffened_shell_arc_control as controller
+    from anyfesolver._stiffened_shell_arc_trial import correct
     def forbidden(*args,**kwargs):raise AssertionError('historical S3 arc seed reached trial or assembly')
     with monkeypatch.context() as patch:
         patch.setattr(controller,'select_trial',forbidden)

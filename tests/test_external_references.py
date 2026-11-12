@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-import anysolver
-from anysolver.external_references import (
+import anyfesolver
+from anyfesolver.external_references import (
     generate_external_reference_cases,
     generate_external_reference_report,
     run_calculix_reference_case,
@@ -72,8 +72,8 @@ def test_external_reference_execution_api_is_available_from_package_root() -> No
         "resolve_calculix_executable",
         "run_calculix_reference_case",
     }
-    assert names <= set(anysolver.__all__)
-    assert all(hasattr(anysolver, name) for name in names)
+    assert names <= set(anyfesolver.__all__)
+    assert all(hasattr(anyfesolver, name) for name in names)
 
 
 def test_verification_command_only_executes_calculix_when_explicitly_requested(tmp_path: Path) -> None:

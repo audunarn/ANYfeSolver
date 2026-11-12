@@ -7,8 +7,8 @@ import json
 from pathlib import Path
 
 
-ROOT = Path('C:/Github/ANYsolver/.qualification/b3-ge-e4-pl/f03-shell-port-lift-v1')
-PREVIOUS = Path('C:/Github/ANYsolver/.qualification/b3-ge-e4-pl/f03-local-trace-norm-v1')
+ROOT = Path('C:/Github/ANYfeSolver/.qualification/b3-ge-e4-pl/f03-shell-port-lift-v1')
+PREVIOUS = Path('C:/Github/ANYfeSolver/.qualification/b3-ge-e4-pl/f03-local-trace-norm-v1')
 FROZEN = '424e9148527e440930dc17662455445f78ccd91f'
 PREVIOUS_HASHES = {
     'manifest.json':'b7a93390ecb2fb3e45a29f8f4ebc5a0f495d58297d09f42591a42252d5c8e71b',
@@ -43,7 +43,7 @@ def main():
                         for name in manifest['source_sha256'])
                 and all(manifest['source_sha256'].get(name) == digest
                         for name,digest in prior['source_sha256'].items())
-                and Path(manifest['anysolver_import']).resolve().is_relative_to(
+                and Path(manifest['anyfesolver_import']).resolve().is_relative_to(
                     (SCRIPTS.parent/'src').resolve()))
     values = {}
     for i,(record,case) in enumerate(zip(rows,CASES)):

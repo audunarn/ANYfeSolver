@@ -1,6 +1,6 @@
 """Development example: coupled 4x4 Q4/S3 contact with the initial-contact seed.
 
-Run against an installed ANYsolver package. The opt-in
+Run against an installed ANYfeSolver package. The opt-in
 ``initial_contact_seed='linearized_kkt_dev'`` selector adds one
 origin-linearized KKT pressure proposal at the cold start of the explicit
 contact path; every acceptance, derivative, integration and physical
@@ -39,13 +39,13 @@ from dataclasses import replace
 
 import numpy as np
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactPathControl, ContactPathNodalForce, ContactPathProgram,
     ContactSolverSettings, ContactSurface, create_shell_element,
     solve_static_nonlinear,
 )
-from anysolver.fe_core import FEModel
+from anyfesolver.fe_core import FEModel
 
 
 def build_model():

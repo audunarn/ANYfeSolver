@@ -75,7 +75,7 @@ def test_child_non_success_is_never_accepted(tmp_path, monkeypatch, code):
 def test_runtime_reports_observed_settings_and_rejects_wrong_source(tmp_path, monkeypatch):
     monkeypatch.setenv('NUMBA_DISABLE_JIT', '1')
     numba = SimpleNamespace(config=SimpleNamespace(DISABLE_JIT=True), get_num_threads=lambda: 1)
-    modules = {'anysolver': SimpleNamespace(__file__=str(tmp_path/'__init__.py')), 'numba': numba}
+    modules = {'anyfesolver': SimpleNamespace(__file__=str(tmp_path/'__init__.py')), 'numba': numba}
     result = runtime.runtime_record(modules, tmp_path, [{'num_threads': 1}])
     assert not result['errors'] and result['jit_disabled'] is True and result['numba_threads'] == 1
     assert runtime.runtime_record(modules, tmp_path/'other')['errors']

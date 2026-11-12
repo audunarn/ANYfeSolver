@@ -5,9 +5,9 @@ import json
 import numpy as np
 import pytest
 from examples.native_connected_dynamic_dev import build,velocity
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver.control import CancellationToken
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver.control import CancellationToken
 
 
 def test_independent_connected_physical_reference_polynomial_identities():

@@ -11,8 +11,8 @@ from __future__ import annotations
 import numpy as np
 from scipy import sparse
 
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEMesh, Material
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEMesh, Material
 
 from scripts._b3_e4_f03_shell_trace import ShellPanel
 

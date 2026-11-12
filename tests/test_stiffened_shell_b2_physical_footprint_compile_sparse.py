@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver._stiffened_shell_b2_physical_rigid_footprint import (
+from anyfesolver._stiffened_shell_b2_physical_rigid_footprint import (
     B2PhysicalRigidFootprint, _node, compile_physical_footprints,
 )
 

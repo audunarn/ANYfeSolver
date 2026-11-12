@@ -1,6 +1,6 @@
-from anysolver.jit_compiler import JIT_ENABLED
-from anysolver.nonlinear_performance_bootstrap import nonlinear_performance_status
-from anysolver.nonlinear_static import _ensure_nonlinear_acceleration
+from anyfesolver.jit_compiler import JIT_ENABLED
+from anyfesolver.nonlinear_performance_bootstrap import nonlinear_performance_status
+from anyfesolver.nonlinear_static import _ensure_nonlinear_acceleration
 
 
 def test_batch_b_activation_policy():

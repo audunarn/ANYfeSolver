@@ -11,7 +11,7 @@ PACKAGE=DOC/'package'
 def sha(path):return sha256(Path(path).read_bytes()).hexdigest()
 def write(path,value):Path(path).write_text(json.dumps(value,indent=2,allow_nan=False)+'\n')
 def tree():
-    current={p.relative_to(ROOT).as_posix():sha(p) for p in (ROOT/'src/anysolver').rglob('*.py')}
+    current={p.relative_to(ROOT).as_posix():sha(p) for p in (ROOT/'src/anyfesolver').rglob('*.py')}
     if current!=json.loads((DOC/'CURRENT_SOURCE_TREE.json').read_text()):raise ValueError('current source drift')
     return current
 def bindings():
@@ -69,7 +69,7 @@ def installed_history(out):
             os.environ.get('GE_MERIT_HISTORY_OUTPUT')!=str(out)):
         raise ValueError('sole installed-history child and exact output required')
     tree();artifact();_history_slot()
-    from anysolver._stiffened_shell_displacement_corrector import PAIRED_FIXED_WORK_QUADRATIC_V1
+    from anyfesolver._stiffened_shell_displacement_corrector import PAIRED_FIXED_WORK_QUADRATIC_V1
     from scripts import r8_ge_paired_adaptive_dev as adaptive
     adaptive._connected_program(out,control_kwargs=dict(merit_globalization=PAIRED_FIXED_WORK_QUADRATIC_V1))
 def child(out,stage):

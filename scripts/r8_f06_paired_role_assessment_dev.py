@@ -30,7 +30,7 @@ SCALES=dict(physical=1.,cell_rotation=1.,multipliers=1.,native_retained=SCALE)
 ROLES=dict(physical=list(range(60)),cell_rotation=list(range(60,66))+list(range(84,90)),
     native_retained=list(range(66,84))+list(range(90,108)),multipliers=list(range(108,132)))
 MANIFEST_SHA='3288a782763b64c2d12fbf923ff0239abc3017dfcc68c234e0b5cef76480b5d9'
-B2_DELTA_PATH='src/anysolver/_stiffened_shell_b2_q4_panel_experimental.py'
+B2_DELTA_PATH='src/anyfesolver/_stiffened_shell_b2_q4_panel_experimental.py'
 ATOMIC_KEYS=('checkpoint','generation','objects','state_object','state_words','accepted_object','controller',
     'driver_object','driver_accepted_object','driver_accepted_words','applied_load_object','applied_load_bytes','snapshot_object',
     'shell_accepted_objects','shell_accepted_words','shell_predecessors_objects','shell_predecessors_words',
@@ -309,7 +309,7 @@ if __name__=='__main__':
         original.write(DOC/'BRANCH_ARTIFACT_PREFLIGHT.json',artifact(preparation=True))
         original.write(DOC/'BRANCH_PREPARATION.json',dict(status='PREPARED_NOT_LAUNCHED',bindings=bound,
             unique_basenames=len(bound),scale_by_role=SCALES,source_count=SOURCE_COUNT,stage_caps_s=[20.,60.],budget_s=180.,reserve_s=60.,
-            numerical_imports=[n for n in sys.modules if n.split('.')[0] in ('numpy','scipy','numba','anysolver','pytest')]))
+            numerical_imports=[n for n in sys.modules if n.split('.')[0] in ('numpy','scipy','numba','anyfesolver','pytest')]))
         print(json.dumps(dict(bindings=len(bound),missing=[p for p,v in bound.items() if v is None])))
     elif args.child:
         raise SystemExit(child(Path(args.out),args.stage))

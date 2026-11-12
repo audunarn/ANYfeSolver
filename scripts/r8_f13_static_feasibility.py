@@ -51,9 +51,9 @@ def runtime(registration):
     sys.path.insert(0,str(SITE))
     import numpy as np
     from scipy import sparse
-    from anysolver import stiffened_shell as api
-    import anysolver._stiffened_shell_b2_q4_panel_experimental as module
-    from anysolver.control import CancellationToken
+    from anyfesolver import stiffened_shell as api
+    import anyfesolver._stiffened_shell_b2_q4_panel_experimental as module
+    from anyfesolver.control import CancellationToken
     if not Path(api.__file__).resolve().is_relative_to(SITE):raise RuntimeError('source/site mixing')
     return SimpleNamespace(inputs=inputs,np=np,sparse=sparse,api=api,module=module,Token=CancellationToken)
 
@@ -363,8 +363,8 @@ def failure_closure_case(ctx,domain):
 
 def cache_case(ctx,domain):
     """Existing local cache on actual small registered elastic KKT operators."""
-    from anysolver.linalg import FactorizationCache,MatrixClass,factorize_cached
-    from anysolver._b2_physical_linear_definition import PhysicalB2OperatorCache
+    from anyfesolver.linalg import FactorizationCache,MatrixClass,factorize_cached
+    from anyfesolver._b2_physical_linear_definition import PhysicalB2OperatorCache
     np=ctx.np;owners=[];matrices=[]
     try:
         for variant in (None,'section','geometry'):

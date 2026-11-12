@@ -557,7 +557,7 @@ def run(
     partitions = (tuple(modules),) if development else execution_partitions(modules, workers)
     temp_parent = Path(os.environ.get("RUNNER_TEMP", tempfile.gettempdir())).resolve()
     temp_parent.mkdir(parents=True, exist_ok=True)
-    run_root = Path(tempfile.mkdtemp(prefix="anysolver-portable-ci-", dir=temp_parent))
+    run_root = Path(tempfile.mkdtemp(prefix="anyfesolver-portable-ci-", dir=temp_parent))
     launched: list[subprocess.Popen[bytes]] = []
     monitor = None
     peak_bytes = 0
@@ -591,7 +591,7 @@ def run(
                            f"--basetemp={worker_root / 'basetemp'}", *modules_for_worker]
                 environment.update(NUMBA_DISABLE_JIT="0" if jit == "on" else "1",
                     ANYSOLVER_DEVELOPMENT_RECORD=str(worker_root / "runtime.json"),
-                    ANYSOLVER_DEVELOPMENT_SOURCE=str(ROOT / "src" / "anysolver"))
+                    ANYSOLVER_DEVELOPMENT_SOURCE=str(ROOT / "src" / "anyfesolver"))
                 (worker_root / "selection.json").write_text(json.dumps({
                     "scope": "focused source development, not qualification",
                     "targets": list(modules_for_worker), "command": command,

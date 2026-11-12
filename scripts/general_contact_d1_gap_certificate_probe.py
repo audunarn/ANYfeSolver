@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 
 from general_contact_d1_coupled_refinement import build_case
-from anysolver.general_contact.s3_patch_static import _adapters
+from anyfesolver.general_contact.s3_patch_static import _adapters
 
 
 def main():

@@ -10,9 +10,9 @@ from dataclasses import replace
 from pathlib import Path
 import argparse,json,math
 import numpy as np
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken,SolveCancelled
-from anysolver._stiffened_shell_q4_algorithmic_pullback import HISTORICAL_POLICY
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken,SolveCancelled
+from anyfesolver._stiffened_shell_q4_algorithmic_pullback import HISTORICAL_POLICY
 if __package__:
     from .stiffened_shell_coupled_plastic_history import definition as base_definition,_shell_activity
 else:

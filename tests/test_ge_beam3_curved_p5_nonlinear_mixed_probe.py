@@ -83,7 +83,7 @@ def test_plastic_full_gradient_hessian_and_geometric_chain_rule():
 
 def test_missing_geometric_second_variation_is_detected(monkeypatch):
     import docs.reference_cases.ge_beam3_curved_p5_nonlinear_mixed_probe as module
-    from anysolver._ge_beam3_mixed_ad import Jet2
+    from anyfesolver._ge_beam3_mixed_ad import Jet2
     ref = reference(.4)
     x, q, u = perturbed(ref)
     moments = np.cos(np.arange(12)).reshape(2, 2, 3)/7

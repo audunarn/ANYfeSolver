@@ -1,7 +1,7 @@
 """Public DATA-only consumer of a portable native accepted-prefix capsule."""
 from pathlib import Path
-from anysolver.general_contact import read_native_contact_checkpoint_results
-from anysolver.general_contact.native_checkpoint_results import MAX_BYTES
+from anyfesolver.general_contact import read_native_contact_checkpoint_results
+from anyfesolver.general_contact.native_checkpoint_results import MAX_BYTES
 
 
 def read_portable(path):

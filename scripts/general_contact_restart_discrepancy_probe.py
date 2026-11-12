@@ -7,7 +7,7 @@ import time
 
 import numpy as np
 
-from anysolver import solve_static_nonlinear
+from anyfesolver import solve_static_nonlinear
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tests"))

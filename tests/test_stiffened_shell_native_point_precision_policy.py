@@ -9,9 +9,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver import _stiffened_shell_ge_finite_experimental as finite
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver import _stiffened_shell_ge_finite_experimental as finite
 from test_stiffened_shell_native_plastic_chart import definition, programme
 from test_stiffened_shell_ge_physical_fibre_linear import _definition as _fibre_panel
 

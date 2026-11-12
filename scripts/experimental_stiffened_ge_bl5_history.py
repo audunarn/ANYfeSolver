@@ -6,8 +6,8 @@ only; this example neither selects a multiplier basis nor qualifies BL5.
 import argparse
 import json
 import numpy as np
-import anysolver
-from anysolver import b3_ge, stiffened_shell as ss
+import anyfesolver
+from anyfesolver import b3_ge, stiffened_shell as ss
 
 
 def make_definition(basis="p0"):
@@ -40,7 +40,7 @@ def run(basis="p0"):
         assert owner.checkpoint()==restored.checkpoint()
         np.testing.assert_array_equal(a.beam_positions,b.beam_positions)
         return {"status":a.status,"qualification":owner.capabilities["status"],
-            "source":anysolver.__file__,"basis":basis,
+            "source":anyfesolver.__file__,"basis":basis,
             "shell_elements":3,"beam_elements":2,"halfcell_count":4,
             "reference_segments":owner.preflight()["experimental_line_samples"]//2,
             "accepted_factors":a.accepted_factors,"restart_bytes_equal":True,

@@ -60,7 +60,7 @@ def test_preserved_failure_and_two_fresh_diagnostics():
         assert right['sha256'] == old_rows['cycle-2/'+name]['sha256']
 
 
-@pytest.mark.parametrize('path', ['src/anysolver/_ge_beam3_adaptive_arc_program.py',
+@pytest.mark.parametrize('path', ['src/anyfesolver/_ge_beam3_adaptive_arc_program.py',
     'tests/test_ge_beam3_adaptive_arc_program.py'])
 def test_mutated_adaptive_source_is_rejected(monkeypatch, path):
     original = source

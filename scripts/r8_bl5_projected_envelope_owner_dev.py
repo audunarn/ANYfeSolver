@@ -75,7 +75,7 @@ def run(case, site, wheel, source, registration, output):
     owner = None; original_error = False; cleanup_error = None
     try:
         site, source = site.resolve(strict=True), source.resolve(strict=True)
-        common.require(not any(name.split('.')[0]=='anysolver' for name in sys.modules),
+        common.require(not any(name.split('.')[0]=='anyfesolver' for name in sys.modules),
                        'fresh process without product preimports required')
         contract, binding = registration_identity(case, registration, source)
         modules = common.installed_identity(site, wheel, WHEEL_SHA, source)
@@ -83,8 +83,8 @@ def run(case, site, wheel, source, registration, output):
         import numpy as np
         import numba
         from threadpoolctl import threadpool_info
-        import anysolver
-        from anysolver import stiffened_shell as api
+        import anyfesolver
+        from anyfesolver import stiffened_shell as api
         import b3_e4_bl5_coherent_aggregation_dev as coherent
         import b3_e4_bl5_matched_mz_native_dev as matched
         import b3_e4_bl5_matched_p0_native_refinement_dev as inventory
@@ -99,7 +99,7 @@ def run(case, site, wheel, source, registration, output):
             fixed_criteria=dict(CRITERIA), wheel=str(wheel.resolve()), wheel_sha256=WHEEL_SHA,
             site=str(site), module_sha256=modules, matching_modules=len(modules),
             helper_sha256={Path(m.__file__).name:common.sha(m.__file__) for m in source_helpers},
-            python=sys.version, imported_anysolver=anysolver.__file__, **settings)
+            python=sys.version, imported_anyfesolver=anyfesolver.__file__, **settings)
         owner, definition, policy = construct(case, coherent, api)
         common.require(owner.capabilities['status']=='EXPERIMENTAL_NOT_QUALIFIED', 'qualification boundary changed')
         xyz, layout = inventory.layout(owner, definition, policy, case.nx)

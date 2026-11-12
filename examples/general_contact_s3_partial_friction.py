@@ -1,6 +1,6 @@
 """Development-only partial S3 press/slide/reverse/open/recontact workflow.
 
-Run against an installed ANYsolver package. The target has free in-plane degrees
+Run against an installed ANYfeSolver package. The target has free in-plane degrees
 of freedom; source normal deformation is solved, not tied to the controlled node.
 The default five-increment run can take several minutes. This is not C5 acceptance.
 Use --max-load-factor 0.2 for the first press and --checkpoint-output to save it;
@@ -10,14 +10,14 @@ import argparse
 import json
 from pathlib import Path
 
-from anysolver import BoundaryCondition, create_shell_element, solve_static_nonlinear
-from anysolver.fe_core import FEModel
-from anysolver.general_contact import (
+from anyfesolver import BoundaryCondition, create_shell_element, solve_static_nonlinear
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact import (
     ContactDefinition, ContactInteraction, ContactSurface, ContactSolverSettings,
     ContactPathControl, ContactPathProgram,
 )
-from anysolver.general_contact.s3_sliding_friction import S3SlidingFrictionSettings
-from anysolver.general_contact.s3_friction_replay import S3ReplayFrictionSettings
+from anyfesolver.general_contact.s3_sliding_friction import S3SlidingFrictionSettings
+from anyfesolver.general_contact.s3_friction_replay import S3ReplayFrictionSettings
 
 
 def run_example(*, max_load_factor=1.0, restart_checkpoint=None):

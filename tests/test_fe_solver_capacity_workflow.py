@@ -11,15 +11,15 @@ from pathlib import Path
 
 import pytest
 
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.capacity_workflow import (
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.capacity_workflow import (
     CapacityWorkflowConfig,
     evaluate_mode_mesh_adequacy,
     run_nonlinear_capacity_workflow,
     write_capacity_workflow_report,
 )
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
 
 
 def _beam_column_model(num_elements: int = 6) -> FEModel:

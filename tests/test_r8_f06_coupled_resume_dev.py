@@ -6,7 +6,7 @@ pytestmark=pytest.mark.skipif('F06_COUPLED_RESUME_OUTPUT' not in os.environ,reas
 
 def capture(owner):
  import numpy as np
- from anysolver._stiffened_shell_beam_history import arrays
+ from anyfesolver._stiffened_shell_beam_history import arrays
  d=owner._finite_driver;s=d._state
  values=dict(arrays(owner._beam_parts,d._beam_predecessors,'origin')+arrays(owner._beam_parts,d._beam_origins,'accepted'))
  for label,histories in (('origin',d._shell_predecessors),('accepted',d._shell_origins)):
@@ -68,7 +68,7 @@ def test_history():
  from dataclasses import asdict
  from scripts.r8_f06_coupled_resume_dev import DOC,PREFIX,write
  from scripts.r8_f06_cyclic_material_dev import definition,actions
- from anysolver import stiffened_shell as ss
+ from anyfesolver import stiffened_shell as ss
  out=Path(os.environ['F06_COUPLED_RESUME_OUTPUT']);unload=os.environ['F06_COUPLED_RESUME_STAGE'].endswith('unload')
  model=definition('coupled');owner=ss.create_analysis(definition=model)
  source=PREFIX if unload else DOC/'attempt-installed-unload1/accepted.bin';target=.2 if unload else .41
@@ -127,11 +127,11 @@ def test_controls_rollback():
  import numpy as np
  from scripts.r8_f06_coupled_resume_dev import DOC,PREFIX,write
  from scripts.r8_f06_cyclic_material_dev import definition,actions
- from anysolver import stiffened_shell as ss
- from anysolver.control import CancellationToken,SolveCancelled
- from anysolver._stiffened_shell_increment_control import FiniteIncrementFailure,AdaptiveIncrementControl
- from anysolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,encode_compensated,decode,encode
- from anysolver._stiffened_shell_beam_history import shapes
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver.control import CancellationToken,SolveCancelled
+ from anyfesolver._stiffened_shell_increment_control import FiniteIncrementFailure,AdaptiveIncrementControl
+ from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,encode_compensated,decode,encode
+ from anyfesolver._stiffened_shell_beam_history import shapes
  out=Path(os.environ['F06_COUPLED_RESUME_OUTPUT']);model=definition('coupled');owner=ss.create_analysis(definition=model)
  try:
   owner.restore((DOC/'attempt-installed-reload1/accepted.bin').read_bytes());d=owner._finite_driver;before=identity(owner)
@@ -161,9 +161,9 @@ def test_controls_tamper():
  import numpy as np
  from scripts.r8_f06_coupled_resume_dev import DOC,PREFIX,write
  from scripts.r8_f06_cyclic_material_dev import definition
- from anysolver import stiffened_shell as ss
- from anysolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,encode_compensated,decode,encode
- from anysolver._stiffened_shell_beam_history import shapes
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,encode_compensated,decode,encode
+ from anyfesolver._stiffened_shell_beam_history import shapes
  out=Path(os.environ['F06_COUPLED_RESUME_OUTPUT']);model=definition('coupled');owner=ss.create_analysis(definition=model)
  try:
   owner.restore((DOC/'attempt-installed-reload1/accepted.bin').read_bytes());d=owner._finite_driver;before=identity(owner)

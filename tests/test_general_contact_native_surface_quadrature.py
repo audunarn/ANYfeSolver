@@ -5,9 +5,9 @@ import pytest
 from scipy.integrate import quad
 from scipy.spatial.transform import Rotation
 
-from anysolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule, surface_geometry
-from anysolver.general_contact.native_retained_station import NativeRetainedRoundStation
-from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialPointFriction
+from anyfesolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule, surface_geometry
+from anyfesolver.general_contact.native_retained_station import NativeRetainedRoundStation
+from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialPointFriction
 from test_general_contact_native_retained_station import _reference
 from test_general_contact_native_surface_s3_friction import _case
 
@@ -44,8 +44,8 @@ def test_deformed_curved_surface_parameter_tangents_and_nonradial_normal():
 
 
 def test_prepared_reference_area_matches_full_geometry_and_keeps_inversion_guard():
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-    from anysolver.general_contact.native_surface_quadrature import _prepare_reference_area
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+    from anyfesolver.general_contact.native_surface_quadrature import _prepare_reference_area
     base=_reference(True);low=np.zeros((3,3));U=np.tile(np.eye(3),(2,1,1))
     rigid=Rotation.from_rotvec((.3,-.2,.1)).as_matrix()
     for twist in (False,True):
@@ -103,8 +103,8 @@ def test_quadrature_caps_identity_and_surface_inversion():
 
 
 def test_orientation_certificate_rejects_hidden_rotation_inversion():
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
-    from anysolver.general_contact.native_surface_path import material_path_pose
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_path import material_path_pose
     reference=_reference(False)
     rule=NativeRoundSurfaceRule(7,reference,.03,axial_order=1,angular_order=1)
     axis=np.array((np.sqrt(.2),np.sqrt(.8),0.))

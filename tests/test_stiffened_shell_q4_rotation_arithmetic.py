@@ -11,10 +11,10 @@ import pytest
 from scipy.sparse.linalg import spsolve
 from scipy.spatial.transform import Rotation
 
-from anysolver import corotational as cr, stiffened_shell as ss
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
-from anysolver._stiffened_shell_ge_checkpoint_binary import encode
-from anysolver._stiffened_shell_q4_algorithmic_pullback import POLICY
+from anyfesolver import corotational as cr, stiffened_shell as ss
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import encode
+from anyfesolver._stiffened_shell_q4_algorithmic_pullback import POLICY
 from scripts.experimental_stiffened_ge_multi_member_panel import make_definition, actions_for
 from test_corotational import _single_shell_model, _rigid_rotation_field
 from test_stiffened_shell_ge_experimental import _panel
@@ -156,7 +156,7 @@ def test_other_pullbacks_keep_their_arithmetic(kind):
 
 @pytest.mark.parametrize("material_kind", (False, True))
 def test_stable_chart_snapshot_and_cancelled_successor_preserve_prefix(material_kind):
-    from anysolver.control import CancellationToken, SolveCancelled
+    from anyfesolver.control import CancellationToken, SolveCancelled
     with ExitStack() as cleanup:
         owner = ss.create_analysis(definition=_panel())
         cleanup.callback(owner.close)

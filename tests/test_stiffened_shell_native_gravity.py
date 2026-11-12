@@ -3,9 +3,9 @@
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
-from anysolver._ge_beam3_p5.algebra import rotation, skew
-from anysolver._stiffened_shell_native_gravity import compile_native_gravity
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+from anyfesolver._ge_beam3_p5.algebra import rotation, skew
+from anyfesolver._stiffened_shell_native_gravity import compile_native_gravity
 
 
 def reference(curved=False):
@@ -94,7 +94,7 @@ def test_straight_eccentric_first_moment_actual_left_update_and_chart_hessian():
 
 @pytest.mark.parametrize('order', [4, 8])
 def test_curved_centered_parity_with_independent_line_work_ad(order):
-    from anysolver._ge_beam3_fibre_line_work import evaluate
+    from anyfesolver._ge_beam3_fibre_line_work import evaluate
 
     ref = reference(curved=True)
     x, low, u, g = state(ref)
@@ -106,7 +106,7 @@ def test_curved_centered_parity_with_independent_line_work_ad(order):
 
 
 def test_order24_rigid_acceleration_matches_same_station_current_rest_mass():
-    from anysolver._ge_beam3_p5_centered.mass import current_rest_mass
+    from anyfesolver._ge_beam3_p5_centered.mass import current_rest_mass
 
     ref = reference(curved=True)
     tensor = inertia(offset=(.1, .2, -.15))
@@ -237,7 +237,7 @@ def test_eccentric_torque_underflow_fails_without_losing_representable_nodal_for
 
 
 def test_underflow_boundary_allows_exact_cancellation_and_recovers_subnormal_sum():
-    from anysolver._stiffened_shell_native_gravity import _resolve_zero_underflow
+    from anyfesolver._stiffened_shell_native_gravity import _resolve_zero_underflow
 
     smallest = float(np.nextafter(0., 1.))
     assert _resolve_zero_underflow(0., ((smallest, .25), (-smallest, .25))) == 0.

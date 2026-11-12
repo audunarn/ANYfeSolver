@@ -8,8 +8,8 @@ import hashlib,json,math
 from decimal import Decimal,localcontext
 from pathlib import Path
 import numpy as np
-from anysolver.nonlinear_restart import load_nonlinear_checkpoint,_state_records,model_configuration_fingerprint
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.nonlinear_restart import load_nonlinear_checkpoint,_state_records,model_configuration_fingerprint
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 from docs.d1_review_support.contact_finite_rotation_shell_work_20261008.oracle import posed_bounds
 
 SCHEMA='TILTED_RELATIVE_Q4_PUBLIC_OUTPUT_V1'
@@ -32,7 +32,7 @@ def finite_tree(value):
 def terminal_states(snapshot_records,checkpoint_records,model,u,coordinates):
     # static_path snapshots are copied before final owner sealing. Compare ALL
     # mechanical fields; only the two documented final seal fields are separate.
-    from anysolver.general_contact.finite_rotation_state import owner_local_coordinates,COORDINATES
+    from anyfesolver.general_contact.finite_rotation_state import owner_local_coordinates,COORDINATES
     require(coordinates==COORDINATES,'exact finite owner state coordinates')
     require([r['element_id'] for r in checkpoint_records]==sorted(model.mesh.elements),'complete terminal checkpoint state inventory')
     seals={'qualified_q4_committed_binding','state_integrity_sha256'}

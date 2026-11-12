@@ -54,7 +54,7 @@ def test_final_tested_source_hashes(index):
 
 
 def test_runtime_imports_do_not_include_research_or_legacy_mechanics():
-    tree = ast.parse((ROOT/'src/anysolver/_ge_beam3_fibre_cell.py').read_text())
+    tree = ast.parse((ROOT/'src/anyfesolver/_ge_beam3_fibre_cell.py').read_text())
     imports = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import): imports.update(alias.name for alias in node.names)

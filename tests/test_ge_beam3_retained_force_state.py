@@ -3,10 +3,10 @@ from copy import deepcopy
 import json
 import numpy as np
 import pytest
-from anysolver._ge_beam3_retained_force_program import ForceProgram, solve_force_program
-from anysolver._ge_beam3_retained_state import Context
-from anysolver._ge_beam3_p5_seeded.core import canonical, sha
-from anysolver.control import CancellationToken
+from anyfesolver._ge_beam3_retained_force_program import ForceProgram, solve_force_program
+from anyfesolver._ge_beam3_retained_state import Context
+from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
+from anyfesolver.control import CancellationToken
 from test_ge_beam3_curved_contrast_probe import make_curved
 from docs.reference_cases.ge_beam3_full_resultant_force_probe import solve_two_macro_probe
 
@@ -160,7 +160,7 @@ def test_model_mutation_before_commit_is_detected(accepted):
 
 
 def test_legacy_state_cannot_hot_restart_retained_candidate():
-    from anysolver._ge_beam3_seeded_load_program import solve_force_program as historical
+    from anyfesolver._ge_beam3_seeded_load_program import solve_force_program as historical
     model, _ = make_curved(100.)
     old = historical(model, program(), stop_after=0)
     assert old.status == 'paused'

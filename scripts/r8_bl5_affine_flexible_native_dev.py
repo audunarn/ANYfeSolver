@@ -114,14 +114,14 @@ def run(site, wheel, source, fixtures, external, output, *, nx=16, cases=('fy', 
     require(nx == 16 or support_count == 16 or tuple(cases) == ('mx',), 'the fixed-eight finer discriminator is Mx only')
     require(basis in ('discontinuous_p1', 'discontinuous_p1_cell_average'), 'explicit tested density basis required')
     require(basis != 'discontinuous_p1_cell_average' or (nx,support_count)==(16,8), 'projected comparison is bounded to the checked coarse fixture')
-    require(not any(n.split('.')[0] == 'anysolver' for n in sys.modules), 'fresh installed process required')
+    require(not any(n.split('.')[0] == 'anyfesolver' for n in sys.modules), 'fresh installed process required')
     site, fixtures = site.resolve(strict=True), fixtures.resolve(strict=True)
     sys.path[:0] = [str(site), str(fixtures)]
     import numpy as np
     import numba
     from threadpoolctl import threadpool_info
-    import anysolver
-    from anysolver import stiffened_shell
+    import anyfesolver
+    from anyfesolver import stiffened_shell
     import b3_e4_bl5_coherent_aggregation_dev as coherent
     import b3_e4_bl5_matched_mz_native_dev as matched
     import b3_e4_bl5_matched_p0_native_refinement_dev as inventory
@@ -143,10 +143,10 @@ def run(site, wheel, source, fixtures, external, output, *, nx=16, cases=('fy', 
         require(isinstance(expected_wheel_sha,str) and len(expected_wheel_sha)==64
                 and sha(wheel) == expected_wheel_sha, 'declared installed wheel required')
         modules = {}
-        source_files = {'anysolver/'+p.relative_to(source/'src/anysolver').as_posix(): p
-                        for p in (source/'src/anysolver').rglob('*.py')}
+        source_files = {'anyfesolver/'+p.relative_to(source/'src/anyfesolver').as_posix(): p
+                        for p in (source/'src/anyfesolver').rglob('*.py')}
         with zipfile.ZipFile(wheel) as archive:
-            names = {n for n in archive.namelist() if n.startswith('anysolver/') and n.endswith('.py')}
+            names = {n for n in archive.namelist() if n.startswith('anyfesolver/') and n.endswith('.py')}
             require(len(names) == 417 and names == set(source_files), 'complete417module graph required')
             for name in sorted(names):
                 data = archive.read(name)
@@ -156,7 +156,7 @@ def run(site, wheel, source, fixtures, external, output, *, nx=16, cases=('fy', 
         require(pools and all(p['num_threads'] == 1 for p in pools) and numba.get_num_threads() == 1
                 and numba.config.DISABLE_JIT, 'effective one-thread/JIT-off settings required')
         write('identity', {'wheel_sha256': expected_wheel_sha, 'wheel': str(wheel), 'module_sha256': modules,
-              'anysolver_import': anysolver.__file__, 'pools': pools, 'numba_threads': numba.get_num_threads(),
+              'anyfesolver_import': anyfesolver.__file__, 'pools': pools, 'numba_threads': numba.get_num_threads(),
               'jit_disabled': bool(numba.config.DISABLE_JIT),
               'helpers': {Path(m.__file__).name: sha(m.__file__) for m in (coherent, matched, inventory)}})
         definition, policy = support_model(coherent, nx, support_count, basis=basis)
@@ -282,7 +282,7 @@ def run(site, wheel, source, fixtures, external, output, *, nx=16, cases=('fy', 
             summary['cases'][case] = {'checks': checks, 'work_J': work, 'raw_state_sha256': sha(folder/'raw-state.npz')}
         require(owner.preflight()['reference_linear_factorizations'] == 1, 'one eligible factor for selected compatible loads')
         imports = {n: str(Path(m.__file__).resolve()) for n, m in sys.modules.copy().items()
-                   if n.split('.')[0] == 'anysolver' and getattr(m, '__file__', None)}
+                   if n.split('.')[0] == 'anyfesolver' and getattr(m, '__file__', None)}
         require(all(Path(p).is_relative_to(site) for p in imports.values()), 'canonical installed imports required')
         summary.update(status='COMPLETED_DEVELOPMENT_ONLY', imports=imports, preflight=owner.preflight())
     except BaseException as error:

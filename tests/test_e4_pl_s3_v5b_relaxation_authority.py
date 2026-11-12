@@ -154,7 +154,7 @@ def test_contract_freezes_bounds_terminal_precedence_and_inputs() -> None:
 
 
 def test_production_boundary_remains_unchanged() -> None:
-    source = (ROOT / "src" / "anysolver" / "elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src" / "anyfesolver" / "elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source
     assert not any(path.is_file() for path in (ROOT / "src").rglob("*v5b*"))

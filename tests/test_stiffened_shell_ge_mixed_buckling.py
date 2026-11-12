@@ -7,16 +7,16 @@ import json
 import numpy as np
 import pytest
 from scipy.linalg import eig
-from anysolver import stiffened_shell as public
-from anysolver import _stiffened_shell_ge_point_buckling as buckling
-from anysolver._stiffened_shell_ge_finite_experimental import _position_pair
-from anysolver._ge_beam3_variational_shell import deformation, response as shell_response
-from anysolver._ge_beam3_pose_joint import _exp_terms
-from anysolver._ge_beam3_mixed_ad import Jet2, constant_matrix, matmul, matvec, transpose, so3_exp, so3_log
-from anysolver._ge_beam3_retained_fibre import RetainedFibreOperator
-from anysolver.b3_ge import FlowCurve
-from anysolver._ge_beam3_fibre_section import FibreHistory
-from anysolver.control import CancellationToken
+from anyfesolver import stiffened_shell as public
+from anyfesolver import _stiffened_shell_ge_point_buckling as buckling
+from anyfesolver._stiffened_shell_ge_finite_experimental import _position_pair
+from anyfesolver._ge_beam3_variational_shell import deformation, response as shell_response
+from anyfesolver._ge_beam3_pose_joint import _exp_terms
+from anyfesolver._ge_beam3_mixed_ad import Jet2, constant_matrix, matmul, matvec, transpose, so3_exp, so3_log
+from anyfesolver._ge_beam3_retained_fibre import RetainedFibreOperator
+from anyfesolver.b3_ge import FlowCurve
+from anyfesolver._ge_beam3_fibre_section import FibreHistory
+from anyfesolver.control import CancellationToken
 from test_stiffened_shell_ge_point_buckling import _MockInverse
 from test_stiffened_shell_ge_experimental import _panel
 from test_stiffened_shell_ge_physical_fibre_linear import _definition
@@ -52,7 +52,7 @@ def test_full_retained_split_and_actual_s3_spatial_parity(accepted_owner):
     np.testing.assert_allclose((packet.material+packet.geometric)[free,:][:,free].toarray(),
         h[np.ix_(free,free)],rtol=1e-11,atol=2e-6)
     assert packet.primal_count==owner._shell_count+6*len(owner._beam_ids)+24*len(owner._beam_parts)
-    from anysolver._stiffened_shell_s3_conservative_buckling import conservative_components
+    from anyfesolver._stiffened_shell_s3_conservative_buckling import conservative_components
     for (_,element,slots,_),origin in zip(owner._shell_parts,pickle.loads(packet.snapshot.shell_origins),strict=True):
         if len(slots)!=18: continue
         anchors=None if packet.snapshot.shell_anchors is None else packet.snapshot.shell_anchors[slots[::6]//6]

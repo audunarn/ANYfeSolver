@@ -81,16 +81,16 @@ def probe(target, output):
         if value and not Path(value).resolve().is_relative_to(root)
     ]]
     import numpy as np
-    import anysolver
-    from anysolver.beam_sections import GeneralizedBeamSection
-    from anysolver.elements import BeamElement, QuadraticBeamElement, create_element
-    from anysolver.ge_beam3_element import GeometricallyExactBeam3D3NElement
+    import anyfesolver
+    from anyfesolver.beam_sections import GeneralizedBeamSection
+    from anyfesolver.elements import BeamElement, QuadraticBeamElement, create_element
+    from anyfesolver.ge_beam3_element import GeometricallyExactBeam3D3NElement
 
-    package = Path(anysolver.__file__).resolve()
+    package = Path(anyfesolver.__file__).resolve()
     module = Path(sys.modules[GeometricallyExactBeam3D3NElement.__module__].__file__).resolve()
     if not package.is_relative_to(target) or not module.is_relative_to(target):
         raise RuntimeError("installed package origin escaped target")
-    model = anysolver.FEModel("g5-installed")
+    model = anyfesolver.FEModel("g5-installed")
     model.add_material("mat", 2.1e5, .3, density=2.)
     for node, x in ((1, 0.), (2, 1.), (3, 2.)):
         model.add_node(node, x, 0., 0.)
@@ -100,16 +100,16 @@ def probe(target, output):
     element = create_element("ge-beam3", 1, [1, 2, 3], "mat", section=section,
         reference_orientation=(0., 1., 0.), reference_axis_direction=(1., 0., 0.))
     model.add_element(1, element)
-    model.add_boundary_condition(anysolver.FixedSupport("fixed", [1]))
-    model.add_boundary_condition(anysolver.BoundaryCondition("axial", [2, 3],
+    model.add_boundary_condition(anyfesolver.FixedSupport("fixed", [1]))
+    model.add_boundary_condition(anyfesolver.BoundaryCondition("axial", [2, 3],
         {name: 0. for name in ("uy", "uz", "rx", "ry", "rz")}))
-    stiffness, _ = anysolver.assemble_stiffness_matrix(model)
-    mass, _ = anysolver.assemble_mass_matrix(model)
-    load = anysolver.LoadCase("installed")
+    stiffness, _ = anyfesolver.assemble_stiffness_matrix(model)
+    mass, _ = anyfesolver.assemble_mass_matrix(model)
+    load = anyfesolver.LoadCase("installed")
     load.add_nodal_load(3, forces=(1., 0., 0.))
-    modal = anysolver.solve_free_vibration(model, num_modes=1)
-    transient = anysolver.solve_transient_newmark(model,
-        anysolver.TransientConfig(dt=2.e-4, t_end=6.e-4), base_load_case=load)
+    modal = anyfesolver.solve_free_vibration(model, num_modes=1)
+    transient = anyfesolver.solve_transient_newmark(model,
+        anyfesolver.TransientConfig(dt=2.e-4, t_end=6.e-4), base_load_case=load)
     if (type(element) is not GeometricallyExactBeam3D3NElement
             or element.formulation_id != "GE_BEAM3_DC_MIXED_K1_MACRO_V2"
             or type(create_element("beam", 2, [1, 3], "mat")) is not BeamElement

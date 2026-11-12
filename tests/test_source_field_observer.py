@@ -3,9 +3,9 @@ from importlib.util import find_spec
 import json
 import numpy as np
 import pytest
-from anysolver import (PatternCase,RecoveryConfig,ResourceConfig,prepare_static_response_evaluator,
+from anyfesolver import (PatternCase,RecoveryConfig,ResourceConfig,prepare_static_response_evaluator,
     export_recovery_capsule_to_sink,CancellationToken,SolveCancelled,PreparedStaticError)
-from anysolver.result_capsule import _MemorySink,_CapsuleExport,RecoveryCapsuleError
+from anyfesolver.result_capsule import _MemorySink,_CapsuleExport,RecoveryCapsuleError
 from test_prepared_static_evaluator import _bar,_case,_shell_case
 from test_result_capsule_export import _rotated_shell_model
 from test_native_affinity_fallback import prepare as native_prepare
@@ -142,7 +142,7 @@ def test_original_observer_error_remains_primary_with_secondary(tmp_path,seconda
     assert json.loads(next(tmp_path.glob('*.failure.json')).read_text())['error_type']=='FatalObserver'
 
 def test_observer_resource_check_precedes_snapshot_allocation():
-    from anysolver.recovery import ResourcePolicyError
+    from anyfesolver.recovery import ResourcePolicyError
     with prepare_static_response_evaluator(_bar(),{'p':_case(1).load_case},stress_execution='certified_library') as evaluator:
         required=evaluator._preparation_memory_peak_required_bytes
     cfg=ResourceConfig(memory_limit_bytes=int(required)+32768)
@@ -154,8 +154,8 @@ def test_observer_resource_check_precedes_snapshot_allocation():
 
 
 def test_metadata_reuse_keeps_values_fresh_and_never_retains_history():
-    from anysolver.result_capsule import _Layout
-    from anysolver.prepared_static_numeric import NumericCase,NumericField
+    from anyfesolver.result_capsule import _Layout
+    from anyfesolver.prepared_static_numeric import NumericCase,NumericField
     with prepare_static_response_evaluator(_bar(),{'p':_case(1).load_case},stress_execution='certified_library',
             recovery_config=RecoveryConfig(include_stresses=True,include_displacements=True,include_reactions=False)) as evaluator:
         cases=[PatternCase('a',{'p':1.}),PatternCase('b',{'p':2.})]
@@ -184,7 +184,7 @@ def test_metadata_reuse_keeps_values_fresh_and_never_retains_history():
 
 @pytest.mark.parametrize('name',['id','type'])
 def test_observer_builtin_shadow_injection_refuses_before_next_snapshot(name):
-    import anysolver.result_capsule as module
+    import anyfesolver.result_capsule as module
     calls=[]
     def observer(payload):
         calls.append(payload)
@@ -224,8 +224,8 @@ def test_stride_mutation_aborts_and_preserves_old_target(tmp_path,name):
     assert list(tmp_path.glob('*.failure.json'))
 
 def test_cached_static_stride_mutation_refuses_before_reuse():
-    from anysolver.result_capsule import _Layout
-    from anysolver.prepared_static_numeric import NumericCase,NumericField
+    from anyfesolver.result_capsule import _Layout
+    from anyfesolver.prepared_static_numeric import NumericCase,NumericField
     with prepare_static_response_evaluator(_bar(),{'p':_case(1).load_case},stress_execution='certified_library') as evaluator:
         exporter=_CapsuleExport(evaluator,[PatternCase('a',{'p':1.})],model_identity='m',mesh_identity='g',source_field_observer=lambda p:None)
         layout=_Layout();layout.add(1,2)
@@ -237,7 +237,7 @@ def test_cached_static_stride_mutation_refuses_before_reuse():
 @pytest.mark.parametrize('target',['_observer_freeze','MappingProxyType','_require_observer_environment','_observer_layout',
                                   '_observer_array_facts','_require_observer_array_facts'])
 def test_new_observer_executable_binding_mutations_refuse(target):
-    import anysolver.result_capsule as rc
+    import anyfesolver.result_capsule as rc
     owner=rc._CapsuleExport if target=='_observer_layout' else rc
     original=getattr(owner,target);calls=[]
     def observer(payload):
@@ -254,13 +254,13 @@ def test_large_intermediate_backing_remains_alive_during_validation():
     # crash the pytest process when an OS-sized backing allocation is released.
     import subprocess,sys
     from pathlib import Path
-    import anysolver.result_capsule as rc
+    import anyfesolver.result_capsule as rc
     package_root=str(Path(rc.__file__).resolve().parent.parent)
     code=r'''
 import gc,sys
 sys.path.insert(0,sys.argv[1])
 import numpy as np
-from anysolver.result_capsule import (_observer_freeze,_observer_array_facts,
+from anyfesolver.result_capsule import (_observer_freeze,_observer_array_facts,
     _require_observer_array_facts,RecoveryCapsuleError)
 view=_observer_freeze(np.arange(262144,dtype=np.float64))
 expected=float(view.sum())
@@ -299,7 +299,7 @@ def test_existing_primary_cause_survives_secondary_cancel():
     assert any('SolveCancelled' in note for note in primary.__notes__)
 
 def test_batch_ledger_counts_python_containers_and_scalar_records():
-    from anysolver.result_capsule import _observer_numeric_bytes
+    from anyfesolver.result_capsule import _observer_numeric_bytes
     record={'nodes':{i:[float(i)]*6 for i in range(32)},'provenance':['source']*32}
     assert _observer_numeric_bytes(record)>32*6*8
 
@@ -347,8 +347,8 @@ def test_intermediate_base_replacement_second_callback_refuses(tmp_path,name,pri
 
 @pytest.mark.parametrize('name',['associations','native_ordinals'])
 def test_cached_intermediate_base_replacement_refuses_before_reuse(name):
-    from anysolver.result_capsule import _Layout
-    from anysolver.prepared_static_numeric import NumericCase,NumericField
+    from anyfesolver.result_capsule import _Layout
+    from anyfesolver.prepared_static_numeric import NumericCase,NumericField
     with prepare_static_response_evaluator(_bar(),{'p':_case(1).load_case},stress_execution='certified_library') as evaluator:
         exporter=_CapsuleExport(evaluator,[PatternCase('a',{'p':1.})],model_identity='m',mesh_identity='g',source_field_observer=lambda p:None)
         layout=_Layout();layout.add(1,2)

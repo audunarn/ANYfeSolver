@@ -15,7 +15,7 @@ if not os.environ.get('NUMBA_CACHE_DIR'):
     raise RuntimeError('set an explicit writable NUMBA_CACHE_DIR before import')
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'src'))
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 import scipy
@@ -280,7 +280,7 @@ def main():
             for name in names}
     manifest={'purpose':'EXPLORATORY_DISTINCT_LOCAL_YAW_SPAN_NOT_F03_ACCEPTANCE',
               'cases':CASES,'spaces':('k4','macro-yaw'),
-              'source_sha256':hashes,'anysolver_import':str(Path(anysolver.__file__).resolve()),
+              'source_sha256':hashes,'anyfesolver_import':str(Path(anyfesolver.__file__).resolve()),
               'python':sys.version,'numpy':np.__version__,'scipy':scipy.__version__,
               'numba':numba.__version__,'cache':os.environ['NUMBA_CACHE_DIR'],
               'blas_threads':1,'max_dense_kkt_rows':1200,

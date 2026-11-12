@@ -2,8 +2,8 @@
 import threading
 import numpy as np
 import pytest
-from anysolver_results import derive_field, DerivationError
-from anysolver_results.formulas import principal_stresses, shell_surface_tensor
+from anyfesolver_results import derive_field, DerivationError
+from anyfesolver_results.formulas import principal_stresses, shell_surface_tensor
 
 
 def original(tensor):
@@ -30,7 +30,7 @@ def test_station_workers_preserve_original_words_and_join(shape,order):
     np.testing.assert_array_equal(actual.view(np.uint64),expected.view(np.uint64))
     assert value.tobytes(order='A')==before
     assert execution['workers']==(2 if expected.size>=4096*3 else 1)
-    assert not any(t.name.startswith('anysolver-principal') for t in threading.enumerate())
+    assert not any(t.name.startswith('anyfesolver-principal') for t in threading.enumerate())
 
 
 def test_public_derived_parallel_field_matches_original_tensor():
@@ -61,4 +61,4 @@ def test_parallel_refusals_preserve_original_validation(kind):
     else:value=value[:,:2,:2]
     with pytest.raises(ValueError) as reference:original(value)
     with pytest.raises(ValueError,match=str(reference.value)):principal_stresses(value,workers=2)
-    assert not any(t.name.startswith('anysolver-principal') for t in threading.enumerate())
+    assert not any(t.name.startswith('anyfesolver-principal') for t in threading.enumerate())

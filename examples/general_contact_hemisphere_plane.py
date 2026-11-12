@@ -1,9 +1,9 @@
 """Opt-in static hemisphere/rim seam; a development example, not qualification."""
-from anysolver import (BoundaryCondition, ContactDefinition, ContactSurface,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactSurface,
     ContactInteraction, ContactSolverSettings, RigidContactBody, LoadCase,
     solve_static_nonlinear)
-from anysolver.fe_core import FEModel
-from anysolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement
 
 
 def run():

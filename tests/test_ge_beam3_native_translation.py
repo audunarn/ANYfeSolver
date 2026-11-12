@@ -6,14 +6,14 @@ import json
 import numpy as np
 import pytest
 from scipy import sparse
-from anysolver._ge_beam3_native_translation import TranslationProgram,solve_translation,bordered,effective,load_point,_PATH
-from anysolver._ge_beam3_native_translation_restart import encode_checkpoint,decode_checkpoint
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern,_ACTIVE
-from anysolver._ge_beam3_native_generalized_combined_couples import _RUN
-from anysolver._ge_beam3_native_generalized_recovery import recover_native_fields
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
-from anysolver._ge_beam3_p5_seeded.core import canonical,sha
+from anyfesolver._ge_beam3_native_translation import TranslationProgram,solve_translation,bordered,effective,load_point,_PATH
+from anyfesolver._ge_beam3_native_translation_restart import encode_checkpoint,decode_checkpoint
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern,_ACTIVE
+from anyfesolver._ge_beam3_native_generalized_combined_couples import _RUN
+from anyfesolver._ge_beam3_native_generalized_recovery import recover_native_fields
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
+from anyfesolver._ge_beam3_p5_seeded.core import canonical,sha
 from test_ge_beam3_native_generalized_restart import make,pattern
 from test_ge_beam3_native_generalized_combined_couples import convert,simple
 from test_ge_beam3_schur_line_program import save
@@ -99,7 +99,7 @@ def test_signed_zero_mapping(tmp_path):
 
 @pytest.mark.parametrize('kind',['failure','mutation','nested'])
 def test_transaction_failure(kind,tmp_path,monkeypatch):
-    import anysolver._ge_beam3_native_translation as module
+    import anyfesolver._ge_beam3_native_translation as module
     m,p=bar();genesis=solve_translation(m,p,stop_after=0)
     fresh,p=bar();original=module.factorize
     if kind=='failure':

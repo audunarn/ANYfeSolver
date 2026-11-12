@@ -5,16 +5,16 @@ import json
 import numpy as np
 import pytest
 
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._ge_beam3_native_analysis import COMBINED_WORKFLOW, FORCE_WORKFLOW_SCHEMA
-from anysolver._ge_beam3_native_force_adaptation import AdaptiveForcePolicy
-from anysolver._ge_beam3_native_generalized_combined_couples import solve_combined_static, _RUN
-from anysolver._ge_beam3_native_generalized_combined_restart import LoadPoint, encode_checkpoint, decode_checkpoint
-from anysolver._ge_beam3_native_generalized_restart import LoadPoint as DistributedPoint
-from anysolver._ge_beam3_native_generalized_program import _PROGRAM
-from anysolver._ge_beam3_native_generalized_loading import _ACTIVE
-from anysolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._ge_beam3_native_analysis import COMBINED_WORKFLOW, FORCE_WORKFLOW_SCHEMA
+from anyfesolver._ge_beam3_native_force_adaptation import AdaptiveForcePolicy
+from anyfesolver._ge_beam3_native_generalized_combined_couples import solve_combined_static, _RUN
+from anyfesolver._ge_beam3_native_generalized_combined_restart import LoadPoint, encode_checkpoint, decode_checkpoint
+from anyfesolver._ge_beam3_native_generalized_restart import LoadPoint as DistributedPoint
+from anyfesolver._ge_beam3_native_generalized_program import _PROGRAM
+from anyfesolver._ge_beam3_native_generalized_loading import _ACTIVE
+from anyfesolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_native_analysis import analysis
 from test_ge_beam3_native_generalized_restart import make, pattern, scale, CASES, EMPTY
 from test_ge_beam3_native_generalized_combined_restart import moment_scale, packet, snapshots
@@ -189,7 +189,7 @@ def test_final_progress_cancellation_does_not_issue_envelope(monkeypatch):
 
 
 def test_adaptive_cutback_preserves_exact_accepted_origin(monkeypatch, tmp_path):
-    import anysolver.nonlinear_static as solver
+    import anyfesolver.nonlinear_static as solver
     made = owned(CASES[1])
     line = pattern(made.model)
     fixed = made.solve_spatial_couples(MOMENTS, distributed_pattern=line, steps=2)

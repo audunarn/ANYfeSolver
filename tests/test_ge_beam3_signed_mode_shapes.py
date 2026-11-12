@@ -2,10 +2,10 @@
 
 import numpy as np
 import pytest
-from anysolver._ge_beam3_loaded_modal import prepare
-from anysolver._ge_beam3_p5_loads.core import canonical
-from anysolver._native_signed_factor_modes import solve_signed_factor_modes
-from anysolver._ge_beam3_signed_loaded_modes import solve_signed_loaded_modes
+from anyfesolver._ge_beam3_loaded_modal import prepare
+from anyfesolver._ge_beam3_p5_loads.core import canonical
+from anyfesolver._native_signed_factor_modes import solve_signed_factor_modes
+from anyfesolver._ge_beam3_signed_loaded_modes import solve_signed_loaded_modes
 from docs.reference_cases.ge_beam3_loaded_factor_split_probe import split_accepted_elastic_operator
 from docs.reference_cases.ge_beam3_straight_discrete_signed_reference import bending_roots
 from test_ge_beam3_signed_loaded_spectrum import make

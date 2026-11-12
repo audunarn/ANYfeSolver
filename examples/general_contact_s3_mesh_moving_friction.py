@@ -8,8 +8,8 @@ coupled equations. This is development code verification, not qualification.
 import argparse,json
 from pathlib import Path
 import numpy as np
-from anysolver import FEModel,BoundaryCondition,create_shell_element,solve_static_nonlinear
-from anysolver.general_contact import (ContactDefinition,ContactSurface,ContactInteraction,
+from anyfesolver import FEModel,BoundaryCondition,create_shell_element,solve_static_nonlinear
+from anyfesolver.general_contact import (ContactDefinition,ContactSurface,ContactInteraction,
     ContactSolverSettings,ContactPathControl,ContactPathProgram,ContactPathNodalForce,
     S3MeshMovingNormalFrictionSettings)
 
@@ -50,7 +50,7 @@ def build_case():
     friction=S3MeshMovingNormalFrictionSettings(.3,1000.,(2e-8,)*60,201,
                                            pressure_step_n=1e-8,closed_point_gap_tolerance_m=1e-10)
     # Manufactured code-verification load, independent of production contact.
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
     K=assemble_stiffness_matrix(model)[0]
     assert K.shape==(60,60)
     pose=np.zeros(60);opened=np.zeros(60)

@@ -6,12 +6,12 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSurface, ContactSolverSettings, LoadCase, create_shell_element,
     solve_static_nonlinear)
-from anysolver.fe_core import FEModel
-from anysolver.general_contact import TriangulatedRigidContactBody
-from anysolver.general_contact.triangulated_rigid_static import TriangulatedRigidManager
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact import TriangulatedRigidContactBody
+from anyfesolver.general_contact.triangulated_rigid_static import TriangulatedRigidManager
 
 R = np.array(((0., 0., 1.), (1., 0., 0.), (0., 1., 0.)))
 SHIFT = np.array((1/8, -1/4, 1/2))
@@ -110,7 +110,7 @@ def test_connected_patch_reference_and_numbering_invariance(monkeypatch):
     mappings = [_map(baseline[0], entry[0], entry[3], entry[4]) for entry in variants]
     G = mappings[-1]
     from scipy import sparse
-    from anysolver.assembly import build_constraint_transformation
+    from anyfesolver.assembly import build_constraint_transformation
     charts = []
     for model, *_ in variants:
         model.apply_boundary_conditions()
@@ -119,7 +119,7 @@ def test_connected_patch_reference_and_numbering_invariance(monkeypatch):
         charts.append(T.toarray())
     for mapping, chart in zip(mappings, charts):
         assert np.array_equal(chart@chart.T, mapping@charts[0]@charts[0].T@mapping.T)
-    solver = importlib.import_module('anysolver.nonlinear_static')
+    solver = importlib.import_module('anyfesolver.nonlinear_static')
     original_recovery = solver._support_reaction_resultants
     captured = {}
     def capture(owner, imbalance, **kwargs):

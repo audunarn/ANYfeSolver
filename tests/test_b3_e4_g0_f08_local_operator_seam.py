@@ -6,15 +6,15 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver._ge_beam3_fibre_line_work import evaluate as line_work
-from anysolver._ge_beam3_generalized_static_boundary import (
+from anyfesolver._ge_beam3_fibre_line_work import evaluate as line_work
+from anyfesolver._ge_beam3_generalized_static_boundary import (
     cell_couple_load, spatial_jacobian,
 )
-from anysolver._ge_beam3_operator_validation_scope import operator_call
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_retained_fibre_state import Context as FibreContext
-from anysolver._ge_beam3_retained_fibre_program import solve_force_program
-from anysolver._ge_beam3_seeded_load_program import ForceProgram
+from anyfesolver._ge_beam3_operator_validation_scope import operator_call
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_retained_fibre_state import Context as FibreContext
+from anyfesolver._ge_beam3_retained_fibre_program import solve_force_program
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram
 from scripts._b3_e4_f03_native_fixture import build
 from scripts.b3_e4_f03_square_section_control import square_torsion_constant
 from test_ge_beam3_retained_fibre import make_model

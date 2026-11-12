@@ -6,10 +6,10 @@ import pytest
 from docs.reference_cases.ge_beam3_generalized_energy_chain import energy_chain
 from docs.reference_cases.ge_beam3_generalized_virgin_chain import virgin_chain
 from docs.reference_cases.ge_beam3_decimal_chain_audit import factor_chain_modes
-from anysolver import _ge_beam3_native_generalized_modal as modal
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._native_stationary_spectrum import solve_stationary_spectrum
+from anyfesolver import _ge_beam3_native_generalized_modal as modal
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._native_stationary_spectrum import solve_stationary_spectrum
 from test_ge_beam3_schur_line_program import save
 from test_ge_beam3_generalized_slenderness_diagnostic import make,kinetic
 

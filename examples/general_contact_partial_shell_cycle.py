@@ -9,12 +9,12 @@ import json
 from pathlib import Path
 
 import numpy as np
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction, ContactPathControl,
     ContactPathProgram, ContactSolverSettings, ContactSurface, FEModel,
     create_shell_element, solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.nonlinear_restart import (
+from anyfesolver.nonlinear_restart import (
     canonical_checkpoint_json_bytes, load_nonlinear_checkpoint,
 )
 

@@ -8,17 +8,17 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import stiffened_shell
-from anysolver import _stiffened_shell_consumer_capabilities as consumer
-from anysolver._stiffened_shell_b2_experimental import ExperimentalB2Capabilities
-from anysolver._stiffened_shell_b2_q4_panel_experimental import (
+from anyfesolver import stiffened_shell
+from anyfesolver import _stiffened_shell_consumer_capabilities as consumer
+from anyfesolver._stiffened_shell_b2_experimental import ExperimentalB2Capabilities
+from anyfesolver._stiffened_shell_b2_q4_panel_experimental import (
     ExperimentalB2MixedReferenceModalCapabilities,
     ExperimentalB2Q4FootprintCapabilities, B2PhysicalRigidFootprintCapabilities,
 )
-from anysolver._stiffened_shell_b2_nodal_footprint import (
+from anyfesolver._stiffened_shell_b2_nodal_footprint import (
     B2NodalRigidFootprint, LAW_ID as NODAL_LAW,
 )
-from anysolver._stiffened_shell_b2_physical_rigid_footprint import (
+from anyfesolver._stiffened_shell_b2_physical_rigid_footprint import (
     B2PhysicalRigidFootprint, LAW_ID as PHYSICAL_LAW,
 )
 

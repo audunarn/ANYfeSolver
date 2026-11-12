@@ -9,8 +9,8 @@ oracle does not invoke the production overlap or mortar integration kernel.
 import numpy as np
 import pytest
 
-from anysolver.general_contact.overlap import PlanarFace
-from anysolver.general_contact.patch_mortar import MovingPatchMortar, PatchFace
+from anyfesolver.general_contact.overlap import PlanarFace
+from anyfesolver.general_contact.patch_mortar import MovingPatchMortar, PatchFace
 
 
 _STIFFNESS = 4.0e6  # Pa/m

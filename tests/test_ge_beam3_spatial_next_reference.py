@@ -63,6 +63,6 @@ def test_frozen_continuum_source_and_no_production_imports():
     for module in (reference,reference.base):
         tree=ast.parse(Path(module.__file__).read_text())
         for node in ast.walk(tree):
-            if isinstance(node,ast.Import):assert all(not x.name.startswith('anysolver') for x in node.names)
-            if isinstance(node,ast.ImportFrom):assert not (node.module or '').startswith('anysolver')
+            if isinstance(node,ast.Import):assert all(not x.name.startswith('anyfesolver') for x in node.names)
+            if isinstance(node,ast.ImportFrom):assert not (node.module or '').startswith('anyfesolver')
         assert not any(isinstance(n,ast.Call) and isinstance(n.func,ast.Name) and n.func.id in ('eval','exec','__import__') for n in ast.walk(tree))

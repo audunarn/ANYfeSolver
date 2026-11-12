@@ -67,10 +67,10 @@ def main() -> int:
     args = parser.parse_args()
 
     sys.path.insert(0, str(args.site.resolve()))
-    import anysolver
-    from anysolver import nonlinear_static
+    import anyfesolver
+    from anyfesolver import nonlinear_static
 
-    imported = Path(anysolver.__file__).resolve()
+    imported = Path(anyfesolver.__file__).resolve()
     imported.relative_to(args.site.resolve())
     campaign, campaign_runner_sha256, build_case_sha256 = (
         _load_campaign_module(
@@ -119,7 +119,7 @@ def main() -> int:
             }
         )
     payload = {
-        "schema": "anysolver.nonlinear_static.representative_profile",
+        "schema": "anyfesolver.nonlinear_static.representative_profile",
         "version": 1,
         "case": args.case,
         "status": str(result.status),
@@ -131,8 +131,8 @@ def main() -> int:
         "profile_total_seconds": float(stats.total_tt),
         "profile": str(args.profile.resolve()),
         "identity": {
-            "anysolver_module": str(imported),
-            "anysolver_version": importlib.metadata.version("anysolver"),
+            "anyfesolver_module": str(imported),
+            "anyfesolver_version": importlib.metadata.version("anyfesolver"),
             "manifest_sha256": campaign._sha256(args.manifest),
             "candidate_revision": provenance["candidate_revision"],
             "candidate_wheel_sha256": provenance["candidate_wheel_sha256"],

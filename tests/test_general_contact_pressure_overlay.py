@@ -4,10 +4,10 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver.general_contact.pressure_overlay import subdivide_q4_pressure_faces
-from anysolver.general_contact.s3_patch_augmented import MovingS3PatchProjectedNormal
-from anysolver.general_contact.s3_patch_mortar_energy import S3PatchFace
-from anysolver.general_contact.s3_patch_mortar_energy import (
+from anyfesolver.general_contact.pressure_overlay import subdivide_q4_pressure_faces
+from anyfesolver.general_contact.s3_patch_augmented import MovingS3PatchProjectedNormal
+from anyfesolver.general_contact.s3_patch_mortar_energy import S3PatchFace
+from anyfesolver.general_contact.s3_patch_mortar_energy import (
     MovingS3PatchPrimalMortarPenalty,
 )
 

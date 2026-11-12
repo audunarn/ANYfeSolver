@@ -5,9 +5,9 @@ import pytest
 from scipy import linalg
 from scipy.spatial.transform import Rotation
 
-from anysolver.corotational import rotation_matrix_from_vector
-from anysolver._ge_beam3_pose_joint import RigidPoseJoint
-from anysolver.elements import create_shell_element
+from anyfesolver.corotational import rotation_matrix_from_vector
+from anyfesolver._ge_beam3_pose_joint import RigidPoseJoint
+from anyfesolver.elements import create_shell_element
 from scripts._b3_e4_f03_native_fixture import build
 from scripts._b3_e4_f03_native_spatial_port import NativeHalfCellSpatialPort
 from scripts.b3_e4_f03_plate_patch_work import raw_e4_tangent

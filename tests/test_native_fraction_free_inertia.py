@@ -6,7 +6,7 @@ This establishes represented-pencil equality, not continuum certification.
 from fractions import Fraction
 import numpy as np
 import pytest
-from anysolver import _native_exact_shift_inertia as implementation
+from anyfesolver import _native_exact_shift_inertia as implementation
 
 
 def rational_inertia(h, mass, shift):
@@ -92,7 +92,7 @@ def test_inputs_remain_unchanged():
 
 def test_benchmark_guard_accepts_reduction_stage(monkeypatch):
     from functools import partial
-    from docs.reference_cases import ge_beam3_exact_inertia_benchmark as bench
+    from fixtures.reference_cases import ge_beam3_exact_inertia_benchmark as bench
     monkeypatch.setattr(bench.time,'monotonic',lambda: 10.)
     check=partial(bench.deadline_check,0.)
     check(); check('reduction.start')
@@ -104,7 +104,7 @@ def test_benchmark_guard_accepts_reduction_stage(monkeypatch):
 def test_benchmark_complete_saved_packet_wiring(tmp_path,monkeypatch):
     import json
     import runpy
-    from docs.reference_cases import ge_beam3_exact_inertia_benchmark as bench
+    from fixtures.reference_cases import ge_beam3_exact_inertia_benchmark as bench
     if not bench.INPUT.exists(): pytest.skip('external saved packet not present')
     monkeypatch.setattr(bench,'guard',lambda _:None)
     for key,value in bench.THREAD_ENVIRONMENT.items(): monkeypatch.setenv(key,value)

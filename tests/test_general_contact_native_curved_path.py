@@ -7,18 +7,18 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver.control import CancellationToken,SolveCancelled
-from anysolver.general_contact.native_curved_plane_work import NativeCurvedMaterialPlaneWork
-from anysolver.general_contact.native_curved_geometry import curved_patch_geometry_control
-from anysolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
-from anysolver.general_contact.native_surface_normal import StraightNormalIntegrationSettings
-from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+from anyfesolver.control import CancellationToken,SolveCancelled
+from anyfesolver.general_contact.native_curved_plane_work import NativeCurvedMaterialPlaneWork
+from anyfesolver.general_contact.native_curved_geometry import curved_patch_geometry_control
+from anyfesolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
+from anyfesolver.general_contact.native_surface_normal import StraightNormalIntegrationSettings
+from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
 from test_general_contact_native_retained_station import _reference
 from test_general_contact_native_surface_bounds import _independent_point
 
 
 def test_projected_zero_roll_bounds_cover_independent_planar_derivatives():
-    from anysolver.general_contact.native_curved_geometry import _reference_plane_derivative_bounds
+    from anyfesolver.general_contact.native_curved_geometry import _reference_plane_derivative_bounds
     reference=_reference(True);K=np.array(((0.,-1.,0.),(1.,0.,0.),(0.,0.,0.)))
     for U in (np.eye(3),Rotation.from_rotvec((.3,-.2,.4)).as_matrix()):
         for n in (U@np.array((0.,0.,1.)),U@np.array((1e-8,-2e-8,1.)),np.array((.2,.3,.7))):
@@ -36,8 +36,8 @@ def test_projected_zero_roll_bounds_cover_independent_planar_derivatives():
 
 
 def test_projected_bounds_nonzero_roll_fallback_and_clipping_ownership():
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-    from anysolver.general_contact.native_curved_geometry import (
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+    from anyfesolver.general_contact.native_curved_geometry import (
         _reference_plane_derivative_bounds,_reference_norm_bounds,
         _reference_second_bound,_reference_unclipped_interval)
     ref=_reference(True);frames=[]
@@ -54,7 +54,7 @@ def test_projected_bounds_nonzero_roll_fallback_and_clipping_ownership():
 
 
 def test_root_band_without_interior_float_reports_parameter_resolution():
-    from anysolver.general_contact.native_curved_plane_work import _root_band_station
+    from anyfesolver.general_contact.native_curved_plane_work import _root_band_station
     law=_law();p=law.reference.coordinates;U=np.tile(np.eye(3),(2,1,1))
     with pytest.raises(ValueError,match='root-band parameter resolution exhausted'):
         _root_band_station(law.rule,p,np.zeros((3,3)),U,1,.5,np.nextafter(.5,np.inf),
@@ -211,8 +211,8 @@ def test_curved_positive_rotating_path_subdivision_limits_cancellation_and_ident
 
 def test_root_band_angular_union_keeps_sub_resolution_endpoint_arc():
     from decimal import Decimal
-    from anysolver.general_contact.native_normal_angles import PreciseNormalAngles
-    from anysolver.general_contact.native_curved_plane_work import _negative_arc_width_bound
+    from anyfesolver.general_contact.native_normal_angles import PreciseNormalAngles
+    from anyfesolver.general_contact.native_curved_plane_work import _negative_arc_width_bound
     # An acos seed rounds this genuine endpoint root onto zero. Midpoint-only
     # arc classification used to return zero; unresolved ownership must keep it.
     tiny=PreciseNormalAngles(Decimal('-1e-30'),0.,0.,0.,1.)
@@ -231,8 +231,8 @@ def test_root_band_angular_union_keeps_sub_resolution_endpoint_arc():
 def test_root_band_grazing_gauss_node_charges_full_fallback_measure():
     from decimal import Decimal,localcontext
     from numpy.polynomial.legendre import leggauss
-    from anysolver.general_contact.native_normal_angles import PreciseNormalAngles,_sincos,PRECISION
-    from anysolver.general_contact.native_curved_plane_work import (
+    from anyfesolver.general_contact.native_normal_angles import PreciseNormalAngles,_sincos,PRECISION
+    from anyfesolver.general_contact.native_curved_plane_work import (
         _active_angular_rule,_negative_arc_width_bound,_root_band_measure_bound)
     points,weights=leggauss(16);al,ar=.2,5.8
     angle=Decimal((al+ar)/2)+Decimal((ar-al)/2)*Decimal(float(points[8]))

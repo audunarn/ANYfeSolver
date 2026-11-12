@@ -5,12 +5,12 @@ import sys
 
 import numpy as np
 import pytest
-from anysolver import (PatternCase, prepare_static_response_evaluator, prepare_static_evaluator, RecoveryConfig,
+from anyfesolver import (PatternCase, prepare_static_response_evaluator, prepare_static_evaluator, RecoveryConfig,
     LoadCase, BoundaryCondition, PreparedStaticCapabilityError)
-from anysolver.prepared_static_loads import ingest_static_case
-from anysolver.prepared_static_recovery import constraint_force_diagnostics, constraint_force_maps
-from anysolver.prepared_static_vectorized import make_metadata_copier, _structurally_identical
-from anysolver.static_batch import StaticCase
+from anyfesolver.prepared_static_loads import ingest_static_case
+from anyfesolver.prepared_static_recovery import constraint_force_diagnostics, constraint_force_maps
+from anyfesolver.prepared_static_vectorized import make_metadata_copier, _structurally_identical
+from anyfesolver.static_batch import StaticCase
 from test_prepared_static_evaluator import _bar, _case, _shell_model, _shell_case
 from test_prepared_static_independent import model as independent_model
 import prepared_static_response_m16_assessment as assessment

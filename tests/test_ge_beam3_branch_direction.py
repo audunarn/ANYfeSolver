@@ -1,8 +1,8 @@
 """Implicit native cell loading indicators, not a changed constitutive law."""
 import numpy as np
 import pytest
-from anysolver._ge_beam3_generalized_cell import GeneralizedCellConjugate
-from anysolver._ge_beam3_fibre_section import canonical
+from anyfesolver._ge_beam3_generalized_cell import GeneralizedCellConjugate
+from anyfesolver._ge_beam3_fibre_section import canonical
 from test_ge_beam3_generalized_ellipsoid_section import section
 from test_ge_beam3_fibre_cell import stations
 
@@ -45,8 +45,8 @@ def test_zero_norm_and_invalid_direction():
 
 def test_exact_boundary_and_failed_event_work_are_reported():
     from types import SimpleNamespace as NS
-    from anysolver._stiffened_shell_branch_event_trial import trial_fraction
-    from anysolver._stiffened_shell_displacement_corrector import DisplacementCorrectorFailure
+    from anyfesolver._stiffened_shell_branch_event_trial import trial_fraction
+    from anyfesolver._stiffened_shell_displacement_corrector import DisplacementCorrectorFailure
     # Branch identity is authoritative even if a reconstructed margin rounds.
     cell=NS(response=lambda *args,**kwargs:dict(branch_direction=(dict(
         station=0,branch="YIELD_BOUNDARY",margin=([1e-80],[0.]),

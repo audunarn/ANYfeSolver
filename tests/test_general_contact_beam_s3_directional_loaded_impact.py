@@ -25,13 +25,13 @@ def test_loaded_impact_coarse(tmp_path):
 
 
 def test_loaded_impact_refinement_equilibrium_restart(tmp_path):
-    from anysolver.general_contact.beam_s3_directional_rates import EquilibratedDirectionalBeamS3Manager
-    from anysolver.assembly import assemble_mass_matrix,build_constraint_transformation
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
-    from anysolver.algebraic_dynamics import build_declared_algebraic_basis
-    from anysolver.nonlinear_static import _assemble_nonlinear_system
-    from anysolver.nonlinear_state import discard_active_state_candidate
-    from anysolver.general_contact.runtime import suspend_contact
+    from anyfesolver.general_contact.beam_s3_directional_rates import EquilibratedDirectionalBeamS3Manager
+    from anyfesolver.assembly import assemble_mass_matrix,build_constraint_transformation
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.algebraic_dynamics import build_declared_algebraic_basis
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system
+    from anyfesolver.nonlinear_state import discard_active_state_candidate
+    from anyfesolver.general_contact.runtime import suspend_contact
     m,r,initial=run(dt=DT,end=END)
     fine_failure=None;traces=[]
     _,fine,_=run(dt=DT/2,end=END)
@@ -109,7 +109,7 @@ def test_loaded_impact_refinement_equilibrium_restart(tmp_path):
 
 def test_acceleration_selection_and_legacy_v20_restart(tmp_path):
     import pytest
-    from anysolver.general_contact.transient import ContactTransientSolverControls
+    from anyfesolver.general_contact.transient import ContactTransientSolverControls
     for value in (1,'true',None):
         with pytest.raises(ValueError,match='boolean'):ContactTransientSolverControls(equilibrated_newmark_acceleration_unknown_dev=value)
     with pytest.raises(ValueError,match='requires'):ContactTransientSolverControls(equilibrated_newmark_acceleration_unknown_dev=True)
@@ -132,11 +132,11 @@ def test_acceleration_selection_and_legacy_v20_restart(tmp_path):
         # continuation to the protected driver, not a newly imposed exact split gate.
         import importlib.util,sys
         driver_path=Path(os.environ['C6_LOADED_LEGACY_DRIVER'])
-        name='anysolver.general_contact._loaded_pre_acceleration_transient'
+        name='anyfesolver.general_contact._loaded_pre_acceleration_transient'
         spec=importlib.util.spec_from_file_location(name,driver_path);prior=importlib.util.module_from_spec(spec);sys.modules[name]=prior
         try:
             spec.loader.exec_module(prior)
-            from anysolver.dynamics import TransientConfig
+            from anyfesolver.dynamics import TransientConfig
             mm,dd,ss,uu,vv,ll,_=prepare()
             previous=prior.solve_transient_contact(mm,dd,TransientConfig(DT,END+DT,initial_displacement=uu,initial_velocity=vv),base_load_case=ll,contact_settings=ss,
                 solver_controls=prior.ContactTransientSolverControls(allow_equilibrated_directional_beam_s3_dev=True,save_constraint_reactions_dev=True),restart_checkpoint=capsule,emit_restart_checkpoint=True)
@@ -151,11 +151,11 @@ def test_acceleration_selection_and_legacy_v20_restart(tmp_path):
 import pytest
 @pytest.mark.parametrize("failure",("cancel","exception","retry"))
 def test_acceleration_transaction_boundaries(monkeypatch,tmp_path,failure):
-    import anysolver.general_contact.transient as driver
-    import anysolver.general_contact.beam_s3_transient as path
-    from anysolver.control import CancellationToken,SolveCancelled
-    from anysolver.dynamics import TransientConfig
-    from anysolver.general_contact.runtime import active_contact_manager
+    import anyfesolver.general_contact.transient as driver
+    import anyfesolver.general_contact.beam_s3_transient as path
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.dynamics import TransientConfig
+    from anyfesolver.general_contact.runtime import active_contact_manager
     m,d,s,u,v,load,initial=prepare();bound=path.hermite_gap_bounds;commit=driver.commit_state_candidate;calls=0;commits=[];token=CancellationToken()
     def checked(*args,**kwargs):
         nonlocal calls

@@ -5,9 +5,9 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import b3_ge, stiffened_shell as public
-from anysolver.control import CancellationToken
-from anysolver import _stiffened_shell_ge_reference_modal as modal
+from anyfesolver import b3_ge, stiffened_shell as public
+from anyfesolver.control import CancellationToken
+from anyfesolver import _stiffened_shell_ge_reference_modal as modal
 
 
 def _definition(inertia=None):

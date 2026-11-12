@@ -18,15 +18,15 @@ from numpy.testing import assert_allclose
 from scipy.integrate import quad
 from scipy.optimize import brentq, root
 
-from anysolver import (BoundaryCondition, CancellationToken, DisplacementControl,
+from anyfesolver import (BoundaryCondition, CancellationToken, DisplacementControl,
                       LoadCase, RigidContactBody, SolveCancelled,
                       report_general_contact_capability, solve_static_nonlinear,
                       validate_general_contact)
-from anysolver.elements import QuadraticBeamElement
-from anysolver.general_contact.beam_hemisphere_cylinder import (
+from anyfesolver.elements import QuadraticBeamElement
+from anyfesolver.general_contact.beam_hemisphere_cylinder import (
     HemisphereCylinderManager, PROFILE,
 )
-from anysolver.general_contact.beam_radial_ends import PROFILE as LEGACY_PROFILE
+from anyfesolver.general_contact.beam_radial_ends import PROFILE as LEGACY_PROFILE
 from test_general_contact_hemisphere_cylinder_work import _reference
 from test_general_contact_radial_beam_ends import _case, _static
 
@@ -331,7 +331,7 @@ def test_explicit_profile_fixed_descriptor_and_no_application_admission():
     assert not capability.tested and not capability.independently_accepted and not capability.released
     assert validate_general_contact(model, definition, replace(settings, beam_end_cap_work="owned_point")).profile == LEGACY_PROFILE
     moving = replace(definition, rigid_bodies=(replace(definition.rigid_bodies[0], path_translation=(0.001, 0., 0.)),))
-    from anysolver.general_contact.beam_hemisphere_cylinder_motion import PROFILE as MOVING_PROFILE
+    from anyfesolver.general_contact.beam_hemisphere_cylinder_motion import PROFILE as MOVING_PROFILE
     assert validate_general_contact(model, moving, settings).profile == MOVING_PROFILE
     assert validate_general_contact(model, moving, settings).valid
     with pytest.raises(ValueError, match="fixed infinite cylinder|unsupported"):

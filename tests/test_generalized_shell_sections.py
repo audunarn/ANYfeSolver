@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     FEModel,
     LegacyQ4DeprecationWarning,
     LegacyShellElement,
@@ -17,7 +17,7 @@ from anysolver import (
     create_element,
     create_shell_element,
 )
-from anysolver.shell_sections import (
+from anyfesolver.shell_sections import (
     GeneralizedShellSection,
     GeneralizedShellSectionProtocol,
     coerce_generalized_shell_section,

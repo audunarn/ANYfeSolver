@@ -2,7 +2,7 @@ import argparse,json
 from pathlib import Path
 import numpy as np
 from scipy import sparse
-from anysolver.assembly import _backward_error
+from anyfesolver.assembly import _backward_error
 from prepared_static_response_m11_gate import *
 from prepared_static_response_m9_diagnostic import (
     _shell_model,_shell_case,mixed_free_model,free_cases,PatternCase,

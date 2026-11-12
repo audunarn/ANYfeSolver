@@ -32,10 +32,10 @@ def require(test, message):
 def sources():
     return [Path(__file__), ROOT / "scripts/r8_f03_physical_contract_dev.py",
             ROOT / "tests/test_r8_f03_physical_contract_20261010.py",
-            ROOT / "src/anysolver/_ge_beam3_retained_generalized.py",
-            ROOT / "src/anysolver/_stiffened_shell_l1_local_experimental.py",
-            ROOT / "src/anysolver/_stiffened_shell_bl5_local_experimental.py",
-            ROOT / "src/anysolver/e4_pl_element.py",
+            ROOT / "src/anyfesolver/_ge_beam3_retained_generalized.py",
+            ROOT / "src/anyfesolver/_stiffened_shell_l1_local_experimental.py",
+            ROOT / "src/anyfesolver/_stiffened_shell_bl5_local_experimental.py",
+            ROOT / "src/anyfesolver/e4_pl_element.py",
             ROOT / "scripts/r8_bl5_actual_primal_work_dev.py"]
 
 

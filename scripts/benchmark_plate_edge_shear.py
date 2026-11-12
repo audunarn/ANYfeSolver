@@ -7,7 +7,7 @@ from __future__ import annotations
 import argparse,hashlib,json,os,pathlib,platform,statistics,time
 import numpy as np
 from threadpoolctl import threadpool_info
-from anysolver import solve_static_nonlinear
+from anyfesolver import solve_static_nonlinear
 from investigate_plate_edge_shear import plate,jsonable
 
 def sample(mode):
@@ -21,7 +21,7 @@ def sample(mode):
 
 def benchmark(output):
     repo=pathlib.Path(__file__).resolve().parents[1]
-    files=[pathlib.Path(__file__),repo/'scripts/investigate_plate_edge_shear.py']+[repo/'src/anysolver'/n for n in ['corotational.py','_corotational_batch.py','nonlinear_static.py','elements.py','e4_pl_element.py']]
+    files=[pathlib.Path(__file__),repo/'scripts/investigate_plate_edge_shear.py']+[repo/'src/anyfesolver'/n for n in ['corotational.py','_corotational_batch.py','nonlinear_static.py','elements.py','e4_pl_element.py']]
     result={'comparison':'different force formulations, NOT physics-preserving optimization','fixture':'2x2 square1m,t.01,E210GPa,nu.3,initial1mmsine-bump,leftallfixed,rightuy.01only','controls':{'num_steps':4,'max_iterations':25,'tolerance':1e-6,'min_step_fraction':1/1024,'control':'force'},'source_hashes':{str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in files},'python':platform.python_version(),'numpy':np.__version__,'environment':{k:os.environ.get(k) for k in ['OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','NUMBA_NUM_THREADS']},'warmups':[],'samples':[]}
     def save():output.write_text(json.dumps(result,default=jsonable,indent=2))
     modes=['consistent','work_conjugate']

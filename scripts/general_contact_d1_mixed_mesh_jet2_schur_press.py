@@ -11,16 +11,16 @@ import sys
 import time
 
 import anymaterial
-import anysolver
+import anyfesolver
 import numpy as np
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactPathControl, ContactPathNodalForce, ContactPathProgram,
     ContactSolverSettings, ContactSurface, create_shell_element,
     solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.fe_core import FEModel
+from anyfesolver.fe_core import FEModel
 
 
 def _json_default(value):
@@ -360,7 +360,7 @@ def main(columns: int, output: Path, pressure_cap_pa: float = 10.0,
         emit_restart_checkpoint=emit_restart_checkpoint,
     )
     derivative_module = importlib.import_module(
-        "anysolver.general_contact.q4_s3_overlap_derivatives"
+        "anyfesolver.general_contact.q4_s3_overlap_derivatives"
     )
     record = {
         "candidate": ("mixed_bending_refinement_jet2_active_set_dev"
@@ -413,7 +413,7 @@ def main(columns: int, output: Path, pressure_cap_pa: float = 10.0,
         "final_displacements": result.displacements.tolist(),
         "runtime_identity": {
             "python": sys.version.split()[0],
-            "anysolver_module": str(Path(anysolver.__file__).resolve()),
+            "anyfesolver_module": str(Path(anyfesolver.__file__).resolve()),
             "anymaterial_module": str(Path(anymaterial.__file__).resolve()),
             "compiled_bjet_mul_enabled": bool(
                 derivative_module._COMPILED_BJET_MUL_ENABLED

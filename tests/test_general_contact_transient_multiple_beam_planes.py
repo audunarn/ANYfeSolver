@@ -4,14 +4,14 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
                        ContactSolverSettings, ContactSurface, LoadCase, RigidContactBody)
-from anysolver.dynamics import TransientConfig
-from anysolver.elements import BeamElement, QuadraticBeamElement
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.core import active_contact_manager
-from anysolver.general_contact.multiple_beam_rigid import MultipleBeamRigidManager
-from anysolver.general_contact.transient import (
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.core import active_contact_manager
+from anyfesolver.general_contact.multiple_beam_rigid import MultipleBeamRigidManager
+from anyfesolver.general_contact.transient import (
     ContactNodalLoadHistory, ContactTransientSolverControls,
     _beam_complete_path_gaps, solve_transient_contact,
 )
@@ -121,7 +121,7 @@ def test_multiple_active_history_restart_order_and_definition_binding():
 
 
 def test_multiple_path_uses_pair_budgets_and_one_shared_split_cap():
-    from anysolver.general_contact.beam_temporal_bounds import beam_hermite_gap_bounds, BeamHermiteGapBoundsError
+    from anyfesolver.general_contact.beam_temporal_bounds import beam_hermite_gap_bounds, BeamHermiteGapBoundsError
     model, definition, settings, initial = fixture(orthogonal=True, quadratic=True)
     definition = replace(definition, interactions=(replace(definition.interactions[0], gap_tolerance=.001),
                                                    definition.interactions[1]))
@@ -171,9 +171,9 @@ def test_multiple_admission_opt_in_duplicate_and_nonplane_rejection():
 
 @pytest.mark.parametrize("cancel", [False, True])
 def test_second_pair_path_failure_does_not_commit_partial_candidate(monkeypatch, cancel):
-    import anysolver.general_contact.transient as driver
-    import anysolver.general_contact.beam_temporal_bounds as geometry
-    from anysolver.control import CancellationToken, SolveCancelled
+    import anyfesolver.general_contact.transient as driver
+    import anyfesolver.general_contact.beam_temporal_bounds as geometry
+    from anyfesolver.control import CancellationToken, SolveCancelled
     token = CancellationToken()
     commits, calls = [], []
     commit, bounds = driver.commit_state_candidate, geometry.beam_hermite_gap_bounds

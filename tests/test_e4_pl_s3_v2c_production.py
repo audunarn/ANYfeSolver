@@ -3,9 +3,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-import anysolver
-from anysolver.e4_pl_s3_v2b_element import StrictFlatLinearE4PLS3V2BShellElement
-from anysolver.e4_pl_s3_v2c_element import (
+import anyfesolver
+from anyfesolver.e4_pl_s3_v2b_element import StrictFlatLinearE4PLS3V2BShellElement
+from anyfesolver.e4_pl_s3_v2c_element import (
     FORMULATION_ID,
     GEOMETRIC_STIFFNESS_POLICY_ID,
     MASS_POLICY_ID,
@@ -13,15 +13,15 @@ from anysolver.e4_pl_s3_v2c_element import (
     StrictFlatLinearCapabilityError,
     StrictFlatLinearE4PLS3V2CShellElement,
 )
-from anysolver.elements import (
+from anyfesolver.elements import (
     DEFAULT_Q4_FORMULATION,
     DEFAULT_S3_FORMULATION,
     create_shell_element,
     shell_element_from_dict,
 )
-from anysolver.fe_core import FEModel, FEMesh, Material
-from anysolver.boundary import BoundaryCondition, FixedSupport
-from anysolver.modal import solve_free_vibration
+from anyfesolver.fe_core import FEModel, FEMesh, Material
+from anyfesolver.boundary import BoundaryCondition, FixedSupport
+from anyfesolver.modal import solve_free_vibration
 
 
 COORDINATES = np.asarray(
@@ -72,7 +72,7 @@ def test_v2c_is_additive_and_preserves_both_defaults() -> None:
             reference_normal=NORMAL,
         )
     ) is StrictFlatLinearE4PLS3V2CShellElement
-    assert anysolver.STRICT_FLAT_S3_V2C_FORMULATION_ID == FORMULATION_ID
+    assert anyfesolver.STRICT_FLAT_S3_V2C_FORMULATION_ID == FORMULATION_ID
     for spelling in ("e4_pl_s3_v2c", "qualified_s3_v2c"):
         with pytest.raises(ValueError, match="canonical"):
             create_shell_element(3, [1, 2, 3], "steel", formulation=spelling)

@@ -67,7 +67,7 @@ class MutationStaticTests(unittest.TestCase):
                             p.preflight(changed,record['after_sha256'],expected_runtime_sha256='4'*64)
             self.assertEqual(raw,fake_origin(graph,motion,scale,prefix))
         self.assertNotIn('numpy',sys.modules)
-        self.assertNotIn('anysolver',sys.modules)
+        self.assertNotIn('anyfesolver',sys.modules)
 
     def test_deterministic_and_forbidden_members(self):
         raw=fake_origin('J_B2_PAIR','NONE',.01,2)

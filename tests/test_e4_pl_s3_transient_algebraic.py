@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import (
+from anyfesolver import (
     AnalysisSession,
     BoundaryCondition,
     FEModel,
@@ -18,7 +18,7 @@ from anysolver import (
     TransientConfig,
     solve_transient_newmark,
 )
-from anysolver.algebraic_dynamics import (
+from anyfesolver.algebraic_dynamics import (
     AlgebraicDynamicsError,
     DESCRIPTOR_TRANSIENT_CONSTRAINED_POLICY_ID,
     DESCRIPTOR_TRANSIENT_FIRST_ORDER_POLICY_ID,
@@ -29,15 +29,15 @@ from anysolver.algebraic_dynamics import (
     build_declared_algebraic_basis,
     certify_descriptor_effective_operator,
 )
-from anysolver.assembly import build_constraint_transformation
-from anysolver.dynamics import _sampled_grid_derivative
-from anysolver.matrix_assembly import (
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.dynamics import _sampled_grid_derivative
+from anyfesolver.matrix_assembly import (
     assemble_load_vector,
     assemble_mass_matrix,
     assemble_stiffness_matrix,
 )
-from anysolver.linalg import FactorizationHandle, MatrixClass
-from anysolver.recovery import RecoveryConfig
+from anyfesolver.linalg import FactorizationHandle, MatrixClass
+from anyfesolver.recovery import RecoveryConfig
 
 
 @dataclass(frozen=True)
@@ -712,7 +712,7 @@ def test_static_reduction_rejects_nonsymmetric_descriptor_inputs(
 def test_static_reduction_wraps_construction_pivot_solve_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import anysolver.algebraic_dynamics as algebraic_module
+    import anyfesolver.algebraic_dynamics as algebraic_module
 
     original = algebraic_module.sparse_linalg.splu
     call_count = 0
@@ -735,7 +735,7 @@ def test_static_reduction_wraps_construction_pivot_solve_failure(
 
 
 def test_sparse_pivot_matching_is_invariant_to_internal_index_order() -> None:
-    import anysolver.algebraic_dynamics as algebraic_module
+    import anyfesolver.algebraic_dynamics as algebraic_module
 
     row_count = 520
     dense = np.zeros((row_count, 3), dtype=float)
@@ -859,7 +859,7 @@ def test_descriptor_transient_rejects_a_nonfinite_pressure_history() -> None:
 def test_descriptor_effective_factorization_failure_never_uses_general_fallback(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import anysolver.dynamics as dynamics_module
+    import anyfesolver.dynamics as dynamics_module
 
     model = _single_s3_model(coupled=True)
     original = dynamics_module.factorize
@@ -1263,7 +1263,7 @@ def test_constrained_s3_factor_failures_are_canonical_and_never_fall_back(
     failed_signature: str,
     message: str,
 ) -> None:
-    import anysolver.dynamics as dynamics_module
+    import anyfesolver.dynamics as dynamics_module
 
     model = _single_s3_model(coupled=False)
     model.add_boundary_condition(

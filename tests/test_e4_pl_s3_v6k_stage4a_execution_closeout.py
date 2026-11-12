@@ -98,7 +98,7 @@ def test_v6k_closeout_does_not_activate_or_change_defaults() -> None:
     status = _canonical(STATUS)
     assert status["activation_authorized"] is False
     assert status["stage4a_execution_authorized"] is True
-    tree = ast.parse((ROOT / "src/anysolver/elements.py").read_text(encoding="utf-8"))
+    tree = ast.parse((ROOT / "src/anyfesolver/elements.py").read_text(encoding="utf-8"))
     defaults: dict[str, str] = {}
     for node in tree.body:
         if not isinstance(node, (ast.Assign, ast.AnnAssign)):

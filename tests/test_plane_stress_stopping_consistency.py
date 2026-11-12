@@ -4,8 +4,8 @@ from decimal import Decimal, localcontext
 import numpy as np
 import pytest
 
-from anysolver.material_curves import DNVC208MaterialCurve
-from anysolver.plasticity import plane_stress_return_map
+from anyfesolver.material_curves import DNVC208MaterialCurve
+from anyfesolver.plasticity import plane_stress_return_map
 
 
 @pytest.mark.parametrize('max_iterations', [2, 30])

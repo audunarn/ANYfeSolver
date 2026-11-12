@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from scipy.integrate import solve_ivp
 
-from anysolver.floating_transient import (
+from anyfesolver.floating_transient import (
     FloatingTransientSpec, FloatingTransientError, BoundedNativeAdmissionError,
     solve_floating_transient, numeric_array_digest, bounded_native_admission,
 )

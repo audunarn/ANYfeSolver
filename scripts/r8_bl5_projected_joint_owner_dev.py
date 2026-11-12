@@ -89,14 +89,14 @@ def registration_identity(path, source):
 
 def installed_identity(site, wheel, wheel_sha, source):
     require(len(wheel_sha) == 64 and sha(wheel) == wheel_sha, "declared frozen installed wheel SHA required")
-    source_files = {"anysolver/"+p.relative_to(source/"src/anysolver").as_posix(): p
-                    for p in (source/"src/anysolver").rglob("*.py")}
+    source_files = {"anyfesolver/"+p.relative_to(source/"src/anyfesolver").as_posix(): p
+                    for p in (source/"src/anyfesolver").rglob("*.py")}
     modules = {}
     with zipfile.ZipFile(wheel) as archive:
-        names = {n for n in archive.namelist() if n.startswith("anysolver/") and n.endswith(".py")}
+        names = {n for n in archive.namelist() if n.startswith("anyfesolver/") and n.endswith(".py")}
         require(len(names) == 417 and names == set(source_files), "complete417-module source/wheel graph required")
-        installed_names = {"anysolver/"+p.relative_to(site/"anysolver").as_posix()
-                           for p in (site/"anysolver").rglob("*.py")}
+        installed_names = {"anyfesolver/"+p.relative_to(site/"anyfesolver").as_posix()
+                           for p in (site/"anyfesolver").rglob("*.py")}
         require(installed_names == names, "complete417-module installed graph required")
         for name in sorted(names):
             data = archive.read(name)
@@ -108,7 +108,7 @@ def installed_identity(site, wheel, wheel_sha, source):
 
 def canonical_imports(site):
     imports = {name: str(Path(module.__file__).resolve()) for name, module in sys.modules.copy().items()
-               if name.split(".")[0] == "anysolver" and getattr(module, "__file__", None)}
+               if name.split(".")[0] == "anyfesolver" and getattr(module, "__file__", None)}
     require(imports and all(Path(p).is_relative_to(site) for p in imports.values()),
             "every product import must use declared installed site")
     return imports
@@ -132,12 +132,12 @@ def run(site, wheel, wheel_sha, source, registration, output):
     owner, earlier_error, cleanup_error = None, False, None
     try:
         site, source = site.resolve(strict=True), source.resolve(strict=True)
-        require(not any(n.split(".")[0] == "anysolver" for n in sys.modules), "fresh process without preimported product required")
+        require(not any(n.split(".")[0] == "anyfesolver" for n in sys.modules), "fresh process without preimported product required")
         record, registration_bound = registration_identity(registration, source)
         modules = installed_identity(site, wheel, wheel_sha, source)
         sys.path[:0] = [str(site), str(source/"scripts"), str(source/"tests")]
-        import anysolver
-        from anysolver import stiffened_shell as api
+        import anyfesolver
+        from anyfesolver import stiffened_shell as api
         import numpy as np
         import numba
         from threadpoolctl import threadpool_info
@@ -161,7 +161,7 @@ def run(site, wheel, wheel_sha, source, registration, output):
             fixed_criteria=FIXED_CRITERIA, wheel_sha256=wheel_sha, wheel=str(wheel.resolve()),
             source_root=str(source), site=str(site), module_sha256=modules, matching_modules=len(modules),
             helper_sha256={Path(m.__file__).name: sha(m.__file__) for m in (coherent, matched, inventory, moments)},
-            fixture_sha256=fixtures, imported_anysolver=anysolver.__file__, product_imports=canonical_imports(site),
+            fixture_sha256=fixtures, imported_anyfesolver=anyfesolver.__file__, product_imports=canonical_imports(site),
             python=sys.version, **settings)
         write(output/"identity.json", summary)
         base, policy = coherent.model(32, 8, 64, 2, basis="discontinuous_p1")

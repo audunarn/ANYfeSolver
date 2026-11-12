@@ -6,7 +6,7 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     FEModel,
     FixedSupport,
@@ -18,18 +18,18 @@ from anysolver import (
     solve_eigenvalue_buckling,
     solve_free_vibration,
 )
-from anysolver._native_rotation_state import create_native_rotation_state_store
-from anysolver.contact import SphereContactConfig, _surface_offset
-from anysolver.e4_pl_s3_element import (
+from anyfesolver._native_rotation_state import create_native_rotation_state_store
+from anyfesolver.contact import SphereContactConfig, _surface_offset
+from anyfesolver.e4_pl_s3_element import (
     REFERENCE_ELASTIC_BUBBLE_LINEARIZATION_ID,
 )
-from anysolver.e4_pl_s3_state import (
+from anyfesolver.e4_pl_s3_state import (
     REFERENCE_SURFACE_MASS_SHIFT_ID,
     REFERENCE_SURFACE_OFFSET_POLICY_ID,
     REFERENCE_SURFACE_STRAIN_TRANSFORM_ID,
     S3CommittedStateError,
 )
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 REFERENCE = np.asarray(

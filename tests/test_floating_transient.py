@@ -3,14 +3,14 @@ import numpy as np
 import pytest
 from scipy.integrate import solve_ivp
 
-from anysolver.floating_transient import (
+from anyfesolver.floating_transient import (
     FloatingTransientError,
     FloatingTransientResourceConfig,
     FloatingTransientSpec,
     solve_floating_transient,
     waterline_guard,
 )
-from anysolver.marine_linear import MarineLinearSpec, solve_marine_linear
+from anyfesolver.marine_linear import MarineLinearSpec, solve_marine_linear
 
 
 def _grid(dt, duration):
@@ -589,7 +589,7 @@ def test_both_adjacent_slopes_are_reported_at_a_curve_knot():
 
 
 def test_result_carries_digests_of_the_actual_kernel_and_ainf():
-    from anysolver.floating_transient import numeric_array_digest
+    from anyfesolver.floating_transient import numeric_array_digest
     kern = np.zeros((2, 6, 6)); kern[0] = 5.0 * np.eye(6)
     res = solve_floating_transient(_spec(duration=0.1, added=7.0, radiation_kernel=kern, kernel_horizon=0.01))
     assert res.kernel_digest == numeric_array_digest(kern) and res.ainf_digest == numeric_array_digest(7.0 * np.eye(6))
@@ -601,7 +601,7 @@ def test_result_carries_digests_of_the_actual_kernel_and_ainf():
 def _active_kernel_spec(mode, c=1.0e-3):
     """Kernel K(t) = -c exp(-t) I (an ACTIVE, non-passive memory): Herm Z(w) = -c/(1+w^2) I, so the normalised
     non-passivity at w = 0.1 is ~ c/(1.01 * 0.1 * M) >> 1e-3 for M = 1."""
-    from anysolver.floating_transient import numeric_array_digest
+    from anyfesolver.floating_transient import numeric_array_digest
     dt, n_k = 0.01, 101
     tk = np.arange(n_k) * dt
     w = np.clip(1.0 - tk / tk[-1], 0.0, None)                      # exactly zero endpoint (windowed)
@@ -617,7 +617,7 @@ def _active_kernel_spec(mode, c=1.0e-3):
 
 
 def test_development_unverified_retains_the_failed_passivity_gate_instead_of_refusing():
-    from anysolver.floating_transient import BoundedNativeAdmissionError
+    from anyfesolver.floating_transient import BoundedNativeAdmissionError
     with pytest.raises(BoundedNativeAdmissionError, match="non-passivity"):
         solve_floating_transient(_active_kernel_spec("bounded_native"))           # bounded mode unchanged: refused
     res = solve_floating_transient(_active_kernel_spec("development_unverified"))
@@ -629,14 +629,14 @@ def test_development_unverified_retains_the_failed_passivity_gate_instead_of_ref
 
 
 def test_development_mode_keeps_every_other_gate():
-    from anysolver.floating_transient import BoundedNativeAdmissionError
+    from anyfesolver.floating_transient import BoundedNativeAdmissionError
     spec = _active_kernel_spec("development_unverified")
     bad = dict(spec.native_source_binding); bad["kernel_digest"] = "0" * 64
     from dataclasses import replace
     with pytest.raises(BoundedNativeAdmissionError, match="binding"):
         solve_floating_transient(replace(spec, native_source_binding=bad))
     A = spec.added_mass_infinite.copy(); A[0, 1] += 0.1; A[1, 0] -= 0.1          # large mass skew: rho >> 1e-3
-    from anysolver.floating_transient import numeric_array_digest
+    from anyfesolver.floating_transient import numeric_array_digest
     b2 = dict(spec.native_source_binding); b2["ainf_digest"] = numeric_array_digest(A)
     with pytest.raises(BoundedNativeAdmissionError, match="rho"):
         solve_floating_transient(replace(spec, added_mass_infinite=A, native_source_binding=b2))
@@ -645,7 +645,7 @@ def test_development_mode_keeps_every_other_gate():
 def test_complex_inputs_are_refused_before_any_float_cast():
     import warnings
     from dataclasses import replace
-    from anysolver.floating_transient import numeric_array_digest
+    from anyfesolver.floating_transient import numeric_array_digest
     cx = lambda x: np.asarray(x) * (1.0 + 0j)          # zero imaginary part is still complex
     base = _spec(duration=0.1)
     with warnings.catch_warnings():
@@ -678,7 +678,7 @@ def test_complex_inputs_are_refused_before_any_float_cast():
 
 def test_digest_is_incremental_and_equals_the_reference_protocol():
     import hashlib
-    from anysolver.floating_transient import numeric_array_digest
+    from anyfesolver.floating_transient import numeric_array_digest
     rng = np.random.default_rng(1)
     for shape in ((5,), (2, 3), (3, 40000), (1, 6, 6)):               # one shape exceeds a 65536-element chunk
         x = rng.standard_normal(shape)
@@ -693,7 +693,7 @@ def test_digest_is_incremental_and_equals_the_reference_protocol():
 def test_digest_of_a_transposed_strided_array_has_no_full_copy_and_matches_the_protocol():
     import hashlib
     import tracemalloc
-    from anysolver.floating_transient import numeric_array_digest
+    from anyfesolver.floating_transient import numeric_array_digest
     base = np.random.default_rng(6).standard_normal((1200, 1000))            # 9.6 MB
     view = base.T                                                              # strided view, not C-contiguous
     h = hashlib.sha256(b"numeric-array-v1|(1000, 1200)|")
@@ -711,7 +711,7 @@ def test_digest_of_a_transposed_strided_array_has_no_full_copy_and_matches_the_p
 
 
 def test_admission_shape_handling_never_converts_lists_and_rejects_unknown_types():
-    from anysolver.floating_transient import _shape_of
+    from anyfesolver.floating_transient import _shape_of
     assert _shape_of([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]) == (2, 3) and _shape_of((1.0, 2.0)) == (2,)
     assert _shape_of(np.zeros((4, 2))) == (4, 2) and _shape_of([]) == (0,)
     assert _shape_of(np.broadcast_to(np.zeros(1), (10**9, 6, 6))) == (10**9, 6, 6)        # metadata only

@@ -1,7 +1,7 @@
 """Physical small-rotation precision and differentiated normalization."""
 import numpy as np
 import pytest
-from anysolver._ge_beam3_variational_shell import _quaternion_jets,deformation
+from anyfesolver._ge_beam3_variational_shell import _quaternion_jets,deformation
 
 @pytest.mark.parametrize('angle',[0.,1e-12,-1e-12,1e-7,-1e-7,.5,np.pi/2,2.])
 def test_stable_fit_analytic_rotation_and_normalization(angle):
@@ -36,7 +36,7 @@ def test_stable_fit_derivatives_at_finite_rotation_and_deformation(count):
 
 @pytest.mark.parametrize('width',[1.,1e-5,1e-6])
 def test_stable_fit_repeated_lower_spectrum_and_existing_top_gap(width):
-    from anysolver._ge_beam3_variational_shell import _davenport
+    from anyfesolver._ge_beam3_variational_shell import _davenport
     ref=np.array([[-1.,-width,0.],[1.,-width,0.],[1.,width,0.],[-1.,width,0.]])
     if width==1e-6:
         with pytest.raises(ValueError,match='nonunique'):_quaternion_jets(ref,None,displacement=np.zeros_like(ref))

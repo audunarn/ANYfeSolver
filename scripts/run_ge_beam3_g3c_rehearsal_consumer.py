@@ -233,7 +233,7 @@ def worker(out,expected):
     origin=None if assignment['kind']=='history' else origin_packet(assignment,collected)
     print('G3C CHECKPOINT rehearsal authority',flush=True)
     sys.path[:0]=[str(ROOT/'src'),str(ROOT),str(inherited.infrastructure.CAPSULE.parent/'site')]
-    from anysolver._ge_beam3_g3c_stable import authority as runtime
+    from anyfesolver._ge_beam3_g3c_stable import authority as runtime
     runtime.capture(raw)
     import pytest
     class Context:
@@ -348,7 +348,7 @@ def main():
         previous=dict(path=str(args.previous_wave.absolute()),**packets.fingerprint(raw))
     elif args.previous_sha256 is not None: raise ValueError('predecessor path missing')
     prior_chain(previous,args.wave,candidate,inputs,args.review_sha256,deadline)
-    out=Path(tempfile.mkdtemp(prefix='anysolver-g3c-consumer-'))
+    out=Path(tempfile.mkdtemp(prefix='anyfesolver-g3c-consumer-'))
     print('DIAGNOSTICS '+str(out),flush=True)
     lease=dict(kind='G3C_STABLE_PRIVATE_DEVELOPMENT',scope_id=SCOPE,candidate=candidate,inputs=inputs,
                source_map_sha256=inherited.MAP_SHA,review_sha256=args.review_sha256,

@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver._stiffened_shell_ge_experimental import (
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver._stiffened_shell_ge_experimental import (
     PROFILE, ExperimentalGEAnalysis, FixedCoordinate, LinearDefinition,
     NodalAction, PointConnection, ShellPanel,
 )

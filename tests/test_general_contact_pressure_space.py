@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.pressure_space import supported_pressure_gram
+from anyfesolver.general_contact.pressure_space import supported_pressure_gram
 
 
 def test_area_scaling_does_not_destroy_an_independent_pressure_mode():

@@ -10,7 +10,7 @@ from hashlib import sha256
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver.ge_beam3_native_dynamics import solve_transient
+from anyfesolver.ge_beam3_native_dynamics import solve_transient
 from examples.native_manufactured_dynamic_loading_dev import build, run
 from examples.native_manufactured_loading_reference import (LoadingInputs, endpoint,
     interval, stage, scales, cross, dot)

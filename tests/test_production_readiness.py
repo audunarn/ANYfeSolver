@@ -5,15 +5,15 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from anysolver.elements import ShellElement
-from anysolver.fe_core import FEModel
-from anysolver.production_readiness import (
+from anyfesolver.elements import ShellElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.production_readiness import (
     build_capability_matrix,
     build_verification_scope_statement,
     scope_statement_markdown,
     write_production_readiness_artifacts,
 )
-from anysolver.validation import validate_production_model
+from anyfesolver.validation import validate_production_model
 
 
 def _fake_report() -> dict:

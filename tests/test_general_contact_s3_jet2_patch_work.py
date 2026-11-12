@@ -3,9 +3,9 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.s3_patch_augmented import MovingS3PatchProjectedNormal
-from anysolver.general_contact.s3_overlap_derivatives import UnsupportedOverlapBranch
-from anysolver.general_contact.s3_patch_mortar_energy import (
+from anyfesolver.general_contact.s3_patch_augmented import MovingS3PatchProjectedNormal
+from anyfesolver.general_contact.s3_overlap_derivatives import UnsupportedOverlapBranch
+from anyfesolver.general_contact.s3_patch_mortar_energy import (
     MovingS3PatchPrimalMortarPenalty,
     S3PatchFace,
 )

@@ -7,14 +7,14 @@ from typing import Callable, Sequence
 import numpy as np
 import pytest
 
-import anysolver.dynamics as dynamics
-import anysolver.e4_pl_element as q4_runtime
-import anysolver.e4_pl_s3_element as s3_runtime
-import anysolver.nonlinear_static as nonlinear_static_module
+import anyfesolver.dynamics as dynamics
+import anyfesolver.e4_pl_element as q4_runtime
+import anyfesolver.e4_pl_s3_element as s3_runtime
+import anyfesolver.nonlinear_static as nonlinear_static_module
 import test_e4_pl_s3_current_tangent_buckling as current_fixture
 import test_e4_pl_s3_generalized_nonlinear as nonlinear_fixture
 import test_e4_pl_workflow_parity as workflow_fixture
-from anysolver import (
+from anyfesolver import (
     LoadCase,
     FractureConfig,
     ImperfectionField,
@@ -28,9 +28,9 @@ from anysolver import (
     solve_free_vibration,
     solve_transient_newmark,
 )
-from anysolver.arc_length import ArcLengthControl, solve_static_arc_length
-from anysolver.matrix_assembly import AssemblyError
-from anysolver.nonlinear_static import DisplacementControl, solve_static_nonlinear
+from anyfesolver.arc_length import ArcLengthControl, solve_static_arc_length
+from anyfesolver.matrix_assembly import AssemblyError
+from anyfesolver.nonlinear_static import DisplacementControl, solve_static_nonlinear
 
 
 class _MutatingSequence(Sequence[object]):

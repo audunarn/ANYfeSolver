@@ -5,11 +5,11 @@ import json
 import numpy as np
 import pytest
 
-import anysolver._ge_beam3_seeded_load_program as driver
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._ge_beam3_p5_seeded.core import canonical, sha
+import anyfesolver._ge_beam3_seeded_load_program as driver
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
 from test_ge_beam3_native_load_state import problem as legacy_problem, store_for, equilibrium
-from anysolver._ge_beam3_p5_seeded import NativeP5BeamElement
+from anyfesolver._ge_beam3_p5_seeded import NativeP5BeamElement
 
 
 def problem(*args, **kwargs):

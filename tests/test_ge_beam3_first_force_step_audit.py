@@ -8,10 +8,10 @@ from decimal import Decimal as D, localcontext
 import numpy as np
 import pytest
 from scipy.linalg import block_diag
-import anysolver._ge_beam3_seeded_load_program as driver
-from anysolver._ge_beam3_seeded_loaded_modal import prepare
-from anysolver._ge_beam3_shared_kinematic_split import shared_kinematic_chain
-from anysolver._ge_beam3_p5_seeded.core import canonical
+import anyfesolver._ge_beam3_seeded_load_program as driver
+from anyfesolver._ge_beam3_seeded_loaded_modal import prepare
+from anyfesolver._ge_beam3_shared_kinematic_split import shared_kinematic_chain
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from docs.reference_cases.ge_beam3_decimal_static_chain_audit import solve_static_chain
 from test_ge_beam3_curved_contrast_probe import make_curved
 

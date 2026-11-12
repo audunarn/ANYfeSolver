@@ -3,9 +3,9 @@ from dataclasses import asdict
 from decimal import localcontext
 import numpy as np
 import pytest
-from anysolver._ge_beam3_fibre_static_boundary import solve_static
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_fibre_static_boundary import solve_static
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_fibre_line_program import model
 from test_ge_beam3_schur_line_program import save
 

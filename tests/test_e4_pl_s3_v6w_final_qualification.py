@@ -88,6 +88,6 @@ def test_strict_loader_rejects_duplicate_and_nonfinite_json(tmp_path: Path) -> N
 
 
 def test_defaults_remain_unactivated() -> None:
-    source = (ROOT / "src/anysolver/elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src/anyfesolver/elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source

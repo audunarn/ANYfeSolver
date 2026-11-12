@@ -8,8 +8,8 @@ from pathlib import Path
 import numpy as np
 
 from general_contact_d1_coupled_refinement import build_case
-from anysolver import validate_general_contact
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver import validate_general_contact
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 
 
 def main():

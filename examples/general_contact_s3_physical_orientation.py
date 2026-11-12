@@ -1,7 +1,7 @@
 """Bounded physical-side oriented automatic S3 pair static lifecycle."""
 from dataclasses import replace
 from examples.general_contact_automatic_s3_pair import build_s3_pair,solve_shell_pair
-from anysolver.general_contact import resolve_automatic_contact_domain
+from anyfesolver.general_contact import resolve_automatic_contact_domain
 
 
 def build_orientation_pair(*,director_z=1,orientation='physical_sides_dev',resolve_domain=True):

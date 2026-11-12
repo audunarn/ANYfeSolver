@@ -66,14 +66,14 @@ class FrozenOwnerSourceTests(unittest.TestCase):
              *parity.SOURCE_FILES],
             cwd=ROOT, check=True, capture_output=True, text=True).stdout.split()
         self.assertEqual(sorted(changed), [
-            "src/anysolver/_stiffened_shell_ge_experimental.py",
-            "src/anysolver/_stiffened_shell_l1_assembly_experimental.py"])
+            "src/anyfesolver/_stiffened_shell_ge_experimental.py",
+            "src/anyfesolver/_stiffened_shell_l1_assembly_experimental.py"])
         old_owner = subprocess.run(
             ["git", "show",
-             f"{parity.OLD_PRODUCT}:src/anysolver/_stiffened_shell_ge_experimental.py"],
+             f"{parity.OLD_PRODUCT}:src/anyfesolver/_stiffened_shell_ge_experimental.py"],
             cwd=ROOT, check=True, capture_output=True).stdout
         current_owner = (ROOT /
-            "src/anysolver/_stiffened_shell_ge_experimental.py").read_bytes()
+            "src/anyfesolver/_stiffened_shell_ge_experimental.py").read_bytes()
         self.assertEqual(parity.function_ast_hash(old_owner, "_assemble_beam"),
                          parity.function_ast_hash(current_owner, "_assemble_beam"))
 

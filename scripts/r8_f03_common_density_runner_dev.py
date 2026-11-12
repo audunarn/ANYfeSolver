@@ -38,7 +38,7 @@ def prepared_binding():
     from scripts.r8_f03_common_density_dev import source_binding
     sources = [Path(__file__).resolve(), ROOT / "scripts/r8_f03_common_density_dev.py",
                ROOT / "tests/test_r8_f03_common_density_20261010.py",
-               ROOT / "src/anysolver/_ge_beam3_retained_generalized.py"]
+               ROOT / "src/anyfesolver/_ge_beam3_retained_generalized.py"]
     return {"sources": {str(p.relative_to(ROOT)): sha(p) for p in sources},
             "inputs": source_binding(), "controls": 12, "qualification": False}
 

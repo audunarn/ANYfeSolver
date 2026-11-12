@@ -9,7 +9,7 @@ import time
 
 import numpy as np
 
-from anysolver import solve_static_nonlinear
+from anyfesolver import solve_static_nonlinear
 
 from scripts.general_contact_d1_open_ring_displacement_dev import build_case
 

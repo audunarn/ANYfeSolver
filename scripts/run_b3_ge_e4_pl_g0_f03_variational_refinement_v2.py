@@ -15,7 +15,7 @@ import time
 PARENT=Path(__file__).resolve().parent
 sys.path.insert(0,str(PARENT.parent/'src'))
 
-import anysolver
+import anyfesolver
 import numpy as np
 import psutil
 import scipy
@@ -32,7 +32,7 @@ SOURCES=(Path(__file__).name,
 MAX_RSS=8*1024**3
 MAX_CASE_SECONDS=900
 MAX_TOTAL_SECONDS=7200
-V1_ROOT=Path('C:/Github/ANYsolver/.qualification/b3-ge-e4-pl/f03-variational-line-v1')
+V1_ROOT=Path('C:/Github/ANYfeSolver/.qualification/b3-ge-e4-pl/f03-variational-line-v1')
 V1_HASHES={
     'manifest.json':'3895a90ec6e94dc92b9c3738a8fc880fca20f56c51dd182b58664446660e0483',
     'preflight.json':'8a6dc936d517a2fb060208d086d51a36c71d3efb93fc6989e2075491e8904d78',
@@ -158,7 +158,7 @@ def main():
     manifest={'purpose':'INDEPENDENT_CLASSICAL_VARIATIONAL_REFINEMENT_NOT_F03_ACCEPTANCE',
               'revision':revision,'source_sha256':hashes,'cases':CASES,
               'predecessor_v1_sha256':predecessor,
-              'anysolver_import':str(Path(anysolver.__file__).resolve()),
+              'anyfesolver_import':str(Path(anyfesolver.__file__).resolve()),
               'independent_membrane_import':str(Path(
                   previous.probe.reference.continuum_stiffness.__code__.co_filename).resolve()),
               'memory_limit_bytes':MAX_RSS,'case_wall_seconds':MAX_CASE_SECONDS,

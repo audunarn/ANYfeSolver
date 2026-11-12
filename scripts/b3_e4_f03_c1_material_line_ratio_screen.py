@@ -15,7 +15,7 @@ import subprocess
 import sys
 from time import monotonic
 
-import anysolver
+import anyfesolver
 import numpy as np
 import scipy
 from threadpoolctl import threadpool_info, threadpool_limits
@@ -46,9 +46,9 @@ KINDS = ("piecewise_constant", "continuous_linear", "dual_linear")
 
 
 def evaluate(*, selective_yaw: bool = False) -> dict:
-    expected = (Path(__file__).resolve().parents[1]/"src"/"anysolver").resolve()
-    if Path(anysolver.__file__).resolve().parent != expected:
-        raise RuntimeError("ratio screen imported another ANYsolver checkout")
+    expected = (Path(__file__).resolve().parents[1]/"src"/"anyfesolver").resolve()
+    if Path(anyfesolver.__file__).resolve().parent != expected:
+        raise RuntimeError("ratio screen imported another ANYfeSolver checkout")
     started = monotonic()
     deadline = started+120.
     cases = {}
@@ -136,8 +136,8 @@ def evaluate(*, selective_yaw: bool = False) -> dict:
         "source_git": subprocess.check_output(
             ("git", "rev-parse", "HEAD"), text=True).strip(),
         "python": sys.version.split()[0], "numpy": np.__version__,
-        "scipy": scipy.__version__, "anysolver_import_path": str(
-            Path(anysolver.__file__).resolve()),
+        "scipy": scipy.__version__, "anyfesolver_import_path": str(
+            Path(anyfesolver.__file__).resolve()),
         "effective_threadpools": threadpool_info(),
         "env": {k: os.environ.get(k) for k in
                 ("NUMBA_DISABLE_JIT", "OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS")},
@@ -146,9 +146,9 @@ def evaluate(*, selective_yaw: bool = False) -> dict:
 
 def evaluate_yaw_resolution(*, four_to_one: bool = False) -> dict:
     """Fixed-primal yaw row/work screen, including the 4:1 missing mode."""
-    expected = (Path(__file__).resolve().parents[1]/"src"/"anysolver").resolve()
-    if Path(anysolver.__file__).resolve().parent != expected:
-        raise RuntimeError("yaw screen imported another ANYsolver checkout")
+    expected = (Path(__file__).resolve().parents[1]/"src"/"anyfesolver").resolve()
+    if Path(anyfesolver.__file__).resolve().parent != expected:
+        raise RuntimeError("yaw screen imported another ANYfeSolver checkout")
     started = monotonic()
     shell_cells = 16 if four_to_one else 8
     beam_half_cells = 14 if four_to_one else 18
@@ -280,8 +280,8 @@ def evaluate_yaw_resolution(*, four_to_one: bool = False) -> dict:
         "source_git": subprocess.check_output(("git", "rev-parse", "HEAD"),
                                               text=True).strip(),
         "python": sys.version.split()[0], "numpy": np.__version__,
-        "scipy": scipy.__version__, "anysolver_import_path": str(
-            Path(anysolver.__file__).resolve()),
+        "scipy": scipy.__version__, "anyfesolver_import_path": str(
+            Path(anyfesolver.__file__).resolve()),
         "effective_threadpools": threadpool_info(),
         "env": {k: os.environ.get(k) for k in
                 ("NUMBA_DISABLE_JIT", "OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS")},

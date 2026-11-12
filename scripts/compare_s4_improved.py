@@ -12,7 +12,7 @@ from typing import Any, Sequence
 
 ROOT = Path(__file__).resolve().parents[1]
 REPORT_ROOT = ROOT / "reports" / "s4_improved"
-SCHEMA_NAME = "anysolver.s4_improved.benchmark"
+SCHEMA_NAME = "anyfesolver.s4_improved.benchmark"
 SCHEMA_VERSION = 1
 
 
@@ -98,7 +98,7 @@ def compare_reports(
     hard_failures = [row["case_id"] for row in rows if row["status"] == "hard_fail"]
     unavailable = [row["case_id"] for row in rows if row["status"] == "unavailable"]
     return {
-        "schema_name": "anysolver.s4_improved.comparison",
+        "schema_name": "anyfesolver.s4_improved.comparison",
         "schema_version": 1,
         "issues": issues,
         "cases": rows,

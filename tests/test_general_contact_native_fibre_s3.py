@@ -4,8 +4,8 @@ from hashlib import sha256
 import json,os
 import numpy as np
 import pytest
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.general_contact.native_multi_s3_static import FIBRE_CURVED_MATERIAL_PROFILE
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.general_contact.native_multi_s3_static import FIBRE_CURVED_MATERIAL_PROFILE
 from test_general_contact_native_curved_s3_static import _analysis
 from test_general_contact_native_curved_static import _canonical_fixture_payload
 
@@ -152,8 +152,8 @@ def test_fibre_contact_guards_consumed_caches(cache):
 
 
 def test_fibre_contact_expired_context_is_explicit_resource_failure(monkeypatch):
-    import anysolver._ge_beam3_retained_fibre_state as backend
-    from anysolver._ge_beam3_effective_deadline import effective_deadline_seconds
+    import anyfesolver._ge_beam3_retained_fibre_state as backend
+    from anyfesolver._ge_beam3_effective_deadline import effective_deadline_seconds
     owner=_analysis(targets=(1.,),physical_fibres=True)
     initial=owner.initial
     histories=canonical(initial.native_histories)
@@ -167,7 +167,7 @@ def test_fibre_contact_expired_context_is_explicit_resource_failure(monkeypatch)
 
 @pytest.mark.parametrize('cancelled',(False,True))
 def test_fibre_material_candidate_exception_and_cancellation_preserve_origin(monkeypatch,cancelled):
-    from anysolver.control import CancellationToken
+    from anyfesolver.control import CancellationToken
     owner=_analysis(targets=(1.,),physical_fibres=True);token=CancellationToken()
     before=owner._checkpoint(());history=canonical(owner.initial.native_histories)
     probe=owner.context._backend.probes[0];original=type(probe).evaluate
@@ -184,7 +184,7 @@ def test_fibre_material_candidate_exception_and_cancellation_preserve_origin(mon
 
 
 def test_fibre_contact_precancel_returns_unchanged_initial_state():
-    from anysolver.control import CancellationToken
+    from anyfesolver.control import CancellationToken
     owner=_analysis(targets=(1.,),physical_fibres=True);before=owner._checkpoint(())
     token=CancellationToken();token.cancel()
     run=owner.solve(cancellation_token=token)

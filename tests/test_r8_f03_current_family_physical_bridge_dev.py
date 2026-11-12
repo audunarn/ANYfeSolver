@@ -121,7 +121,7 @@ def test_nonzero_exerted_convention_and_caller(tmp_path,monkeypatch):
     from scripts import r8_f03_current_family_physical_bridge_dev as module
     from scripts import b3_e4_bl5_coherent_aggregation_dev as provider
     from scripts import r8_bl5_actual_primal_work_dev as normative
-    from anysolver import stiffened_shell
+    from anyfesolver import stiffened_shell
     from scripts.r8_f03_sparse_signed_family_dev import sha_matrix
     k=sparse.eye(3,format='csr');c=sparse.csr_matrix(np.array(((1.,2.,-1.),)));lam=np.diag((.4,));lm=np.array((3.,));q=np.array((.1,.2,.3))
     loads=-np.asarray(c.T@lam)

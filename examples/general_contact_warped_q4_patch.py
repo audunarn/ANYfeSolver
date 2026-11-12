@@ -1,11 +1,11 @@
 """Two edge-sharing warped Q4 faces against an analytic rigid plane."""
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, LoadCase, RigidContactBody,
     create_shell_element, solve_static_nonlinear,
 )
-from anysolver.fe_core import FEModel
+from anyfesolver.fe_core import FEModel
 
 
 model = FEModel("two_warped_q4_plane_example")

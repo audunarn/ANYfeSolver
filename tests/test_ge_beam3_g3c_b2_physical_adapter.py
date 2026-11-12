@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import numpy as np
 import pytest
-import anysolver._ge_beam3_g3c_b2_physical_adapter as module
+import anyfesolver._ge_beam3_g3c_b2_physical_adapter as module
 
 CONTRACT = json.loads((Path(__file__).resolve().parents[1]/
     'docs/reference_cases/ge_beam3_g3c_b2_physical_contract_v1.json').read_text())

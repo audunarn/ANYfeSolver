@@ -1,6 +1,6 @@
 """Integrated experimental Q4/native-B3 point-panel checks."""
 
-import anysolver
+import anyfesolver
 from hashlib import sha256
 import json
 import numpy as np
@@ -8,14 +8,14 @@ import pytest
 from dataclasses import replace
 from scipy import sparse
 
-from anysolver import b3_ge
-from anysolver import _stiffened_shell_ge_experimental as ge_experimental
-from anysolver._stiffened_shell_ge_checkpoint_binary import (
+from anyfesolver import b3_ge
+from anyfesolver import _stiffened_shell_ge_experimental as ge_experimental
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import (
     MAGIC as BINARY_CHECKPOINT_MAGIC, decode as decode_binary_checkpoint,
     encode as encode_binary_checkpoint,
 )
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_ge_experimental import (
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_ge_experimental import (
     PROFILE, ExperimentalGEAnalysis, FixedCoordinate, LinearDefinition,
     NodalAction, PointConnection, ShellPanel,
 )
@@ -49,7 +49,7 @@ def _panel():
 
 def test_sparse_mixed_panel_solve_recovery_and_restart():
     definition = _panel()
-    analysis = anysolver.stiffened_shell.create_analysis(definition=definition)
+    analysis = anyfesolver.stiffened_shell.create_analysis(definition=definition)
     assert analysis.capabilities["attachment"] == ("reference point pose",)
     legacy_identity = sha256(json.dumps({
         "profile": PROFILE, "shell_ids": definition.shell.node_ids,
@@ -128,8 +128,8 @@ def test_compiled_panel_owns_mutable_caller_geometry_and_connectivity():
     cells = [list(cell) for cell in original.shell.q4_elements]
     shell = replace(original.shell, coordinates_m=coordinates, q4_elements=cells)
     caller_definition = replace(original, shell=shell)
-    owned = anysolver.stiffened_shell.create_analysis(definition=caller_definition)
-    control = anysolver.stiffened_shell.create_analysis(definition=original)
+    owned = anyfesolver.stiffened_shell.create_analysis(definition=caller_definition)
+    control = anyfesolver.stiffened_shell.create_analysis(definition=original)
     identity = owned._identity
 
     # Mutation after compilation must not change the assembled operator,
@@ -309,7 +309,7 @@ def test_linear_refinement_recovers_a_roundoff_sized_response_error(monkeypatch,
 
 @pytest.mark.parametrize("failure", ["cancel", "cancel_second", "numerical", "programming"])
 def test_linear_refinement_failure_preserves_accepted_snapshot(monkeypatch, failure):
-    from anysolver import _b2_physical_linear_batch_dev as residual_service
+    from anyfesolver import _b2_physical_linear_batch_dev as residual_service
     analysis = ExperimentalGEAnalysis(_panel())
     action = (NodalAction("beam", 105, (0., 0., 100., 0., 0., 0.)),)
     accepted = analysis.solve_linear(action)

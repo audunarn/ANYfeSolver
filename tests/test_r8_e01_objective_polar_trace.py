@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_mixed_ad import rotation_exponential
+from anyfesolver._ge_beam3_mixed_ad import rotation_exponential
 from scripts import r8_e01_objective_polar_trace as trace
 from scripts.r8_e01_material_frame_work import rectangular_patch, shell_material_frame_map
 

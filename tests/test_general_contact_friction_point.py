@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.friction_point import (
+from anyfesolver.general_contact.friction_point import (
     FrictionPointState, initial_friction_point,
     objective_relative_tangent_increment, trial_coulomb_point,
     trial_coulomb_point_directional,
@@ -18,7 +18,7 @@ PARTNER = "shell:17:material-point:0.25,0.5"
 
 
 def test_frame_validation_reuse_rechecks_changed_bytes_and_does_not_share_arrays():
-    from anysolver.general_contact.friction_point import _frame3, _validate_frame_bytes
+    from anyfesolver.general_contact.friction_point import _frame3, _validate_frame_bytes
     _validate_frame_bytes.cache_clear()
     frame=np.eye(3)
     assert _frame3(frame) is frame

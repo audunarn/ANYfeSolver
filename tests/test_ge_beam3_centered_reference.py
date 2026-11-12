@@ -5,8 +5,8 @@ from fractions import Fraction as F
 import numpy as np
 import pytest
 
-from anysolver import ge_beam3_curved_reference as historical
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Centered
+from anyfesolver import ge_beam3_curved_reference as historical
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Centered
 
 
 def oracle(nodes, xi, derivative=False):
@@ -122,8 +122,8 @@ def test_midpoint_frame_derivative_traces_and_owned_fingerprint():
 
 
 def test_old_consumers_do_not_silently_claim_the_centered_evaluator():
-    from anysolver._ge_beam3_p5.compensated import CompensatedStationaryBeam
-    from anysolver._ge_beam3_p5.section import DirectedHardeningSection
+    from anyfesolver._ge_beam3_p5.compensated import CompensatedStationaryBeam
+    from anyfesolver._ge_beam3_p5.section import DirectedHardeningSection
     nodes, frames = fixture(translation=2.**30)
     ref = Centered(nodes,frames)
     section = DirectedHardeningSection(np.eye(6),np.array([1.,0.,0.,0.,0.,0.]),1.,1.)

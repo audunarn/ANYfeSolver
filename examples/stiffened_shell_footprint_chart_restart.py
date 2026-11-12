@@ -1,6 +1,6 @@
 """Opt-in elastic footprint chart reset and four-path restart comparison.
 
-Run with an installed ANYsolver. This selected-node rigid connection locks all
+Run with an installed ANYfeSolver. This selected-node rigid connection locks all
 six pose channels; it is not a distributing footprint, area weld or qualified
 physical connection. The existing unrebased example and default remain intact.
 """
@@ -9,7 +9,7 @@ from dataclasses import replace
 import json
 
 import numpy as np
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from stiffened_shell_nodal_rigid_footprint import definition
 
 

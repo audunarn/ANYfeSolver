@@ -2,8 +2,8 @@
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver.control import CancellationToken,SolveCancelled
-from anysolver._stiffened_shell_displacement_checkpoint import decode_snapshot,encode_snapshot
+from anyfesolver.control import CancellationToken,SolveCancelled
+from anyfesolver._stiffened_shell_displacement_checkpoint import decode_snapshot,encode_snapshot
 from test_stiffened_shell_native_plastic_s3_displacement import definition,compare
 from test_stiffened_shell_native_point_displacement import owner,DIRECTION,CONTROL,OPTIONS
 

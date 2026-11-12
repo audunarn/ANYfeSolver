@@ -439,7 +439,7 @@ def run_regional_wrenches(manifest,output):
 def run_bridge(manifest,output):
     """ONE current32 compilation, saved16 geometry only; no equilibrium/Riesz solve."""
     import traceback
-    from anysolver import stiffened_shell
+    from anyfesolver import stiffened_shell
     from scripts.b3_e4_bl5_coherent_aggregation_dev import model
     from scripts.r8_bl5_actual_primal_work_dev import actual_flat_primal_work
     out=Path(output);out.mkdir(exist_ok=False);result=dict(status='FAILED',qualification=False);owner=None

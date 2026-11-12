@@ -23,7 +23,7 @@ import numpy as np
 
 
 WORKTREE = Path(__file__).resolve().parents[1]
-EXE = Path("C:/Github/ANYsolver/.qualification/b3-ge-e4-pl/"
+EXE = Path("C:/Github/ANYfeSolver/.qualification/b3-ge-e4-pl/"
            "calculix-223/CalculiX-2.23.0-win-x64/bin/ccx.exe")
 EXE_SHA = "27a9426a1ee2f72c38fbe892e0ffaf38e14867628ffd0235770261b6f3ec9c5f"
 TIMEOUT_SECONDS = 120

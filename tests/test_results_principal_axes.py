@@ -2,8 +2,8 @@
 import threading
 import numpy as np
 import pytest
-from anysolver_results.formulas import principal_stresses
-from anysolver_results.principals import principal_axes
+from anyfesolver_results.formulas import principal_stresses
+from anyfesolver_results.principals import principal_axes
 
 
 def test_rotated_axes_preserve_canonical_values_residuals_and_input():
@@ -64,7 +64,7 @@ def test_noncontiguous_input_and_broadcast_basis_are_not_modified():
 
 
 def test_cancellation_before_admission_and_between_blocks(monkeypatch):
-    import anysolver_results.principals as module
+    import anyfesolver_results.principals as module
     event=threading.Event();event.set()
     with pytest.raises(InterruptedError):principal_axes(np.eye(3),cancel_event=event)
     class BetweenBlocks:
@@ -83,7 +83,7 @@ def test_cancellation_before_admission_and_between_blocks(monkeypatch):
 
 @pytest.mark.parametrize('huge', [False,True])
 def test_working_cap_precedes_conversion_even_for_huge_virtual_shape(monkeypatch,huge):
-    import anysolver_results.principals as module
+    import anyfesolver_results.principals as module
     calls=[]
     class HugeVirtualArray(np.ndarray):
         @property
@@ -111,7 +111,7 @@ def test_unknown_or_negative_shape_overrides_are_ignored(dimensions):
 
 @pytest.mark.parametrize('dimensions', [(1,3,3),(2,3),(3,2),(3,3,1)])
 def test_malformed_or_oversized_basis_refuses_before_conversion(monkeypatch,dimensions):
-    import anysolver_results.principals as module
+    import anyfesolver_results.principals as module
     calls=[]
     class VirtualBasis(np.ndarray):
         @property
@@ -134,7 +134,7 @@ def test_valid_basis_ignores_shape_property_without_calling_it():
 
 
 def test_invalid_actual_tensor_shape_refuses_before_conversion(monkeypatch):
-    import anysolver_results.principals as module
+    import anyfesolver_results.principals as module
     calls=[]
     class VirtualArray(np.ndarray):
         @property

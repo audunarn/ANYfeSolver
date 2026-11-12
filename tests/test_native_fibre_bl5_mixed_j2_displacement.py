@@ -6,15 +6,15 @@ from math import fsum
 import json
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken,SolveCancelled
-from anysolver._stiffened_shell_displacement_checkpoint import identities,decode_snapshot
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken,SolveCancelled
+from anyfesolver._stiffened_shell_displacement_checkpoint import identities,decode_snapshot
 from examples.stiffened_shell_native_fibre_bl5_mixed_j2_displacement import definition
 from examples.stiffened_shell_native_fibre_bl5_displacement import ACTIONS,CONTROL,OPTIONS,TARGETS
 
 def family_history(owner,result):
     """Model-declared families; native fibre rows never include generalized rows."""
-    from anysolver._ge_beam3_fibre_section import PhysicalFibreSection
+    from anyfesolver._ge_beam3_fibre_section import PhysicalFibreSection
     _,arrays=decode_snapshot(owner,owner.checkpoint())
     shell_records={r.element_id:(family,r) for family,records in
                    (("Q4",result.shell_q4_material),("S3",result.shell_s3_material)) for r in records}
@@ -104,7 +104,7 @@ def test_public_restart_continue_and_atomic_refusals(loaded,tmp_path,monkeypatch
             patch.setattr(driver,'_advance',cancel_candidate)
             with pytest.raises(SolveCancelled):owner.solve(ACTIONS,TARGETS[2:],displacement_control=CONTROL,cancellation_token=token,**OPTIONS)
         assert owner.checkpoint()==saved
-        from anysolver._ge_beam3_retained_fibre import RetainedFibreOperator
+        from anyfesolver._ge_beam3_retained_fibre import RetainedFibreOperator
         with monkeypatch.context() as patch:
             def changed_material(_operator):raise ValueError('captured retained fibre inventory changed')
             patch.setattr(RetainedFibreOperator,'guard',changed_material)
@@ -149,8 +149,8 @@ def test_yielded_assembled_tangent_and_material_capture(loaded,tmp_path):
             strain_errors.append(float(np.linalg.norm(deriv-expected)/max(np.linalg.norm(expected),1e-12)))
     assert max(errors)<=1e-5,errors
     assert max(strain_errors)<=1e-5,strain_errors
-    from anysolver._stiffened_shell_s3_material_event import boundary_amount
-    from anysolver._stiffened_shell_q4_material_event import boundary_amount as q4_boundary
+    from anyfesolver._stiffened_shell_s3_material_event import boundary_amount
+    from anyfesolver._stiffened_shell_q4_material_event import boundary_amount as q4_boundary
     for slots,trial in captured:
         function=boundary_amount if len(slots)==18 else q4_boundary
         assert function(trial,np.zeros(len(slots)),origin=trial.origin) is None
@@ -158,7 +158,7 @@ def test_yielded_assembled_tangent_and_material_capture(loaded,tmp_path):
         with pytest.raises(ValueError):function(trial,np.zeros(len(slots)),origin=dict(trial.origin))
         if len(slots)==18:
             changed=dict(trial.origin);changed['initial_generalized_prestrain']=np.asarray(changed['initial_generalized_prestrain']).copy();changed['initial_generalized_prestrain'][0,0]+=1e-6
-            from anysolver._stiffened_shell_q4_material_event import _origin_values
+            from anyfesolver._stiffened_shell_q4_material_event import _origin_values
             assert _origin_values(changed)!=trial.origin_values
     assert owner.checkpoint()==saved
     owner.close()

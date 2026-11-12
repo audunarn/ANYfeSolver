@@ -9,12 +9,12 @@ import numpy as np
 import pytest
 from scipy.integrate import quad
 
-from anysolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
                        ContactSolverSettings, ContactSurface, DisplacementControl, LoadCase,
                        RigidContactBody, solve_static_nonlinear, validate_general_contact)
-from anysolver.elements import QuadraticBeamElement
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.multiple_beam_rigid import MultipleBeamRigidManager, PROFILE
+from anyfesolver.elements import QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.multiple_beam_rigid import MultipleBeamRigidManager, PROFILE
 
 
 def fixture(*, cylinder=False):

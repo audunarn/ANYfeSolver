@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     FEModel,
     Hill48Yield,
     OrthotropicMaterial,
@@ -16,16 +16,16 @@ from anysolver import (
     describe_result_quantities,
     recover_stress_result,
 )
-from anysolver.e4_pl_s3_element import (
+from anyfesolver.e4_pl_s3_element import (
     CAPABILITY_GAPS,
     PHYSICAL_EXTERNAL_INDICES,
     TRIANGLE_QUADRATURE,
     triangle_frame,
 )
-from anysolver.fe_core import FEMesh, Material
-from anysolver.plasticity import hill48_plane_stress_equivalent_stress
-from anysolver.recovery import recover_element_stresses_with_report
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.fe_core import FEMesh, Material
+from anyfesolver.plasticity import hill48_plane_stress_equivalent_stress
+from anyfesolver.recovery import recover_element_stresses_with_report
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 OWNER_NORMAL = np.asarray((0.0, 0.0, 1.0), dtype=float)

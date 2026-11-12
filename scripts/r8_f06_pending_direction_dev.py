@@ -12,7 +12,7 @@ PARTIAL=BASE/'pending-resume-v1/partial-accepted-2_3125.bin'
 HISTORY=BASE/'adaptive-material-v1/attempt-primary2/histories-00.npz'
 
 def bindings():
- paths=[ROOT/'src/anysolver'/n for n in (*infra.PRODUCTS,'_stiffened_shell_increment_control.py',
+ paths=[ROOT/'src/anyfesolver'/n for n in (*infra.PRODUCTS,'_stiffened_shell_increment_control.py',
   '_stiffened_shell_staged_load_experimental.py','_stiffened_shell_rotation_charts.py')]
  paths += [Path(__file__),ROOT/'tests/test_r8_f06_pending_direction_dev.py',INPUT,PARTIAL,HISTORY,
   PACKAGE/'artifact.json',PACKAGE/'snapshot-bindings.json']

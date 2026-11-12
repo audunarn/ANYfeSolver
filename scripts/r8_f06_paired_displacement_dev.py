@@ -12,7 +12,7 @@ PRODUCTS=('_stiffened_shell_displacement_control.py','_stiffened_shell_displacem
  '_stiffened_shell_displacement_checkpoint.py','_stiffened_shell_displacement_corrector.py',
  '_stiffened_shell_affine_endpoint.py','_stiffened_shell_ge_checkpoint_binary.py','_stiffened_shell_ge_experimental.py')
 def bindings():
- paths=[ROOT/'src/anysolver'/n for n in set((*PRODUCTS,*infra.PRODUCTS))]
+ paths=[ROOT/'src/anyfesolver'/n for n in set((*PRODUCTS,*infra.PRODUCTS))]
  paths += [ROOT/'scripts'/n for n in ('r8_f06_cyclic_material_dev.py','r8_f06_native_material_breadth_dev.py','r8_f06_coupled_resume_dev.py','r8_f06_fibre_log_domain_dev.py','r8_f06_log_domain_check_dev.py')]
  paths += [Path(__file__),ROOT/'tests/test_r8_f06_paired_displacement_dev.py',ROOT/'tests/test_r8_f06_coupled_resume_dev.py',INPUT,DOC/'PHYSICAL_ROUTE.json']
  paths += [ROOT/'tests'/n for n in ('test_stiffened_shell_displacement_checkpoint.py','test_stiffened_shell_bl5_coupled_material.py','test_stiffened_shell_bl5_material.py','test_stiffened_shell_bl5_finite.py')]

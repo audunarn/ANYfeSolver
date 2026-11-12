@@ -10,15 +10,15 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSurface, RigidContactBody, create_shell_element)
-from anysolver.assembly import assemble_mass_matrix
-from anysolver.dynamics import TransientConfig
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.core import active_contact_manager
-from anysolver.general_contact.transient import ContactTransientSolverControls, solve_transient_contact
-from anysolver.material_curves import DNVC208MaterialCurve
-from anysolver.nonlinear_restart import analysis_configuration_fingerprint
+from anyfesolver.assembly import assemble_mass_matrix
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.core import active_contact_manager
+from anyfesolver.general_contact.transient import ContactTransientSolverControls, solve_transient_contact
+from anyfesolver.material_curves import DNVC208MaterialCurve
+from anyfesolver.nonlinear_restart import analysis_configuration_fingerprint
 
 E, NU, H, RHO = 1.e5, .3, .05, 1.
 G, YIELD, KN, GAP = E/(2*(1+NU)), 20., 4.e7, .0008
@@ -171,10 +171,10 @@ def test_yielded_active_restart_preserves_return_map_origin_and_settings(complet
 
 @pytest.mark.parametrize('cancel',[False,True])
 def test_failure_after_yield_leaves_model_and_contact_context_reusable(monkeypatch,cancel):
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.control import CancellationToken,SolveCancelled
     model,_,_,modes,definition=fixture()
     token=CancellationToken()
-    import anysolver.general_contact.q4_material_checkpoint as codec
+    import anyfesolver.general_contact.q4_material_checkpoint as codec
     prepare=codec.prepare_q4_material_checkpoint
     observed=[]
     def fail_after_yield(model,full,states,**kwargs):
@@ -203,8 +203,8 @@ def test_failure_after_yield_leaves_model_and_contact_context_reusable(monkeypat
 
 
 def test_cutback_from_yielded_parent_preserves_material_history(monkeypatch):
-    import anysolver.general_contact.transient as driver
-    import anysolver.general_contact.q4_material_checkpoint as codec
+    import anyfesolver.general_contact.transient as driver
+    import anyfesolver.general_contact.q4_material_checkpoint as codec
     prepare=codec.prepare_q4_material_checkpoint
     bounds=driver._minimum_hermite_gap
     yielded,rejected=False,False
@@ -236,8 +236,8 @@ def test_cutback_from_yielded_parent_preserves_material_history(monkeypatch):
     ('tool_work_relative_tolerance',2e-8),('maximum_tool_work_subdivisions',65)])
 def test_existing_moving_tool_restart_still_binds_work_controls(name,value):
     from types import SimpleNamespace
-    from anysolver.general_contact.rigid_translation import ContactRigidTranslationHistory
-    from anysolver.general_contact.transient import _restart_analysis_contract
+    from anyfesolver.general_contact.rigid_translation import ContactRigidTranslationHistory
+    from anyfesolver.general_contact.transient import _restart_analysis_contract
     tool=ContactRigidTranslationHistory('plane',((0.,0.,0.,0.),(.1,0.,0.,.01)))
     manager=SimpleNamespace(restart_contract=lambda:{'fixture':'existing-plane'})
     transient=TransientConfig(.001,.1,initial_velocity=np.zeros(1))
@@ -251,9 +251,9 @@ def test_existing_moving_tool_restart_still_binds_work_controls(name,value):
 
 
 def test_plastic_profile_requires_explicit_supported_material_and_controls():
-    from anysolver.general_contact.transient import _admit
-    from anysolver.general_contact.core import ContactSolverSettings
-    from anysolver.material_curves import LinearHardeningCurve
+    from anyfesolver.general_contact.transient import _admit
+    from anyfesolver.general_contact.core import ContactSolverSettings
+    from anyfesolver.material_curves import LinearHardeningCurve
     model,material,_,_,definition=fixture()
     with pytest.raises(ValueError,match='only isotropic elastic'):
         _admit(model,definition,ContactSolverSettings(),ContactTransientSolverControls())

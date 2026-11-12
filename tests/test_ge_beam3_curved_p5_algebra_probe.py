@@ -9,7 +9,7 @@ import sys
 import numpy as np
 import pytest
 
-from anysolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
+from anyfesolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -165,7 +165,7 @@ def test_reversal_preserves_coupled_work_and_transforms_moments_and_hessian():
 
 def test_straight_limit_agrees_with_frozen_p3_uneliminated_functional():
     # Comparison target is imported only in this test, never by the probe.
-    from anysolver.ge_beam3_mixed_element import GeometricallyExactBeam3D3NElement
+    from anyfesolver.ge_beam3_mixed_element import GeometricallyExactBeam3D3NElement
     ref = reference(0.)
     x, q, u = perturbed(ref)
     _, moments = probe.reduced_energy(ref, section(), x, q, u)
@@ -177,7 +177,7 @@ def test_straight_limit_agrees_with_frozen_p3_uneliminated_functional():
 
 
 def test_straight_reference_full_and_condensed_hessians_agree_with_p3():
-    from anysolver.ge_beam3_mixed_element import GeometricallyExactBeam3D3NElement
+    from anyfesolver.ge_beam3_mixed_element import GeometricallyExactBeam3D3NElement
     ref = reference(0.)
     physical_cells = ref.nodal_triads[:2]
     old = GeometricallyExactBeam3D3NElement._potential(

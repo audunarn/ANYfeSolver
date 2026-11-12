@@ -8,7 +8,7 @@ import math
 import numpy as np
 import pytest
 from scipy.linalg import expm, expm_frechet
-from anysolver.marine_rigid import RigidBody6D
+from anyfesolver.marine_rigid import RigidBody6D
 
 I = ((3., .2, .1), (.2, 4., .3), (.1, .3, 5.))
 Z = ((math.cos(.4), -math.sin(.4), 0.),

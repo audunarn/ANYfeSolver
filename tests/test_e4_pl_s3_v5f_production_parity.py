@@ -52,7 +52,7 @@ def test_checker_is_independent_of_producer_and_production_mechanics() -> None:
         elif isinstance(node, ast.ImportFrom) and node.module:
             imports.add(node.module)
     assert "e4_pl_s3_v5f_production_parity_producer" not in imports
-    assert "anysolver" not in imports
+    assert "anyfesolver" not in imports
 
 
 def test_contract_is_canonical_and_binds_exact_authority_extent() -> None:
@@ -123,7 +123,7 @@ def test_terminal_precedence_and_bounds(coordinator) -> None:
 
 
 def test_defaults_and_q4_mechanics_remain_unchanged() -> None:
-    source = (ROOT / "src/anysolver/elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src/anyfesolver/elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source
     contract = json.loads(CONTRACT.read_text(encoding="ascii"))

@@ -11,8 +11,8 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_g1_elastic import canonical, owned
-from anysolver._ge_beam3_g3b_owner import MixedReferenceOwner, _Bundle, MAX_BYTES
+from anyfesolver._ge_beam3_g1_elastic import canonical, owned
+from anyfesolver._ge_beam3_g3b_owner import MixedReferenceOwner, _Bundle, MAX_BYTES
 
 ROOT=Path(__file__).resolve().parents[1]
 LANES=("mb2","mb3","mq4","ms3","weighted")
@@ -217,14 +217,14 @@ def test_owner_deterministic_development_packet(tmp_path):
 
 def test_owner_extent_and_prior_tests_unchanged():
     git=["git","-c","safe.directory="+ROOT.as_posix()]
-    allowed={"src/anysolver/_ge_beam3_g3b_owner.py":"A","tests/test_ge_beam3_g3b_owner.py":"A",
+    allowed={"src/anyfesolver/_ge_beam3_g3b_owner.py":"A","tests/test_ge_beam3_g3b_owner.py":"A",
         "docs/GE_BEAM3_G3B_OWNER_CONTRACT.md":"A",
         "docs/reference_cases/ge_beam3_g3b_owner_development_v1.json":"A",
         "scripts/run_ge_beam3_g3b.py":"M"}
     allowed.update({p:"A" for p in ["docs/GE_BEAM3_G3B_ENTRY_SAFETY_STATUS.md","docs/reference_cases/ge_beam3_g3b_confirmation_inventory_v2.json"]})
     allowed.update({p:"A" for p in ["scripts/confirm_ge_beam3_g3b.py","scripts/ge_beam3_g3b_environment.py","tests/test_ge_beam3_g3b_confirmation_runner.py","docs/GE_BEAM3_G3B_CONFIRMATION_RUNNER_STATUS.md"]})
     allowed.update({p:"A" for p in ["scripts/ge_beam3_g3b_confirmation_authority.py","tests/test_ge_beam3_g3b_confirmation_authority.py","docs/GE_BEAM3_G3B_FORMAL_CONFIRMATION_CONTRACT.md","docs/reference_cases/ge_beam3_g3b_confirmation_inventory_v1.json"]})
-    allowed.update({p:"A" for p in ["docs/GE_BEAM3_G3B_LOCAL_REVIEW_STATUS.md","docs/reference_cases/ge_beam3_g3b_local_safety_review_v1.json","src/anysolver/_ge_beam3_g3b_result_schema.py","tests/test_ge_beam3_g3b_owner_corrections.py","docs/GE_BEAM3_G3B_OWNER_CORRECTIONS.md"]})
+    allowed.update({p:"A" for p in ["docs/GE_BEAM3_G3B_LOCAL_REVIEW_STATUS.md","docs/reference_cases/ge_beam3_g3b_local_safety_review_v1.json","src/anyfesolver/_ge_beam3_g3b_result_schema.py","tests/test_ge_beam3_g3b_owner_corrections.py","docs/GE_BEAM3_G3B_OWNER_CORRECTIONS.md"]})
     markers=dict(mb2="test_additive_scope_and_immutable_parent_authority",
         mb3="test_successor_extent_preserves_mechanics_and_historical_records",
         mq4="test_mq4_extent_and_frozen_parent_bindings",ms3="test_ms3_extent_and_frozen_parent_bindings",

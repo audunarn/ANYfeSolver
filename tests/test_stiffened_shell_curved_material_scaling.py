@@ -2,7 +2,7 @@
 from dataclasses import replace
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss,b3_ge
+from anyfesolver import stiffened_shell as ss,b3_ge
 from test_stiffened_shell_curved_material import (
     curved_material_panel,make_owner,_actions,assert_generalized_records_equal)
 from test_stiffened_shell_curved_material_arc import control_for

@@ -16,13 +16,13 @@ import runpy
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     CancellationToken,
     CoupledBeamShellElement,
     InterpolatedBeamShellMPCElement,
     solve_static_nonlinear,
 )
-from anysolver.elements import BeamElement
+from anyfesolver.elements import BeamElement
 
 EXAMPLE = Path(__file__).resolve().parents[1] / "examples" / "beam_shell_coupling.py"
 

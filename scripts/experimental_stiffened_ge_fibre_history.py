@@ -8,9 +8,9 @@ import argparse
 from dataclasses import replace
 import json
 
-import anysolver
-from anysolver import b3_ge
-from anysolver.stiffened_shell import NodalAction
+import anyfesolver
+from anyfesolver import b3_ge
+from anyfesolver.stiffened_shell import NodalAction
 from experimental_stiffened_ge_panel import make_definition
 
 
@@ -31,8 +31,8 @@ def run(mixed=False):
             ref.coordinates,ref.nodal_triads,section,inertia,
             quadrature=element.operator.order))
     definition = replace(base,beams=tuple(beams))
-    owner = anysolver.stiffened_shell.create_analysis(definition=definition)
-    resumed = anysolver.stiffened_shell.create_analysis(definition=definition)
+    owner = anyfesolver.stiffened_shell.create_analysis(definition=definition)
+    resumed = anyfesolver.stiffened_shell.create_analysis(definition=definition)
     try:
         actions = (NodalAction('beam',105,(0.,0.,1000.,0.,0.,0.)),)
         first = owner.solve(actions,targets=(.5,1.),max_iterations=18)

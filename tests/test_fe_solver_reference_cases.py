@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver import (
+from anyfesolver import (
     FEModel,
     classify_reference_case_from_nodes,
     compare_shell_benchmark_to_reference,
@@ -26,8 +26,8 @@ from anysolver import (
     upstream_calculix_shell_reference_values,
     write_external_reference_report,
 )
-from anysolver.boundary import LoadCase
-from anysolver.elements import BeamElement
+from anyfesolver.boundary import LoadCase
+from anyfesolver.elements import BeamElement
 
 
 def _make_reference_temp_dir() -> Path:
@@ -36,7 +36,7 @@ def _make_reference_temp_dir() -> Path:
     A runner can set TMP/TEMP to an accessible external evidence root on
     Windows. Existing repository-local evidence is never reused or removed.
     """
-    return Path(tempfile.mkdtemp(prefix="anysolver-reference-cases-"))
+    return Path(tempfile.mkdtemp(prefix="anyfesolver-reference-cases-"))
 
 
 def test_reference_case_discovery_finds_local_inp_frd_pair() -> None:

@@ -7,12 +7,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 from scipy import sparse
-from anysolver import BoundaryCondition,solve_static_nonlinear
-from anysolver.general_contact import ContactPathControl,ContactPathProgram
-from anysolver.general_contact.s3_sliding_friction import S3SlidingFrictionManager
+from anyfesolver import BoundaryCondition,solve_static_nonlinear
+from anyfesolver.general_contact import ContactPathControl,ContactPathProgram
+from anyfesolver.general_contact.s3_sliding_friction import S3SlidingFrictionManager
 
-from anysolver.general_contact.s3_friction_replay import S3ReplayFrictionSettings,S3ReplayFrictionManager
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_friction_replay import S3ReplayFrictionSettings,S3ReplayFrictionManager
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 from test_general_contact_s3_sliding_friction import _manager
 from test_general_contact_s3_friction_static import _mode
 
@@ -329,7 +329,7 @@ def test_legacy_reference_metadata_preserves_every_numerical_and_other_field():
             _assert_legacy_reference_history([dict(contact=changed,step_index=1)],legacy)
 
 def test_opening_deformation_can_create_a_real_hidden_contact_interval():
-    from anysolver.general_contact.s3_friction_replay import ReplayContactSubdivisionRequired
+    from anyfesolver.general_contact.s3_friction_replay import ReplayContactSubdivisionRequired
     # Captured from the unmodified coupled workflow. The material point enters
     # the moving patch before it opens in the normal direction; both endpoints
     # are inactive. This must require subdivision, not a roundoff exemption.
@@ -534,7 +534,7 @@ def test_partial_planar_stage_moments_match_ordinary_mortar():
 
 def test_partial_stage_moments_preserve_slightly_concave_triangle_union():
     from types import SimpleNamespace
-    from anysolver.general_contact.s3_patch_mortar_energy import S3PatchFace,MovingS3PatchPrimalMortarPenalty
+    from anyfesolver.general_contact.s3_patch_mortar_energy import S3PatchFace,MovingS3PatchPrimalMortarPenalty
     source=np.array(((.4,.4,-.01),(.7,.4,-.009),(.4,.7,-.011)))
     target=np.array(((0.,0.,0.),(1.,0.,0.),(.5,.5-2e-11,0.),(0.,1.,0.)))
     geometry=MovingS3PatchPrimalMortarPenalty(
@@ -551,7 +551,7 @@ def test_partial_stage_moments_preserve_slightly_concave_triangle_union():
 
 def test_partial_stage_moments_preserve_shape_domain_rejection():
     from types import SimpleNamespace
-    from anysolver.general_contact.s3_patch_mortar_energy import S3PatchFace,MovingS3PatchPrimalMortarPenalty
+    from anyfesolver.general_contact.s3_patch_mortar_energy import S3PatchFace,MovingS3PatchPrimalMortarPenalty
     h=1e-6
     source=np.array(((-1e-8,h/4,-.01),(h/4,h/4,-.01),(0.,1.,-.01)))
     target=np.array(((0.,0.,0.),(h,0.,0.),(0.,h,0.)))
@@ -569,7 +569,7 @@ def test_partial_stage_moments_preserve_shape_domain_rejection():
 
 def test_full_coverage_pressure_preserves_shared_node_reference_moments():
     from types import SimpleNamespace
-    from anysolver.general_contact.s3_patch_mortar_energy import S3PatchFace,MovingS3PatchPrimalMortarPenalty
+    from anyfesolver.general_contact.s3_patch_mortar_energy import S3PatchFace,MovingS3PatchPrimalMortarPenalty
     reference=np.array(((.2,.2,.02),(.8,.2,.02),(.6,.6,.02),(.2,.7,.02)))
     target=np.array(((-1.,-1.,0.),(3.,-1.,0.),(-1.,3.,0.)))
     geometry=MovingS3PatchPrimalMortarPenalty(
@@ -588,7 +588,7 @@ def test_full_coverage_pressure_preserves_shared_node_reference_moments():
 
 
 def test_prepared_pressure_path_matches_actual_mortar_and_certifies_between_endpoints():
-    from anysolver.general_contact.s3_friction_prepared_path import prepare_s3_plane_pressure_path,_positive
+    from anyfesolver.general_contact.s3_friction_prepared_path import prepare_s3_plane_pressure_path,_positive
     from fractions import Fraction
     model,_definition,_normal,_settings,owner=_case()
     path=Path(__file__).resolve().parents[1]/"docs/d1_review_support/contact_c5_s3_partial_replay_20261002/unresolved_opening_candidate.json"
@@ -712,7 +712,7 @@ def test_prepared_replay_handles_many_material_times_in_bounded_batches(tmp_path
 
 
 def test_prepared_partial_path_matches_actual_pressure_and_work_maps():
-    from anysolver.general_contact.s3_friction_prepared_path import prepare_s3_plane_pressure_path
+    from anyfesolver.general_contact.s3_friction_prepared_path import prepare_s3_plane_pressure_path
     model,definition,normal,settings,_unused=_case()
     owner=S3ReplayFrictionManager(model,GeneralS3PatchManager(model,definition,normal),
         replace(settings,event_subdivisions=4,prepared_pressure_paths=True,prepared_partial_pressure_paths=True))
@@ -763,7 +763,7 @@ def test_prepared_partial_replay_preserves_history_and_explicit_budgets():
 
 
 def test_prepared_partial_stage_decline_uses_counted_ordinary_fallback(monkeypatch):
-    from anysolver.general_contact.s3_friction_prepared_path import prepare_s3_plane_pressure_path
+    from anyfesolver.general_contact.s3_friction_prepared_path import prepare_s3_plane_pressure_path
     model,definition,normal,settings,_unused=_case()
     settings=replace(settings,event_subdivisions=4,prepared_pressure_paths=True,
         prepared_partial_pressure_paths=True,maximum_event_stages=1)
@@ -852,7 +852,7 @@ def test_prepared_event_route_directional_tangent_includes_both_bodies():
 
 
 def test_reference_partition_keeps_tiny_positive_cells_and_both_body_work():
-    from anysolver.general_contact.s3_friction_replay import _split,_twice_area,_SOURCE_UV,_area_centroid,_rational_polygon
+    from anyfesolver.general_contact.s3_friction_replay import _split,_twice_area,_SOURCE_UV,_area_centroid,_rational_polygon
     from fractions import Fraction
     cells=_split(_SOURCE_UV,np.array((1e-12,0)),np.array((1e-12,1)))
     assert len(cells)==2

@@ -40,10 +40,10 @@ import numpy as np
 import pytest
 import scipy
 
-from anysolver import solve_static_nonlinear
-from anysolver.control import SolveCancelled
-from anysolver.general_contact import semismooth_path
-from anysolver.general_contact.core import _contact_settings_contract
+from anyfesolver import solve_static_nonlinear
+from anyfesolver.control import SolveCancelled
+from anyfesolver.general_contact import semismooth_path
+from anyfesolver.general_contact.core import _contact_settings_contract
 
 FIXTURE_DIR = Path("C:/ANYworkspaceWork/contact_joint_dual_full8_20261010")
 DESCRIPTOR_PATH = FIXTURE_DIR / "force-full.json"
@@ -429,7 +429,7 @@ def test_first_actual_v2_proposal_refusal_is_explicit():
     program_contract_before = program.contract()
     boundary_before = repr(model.boundary_conditions)
     constraints_before = repr(model.constraint_equations)
-    from anysolver.general_contact.initial_contact_seed import (
+    from anyfesolver.general_contact.initial_contact_seed import (
         InitialContactSeedRefusal)
     original_propose = semismooth_path.propose_linearized_kkt_seed
 
@@ -560,7 +560,7 @@ def test_input_free_seed_refusals_remain_explicit_on_mixed_active_split_nodes():
     assert np.all(np.asarray(payload["origin_q"]) == 0.0)
     assert np.all(np.asarray(payload["origin_nodal_forces"]) == 0.0)
 
-    from anysolver.general_contact.initial_contact_seed import (
+    from anyfesolver.general_contact.initial_contact_seed import (
         InitialContactSeedRefusal)
     original_propose = semismooth_path.propose_linearized_kkt_seed
 

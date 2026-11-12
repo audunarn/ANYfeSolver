@@ -7,8 +7,8 @@ counts per invocation: 12 random analytic states + 3 fixed cases = 15
 import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
-from anysolver.marine_rigid import RigidBody6D, RigidBodyState
-from anysolver.marine_link import MechanicalLink6D, MarineLinkError
+from anyfesolver.marine_rigid import RigidBody6D, RigidBodyState
+from anyfesolver.marine_link import MechanicalLink6D, MarineLinkError
 
 
 def close(actual, expected, tol=1e-10):

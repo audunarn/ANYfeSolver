@@ -7,8 +7,8 @@ import tempfile
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_shell_joint_state import decode
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_shell_joint_state import decode
 
 os.environ.setdefault("NUMBA_CACHE_DIR", str(Path(tempfile.gettempdir()) / "f06_v5_numba"))
 

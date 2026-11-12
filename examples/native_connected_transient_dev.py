@@ -4,8 +4,8 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import numpy as np
-from anysolver.dynamics import TransientConfig
-from anysolver.ge_beam3_native_connected_dynamics import solve_transient
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.ge_beam3_native_connected_dynamics import solve_transient
 from examples.native_connected_dynamic_dev import build,velocity
 
 

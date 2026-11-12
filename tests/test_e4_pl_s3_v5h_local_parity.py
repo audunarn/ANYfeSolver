@@ -109,7 +109,7 @@ def test_independent_checker_has_no_production_or_producer_import() -> None:
             imported.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module:
             imported.append(node.module)
-    assert not any(name == "anysolver" or name.startswith("anysolver.") for name in imported)
+    assert not any(name == "anyfesolver" or name.startswith("anyfesolver.") for name in imported)
     assert "e4_pl_s3_v5h_local_parity_producer" not in imported
 
 
@@ -189,7 +189,7 @@ def test_payload_hash_and_terminal_precedence(proof, checker, coordinator) -> No
 
 
 def test_bounds_and_defaults_are_preserved(coordinator) -> None:
-    source = (ROOT / "src/anysolver/elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src/anyfesolver/elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source
     assert coordinator.CHILD_TIMEOUT_SECONDS == 600

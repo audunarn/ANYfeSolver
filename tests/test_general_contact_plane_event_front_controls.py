@@ -4,12 +4,12 @@ from pathlib import Path
 import runpy
 import numpy as np
 import pytest
-from anysolver import ContactTransientSolverControls,TransientConfig
-from anysolver.general_contact.transient import _restart_analysis_contract
-from anysolver.general_contact.multiple_shell_planes import MultipleShellPlaneManager
-from anysolver.general_contact.core import ContactSolverSettings
-from anysolver.general_contact.plane_newmark_events import localize_endpoint_event
-from anysolver.general_contact.event_subdivision import EventNeedsCutback
+from anyfesolver import ContactTransientSolverControls,TransientConfig
+from anyfesolver.general_contact.transient import _restart_analysis_contract
+from anyfesolver.general_contact.multiple_shell_planes import MultipleShellPlaneManager
+from anyfesolver.general_contact.core import ContactSolverSettings
+from anyfesolver.general_contact.plane_newmark_events import localize_endpoint_event
+from anyfesolver.general_contact.event_subdivision import EventNeedsCutback
 
 
 @pytest.mark.parametrize('controls',[
@@ -36,7 +36,7 @@ def test_front_selection_and_revision_are_restart_bound_without_changing_old_ide
     stripped=dict(on['controls'])
     del stripped['batch_plane_event_fronts_dev'];del stripped['plane_event_front_revision']
     assert stripped==off['controls']
-    from anysolver.nonlinear_restart import analysis_configuration_fingerprint
+    from anyfesolver.nonlinear_restart import analysis_configuration_fingerprint
     assert analysis_configuration_fingerprint(on)!=analysis_configuration_fingerprint(off)
 
 

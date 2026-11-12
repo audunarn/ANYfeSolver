@@ -2,18 +2,18 @@
 from dataclasses import replace
 from hashlib import sha256
 import pytest
-from anysolver.control import CancellationToken
-from anysolver._ge_beam3_native_translation import solve_translation,_PATH
-from anysolver._ge_beam3_native_translation_restart import decode_checkpoint
-from anysolver._ge_beam3_native_generalized_combined_couples import _RUN
-from anysolver._ge_beam3_native_generalized_loading import _ACTIVE
+from anyfesolver.control import CancellationToken
+from anyfesolver._ge_beam3_native_translation import solve_translation,_PATH
+from anyfesolver._ge_beam3_native_translation_restart import decode_checkpoint
+from anyfesolver._ge_beam3_native_generalized_combined_couples import _RUN
+from anyfesolver._ge_beam3_native_generalized_loading import _ACTIVE
 from test_ge_beam3_native_translation import bar,packet
 from test_ge_beam3_schur_line_program import save
 
 
 @pytest.mark.parametrize('kind',['cancel','factorization'])
 def test_accepted_prefix_preserved(kind,monkeypatch,tmp_path):
-    import anysolver._ge_beam3_native_translation as module
+    import anyfesolver._ge_beam3_native_translation as module
     m,p=bar();prefix=solve_translation(m,p,stop_after=1);assert prefix.status=='paused'
     m,p=bar();token=CancellationToken();committed=False;original=module.factorize
     def observer(event):
@@ -34,7 +34,7 @@ def test_accepted_prefix_preserved(kind,monkeypatch,tmp_path):
 
 @pytest.mark.parametrize('kind',['targets','target-type','control','node','iterations','backtracks','pattern','stop','observer','hash'])
 def test_preflight_before_assembly(kind,monkeypatch,tmp_path):
-    import anysolver._ge_beam3_native_translation as module
+    import anyfesolver._ge_beam3_native_translation as module
     m,p=bar();kwargs={}
     if kind=='targets':p=replace(p,targets=())
     elif kind=='target-type':p=replace(p,targets=(True,))

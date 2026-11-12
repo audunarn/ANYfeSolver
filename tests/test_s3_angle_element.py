@@ -34,11 +34,11 @@ from _s3_angle_fixtures import (
     shape_family,
     triangle_from_angles,
 )
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from anysolver.e4_pl_s3_state import qualified_s3_triangle_frame
-from anysolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
-from anysolver.elements import DEFAULT_S3_FORMULATION, create_shell_element
-from anysolver.fe_core import FEMesh
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+from anyfesolver.e4_pl_s3_state import qualified_s3_triangle_frame
+from anyfesolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
+from anyfesolver.elements import DEFAULT_S3_FORMULATION, create_shell_element
+from anyfesolver.fe_core import FEMesh
 
 
 BANDS = ANGLE_BANDS_DEG + DIAGNOSTIC_BANDS_DEG[-1:]

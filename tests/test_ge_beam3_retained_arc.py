@@ -5,11 +5,11 @@ import json
 from types import SimpleNamespace
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_retained_arc as arc
-from anysolver._ge_beam3_retained_arc_geometry import frame_terms, constraint
-from anysolver._ge_beam3_p5.algebra import rotation, skew
-from anysolver._ge_beam3_p5_seeded.core import canonical, sha
-from anysolver.control import CancellationToken
+from anyfesolver import _ge_beam3_retained_arc as arc
+from anyfesolver._ge_beam3_retained_arc_geometry import frame_terms, constraint
+from anyfesolver._ge_beam3_p5.algebra import rotation, skew
+from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
+from anyfesolver.control import CancellationToken
 from test_ge_beam3_native_generalized_modal import make
 from test_ge_beam3_schur_line_program import save
 

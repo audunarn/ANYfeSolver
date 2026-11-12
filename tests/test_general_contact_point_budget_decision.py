@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 import numpy as np
 import pytest
-from anysolver.general_contact import s3_patch_static as owner
+from anyfesolver.general_contact import s3_patch_static as owner
 
 def fixture(targets=2):
     source=np.array(((0,0,0),(1,0,0),(1,1,0),(0,1,0)),float)

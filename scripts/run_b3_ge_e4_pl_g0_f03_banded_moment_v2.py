@@ -26,7 +26,7 @@ CASES=(tuple(('native',topology,n,n) for topology in ('Q4','S3-V2D')
 MAX_RSS=8*1024**3
 MAX_CASE_SECONDS=900
 MAX_TOTAL_SECONDS=7200
-PREVIOUS=Path('C:/Github/ANYsolver/.qualification/b3-ge-e4-pl/f03-banded-moment-v1')
+PREVIOUS=Path('C:/Github/ANYfeSolver/.qualification/b3-ge-e4-pl/f03-banded-moment-v1')
 PREVIOUS_HASHES={
     'manifest.json':'422c8d875686988d7df4a5d823c9872fea2f16de378a17483a435d984ec08380',
     'records.jsonl':'989a68ef008cca3af46fa1e793dcbb54d085f9fbf1850bb47eb572965d216886',
@@ -141,13 +141,13 @@ def main():
         raise ValueError('registered inventory differs')
     imported=subprocess.check_output(
         [sys.executable,'-c','import sys;sys.path.insert(0,"src");'
-         'import anysolver;print(anysolver.__file__)'],cwd=PARENT.parent,text=True).strip()
+         'import anyfesolver;print(anyfesolver.__file__)'],cwd=PARENT.parent,text=True).strip()
     if not Path(imported).resolve().is_relative_to((PARENT.parent/'src').resolve()):
-        raise ValueError('ANYsolver import outside frozen integration source')
+        raise ValueError('ANYfeSolver import outside frozen integration source')
     args.root.mkdir(parents=True,exist_ok=False)
     manifest={'purpose':'BANDED_MOMENT_V2_PARITY_NOT_F03_ACCEPTANCE',
               'revision':revision,'source_sha256':hashes,'cases':CASES,
-              'predecessor_sha256':predecessor,'anysolver_import':imported,
+              'predecessor_sha256':predecessor,'anyfesolver_import':imported,
               'memory_limit_bytes':MAX_RSS,'case_wall_seconds':MAX_CASE_SECONDS,
               'total_wall_seconds':MAX_TOTAL_SECONDS,'rss_sampling_seconds':.5,
               'blas_threads':1,'python':platform.python_version(),

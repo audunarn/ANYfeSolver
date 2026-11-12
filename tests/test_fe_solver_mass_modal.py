@@ -13,9 +13,9 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-import anysolver.modal as modal_module
+import anyfesolver.modal as modal_module
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     FEModel,
     FactorizationCache,
@@ -24,8 +24,8 @@ from anysolver import (
     generate_simple_panel_mesh,
     solve_free_vibration,
 )
-from anysolver.boundary import LoadCase, LoadCombination
-from anysolver.elements import BeamElement
+from anyfesolver.boundary import LoadCase, LoadCombination
+from anyfesolver.elements import BeamElement
 
 
 def _axial_bar_model() -> FEModel:
@@ -335,9 +335,9 @@ def test_consistent_beam_mass_option_exact_rigid_inertia_and_better_frequencies(
 
 def test_point_mass_enters_mass_matrix_and_shifts_frequency() -> None:
     """model.add_point_mass augments M (modal/dynamic) and the acceleration load."""
-    from anysolver.boundary import LoadCase
-    from anysolver.elements import create_shell_element
-    from anysolver.matrix_assembly import assemble_load_vector, assemble_mass_matrix
+    from anyfesolver.boundary import LoadCase
+    from anyfesolver.elements import create_shell_element
+    from anyfesolver.matrix_assembly import assemble_load_vector, assemble_mass_matrix
 
     def _plate(add_mass: float = 0.0):
         model = FEModel("pm")

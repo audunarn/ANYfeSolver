@@ -27,13 +27,13 @@ sys.path.insert(0, str(ROOT / "src"))
 
 import numpy as np
 
-from anysolver import nonlinear_performance_batch_c
-from anysolver.boundary import BoundaryCondition, FixedSupport, LoadCase
-from anysolver.elements import Element
-from anysolver.fe_core import FEModel
-from anysolver.mesh_gen import generate_simple_panel_mesh
-from anysolver.nonlinear_performance_bootstrap import nonlinear_performance_status
-from anysolver.nonlinear_static import solve_static_nonlinear
+from anyfesolver import nonlinear_performance_batch_c
+from anyfesolver.boundary import BoundaryCondition, FixedSupport, LoadCase
+from anyfesolver.elements import Element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.mesh_gen import generate_simple_panel_mesh
+from anyfesolver.nonlinear_performance_bootstrap import nonlinear_performance_status
+from anyfesolver.nonlinear_static import solve_static_nonlinear
 
 
 class _AxialSpring(Element):
@@ -269,7 +269,7 @@ def _memory_probe(*, reuse: bool) -> dict[str, Any]:
 
 def _dependency_versions() -> dict[str, str | None]:
     versions: dict[str, str | None] = {}
-    for name in ("anysolver", "numpy", "scipy", "numba"):
+    for name in ("anyfesolver", "numpy", "scipy", "numba"):
         try:
             versions[name] = importlib.metadata.version(name)
         except importlib.metadata.PackageNotFoundError:
@@ -345,7 +345,7 @@ def _main(args: argparse.Namespace) -> int:
         "scope": "one warmed solve; Python allocations observed by tracemalloc",
     }
     payload = {
-        "schema": "anysolver.nonlinear_static.performance_convergence",
+        "schema": "anyfesolver.nonlinear_static.performance_convergence",
         "version": 1,
         "created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "environment": {

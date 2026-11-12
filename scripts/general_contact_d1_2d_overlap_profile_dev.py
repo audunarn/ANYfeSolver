@@ -8,8 +8,8 @@ import json
 from pathlib import Path
 import time
 
-import anysolver
-from anysolver import solve_static_nonlinear, validate_general_contact
+import anyfesolver
+from anyfesolver import solve_static_nonlinear, validate_general_contact
 
 from scripts.general_contact_d1_2d_target_press_dev import build_case
 from scripts.general_contact_d1_mixed_mesh_jet2_schur_press import _json_default
@@ -31,7 +31,7 @@ def main(output: Path) -> None:
     )
     payload = {
         "candidate": "d1_2d_target_overlap_local_profile_development",
-        "anysolver_module": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_module": str(Path(anyfesolver.__file__).resolve()),
         "profile": report.profile,
         "certificate": settings.q4_source_gap_certificate,
         "force_n": 0.04,

@@ -5,9 +5,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 from scipy import sparse
-from anysolver import stiffened_shell as api
-from anysolver.control import CancellationToken
-from anysolver._stiffened_shell_b2_assembly_diagnostics import (
+from anyfesolver import stiffened_shell as api
+from anyfesolver.control import CancellationToken
+from anyfesolver._stiffened_shell_b2_assembly_diagnostics import (
     Inventory,Capture,DiagnosticRefusal,capture_assembly,active_capture,ASSEMBLY)
 from examples.stiffened_shell_b2_physical_rigid_footprint import definition,preload
 
@@ -99,7 +99,7 @@ def test_default_avoids_inventory_and_precancel_counts(monkeypatch):
 
 
 def test_inventory_error_is_not_mechanics_success(monkeypatch):
-    import anysolver._stiffened_shell_b2_q4_panel_experimental as product
+    import anyfesolver._stiffened_shell_b2_q4_panel_experimental as product
     def refuse(*args):raise DiagnosticRefusal('deliberate inventory')
     monkeypatch.setattr(Capture,'prefactor',refuse)
     with pytest.raises(DiagnosticRefusal,match='deliberate'):

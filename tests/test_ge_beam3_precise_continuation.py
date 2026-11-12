@@ -1,9 +1,9 @@
 from copy import deepcopy
 from hashlib import sha256
 import pytest
-from anysolver import _ge_beam3_elastic_seed_continuation as owner
-from anysolver.control import CancellationToken
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver import _ge_beam3_elastic_seed_continuation as owner
+from anyfesolver.control import CancellationToken
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from docs.reference_cases.ge_beam3_precise_continuation import recipe,adjudicate,source,ARCHIVE,INPUTS
 from docs.reference_cases.ge_beam3_precise_work_enrollment import enroll
 from test_ge_beam3_precise_work_enrollment import original,precise_model

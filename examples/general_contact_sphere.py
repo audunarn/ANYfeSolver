@@ -1,18 +1,18 @@
 """Press a Q4 shell's physical top skin against a fixed analytic sphere.
 
-Run from the repository root with ANYsolver installed:
+Run from the repository root with ANYfeSolver installed:
     python examples/general_contact_sphere.py
 """
 
 import json
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, DisplacementControl, LoadCase,
     RigidContactBody, create_shell_element, solve_static_nonlinear,
     validate_general_contact,
 )
-from anysolver.fe_core import FEModel
+from anyfesolver.fe_core import FEModel
 
 
 def main() -> None:

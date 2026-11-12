@@ -34,8 +34,8 @@ from threadpoolctl import threadpool_info, threadpool_limits
 ROOT = Path(__file__).resolve().parents[1]
 PROBE = runpy.run_path(str(ROOT / "scripts" /
                            "probe_b3_ge_e4_pl_g0_f09_graph_reversal.py"))
-from anysolver._b2_physical_flexibility_linear import LinearSection
-from anysolver._b2_physical_linear_batch_dev import CompiledB2AffineBatch
+from anyfesolver._b2_physical_flexibility_linear import LinearSection
+from anyfesolver._b2_physical_linear_batch_dev import CompiledB2AffineBatch
 
 
 F = Fraction

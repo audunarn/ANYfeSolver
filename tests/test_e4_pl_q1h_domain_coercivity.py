@@ -222,7 +222,7 @@ def test_q1h_research_only_extent_and_production_boundary() -> None:
             if isinstance(node, ast.Import)
             for alias in node.names
         } | {node.module or "" for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)}
-        assert not any(name.startswith("src.anysolver") or name == "anysolver" for name in imports)
+        assert not any(name.startswith("src.anyfesolver") or name == "anyfesolver" for name in imports)
     plan = (ROOT / "docs" / "agent_plans" / "S4_E4_PL_Q1H_DOMAIN_COERCIVITY_COMPLETION_PLAN.md").read_text(encoding="utf-8")
     assert _strict_json(CONTRACT.read_bytes())["production"] == "NO_GO_PRODUCTION_RESTRICTION_UNCHANGED"
     assert "replacement of legacy `ShellElement`" in plan

@@ -4,9 +4,9 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import (BeamElement, FEModel, GeneralizedBeamSection, InertiaReliefError,
+from anyfesolver import (BeamElement, FEModel, GeneralizedBeamSection, InertiaReliefError,
                        LoadCase, solve_inertia_relief)
-from anysolver.matrix_assembly import assemble_mass_matrix, assemble_stiffness_matrix
+from anyfesolver.matrix_assembly import assemble_mass_matrix, assemble_stiffness_matrix
 
 
 def bar(n=3, consistent=True):

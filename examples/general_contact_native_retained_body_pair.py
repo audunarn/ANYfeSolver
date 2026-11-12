@@ -1,14 +1,14 @@
 """Development example: two connected two-element physical-fibre bodies."""
 import numpy as np
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
-from anysolver._ge_beam3_fibre_section import Fibre, FlowCurve, PhysicalFibreSection
-from anysolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_retained_nodal_loading import NodalDeadForces, Program
-from anysolver.boundary import BoundaryCondition
-from anysolver.general_contact.native_retained_body_static import NativeRetainedBodyPairAnalysis
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+from anyfesolver._ge_beam3_fibre_section import Fibre, FlowCurve, PhysicalFibreSection
+from anyfesolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_retained_nodal_loading import NodalDeadForces, Program
+from anyfesolver.boundary import BoundaryCondition
+from anyfesolver.general_contact.native_retained_body_static import NativeRetainedBodyPairAnalysis
 
 
 def analysis(*,elements_per_body=2,separation=.100001,force=-.001,targets=(.05,),max_coordinates=256,reference_rise_m=0.):

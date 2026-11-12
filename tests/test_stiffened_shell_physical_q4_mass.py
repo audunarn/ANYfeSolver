@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver._stiffened_shell_physical_q4_mass import physical_mass
+from anyfesolver._stiffened_shell_physical_q4_mass import physical_mass
 
 
 VERTICES = np.array(((0., 0., 0.), (1.2, 0., 0.),

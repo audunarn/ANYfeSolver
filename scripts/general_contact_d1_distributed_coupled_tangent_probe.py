@@ -10,10 +10,10 @@ import time
 
 import numpy as np
 
-from anysolver.assembly import build_constraint_transformation
-from anysolver.matrix_assembly import assemble_stiffness_matrix
-from anysolver.general_contact.core import contact_scope, suspend_contact
-from anysolver.nonlinear_static import (
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.general_contact.core import contact_scope, suspend_contact
+from anyfesolver.nonlinear_static import (
     _assemble_nonlinear_system, _discard_nonlinear_state_candidate,
     _prepare_initial_states,
 )

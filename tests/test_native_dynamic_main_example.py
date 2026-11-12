@@ -35,10 +35,10 @@ def test_public_example_effective_owner_and_imports(capsys):
     assert provenance["production_qualified"] is False
     assert provenance["restart_supported"] is True
     assert provenance["profile_id"] == "GE_BEAM3_NATIVE_CONTACT_FREE_FINITE_VELOCITY_DEV_V2"
-    import anysolver.ge_beam3_native_dynamics as public
-    import anysolver._ge_beam3_native_dynamic_analysis as wrapper
-    import anysolver._ge_beam3_native_midpoint as midpoint
-    import anysolver._ge_beam3_dynamic_elastic_state as elastic
-    import anysolver._ge_beam3_centered_finite_inertia as inertia
+    import anyfesolver.ge_beam3_native_dynamics as public
+    import anyfesolver._ge_beam3_native_dynamic_analysis as wrapper
+    import anyfesolver._ge_beam3_native_midpoint as midpoint
+    import anyfesolver._ge_beam3_dynamic_elastic_state as elastic
+    import anyfesolver._ge_beam3_centered_finite_inertia as inertia
     for module in (public, wrapper, midpoint, elastic, inertia):
-        assert Path(module.__file__).resolve().parent == root / "src/anysolver"
+        assert Path(module.__file__).resolve().parent == root / "src/anyfesolver"

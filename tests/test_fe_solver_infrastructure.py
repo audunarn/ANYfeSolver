@@ -17,10 +17,10 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-import anysolver
-import anysolver.assembly as assembly_module
-import anysolver.linalg as linalg
-from anysolver import (
+import anyfesolver
+import anyfesolver.assembly as assembly_module
+import anyfesolver.linalg as linalg
+from anyfesolver import (
     AssemblyError,
     FactorizationCache,
     LoadCase,
@@ -37,18 +37,18 @@ from anysolver import (
     solve_linear_many,
     solve_transient_newmark,
 )
-from anysolver.assembly import build_constraint_transformation, build_reduced_rigid_body_modes
-from anysolver.baselines import compare_baseline_documents, generate_baseline_document
-from anysolver.linalg import _HAS_PYPARDISO, AutoSparseSolverBackend
-from anysolver.boundary import BoundaryCondition, FixedSupport
-from anysolver.buckling import solve_eigenvalue_buckling
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
-from anysolver.nonlinear_static import solve_static_nonlinear
+from anyfesolver.assembly import build_constraint_transformation, build_reduced_rigid_body_modes
+from anyfesolver.baselines import compare_baseline_documents, generate_baseline_document
+from anyfesolver.linalg import _HAS_PYPARDISO, AutoSparseSolverBackend
+from anyfesolver.boundary import BoundaryCondition, FixedSupport
+from anyfesolver.buckling import solve_eigenvalue_buckling
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.nonlinear_static import solve_static_nonlinear
 
 
 def test_public_all_symbols_importable() -> None:
-    missing = [name for name in anysolver.__all__ if not hasattr(anysolver, name)]
+    missing = [name for name in anyfesolver.__all__ if not hasattr(anyfesolver, name)]
     assert missing == []
 
 
@@ -132,9 +132,9 @@ def test_root_import_does_not_eagerly_load_optional_accelerators() -> None:
         if path
     )
     code = (
-        "import sys; import anysolver; "
+        "import sys; import anyfesolver; "
         "assert 'pypardiso' not in sys.modules; "
-        "assert 'anysolver.nonlinear_performance' not in sys.modules"
+        "assert 'anyfesolver.nonlinear_performance' not in sys.modules"
     )
     completed = subprocess.run(
         [sys.executable, "-c", code],
@@ -191,7 +191,7 @@ def test_default_sparse_backend_uses_superlu_for_small_matrices_and_can_force_py
 def test_pypardiso_backend_symmetric_mtypes_pattern_reuse_and_stale_handles() -> None:
     if not _HAS_PYPARDISO:
         pytest.skip("pypardiso not installed")
-    from anysolver.linalg import PyPardisoSolverBackend
+    from anyfesolver.linalg import PyPardisoSolverBackend
 
     backend = PyPardisoSolverBackend(max_pattern_slots=2)
     rng = np.random.default_rng(0)

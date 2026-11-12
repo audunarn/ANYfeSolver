@@ -22,10 +22,10 @@ from threadpoolctl import threadpool_info
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / "src"), str(ROOT / "tests")]
 
-import anysolver
-from anysolver import corotational
+import anyfesolver
+from anyfesolver import corotational
 from anymaterial import DNVC208MaterialCurve
-from anysolver._stiffened_shell_ge_experimental import ExperimentalGEAnalysis
+from anyfesolver._stiffened_shell_ge_experimental import ExperimentalGEAnalysis
 from test_stiffened_shell_ge_finite_experimental import _actions, _panel
 
 
@@ -83,8 +83,8 @@ def _install_stable_shell_pullback():
 
 def run(checkpoint: Path, intermediate: float | None = None,
         *, stable_pullback: bool = False):
-    expected = (ROOT / "src" / "anysolver" / "__init__.py").resolve()
-    if Path(anysolver.__file__).resolve() != expected:
+    expected = (ROOT / "src" / "anyfesolver" / "__init__.py").resolve()
+    if Path(anyfesolver.__file__).resolve() != expected:
         raise RuntimeError("diagnostic imported another checkout")
     if stable_pullback:
         _install_stable_shell_pullback()

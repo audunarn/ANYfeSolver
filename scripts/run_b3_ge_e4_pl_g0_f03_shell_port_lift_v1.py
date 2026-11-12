@@ -24,7 +24,7 @@ CASES = tuple((topology,n,n) for topology in ('Q4','S3-V2D')
 MAX_RSS = 8*1024**3
 MAX_CASE_SECONDS = 900
 MAX_TOTAL_SECONDS = 7200
-PREVIOUS = Path('C:/Github/ANYsolver/.qualification/b3-ge-e4-pl/f03-local-trace-norm-v1')
+PREVIOUS = Path('C:/Github/ANYfeSolver/.qualification/b3-ge-e4-pl/f03-local-trace-norm-v1')
 PREVIOUS_HASHES = {
     'manifest.json':'b7a93390ecb2fb3e45a29f8f4ebc5a0f495d58297d09f42591a42252d5c8e71b',
     'records.jsonl':'bf69b46e865162882c61ea17f398f30661c4d756baf9e17fc88da32d0c683790',
@@ -131,13 +131,13 @@ def main():
         raise ValueError('registered inventory differs')
     imported = subprocess.check_output(
         [sys.executable,'-c','import sys;sys.path.insert(0,"src");'
-         'import anysolver;print(anysolver.__file__)'],cwd=PARENT.parent,text=True).strip()
+         'import anyfesolver;print(anyfesolver.__file__)'],cwd=PARENT.parent,text=True).strip()
     if not Path(imported).resolve().is_relative_to((PARENT.parent/'src').resolve()):
-        raise ValueError('imported ANYsolver is outside frozen integration source')
+        raise ValueError('imported ANYfeSolver is outside frozen integration source')
     args.root.mkdir(parents=True,exist_ok=False)
     manifest = {'purpose':'SUPPORTED_SHELL_PORT_LIFT_NOT_F03_ACCEPTANCE',
                 'revision':revision,'source_sha256':hashes,'cases':CASES,
-                'predecessor_sha256':predecessor,'anysolver_import':imported,
+                'predecessor_sha256':predecessor,'anyfesolver_import':imported,
                 'memory_limit_bytes':MAX_RSS,'case_wall_seconds':MAX_CASE_SECONDS,
                 'total_wall_seconds':MAX_TOTAL_SECONDS,'rss_sampling_seconds':.5,
                 'blas_threads':1,'python':platform.python_version(),

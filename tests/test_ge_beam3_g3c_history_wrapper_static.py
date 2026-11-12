@@ -16,7 +16,7 @@ import test_ge_beam3_g3c_restart_preflight as specimens
 class WrapperStaticTests(unittest.TestCase):
     def test_import_is_inert_and_runtime_deterministic(self):
         self.assertNotIn('numpy',sys.modules)
-        self.assertNotIn('anysolver',sys.modules)
+        self.assertNotIn('anyfesolver',sys.modules)
         self.assertEqual(history.runtime_identity(),history.runtime_identity())
 
     def test_malformed_packet_never_reaches_constructor(self):

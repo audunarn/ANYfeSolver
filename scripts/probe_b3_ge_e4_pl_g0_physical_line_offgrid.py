@@ -13,8 +13,8 @@ import numpy as np
 from scipy.sparse.linalg import spsolve
 
 import probe_b3_ge_e4_pl_g0_physical_line as prior
-from anysolver._ge_beam3_mixed_ad import so3_log, transpose
-from anysolver._ge_beam3_variational_shell import rotation_jets
+from anyfesolver._ge_beam3_mixed_ad import so3_log, transpose
+from anyfesolver._ge_beam3_variational_shell import rotation_jets
 
 
 START, END = -0.4, 0.4

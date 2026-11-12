@@ -14,8 +14,8 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver.general_contact.s3_friction_replay import S3ReplayFrictionManager
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_friction_replay import S3ReplayFrictionManager
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 from test_general_contact_s3_friction_replay import _case
 from test_general_contact_s3_friction_static import _mode
 

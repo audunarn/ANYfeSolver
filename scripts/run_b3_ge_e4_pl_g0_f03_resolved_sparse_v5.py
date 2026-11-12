@@ -28,7 +28,7 @@ CASES=tuple((t,l,n,n,n) for n in (64,96,128)
             (t,'smooth',ns,ny,nb) for t in ('Q4','S3-V2D')
             for ns,ny,nb in ((128,64,128),(128,128,64)))
 PARENT=Path(__file__).resolve().parent
-V4=Path('C:/Github/ANYsolver/.qualification/b3-ge-e4-pl/f03-resolved-refinement-v4')
+V4=Path('C:/Github/ANYfeSolver/.qualification/b3-ge-e4-pl/f03-resolved-refinement-v4')
 PREDECESSOR_SHA={
     'manifest.json':'8e016729c7e3c863642f3938d375584c249b0368eab0f49d4b2876e1bf03c83b',
     'records.jsonl':'82d53a2487db070717113c3dd3a87ddc1ae9b21bfa326739784679b8ef449d83',

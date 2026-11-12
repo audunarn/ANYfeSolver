@@ -19,7 +19,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 REPORT_ROOT = ROOT / "reports" / "performance"
-BENCHMARK_SCHEMA = "anysolver.sol_ultra.benchmark"
+BENCHMARK_SCHEMA = "anyfesolver.sol_ultra.benchmark"
 BENCHMARK_SCHEMA_VERSION = 1
 
 
@@ -221,7 +221,7 @@ def _environment_rows() -> tuple[tuple[str, ...], ...]:
         ("packages", "pypardiso"),
         ("packages", "mkl"),
         ("packages", "threadpoolctl"),
-        ("packages", "ANYsolver"),
+        ("packages", "ANYfeSolver"),
         ("packages", "ANYmaterial"),
         ("packages", "ANYmesher"),
         ("packages", "ANYgeometry"),
@@ -265,7 +265,7 @@ def render_report(
     final_sha = _nested(final, "revision", "head_sha")
 
     lines = [
-        "# ANYsolver Sol Ultra baseline/final comparison",
+        "# ANYfeSolver Sol Ultra baseline/final comparison",
         "",
         f"- Report status: **{'INCOMPLETE' if issues else 'COMPLETE'}**",
         f"- Immutable initial `performance_2`: `{_markdown(initial_sha)}`",
@@ -502,8 +502,8 @@ def render_report(
             "",
             "```powershell",
             "$env:PYPARDISO_MKL_RT = 'C:\\Python\\Python313\\Library\\bin\\mkl_rt.3.dll'",
-            "$python = 'C:\\Github\\ANYsolver\\.venv\\Scripts\\python.exe'",
-            "$baselineRoot = 'C:\\Github\\ANYsolver\\.perf2-worktrees\\baseline'",
+            "$python = 'C:\\Github\\ANYfeSolver\\.venv\\Scripts\\python.exe'",
+            "$baselineRoot = 'C:\\Github\\ANYfeSolver\\.perf2-worktrees\\baseline'",
             "$candidateRoot = (Resolve-Path -LiteralPath .).Path",
             "",
             "& $python -m pytest tests -q --basetemp=.pytest_tmp_sol_ultra_final",

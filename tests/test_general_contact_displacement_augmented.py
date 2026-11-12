@@ -4,7 +4,7 @@ from dataclasses import replace
 
 import numpy as np
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, DisplacementControl, LoadCase, solve_static_nonlinear,
 )
 from test_general_contact_s3_patch_augmented import _augmented_case

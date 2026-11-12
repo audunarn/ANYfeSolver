@@ -7,7 +7,7 @@ import json
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_mixed_ad import Jet2, matvec, so3_exp, transpose
+from anyfesolver._ge_beam3_mixed_ad import Jet2, matvec, so3_exp, transpose
 
 
 REF = np.array([[-.5, -.5, 0.], [.5, -.5, 0.], [.5, .5, 0.], [-.5, .5, 0.]])

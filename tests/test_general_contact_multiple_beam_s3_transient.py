@@ -9,10 +9,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 from examples.general_contact_multiple_beam_s3_transient import build,run
-from anysolver.dynamics import TransientConfig
-from anysolver.general_contact.transient import (ContactTransientSolverControls,
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.general_contact.transient import (ContactTransientSolverControls,
     solve_transient_contact)
-from anysolver.general_contact.multiple_beam_s3_transient import (
+from anyfesolver.general_contact.multiple_beam_s3_transient import (
     PROFILE,MultipleBeamS3TransientManager,multiple_hermite_gap_bounds,pair_definitions)
 
 FORCE_SCALE=.0025
@@ -65,10 +65,10 @@ def reference(times):
 
 def physical_body_balance(model,result):
     """Shared shell counted once, actual inertia/support/structural residual."""
-    from anysolver.assembly import assemble_mass_matrix
-    from anysolver.nonlinear_static import _assemble_nonlinear_system
-    from anysolver.nonlinear_state import discard_active_state_candidate
-    from anysolver.general_contact.runtime import suspend_contact
+    from anyfesolver.assembly import assemble_mass_matrix
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system
+    from anyfesolver.nonlinear_state import discard_active_state_candidate
+    from anyfesolver.general_contact.runtime import suspend_contact
     M,_=assemble_mass_matrix(model);errors=[]
     for index in (0,int(np.argmin([r.minimum_gap for r in result.contact])),len(result.times)-1):
         u=result.displacements[index];inertia=np.asarray(M@result.accelerations[index]).reshape(-1)
@@ -260,8 +260,8 @@ def test_complete_model_section_skin_and_dof_binding_refusal(monkeypatch):
 def test_rejected_path_exception_and_cancellation_cleanup(monkeypatch):
     # Use the actual shared solver boundary, with a single failed proof, then
     # check it retries from unchanged accepted u/v and releases runtime state.
-    from anysolver.general_contact import multiple_beam_s3_transient as aggregate
-    from anysolver.general_contact.runtime import _ACTIVE_CONTACT
+    from anyfesolver.general_contact import multiple_beam_s3_transient as aggregate
+    from anyfesolver.general_contact.runtime import _ACTIVE_CONTACT
     original=aggregate.multiple_hermite_gap_bounds;seen=[];rejected=[]
     def active_start(owner,start):
         child=owner.pairs[0][1]
@@ -288,10 +288,10 @@ def test_rejected_path_exception_and_cancellation_cleanup(monkeypatch):
 
 
 def test_inflight_cancel_preserves_accepted_origin(monkeypatch):
-    from anysolver.control import CancellationToken,SolveCancelled
-    import anysolver.general_contact.transient as driver
-    from anysolver.general_contact import multiple_beam_s3_transient as aggregate
-    from anysolver.general_contact.runtime import _ACTIVE_CONTACT
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    import anyfesolver.general_contact.transient as driver
+    from anyfesolver.general_contact import multiple_beam_s3_transient as aggregate
+    from anyfesolver.general_contact.runtime import _ACTIVE_CONTACT
     token=CancellationToken();commits=[];calls=0
     commit=driver.commit_state_candidate;path=aggregate.multiple_hermite_gap_bounds
     def saved(origin,trial):

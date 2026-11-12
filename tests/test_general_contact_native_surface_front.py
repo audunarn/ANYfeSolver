@@ -4,15 +4,15 @@ from pathlib import Path
 import numpy as np
 import pytest
 from scipy.optimize import brentq
-from anysolver.general_contact.native_surface_front import axial_contact_front
-from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
-from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
-from anysolver.general_contact.native_surface_path import material_path_pose
+from anyfesolver.general_contact.native_surface_front import axial_contact_front
+from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
+from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+from anyfesolver.general_contact.native_surface_path import material_path_pose
 from test_general_contact_native_surface_replay_owner import _replay_patch
 
 
 def test_front_nonfinite_derived_values_reject():
-    from anysolver.general_contact.native_surface_front import AxialContactFront
+    from anyfesolver.general_contact.native_surface_front import AxialContactFront
     from dataclasses import replace
     front=AxialContactFront(1e308,1e-308,1.,1.,1.,1.,1.)
     with pytest.raises(ValueError,match='nonfinite'):front.axial_coordinate()
@@ -24,8 +24,8 @@ def test_front_nonfinite_derived_values_reject():
 def test_whole_angular_stationary_branch_matches_analytic_geometry():
     from dataclasses import replace
     from test_general_contact_native_surface_support import _field
-    from anysolver.general_contact.native_surface_front import stationary_front_angular_cover,stationary_front_slab,stationary_front_partition
-    from anysolver.general_contact.native_surface_support import SupportIntervalBudget
+    from anyfesolver.general_contact.native_surface_front import stationary_front_angular_cover,stationary_front_slab,stationary_front_partition
+    from anyfesolver.general_contact.native_surface_support import SupportIntervalBudget
     segment=NativeSurfaceMotionSegment(np.zeros((3,3)),np.array(((1.6,0.,0.),(0.,0.,0.))),np.zeros(18))
     original=_field(height=.035,rotation=-.8,segments=(segment,))
     positions=original.initial.positions.copy();positions[:,2]+=.01*positions[:,0]
@@ -50,7 +50,7 @@ def test_whole_angular_stationary_branch_matches_analytic_geometry():
 
 @pytest.mark.parametrize('case',['two_roots','wide_point_b','endpoint','singular'])
 def test_isolation_independent_polynomial_controls(monkeypatch,case):
-    from anysolver.general_contact import native_surface_front as module
+    from anyfesolver.general_contact import native_surface_front as module
     def coefficient(t):
         if case=='endpoint':return module.AxialContactFront(.5*t*t,1.,t,0.,1.,0.,1.)
         return module.AxialContactFront(t**3/3-t*t/2+.16*t,
@@ -113,7 +113,7 @@ def test_saved_stationary_front_geometry_and_derivatives(tmp_path):
         assert (front.a+front.b*coordinate)/front.plane_area==pytest.approx(gap,abs=2e-16)
     assert xi==pytest.approx(.7244843413242318,abs=2e-9)
     assert abs(front.stationary_numerator)<1e-14
-    from anysolver.general_contact.native_surface_front import stationary_front_slab,stationary_front_partition
+    from anyfesolver.general_contact.native_surface_front import stationary_front_slab,stationary_front_partition
     bounds=stationary_front_slab(field,1,1,angle,0.,1.)
     for t in np.linspace(0.,1.,9):
         sample=get(float(t))
@@ -144,8 +144,8 @@ def test_rotating_round_surface_angular_coefficients_and_tight_bounds():
     # Independent cross-products at a directly integrated rigid rotation.
     from scipy.spatial.transform import Rotation
     from test_general_contact_native_surface_support import _field
-    from anysolver.general_contact.native_surface_front_boundary import stationary_angular_coefficients
-    from anysolver.general_contact.native_surface_front import stationary_front_slab
+    from anyfesolver.general_contact.native_surface_front_boundary import stationary_angular_coefficients
+    from anyfesolver.general_contact.native_surface_front import stationary_front_slab
     segment=NativeSurfaceMotionSegment(np.zeros((3,3)),np.array(((1.6,0.,0.),(0.,0.,0.))),np.zeros(18))
     field=_field(height=.035,rotation=-.8,segments=(segment,))
     corners=field.patch.target.adapter.current_positions(field.initial.shell_displacement)

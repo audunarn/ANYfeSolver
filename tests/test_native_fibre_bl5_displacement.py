@@ -4,11 +4,11 @@ from hashlib import sha256
 import json
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_displacement_checkpoint import decode_snapshot, encode_snapshot, identities, MAGIC
-from anysolver._stiffened_shell_displacement_control import publish
-from anysolver._stiffened_shell_affine_endpoint import is_native_point_material, uses_native_material_history
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_displacement_checkpoint import decode_snapshot, encode_snapshot, identities, MAGIC
+from anyfesolver._stiffened_shell_displacement_control import publish
+from anyfesolver._stiffened_shell_affine_endpoint import is_native_point_material, uses_native_material_history
 from examples.stiffened_shell_native_fibre_bl5_displacement import ACTIONS, CONTROL, OPTIONS, TARGETS
 from examples.stiffened_shell_native_fibre_bl5_material import definition
 
@@ -105,7 +105,7 @@ def test_refusals_and_restore_are_atomic(request):
         untouched=owner(request)
         with pytest.raises(ValueError): untouched.restore(body+sha256(body).digest())
         assert untouched._finite_driver is None and untouched._generation==0
-    from anysolver._stiffened_shell_displacement_adaptive import MAGICS
+    from anyfesolver._stiffened_shell_displacement_adaptive import MAGICS
     for magic in MAGICS:
         untouched=owner(request)
         with pytest.raises(ValueError,match=r'^(?:bounded adaptive displacement checkpoint required|native material BL5 displacement excludes adaptive checkpoints)$'): untouched.restore(magic+saved)
@@ -167,7 +167,7 @@ def test_fixed_origin_material_tangent(request,tmp_path):
     for j in range(len(control._beam_parts)):
         offset=control._shell_count+6*len(control._beam_ids)+24*j
         direction[offset+6:offset+24]=np.linspace(-1.,1.,18)
-    from anysolver._stiffened_shell_ge_finite_experimental import _fibre_recovery
+    from anyfesolver._stiffened_shell_ge_finite_experimental import _fibre_recovery
     def branches(st,ev):
         records,_=_fibre_recovery(control,st,beam,ev[5])
         return tuple((f.branch,f.algorithmic_modulus) for row in records for f in row.fibres)

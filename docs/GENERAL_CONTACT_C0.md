@@ -71,7 +71,7 @@ scalar reaction is 0.4 N and its predicted gap is -0.4 micrometres. The
 example stops if the solver does not finish or the gap budget is exceeded.
 
 ```python
-from anysolver import (
+from anyfesolver import (
     ContactDefinition, ContactInteraction, ContactSurface,
     RigidContactBody, solve_static_nonlinear,
 )
@@ -89,7 +89,7 @@ result = solve_static_nonlinear(model, load_case, contact=contact,
 contact_summary = result.info["general_contact"]
 ```
 
-`model` and `load_case` are ordinary ANYsolver objects. Check `result.status`,
+`model` and `load_case` are ordinary ANYfeSolver objects. Check `result.status`,
 `result.failure_reason`, `result.load_factor` and
 `contact_summary["gap_tolerance_met"]` before using the result. A stopped
 analysis retains its last accepted structural state.

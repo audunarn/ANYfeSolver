@@ -11,9 +11,9 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import stiffened_shell
-from anysolver.elements import BeamElement
-from anysolver.fe_core import Material
+from anyfesolver import stiffened_shell
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import Material
 
 
 @pytest.mark.parametrize("area", (1e-14, 2e-12, 1e-10))

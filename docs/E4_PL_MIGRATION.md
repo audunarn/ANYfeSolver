@@ -5,14 +5,14 @@ E4-PL is the production default for four-node shells. Existing callers using
 meshes, runtime geometry, cylinder Q4 meshes, or SESAM Q4 imports select it
 without an API change.
 
-ANYfem integrations must construct solver shells through ANYsolver's public
+ANYfem integrations must construct solver shells through ANYfeSolver's public
 `create_element("shell", ...)` selector. Direct `ShellElement(...)`
 construction bypasses the Q4 default and is deprecated for four-node shells.
 
 ## Identify the selected formulation
 
 ```python
-from anysolver import shell_formulation_diagnostics
+from anyfesolver import shell_formulation_diagnostics
 
 print(shell_formulation_diagnostics(node_count=4))
 ```
@@ -29,7 +29,7 @@ interchange records; do not down-cast the record to `ShellElement`.
 For a diagnosed compatibility incident only:
 
 ```python
-from anysolver import create_shell_element
+from anyfesolver import create_shell_element
 
 element = create_shell_element(
     1,

@@ -66,6 +66,6 @@ def test_success_closes_only_stage4b_and_preserves_predecessors() -> None:
 
 
 def test_q4_and_s3_defaults_remain_unchanged() -> None:
-    source = (ROOT / "src/anysolver/elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src/anyfesolver/elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source

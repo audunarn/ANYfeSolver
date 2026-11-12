@@ -7,9 +7,9 @@ from scipy import linalg, sparse
 from scipy.sparse.linalg import ArpackNoConvergence
 from scipy.spatial.transform import Rotation
 
-from anysolver import stiffened_shell as api
-from anysolver.control import CancellationToken
-import anysolver._stiffened_shell_b2_q4_panel_experimental as owner_module
+from anyfesolver import stiffened_shell as api
+from anyfesolver.control import CancellationToken
+import anyfesolver._stiffened_shell_b2_q4_panel_experimental as owner_module
 from test_stiffened_shell_b2_mixed_reference_modes import _definition, _dense_mass
 from test_stiffened_shell_b2_mixed_panel_experimental import _dense_operators
 
@@ -202,7 +202,7 @@ def test_explicit_free_policy_rejects_unsupported_definitions(bad):
     elif bad == "missing-mass":
         definition = replace(definition, members=(replace(definition.members[0], mass=None),)+definition.members[1:])
     elif bad == "prestress":
-        from anysolver._b2_physical_linear_definition import GeometricMetadata
+        from anyfesolver._b2_physical_linear_definition import GeometricMetadata
         metadata = GeometricMetadata("geometry", (0., 0., 0.), (0., 0., 0.), (0., 0., 0.))
         definition = replace(definition, members=(replace(definition.members[0], geometric=metadata),)+definition.members[1:])
     with pytest.raises(ValueError):

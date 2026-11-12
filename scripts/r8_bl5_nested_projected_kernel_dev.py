@@ -10,16 +10,16 @@ import json
 from pathlib import Path
 import time
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 from scipy import linalg, sparse
 from scipy.sparse.linalg import splu
 from threadpoolctl import threadpool_info
-from anysolver._stiffened_shell_ge_experimental import (
+from anyfesolver._stiffened_shell_ge_experimental import (
     _linear_equilibrium, _scaled_constraint_gap,
 )
-from anysolver._b2_physical_linear_batch_dev import (
+from anyfesolver._b2_physical_linear_batch_dev import (
     B2NumericalSolveFailure, _accurate_sparse_residual,
 )
 
@@ -357,7 +357,7 @@ def evaluate(prior, root, output):
         status="COMPLETED_DEVELOPMENT_ONLY" if all(predicates.values()) else "UNRESOLVED_DEVELOPMENT_CHECK",
         scope="one nested saved coarse virgin kernel/parity discriminator; no old/new displacement equality, material-history, growing-space, locking, accuracy or F03 acceptance",
         source_sha256=sha(__file__), source_files=source_files, helpers=helpers,
-        prior_helper_bindings=previous["helpers"], anysolver_import=anysolver.__file__,
+        prior_helper_bindings=previous["helpers"], anyfesolver_import=anyfesolver.__file__,
         numba_threads=numba.get_num_threads(), jit_disabled=bool(numba.config.DISABLE_JIT), pools=pools,
         physical_order=len(x), native_supported_order=len(free), old_constraint_rows=80,
         constraint_rows=40, kernel_order=z.shape[1], full_supported_saddle_order=len(free)+40,

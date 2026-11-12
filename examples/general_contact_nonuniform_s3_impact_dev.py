@@ -8,7 +8,7 @@ import argparse
 import json
 from pathlib import Path
 import numpy as np
-from anysolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSurface, ContactSolverSettings, ContactTransientSolverControls, FEModel,
     TransientConfig, create_shell_element, solve_transient_contact)
 

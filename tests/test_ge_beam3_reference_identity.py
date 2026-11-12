@@ -3,8 +3,8 @@ from dataclasses import replace
 import ast, inspect
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_reference_identity as identity
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+from anyfesolver import _ge_beam3_reference_identity as identity
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
 from test_ge_beam3_centered_reference import fixture
 from test_ge_beam3_native_generalized_modal import make
 

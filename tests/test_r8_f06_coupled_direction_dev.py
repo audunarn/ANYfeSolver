@@ -12,10 +12,10 @@ def test_direction():
  from scipy import sparse
  from scripts.r8_f06_coupled_direction_dev import INPUT,write
  from scripts.r8_f06_cyclic_material_dev import definition,actions
- from anysolver import stiffened_shell as ss
- from anysolver._stiffened_shell_increment_control import FiniteIncrementFailure
- from anysolver._stiffened_shell_beam_history import arrays as history_arrays
- import anysolver._stiffened_shell_ge_finite_experimental as finite
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._stiffened_shell_increment_control import FiniteIncrementFailure
+ from anyfesolver._stiffened_shell_beam_history import arrays as history_arrays
+ import anyfesolver._stiffened_shell_ge_finite_experimental as finite
  out=Path(os.environ['F06_COUPLED_DIRECTION_OUTPUT']);owner=ss.create_analysis(definition=definition('coupled'))
  state_fields=('q','q_low','frames','frames_low','cells','cells_low','resultants','resultants_low','multipliers','shell_anchors')
  originals={};d=None

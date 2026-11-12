@@ -3,9 +3,9 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.overlap import PlanarFace, planar_projected_overlap
-from anysolver.general_contact.q4_source_overlap import projected_q4_source_face
-from anysolver.general_contact.s3_patch_mortar_energy import (
+from anyfesolver.general_contact.overlap import PlanarFace, planar_projected_overlap
+from anyfesolver.general_contact.q4_source_overlap import projected_q4_source_face
+from anyfesolver.general_contact.s3_patch_mortar_energy import (
     MovingS3PatchPrimalMortarPenalty,
 )
 

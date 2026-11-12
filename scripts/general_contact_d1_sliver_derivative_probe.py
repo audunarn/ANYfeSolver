@@ -5,10 +5,10 @@ import json
 import numpy as np
 
 from general_contact_d1_coupled_refinement import build_case
-from anysolver.general_contact.q4_s3_overlap_derivatives import (
+from anyfesolver.general_contact.q4_s3_overlap_derivatives import (
     UnsupportedQ4S3Branch, q4_s3_overlap_derivatives,
 )
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 
 
 def main():

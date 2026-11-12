@@ -13,7 +13,7 @@ from scripts.b3_e4_f03_distributed_surface_finite import (
     FiniteSurfaceTopFaceLine, c1_hybrid_line_space,
     bounded_physical_compliance_screen, finite_chart_screen,
 )
-from anysolver.corotational import rotation_matrix_from_vector
+from anyfesolver.corotational import rotation_matrix_from_vector
 from scripts.b3_e4_f03_local_footprint_work import (
     bond_x_segments, distributed_surface_patch_trace,
     graded_terminal_coupling, structured_c1_mixed_point_shape,

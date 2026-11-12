@@ -65,7 +65,7 @@ def test_v5i_records_genuine_eigen_precedence_and_no_activation() -> None:
 
 
 def test_v5i_preserves_q4_and_legacy_s3_defaults() -> None:
-    source = (ROOT / "src/anysolver/elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src/anyfesolver/elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source
     assert _canonical(RESULT)["production_boundary"] == {

@@ -5,10 +5,10 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver.fe_core import FEModel
-from anysolver.boundary import BoundaryCondition
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._native_reference_modal import solve_reference_modal
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import BoundaryCondition
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._native_reference_modal import solve_reference_modal
 from docs.reference_cases.ge_beam3_curved_p5_native_driver_probe import DriverP5Element
 from docs.reference_cases.ge_beam3_curved_p5_native_modal_probe import solve, prepare
 from docs.reference_cases.ge_beam3_curved_p5_native_material_probe import canonical
@@ -210,7 +210,7 @@ def test_caller_inertia_is_copied_not_a_live_mutable_input():
 def test_no_research_mechanics_imports_in_native_assembler():
     import ast
     from pathlib import Path
-    import anysolver._native_reference_modal as native
+    import anyfesolver._native_reference_modal as native
     tree = ast.parse(Path(native.__file__).read_text(encoding='utf-8'))
     imports = [node.module or '' for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)]
     assert set(imports) == {'dataclasses', 'scipy', 'assembly', 'control'}

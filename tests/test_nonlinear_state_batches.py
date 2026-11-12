@@ -5,7 +5,7 @@ from dataclasses import FrozenInstanceError
 import numpy as np
 import pytest
 
-from anysolver.nonlinear_state import (
+from anyfesolver.nonlinear_state import (
     ImmutableStateSidecarError,
     NonlinearStateStore,
     PersistentStateEligibilityError,
@@ -289,9 +289,9 @@ def test_tokens_and_state_are_independent_between_solver_stores() -> None:
 
 
 def test_shell_batch_persistent_entry_point_is_exact_mapping_parity() -> None:
-    from anysolver.material_curves import dnv_c208_steel_curve
-    from anysolver.mesh_gen import generate_simple_panel_mesh
-    from anysolver.nonlinear_performance import NonlinearAssemblyPlan
+    from anyfesolver.material_curves import dnv_c208_steel_curve
+    from anyfesolver.mesh_gen import generate_simple_panel_mesh
+    from anyfesolver.nonlinear_performance import NonlinearAssemblyPlan
 
     model = generate_simple_panel_mesh(
         1.2,

@@ -6,11 +6,11 @@ import numpy as np
 import pytest
 from scipy import sparse
 from scipy.spatial.transform import Rotation
-from anysolver import stiffened_shell as api
-from anysolver import _stiffened_shell_coordinate_support as support
-from anysolver._ge_beam3_pose_joint import _exp_terms
-from anysolver._stiffened_shell_ge_checkpoint_binary import decode_chart,encode_chart
-from anysolver.control import CancellationToken,SolveCancelled
+from anyfesolver import stiffened_shell as api
+from anyfesolver import _stiffened_shell_coordinate_support as support
+from anyfesolver._ge_beam3_pose_joint import _exp_terms
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode_chart,encode_chart
+from anyfesolver.control import CancellationToken,SolveCancelled
 from test_stiffened_shell_ge_experimental import _panel
 from test_stiffened_shell_ge_finite_experimental import _actions
 from test_stiffened_shell_ge_owned_rebase import _poses
@@ -139,7 +139,7 @@ def test_local_counterexample_dual_and_complete_residual_curvature():
 
 
 def test_physical_equilibrium_guard_is_not_a_chart_covector_norm():
-    from anysolver._stiffened_shell_ge_experimental import _linear_equilibrium
+    from anyfesolver._stiffened_shell_ge_experimental import _linear_equilibrium
     q=np.zeros(6);q[3]=np.pi-2e-7;fixed=np.array([],dtype=int)
     applied=np.array([0,0,1.,0,0,0]);spatial=np.array([0,0,0,0,2.2e-8,0])
     r,_,f,_,physical,physical_f=support.pullback(q,None,6,fixed,spatial,sparse.csc_matrix((6,6)),applied)
@@ -185,7 +185,7 @@ def test_operation_and_private_context_refusal_before_work(monkeypatch):
                 lambda:o.solve(_actions(),increment_control=object()),lambda:o.solve(_actions(),displacement_control=object()),
                 lambda:o.solve((api.NodalAction('beam',105,(0,0,1,1,0,0)),))):
             with pytest.raises(ValueError):call()
-        from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+        from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
         o._external_context=object()
         with pytest.raises(ValueError,match='contexts'):FinitePointDriver(o)
     finally:o.close()

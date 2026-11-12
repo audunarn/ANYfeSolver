@@ -10,8 +10,8 @@ from typing import Callable, Dict, Mapping
 
 import numpy as np
 
-from anysolver import RecoveryConfig, ResourceConfig, generate_simple_panel_mesh
-from anysolver.recovery import (
+from anyfesolver import RecoveryConfig, ResourceConfig, generate_simple_panel_mesh
+from anyfesolver.recovery import (
     _compute_one_element_stress,
     recover_element_stresses_with_report,
 )

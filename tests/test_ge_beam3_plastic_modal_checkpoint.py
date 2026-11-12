@@ -37,7 +37,7 @@ def test_source_bindings_and_no_runtime_research_import():
                 if isinstance(node, ast.Import): imports = [a.name for a in node.names]
                 elif isinstance(node, ast.ImportFrom): imports = [node.module]
                 else: continue
-                assert all(name.split('.')[0] in sys.stdlib_module_names | {'anysolver', 'numpy', 'scipy'} for name in imports)
+                assert all(name.split('.')[0] in sys.stdlib_module_names | {'anyfesolver', 'numpy', 'scipy'} for name in imports)
 
 
 def test_exact_archive_and_deterministic_pairs():

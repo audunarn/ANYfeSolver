@@ -3,14 +3,14 @@ import json
 from types import SimpleNamespace
 import numpy as np
 import pytest
-from anysolver import FEModel,BoundaryCondition,create_shell_element
-from anysolver.control import SolveCancelled
-from anysolver.e4_pl_enriched import EnrichedProfileError
-from anysolver.general_contact import enriched_cold_predictor as predictor
-from anysolver.general_contact import enriched_nonlinear as nonlinear
-from anysolver.general_contact.enriched_static import EnrichedStaticSystem,MixedCriteria,IterationControl
-from anysolver.general_contact.enriched_nonlinear import NonlinearEnrichedSystem,PairDefinition
-from anysolver.general_contact.enriched_overlap import QuadraturePolicy
+from anyfesolver import FEModel,BoundaryCondition,create_shell_element
+from anyfesolver.control import SolveCancelled
+from anyfesolver.e4_pl_enriched import EnrichedProfileError
+from anyfesolver.general_contact import enriched_cold_predictor as predictor
+from anyfesolver.general_contact import enriched_nonlinear as nonlinear
+from anyfesolver.general_contact.enriched_static import EnrichedStaticSystem,MixedCriteria,IterationControl
+from anyfesolver.general_contact.enriched_nonlinear import NonlinearEnrichedSystem,PairDefinition
+from anyfesolver.general_contact.enriched_overlap import QuadraturePolicy
 
 
 def certify(h,g,gap,r,z,d,p):

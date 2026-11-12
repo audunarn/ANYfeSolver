@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 
 from docs.reference_cases.ge_beam3_loaded_factor_split_probe import split_accepted_elastic_operator
-from anysolver._ge_beam3_loaded_modal import prepare
-from anysolver._ge_beam3_p5_loads.core import canonical
+from anyfesolver._ge_beam3_loaded_modal import prepare
+from anyfesolver._ge_beam3_p5_loads.core import canonical
 from test_ge_beam3_native_load_state import problem
 from test_ge_beam3_loaded_modal import accepted, straight_model
 from test_ge_beam3_curved_p5_mass_probe import section_mass

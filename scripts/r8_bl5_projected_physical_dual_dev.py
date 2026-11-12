@@ -176,12 +176,12 @@ def assess(root, registration, output, wheel):
         helper_sha256={Path(f.__code__.co_filename).name:sha(f.__code__.co_filename)
                        for f in (projection,beam_norm,shell_scalar,beam_bracket,
                                  p0_shell_bracket,compile_saved_projection)},
-        wheel_sha256=sha(wheel),imported_anysolver=sys.modules['anysolver'].__file__,
+        wheel_sha256=sha(wheel),imported_anyfesolver=sys.modules['anyfesolver'].__file__,
         imported_local_operators={name:dict(path=sys.modules[name].__file__,
             sha256=sha(sys.modules[name].__file__)) for name in (
-            'anysolver._stiffened_shell_bl5_local_experimental',
-            'anysolver._stiffened_shell_l1_local_experimental',
-            'anysolver._ge_beam3_retained_generalized_state')},
+            'anyfesolver._stiffened_shell_bl5_local_experimental',
+            'anyfesolver._stiffened_shell_l1_local_experimental',
+            'anyfesolver._ge_beam3_retained_generalized_state')},
         input_sha256={name:sha(root/'native'/name) for name in ('inputs.json','operators.npz')},
         limitations='coarse positive auxiliary norm only; physical yaw is NOT quotiented out. No structural SPD, growing-policy, locking, converged transfer or F03 acceptance.')
     np.savez(output.with_suffix('.npz'),native_lower=g,reference_lower=lower,

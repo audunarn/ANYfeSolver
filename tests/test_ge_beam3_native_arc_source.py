@@ -5,13 +5,13 @@ from hashlib import sha256
 import json
 import numpy as np
 import pytest
-from anysolver._ge_beam3_native_translation import solve_translation
-from anysolver._ge_beam3_native_translation_restart import decode_checkpoint as decode_translation,encode_checkpoint as encode_translation
-from anysolver._ge_beam3_native_arc_source import TranslationArcSource
-from anysolver._ge_beam3_native_arc import ArcProgram,solve_arc
-from anysolver._ge_beam3_native_arc_restart import encode_checkpoint,decode_checkpoint,SOURCE_SCHEMA
-from anysolver._ge_beam3_native_history_profile import HISTORY8M
-from anysolver._ge_beam3_p5_seeded.core import canonical,sha
+from anyfesolver._ge_beam3_native_translation import solve_translation
+from anyfesolver._ge_beam3_native_translation_restart import decode_checkpoint as decode_translation,encode_checkpoint as encode_translation
+from anyfesolver._ge_beam3_native_arc_source import TranslationArcSource
+from anyfesolver._ge_beam3_native_arc import ArcProgram,solve_arc
+from anyfesolver._ge_beam3_native_arc_restart import encode_checkpoint,decode_checkpoint,SOURCE_SCHEMA
+from anyfesolver._ge_beam3_native_history_profile import HISTORY8M
+from anyfesolver._ge_beam3_p5_seeded.core import canonical,sha
 from test_ge_beam3_native_translation import bar
 from test_ge_beam3_native_arc import packet
 from test_ge_beam3_schur_line_program import save
@@ -70,8 +70,8 @@ def test_source_rejection(source,kind,tmp_path):
     elif kind=='sign':changed=replace(arc,source=replace(seed,forward_sign=True))
     elif kind=='profile':changed=replace(arc,history_profile=HISTORY8M if arc.history_profile is None else None)
     elif kind=='load':
-        from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-        from anysolver._ge_beam3_native_line_loading import LinePattern
+        from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+        from anyfesolver._ge_beam3_native_line_loading import LinePattern
         changed=replace(arc,distributed=DistributedPattern(LinePattern(((1,2.,0.,0.),)),()))
     elif kind=='initial-sign':changed=replace(arc,initial_sign=-1.)
     elif kind=='history-count':changed=replace(arc,steps=(.1,)*64)
@@ -115,7 +115,7 @@ def test_unseeded_rejects_seeded_checkpoint(source,tmp_path):
 
 
 def test_external_arc_guard_precedes_source_replay(source,monkeypatch,tmp_path):
-    from anysolver import _ge_beam3_native_arc_source as module
+    from anyfesolver import _ge_beam3_native_arc_source as module
     _,_,arc,result=source;model,_=bar()
     def tripwire(*args):raise RuntimeError('source replay must not run')
     monkeypatch.setattr(module,'load_source',tripwire)
@@ -125,8 +125,8 @@ def test_external_arc_guard_precedes_source_replay(source,monkeypatch,tmp_path):
 
 
 def test_secant_objectivity_and_zero(tmp_path):
-    from anysolver._ge_beam3_native_arc_source import secant_orientation
-    from anysolver._native_rotation_state import rotation_exponential
+    from anyfesolver._ge_beam3_native_arc_source import secant_orientation
+    from anyfesolver._native_rotation_state import rotation_exponential
     s=rotation_exponential(np.array([.7,-.3,.4]))
     old=np.arange(12,dtype=float)*.002
     new=old+np.array([.02,-.01,.03,.04,.03,-.01,-.02,.03,.01,-.03,.01,.02])
@@ -144,9 +144,9 @@ def test_secant_objectivity_and_zero(tmp_path):
 
 def test_curved_plastic_source(tmp_path):
     from test_ge_beam3_native_generalized_restart import make,pattern
-    from anysolver._ge_beam3_native_translation import TranslationProgram
-    from anysolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
-    from anysolver._ge_beam3_native_generalized_recovery import recover_native_fields
+    from anyfesolver._ge_beam3_native_translation import TranslationProgram
+    from anyfesolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
+    from anyfesolver._ge_beam3_native_generalized_recovery import recover_native_fields
     model=make('curved-plastic')
     p=TranslationProgram((.03,),3,'ux',pattern(model),SpatialNodalMoments(((3,.015,-.01,.008),)))
     original=solve_translation(model,p);save(tmp_path/'source-result.json',dict(status=original.status,failure=original.failure))

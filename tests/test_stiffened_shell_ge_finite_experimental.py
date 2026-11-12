@@ -5,17 +5,17 @@ import pytest
 from dataclasses import replace
 
 from anymaterial import DNVC208MaterialCurve
-from anysolver import b3_ge
-from anysolver._stiffened_shell_ge_experimental import (
+from anyfesolver import b3_ge
+from anyfesolver._stiffened_shell_ge_experimental import (
     ExperimentalGEAnalysis, NodalAction,
 )
-from anysolver import _stiffened_shell_ge_finite_experimental as finite_experimental
-from anysolver._stiffened_shell_ge_checkpoint_binary import (
+from anyfesolver import _stiffened_shell_ge_finite_experimental as finite_experimental
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import (
     MAGIC as BINARY_CHECKPOINT_MAGIC, encode as encode_binary_checkpoint,
     S3_MAGIC as S3_BINARY_CHECKPOINT_MAGIC, decode_s3, encode_s3,
 )
-from anysolver.e4_pl_s3_v2d_state import seal_v2d_state
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver.e4_pl_s3_v2d_state import seal_v2d_state
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_stiffened_shell_ge_experimental import _panel
 
 
@@ -959,7 +959,7 @@ def test_failed_first_finite_attempt_does_not_select_mode_or_load_pattern():
 
 def test_rotation_chart_limit_uses_backtracking_before_exhaustion(monkeypatch):
     analysis = ExperimentalGEAnalysis(_panel())
-    from anysolver._stiffened_shell_ge_finite_experimental import (
+    from anyfesolver._stiffened_shell_ge_finite_experimental import (
         FinitePointDriver, _RotationStepTooLarge,
     )
     original = FinitePointDriver._advance
@@ -979,7 +979,7 @@ def test_rotation_chart_limit_uses_backtracking_before_exhaustion(monkeypatch):
 
 def test_partial_first_solve_keeps_accepted_prefix(monkeypatch):
     analysis = ExperimentalGEAnalysis(_panel())
-    from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+    from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
     original = FinitePointDriver._assemble
 
     def fail_second(self, state, factor, *args, **kwargs):

@@ -41,15 +41,15 @@ UPSTREAM = {
 }
 
 SOURCE_IDENTITIES = {
-    ROOT / "src/anysolver/elements.py": (
+    ROOT / "src/anyfesolver/elements.py": (
         190422,
         "5D0AF716CD2E466EB831B1896553DE06236AC1BA80A84BD1B09C7E4CEBBDE670",
     ),
-    ROOT / "src/anysolver/__init__.py": (
+    ROOT / "src/anyfesolver/__init__.py": (
         24779,
         "0C782CCE93C1346F8A9B6DB832156A4F2689B33460C58F5966E9DE2169C2B8F0",
     ),
-    ROOT / "src/anysolver/anystructure_fem_mode.py": (
+    ROOT / "src/anyfesolver/anystructure_fem_mode.py": (
         60057,
         "2FEACAAFD2A516B8ACCD919124A18614B0C3096EC0EEAF02DF6BC4280A80616E",
     ),
@@ -202,7 +202,7 @@ def test_s4_improved_qualification_closeout_is_canonical_and_fail_closed() -> No
         path: _canonical_lf(path, expected_bytes, digest)
         for path, (expected_bytes, digest) in SOURCE_IDENTITIES.items()
     }
-    elements_tree = ast.parse(source_bytes[ROOT / "src/anysolver/elements.py"].decode("utf-8"))
+    elements_tree = ast.parse(source_bytes[ROOT / "src/anyfesolver/elements.py"].decode("utf-8"))
     shell_class = [
         node
         for node in elements_tree.body
@@ -250,7 +250,7 @@ def test_s4_improved_qualification_closeout_is_canonical_and_fail_closed() -> No
         "s6",
     }
 
-    package_tree = ast.parse(source_bytes[ROOT / "src/anysolver/__init__.py"].decode("utf-8"))
+    package_tree = ast.parse(source_bytes[ROOT / "src/anyfesolver/__init__.py"].decode("utf-8"))
     exports = set(ast.literal_eval(_assignment(package_tree, "__all__").value))
     assert "ShellElement" in exports
     assert exports.isdisjoint(
@@ -263,7 +263,7 @@ def test_s4_improved_qualification_closeout_is_canonical_and_fail_closed() -> No
     )
 
     mode_tree = ast.parse(
-        source_bytes[ROOT / "src/anysolver/anystructure_fem_mode.py"].decode("utf-8")
+        source_bytes[ROOT / "src/anyfesolver/anystructure_fem_mode.py"].decode("utf-8")
     )
     production_calls = [
         node

@@ -12,9 +12,9 @@ import runpy
 import numpy as np
 import pytest
 
-from anysolver.assembly import assemble_mass_matrix
-from anysolver import ContactTransientSolverControls, TransientConfig, solve_transient_contact
-from anysolver.general_contact.core import ContactSolverSettings,_PlanarQ4PlaneManager
+from anyfesolver.assembly import assemble_mass_matrix
+from anyfesolver import ContactTransientSolverControls, TransientConfig, solve_transient_contact
+from anyfesolver.general_contact.core import ContactSolverSettings,_PlanarQ4PlaneManager
 
 example=runpy.run_path(str(Path(__file__).parents[1]/'examples/general_contact_q4_oblique_plastic_impact_dev.py'))
 E,NU,H,RHO=1.e9,.3,.05,1.e4

@@ -21,7 +21,7 @@ ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/'docs/agent_plans/development/r8-b2-g5-readiness-20261010'
 MODELS=ROOT/'scripts/b2_large_scale_development.py'
 FUNCTIONAL=ROOT/'docs/agent_plans/development/r8-b2-installed-batch-persistence-20261010'
-PANEL=ROOT/'src/anysolver/_stiffened_shell_b2_q4_panel_experimental.py'
+PANEL=ROOT/'src/anyfesolver/_stiffened_shell_b2_q4_panel_experimental.py'
 CONTRACT=ROOT/'docs/agent_plans/B3_GE_E4_PL_B2_COMPLETE_PROGRAMME.md'
 CONTROL_FILENAME='test_r8_b2_g5_readiness_dev.py'
 EXPECTED_CONTROLS=8
@@ -280,12 +280,12 @@ def installed_child(attempt,plan):
     helper=importlib.util.module_from_spec(spec);spec.loader.exec_module(helper)
     site=Path(plan['artifact']['site']).resolve()
     sys.path[:]=[str(site)]+[x for x in sys.path if not Path(x or '.').resolve().is_relative_to(ROOT/'src')
-        and not Path(x or '.').resolve().is_relative_to(Path('C:/Github/ANYsolver/src'))]
+        and not Path(x or '.').resolve().is_relative_to(Path('C:/Github/ANYfeSolver/src'))]
     owner=None;record=dict(status='UNRESOLVED',performance_acceptance=False,qualification=False)
     accepted=[];start=time.perf_counter()
     try:
         import numpy as np
-        from anysolver import stiffened_shell as api
+        from anyfesolver import stiffened_shell as api
         from anyfem.solve.stiffened_shell_b2 import load_case
         p=dict(site=str(site),package=plan['artifact']['package'])
         helper.save(attempt/'runtime-before.json',helper.runtime(p));imported=time.perf_counter()
@@ -386,7 +386,7 @@ def prepare():
         FUNCTIONAL/'v2/attempt-full-01/receipt.json',FUNCTIONAL/'v3-beam/attempt-beam-01/result.json',
         FUNCTIONAL/'v3-beam/attempt-beam-01/receipt.json',FUNCTIONAL/'v3-beam/PREPARED.json']
     ast.parse(Path(__file__).read_text())
-    for name,h in artifact['current_b2_sources'].items():require(sha(ROOT/'src/anysolver'/name)==h,'relevant B2 source/artifact drift')
+    for name,h in artifact['current_b2_sources'].items():require(sha(ROOT/'src/anyfesolver'/name)==h,'relevant B2 source/artifact drift')
     plan=dict(status='PREPARED_REQUIRED_INPUTS_OPEN',execution_authorized=False,numerical_runs=0,
         source_bindings={str(p.relative_to(ROOT)):sha(p) for p in refs},artifact=dict(site=artifact['site'],
             solver_sha256=artifact['solver_sha256'],consumer_sha256=artifact['consumer_sha256'],package=artifact['package']),
@@ -421,7 +421,7 @@ def prepare():
             canonical_sha256=full['persistence']['canonical_sha256'],transformation=full['matrices']['T']),
         measurement_components=['cached_sequence_series','cached_rhs_series','fresh_owner_series','constructor_phase_map'],
         acceptance=False,qualification=False,performance_claim=False,mandatory_mistral_review='PENDING')
-    plan['source_bindings'].update({str((ROOT/'src/anysolver'/name).relative_to(ROOT)):h
+    plan['source_bindings'].update({str((ROOT/'src/anyfesolver'/name).relative_to(ROOT)):h
         for name,h in artifact['current_b2_sources'].items()})
     for path in (ROOT/plan['frozen_case']['path'],ROOT/'scripts/_b3_e4_f03_local_scientific_supervisor.py',
             ROOT/'scripts/_b3_e4_f03_local_scientific_cases.py'):

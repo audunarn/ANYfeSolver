@@ -449,7 +449,7 @@ def test_canonical_primitives_exact_definition_profile_source_and_refusals(tmp_p
     assert np.array_equal(section.elastic,ic)and np.array_equal(inertia,im)
     assert definition.sha256=='9e087b9ebf541889a6eb217880c8139990c40a0b0b15bd62fb9805f8414c13ae'
     assert cli.sha256(cli.PROFILE_BYTES).hexdigest()=='feeee50769b637a4c08b5a961dd313341ab4113f41377530723569ac94666454'
-    from anysolver.ge_beam3_native import BeamDefinition
+    from anyfesolver.ge_beam3_native import BeamDefinition
     rebuilt=BeamDefinition.from_bytes(definition.raw,expected_sha256=definition.sha256)
     assert rebuilt.raw==definition.raw
     raw=cli.ENVELOPE_APPROVAL_PATH.read_bytes();record=cli._envelope_approval_record(raw)

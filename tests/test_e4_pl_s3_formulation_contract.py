@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from anysolver.algebraic_dynamics import (
+from anyfesolver.algebraic_dynamics import (
     DESCRIPTOR_COORDINATE_SHEAR_LIMIT,
     DESCRIPTOR_DENSE_CONDENSATION_LIMIT,
     DESCRIPTOR_MODAL_POLICY_ID,
@@ -17,24 +17,24 @@ from anysolver.algebraic_dynamics import (
     DESCRIPTOR_TRANSIENT_POLICY_ID,
     DESCRIPTOR_TRANSIENT_STATIC_POLICY_ID,
 )
-from anysolver.buckling import (
+from anyfesolver.buckling import (
     CURRENT_STATE_BUCKLING_POLICY_ID,
     QUALIFIED_Q4_S3_CURRENT_STATE_BUCKLING_POLICY_ID,
 )
-from anysolver.current_state_tangent import (
+from anyfesolver.current_state_tangent import (
     COMMITTED_CURRENT_TANGENT_ASSEMBLY_POLICY_ID,
     COMMITTED_CURRENT_TANGENT_INPUT_OWNERSHIP_POLICY_ID,
     COMMITTED_CURRENT_TANGENT_ROUTE_POLICY_ID,
     CURRENT_STATE_EIGEN_ACTIVITY_POLICY_ID,
 )
-from anysolver.dynamics import QUALIFIED_REFERENCE_TRANSIENT_AUTHORITY_POLICY_ID
-from anysolver.e4_pl_element import (
+from anyfesolver.dynamics import QUALIFIED_REFERENCE_TRANSIENT_AUTHORITY_POLICY_ID
+from anyfesolver.e4_pl_element import (
     Q4_ACTIVITY_DISPOSITION_SCHEMA_ID,
     Q4_DELETED_FROZEN_POLICY_ID,
     Q4_FAILED_STATE_POLICY_ID,
     Q4_QUADRATURE_AUTHORITY_ID,
 )
-from anysolver.e4_pl_s3_element import (
+from anyfesolver.e4_pl_s3_element import (
     ALGEBRAIC_COORDINATE_POLICY_ID,
     BUBBLE_OFFSET_D,
     CURRENT_STATE_BUBBLE_PROJECTION_POLICY_ID,
@@ -62,7 +62,7 @@ from anysolver.e4_pl_s3_element import (
     TYING_POINTS,
     QualifiedE4PLS3ShellElement,
 )
-from anysolver.e4_pl_s3_state import (
+from anyfesolver.e4_pl_s3_state import (
     BUBBLE_CONVENTION as STATE_BUBBLE_CONVENTION,
     BUBBLE_CONDITION_LIMIT,
     BUBBLE_FORCE_CONDENSATION_ID,
@@ -134,11 +134,11 @@ from anysolver.e4_pl_s3_state import (
     state_field_manifest_fingerprint,
     stiffness_station_table_fingerprint,
 )
-from anysolver.modal import (
+from anyfesolver.modal import (
     CURRENT_STATE_MODAL_POLICY_ID,
     QUALIFIED_PRESTRESS_OPERATOR_AUTHORITY_POLICY_ID,
 )
-from anysolver.nonlinear_restart import (
+from anyfesolver.nonlinear_restart import (
     NONLINEAR_CHECKPOINT_INTEGRITY_ID,
     NONLINEAR_CHECKPOINT_SCHEMA,
     NONLINEAR_CHECKPOINT_VERSION,

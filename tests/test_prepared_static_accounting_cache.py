@@ -2,7 +2,7 @@
 import sys
 import numpy as np
 import pytest
-from anysolver.prepared_static_envelopes import (
+from anyfesolver.prepared_static_envelopes import (
     CanonicalEnvelopePlan, EnvelopeAccumulator, _storage)
 
 

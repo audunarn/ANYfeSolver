@@ -16,10 +16,10 @@ from types import ModuleType
 
 import numpy as np
 
-from anysolver.e4_pl_s3_v2_element import (
+from anyfesolver.e4_pl_s3_v2_element import (
     StrictFlatLinearE4PLS3V2ShellElement,
 )
-from anysolver.fe_core import FEMesh, Material
+from anyfesolver.fe_core import FEMesh, Material
 
 
 REFERENCE_PATH = (

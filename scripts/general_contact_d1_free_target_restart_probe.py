@@ -10,7 +10,7 @@ import time
 
 import numpy as np
 
-from anysolver import solve_static_nonlinear
+from anyfesolver import solve_static_nonlinear
 from scripts.general_contact_d1_free_target_press_probe import (
     build_free_target_case,
 )

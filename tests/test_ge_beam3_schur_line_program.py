@@ -3,11 +3,11 @@ import json
 from hashlib import sha256
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_schur_line_program as native
-from anysolver import _ge_beam3_fibre_line_program as dense
-from anysolver._ge_beam3_seeded_load_program import ForceProgram
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.control import CancellationToken
+from anyfesolver import _ge_beam3_schur_line_program as native
+from anyfesolver import _ge_beam3_fibre_line_program as dense
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken
 from test_ge_beam3_fibre_line_program import model,line
 
 
@@ -150,7 +150,7 @@ def test_frozen_program_mutation_and_failed_iteration_limit(tmp_path):
 
 @pytest.mark.parametrize('case',['straight-elastic','curved-elastic','plastic-cycle'])
 def test_exactly_unloaded_rows_need_full_system_refinement(case,tmp_path):
-    from anysolver._ge_beam3_fibre_schur_solver import ResultantSchurSolver as Old
+    from anyfesolver._ge_beam3_fibre_schur_solver import ResultantSchurSolver as Old
     made,p,f=inputs(case); c=native.Context(made,p,line_forces=f)
     r,h,_,_=c.assemble(c.initial.mechanical,p.targets[0],c.initial.histories)
     a=c.tangent(r,h,p.targets[0]); unrefined=Old(c.layout,a)

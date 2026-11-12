@@ -90,7 +90,7 @@ def test_reference_builder_has_no_production_or_symbolic_import() -> None:
             imported.update(alias.name.split(".")[0] for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module:
             imported.add(node.module.split(".")[0])
-    assert imported.isdisjoint({"anysolver", "numpy", "scipy", "sympy", "mpmath"})
+    assert imported.isdisjoint({"anyfesolver", "numpy", "scipy", "sympy", "mpmath"})
 
 
 def test_preregistration_records_are_strict_json_and_preserve_v1() -> None:

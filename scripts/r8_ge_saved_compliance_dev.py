@@ -108,7 +108,7 @@ def connected(out):
     import numpy as np
     from scipy import sparse
     # The frozen installed corrector's actual general sparse service.
-    from anysolver._stiffened_shell_displacement_corrector import spla
+    from anyfesolver._stiffened_shell_displacement_corrector import spla
     if out!=DOC/'attempt-installed-compliance1':raise ValueError('sole exact saved compliance attempt required')
     previous.artifact();v=input_data();report=dict(status='STARTED',scientific_acceptance=False,plan=PLAN)
     try:

@@ -4,11 +4,11 @@ import json
 import numpy as np
 import pytest
 from scipy.optimize import brentq
-from anysolver import (RigidContactBody, solve_static_nonlinear,
+from anyfesolver import (RigidContactBody, solve_static_nonlinear,
     validate_general_contact, report_general_contact_capability)
-from anysolver.general_contact.multiple_beam_rigid import (
+from anyfesolver.general_contact.multiple_beam_rigid import (
     MultipleBeamRigidManager, PROFILE_SUPPORT_CYLINDER)
-from anysolver.general_contact.beam_hemisphere_cylinder import HemisphereCylinderManager
+from anyfesolver.general_contact.beam_hemisphere_cylinder import HemisphereCylinderManager
 from test_general_contact_multiple_beam_ends import fixture
 
 

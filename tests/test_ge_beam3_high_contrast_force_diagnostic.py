@@ -3,9 +3,9 @@ import json
 from time import monotonic
 import numpy as np
 import pytest
-from anysolver._ge_beam3_seeded_load_program import ForceProgram,solve_force_program
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_centered_mixed import CenteredStationaryBeam
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram,solve_force_program
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_centered_mixed import CenteredStationaryBeam
 from test_ge_beam3_curved_contrast_probe import make_curved
 
 

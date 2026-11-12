@@ -6,15 +6,15 @@ import numpy as np
 import pytest
 from scipy.linalg import eigh
 
-from anysolver import _ge_beam3_retained_fibre_modal as modal
-from anysolver import _ge_beam3_retained_fibre_control as control
-from anysolver import _ge_beam3_analysis_fibre_translation as route
-from anysolver import _ge_beam3_fibre_reference_modal as reference_modal
-from anysolver._ge_beam3_native_analysis import NativeBeamAnalysis
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import _ge_beam3_retained_fibre_modal as modal
+from anyfesolver import _ge_beam3_retained_fibre_control as control
+from anyfesolver import _ge_beam3_analysis_fibre_translation as route
+from anyfesolver import _ge_beam3_fibre_reference_modal as reference_modal
+from anyfesolver._ge_beam3_native_analysis import NativeBeamAnalysis
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_ge_beam3_retained_fibre import make_model
 from test_ge_beam3_retained_fibre_control import program, transformed_model
 from test_ge_beam3_analysis_fibre_translation import analysis

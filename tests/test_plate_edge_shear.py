@@ -2,9 +2,9 @@
 import importlib.util,json,pathlib
 import numpy as np
 import pytest
-from anysolver import solve_static_nonlinear
-from anysolver.nonlinear_static import _assemble_nonlinear_system
-from anysolver.corotational import _corotational_cache,_corotational_deformation_state,spatial_force_and_moment_resultants
+from anyfesolver import solve_static_nonlinear
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver.corotational import _corotational_cache,_corotational_deformation_state,spatial_force_and_moment_resultants
 
 spec=importlib.util.spec_from_file_location('plate_fixture',pathlib.Path(__file__).parents[1]/'scripts/investigate_plate_edge_shear.py')
 fixture=importlib.util.module_from_spec(spec);spec.loader.exec_module(fixture)

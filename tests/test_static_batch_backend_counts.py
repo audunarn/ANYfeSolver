@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver.linalg import (FactorizationCache, MatrixClass,
+from anyfesolver.linalg import (FactorizationCache, MatrixClass,
                              PyPardisoSolverBackend, SparseSolverBackend,
                              backend_operation_counts, _HAS_PYPARDISO)
 

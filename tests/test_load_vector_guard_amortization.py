@@ -14,15 +14,15 @@ from typing import Any
 import numpy as np
 import pytest
 
-import anysolver.current_state_tangent as current_state_tangent
-from anysolver import boundary
-from anysolver.boundary import LoadCase
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from anysolver.element_capabilities import ElementCapabilityError
-from anysolver.elements import BeamElement, create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.matrix_assembly import (
+import anyfesolver.current_state_tangent as current_state_tangent
+from anyfesolver import boundary
+from anyfesolver.boundary import LoadCase
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+from anyfesolver.element_capabilities import ElementCapabilityError
+from anyfesolver.elements import BeamElement, create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.matrix_assembly import (
     AssemblyError,
     _assemble_load_vector_under_lease,
     _run_with_qualified_assembly_runtime_lease,
@@ -383,7 +383,7 @@ def test_object_arrays_refuse_owned_span_without_conversion(source: str) -> None
 
 @pytest.mark.parametrize("kind", ["subclass", "dofs", "coordinate", "coords-provider"])
 def test_foreign_node_state_refuses_owned_span(kind: str) -> None:
-    from anysolver.fe_core import Node
+    from anyfesolver.fe_core import Node
 
     model, ids = _model()
     case = _cases(ids)[1]
@@ -434,7 +434,7 @@ def test_object_displacement_callback_gets_complete_guard_before_kernel(monkeypa
 
 
 def test_activity_descriptor_cannot_return_before_complete_guard(monkeypatch: pytest.MonkeyPatch) -> None:
-    from anysolver.fe_core import FEMesh
+    from anyfesolver.fe_core import FEMesh
 
     model, ids = _model()
     observed = []
@@ -458,7 +458,7 @@ def test_activity_descriptor_cannot_return_before_complete_guard(monkeypatch: py
 
 
 def test_foreign_batch_iterator_is_guarded_before_next_case_kernel() -> None:
-    from anysolver.matrix_assembly import _assemble_load_matrix_under_lease
+    from anyfesolver.matrix_assembly import _assemble_load_matrix_under_lease
 
     model, ids = _model()
     seen = []
@@ -486,7 +486,7 @@ def test_foreign_batch_iterator_is_guarded_before_next_case_kernel() -> None:
 
 @pytest.mark.parametrize("kind", ["mesh-subclass", "mapping-subclass", "native-fibre", "mesh-hook", "node-descriptor"])
 def test_runner_refuses_foreign_routing_and_native_fibre(kind: str, monkeypatch: pytest.MonkeyPatch) -> None:
-    from anysolver.fe_core import FEMesh, Node
+    from anyfesolver.fe_core import FEMesh, Node
 
     model, ids = _model()
     case = _cases(ids)[0]
@@ -499,7 +499,7 @@ def test_runner_refuses_foreign_routing_and_native_fibre(kind: str, monkeypatch:
             pass
         object.__getattribute__(model.mesh, "__dict__")["nodes"] = ForeignMapping(model.mesh.nodes)
     elif kind == "native-fibre":
-        native = type("Native", (), {"__module__": "anysolver._ge_beam3_native_fibre_static_element"})()
+        native = type("Native", (), {"__module__": "anyfesolver._ge_beam3_native_fibre_static_element"})()
         dict.__setitem__(model.mesh.elements, 9, native)
     elif kind == "mesh-hook":
         monkeypatch.setattr(FEMesh, "__getattr__", lambda self, name: None, raising=False)
@@ -737,8 +737,8 @@ def test_exact_text_wrapper_with_foreign_buffer_is_not_owned():
 
 
 def test_acceleration_reaches_public_solve_linear_many(monkeypatch):
-    from anysolver.assembly import solve_linear_many, solve_linear
-    from anysolver.boundary import FixedSupport
+    from anyfesolver.assembly import solve_linear_many, solve_linear
+    from anyfesolver.boundary import FixedSupport
     model, ids = _model()
     model.add_boundary_condition(FixedSupport("root", [node_id for node_id in model.mesh.nodes if node_id != 4]))
     cases = []
@@ -828,7 +828,7 @@ def test_warning_handler_installed_before_import_is_not_self_authorized():
     script = """import warnings
 seen = []
 warnings.showwarning = lambda *args, **kwargs: seen.append('foreign')
-import anysolver.boundary as boundary
+import anyfesolver.boundary as boundary
 assert not boundary._numpy_error_routes_are_builtin()
 assert seen == []
 """
@@ -877,7 +877,7 @@ def test_preimport_warning_providers_are_not_self_authorized(provider):
     patch = ("warnings.WarningMessage = type('WarningMessage', (), {'__init__': lambda *args, **kwargs: seen.append('foreign')})"
              if provider == "warning_message" else
              "import linecache; linecache.getline = lambda *args, **kwargs: seen.append('foreign') or ''")
-    script = "import warnings\nseen = []\n" + patch + "\nimport anysolver.boundary as boundary\nassert not boundary._numpy_error_routes_are_builtin()\nassert seen == []\n"
+    script = "import warnings\nseen = []\n" + patch + "\nimport anyfesolver.boundary as boundary\nassert not boundary._numpy_error_routes_are_builtin()\nassert seen == []\n"
     completed = subprocess.run([sys.executable, "-B", "-c", script],
                                env=os.environ.copy(), capture_output=True, text=True, timeout=30)
     assert completed.returncode == 0, completed.stdout + completed.stderr
@@ -924,7 +924,7 @@ def test_preimport_referent_provider_is_not_self_authorized():
     script = """import gc
 seen = []
 gc.get_referents = lambda *args: seen.append('foreign') or []
-import anysolver.boundary as boundary
+import anyfesolver.boundary as boundary
 from types import MappingProxyType
 assert not boundary._plain_mass_input(MappingProxyType({}))
 assert not boundary._numpy_error_routes_are_builtin()

@@ -74,7 +74,7 @@ def legacy_settings(settings):
 def test_actual_manager_contract_matches_pre_selector_schema(kind,monkeypatch):
     if kind=='caps':
         from examples.general_contact_multiple_beam_s3_caps import build
-        from anysolver.general_contact import multiple_beam_s3_caps as module
+        from anyfesolver.general_contact import multiple_beam_s3_caps as module
         model,definition,settings,_=build()
         manager=module.MultipleBeamS3CapManager(model,definition,settings)
         contract=manager.restart_contract()
@@ -84,7 +84,7 @@ def test_actual_manager_contract_matches_pre_selector_schema(kind,monkeypatch):
         assert manager.restart_contract()==contract
     elif kind=='transient':
         from examples.general_contact_multiple_beam_s3_transient import build
-        from anysolver.general_contact import multiple_beam_s3_transient as module
+        from anyfesolver.general_contact import multiple_beam_s3_transient as module
         model,definition,settings,_=build()
         manager=module.MultipleBeamS3TransientManager(model,definition,settings)
         contract=manager.restart_contract()
@@ -93,7 +93,7 @@ def test_actual_manager_contract_matches_pre_selector_schema(kind,monkeypatch):
         assert manager.restart_contract()==contract
     else:
         from examples.general_contact_triangulated_rigid import case
-        from anysolver.general_contact import triangulated_rigid_static as module
+        from anyfesolver.general_contact import triangulated_rigid_static as module
         manager=module.TriangulatedRigidManager(*case())
         contract=manager._contract_bytes()
         assert 'path_predictor' not in json.loads(contract)['settings']
@@ -103,9 +103,9 @@ def test_actual_manager_contract_matches_pre_selector_schema(kind,monkeypatch):
 
 
 def test_common_settings_contract_keeps_optin_and_all_prior_fields():
-    from anysolver import ContactSolverSettings
-    from anysolver.general_contact.core import _contact_settings_contract
-    from anysolver.general_contact.automatic_domain import _settings_contract
+    from anyfesolver import ContactSolverSettings
+    from anyfesolver.general_contact.core import _contact_settings_contract
+    from anyfesolver.general_contact.automatic_domain import _settings_contract
     settings=ContactSolverSettings(path_predictor='control_projection_dev',maximum_swept_subdivisions=9)
     expected={**legacy_settings(settings),'path_predictor':'control_projection_dev'}
     assert _contact_settings_contract(settings)==expected==_settings_contract(settings)
@@ -116,7 +116,7 @@ def test_common_settings_contract_keeps_optin_and_all_prior_fields():
 
 
 def test_public_optin_request_identity_then_actual_first_press():
-    from anysolver import identify_general_contact_request,verify_general_contact_request,LoadCase,ContactRequestIdentityError
+    from anyfesolver import identify_general_contact_request,verify_general_contact_request,LoadCase,ContactRequestIdentityError
     from examples.general_contact_automatic_domain import build_projected_shell_pair,solve_shell_pair
     model,domain,settings,resolution,path=build_projected_shell_pair(lifecycle=True,
         path_predictor='control_projection_dev')

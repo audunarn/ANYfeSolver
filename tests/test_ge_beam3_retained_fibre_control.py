@@ -4,10 +4,10 @@ import json
 import numpy as np
 import pytest
 
-import anysolver._ge_beam3_retained_fibre_control as control
-from anysolver._ge_beam3_retained_fibre_program import solve_force_program
-from anysolver._ge_beam3_p5_seeded.core import canonical, sha
-from anysolver.control import CancellationToken, SolveCancelled
+import anyfesolver._ge_beam3_retained_fibre_control as control
+from anyfesolver._ge_beam3_retained_fibre_program import solve_force_program
+from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_ge_beam3_retained_fibre import make_model
 from test_ge_beam3_retained_fibre_state import program as force_program
 
@@ -58,11 +58,11 @@ def test_physical_fibre_reversal_and_restart_are_transactional(contrast, tmp_pat
 
 
 def arch():
-    from anysolver.fe_core import FEModel
-    from anysolver.boundary import BoundaryCondition
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
-    from anysolver._ge_beam3_retained_fibre_element import NativeRetainedFibreElement
-    from anysolver._ge_beam3_fibre_section import PhysicalFibreSection, Fibre, FlowCurve
+    from anyfesolver.fe_core import FEModel
+    from anyfesolver.boundary import BoundaryCondition
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+    from anyfesolver._ge_beam3_retained_fibre_element import NativeRetainedFibreElement
+    from anyfesolver._ge_beam3_fibre_section import PhysicalFibreSection, Fibre, FlowCurve
     model = FEModel('small-physical-fibre-shallow-arch'); frames = []
     for node, x in enumerate(np.linspace(-1., 1., 5), 1):
         model.add_node(node, float(x), float(.1*(1-x*x)), 0.)
@@ -194,8 +194,8 @@ def test_iteration_failure_preserves_virgin_state():
 
 
 def transformed_model(transform, shift=None):
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
-    from anysolver._ge_beam3_retained_fibre_element import NativeRetainedFibreElement
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+    from anyfesolver._ge_beam3_retained_fibre_element import NativeRetainedFibreElement
     model = make_model(); shift = np.zeros(3) if shift is None else shift
     for node in model.mesh.nodes.values(): node.x, node.y, node.z = map(float, transform@node.coords()+shift)
     for eid, element in list(model.mesh.elements.items()):
@@ -208,7 +208,7 @@ def transformed_model(transform, shift=None):
 
 
 def test_directional_control_under_large_common_rotation(accepted, tmp_path):
-    from anysolver._ge_beam3_p5.algebra import rotation
+    from anyfesolver._ge_beam3_p5.algebra import rotation
     p, result = accepted; transform = rotation([2.6, .8, -.3])
     direction = tuple(map(float, transform@np.array(p.direction)))
     force = tuple(map(float, transform@np.array(p.nodal_forces[0][1:])))

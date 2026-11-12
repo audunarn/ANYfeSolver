@@ -7,14 +7,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver.fe_core import FEModel
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.nonlinear_static import solve_static_nonlinear
-from anysolver.nonlinear_restart import canonical_checkpoint_json_bytes
-from anysolver._ge_beam3_p5 import NativeP5BeamElement, DirectedHardeningSection
-from anysolver._ge_beam3_p5 import codec as package_codec
-from anysolver._ge_beam3_p5.reference_modal import solve as package_modes
-from anysolver._ge_beam3_p5.committed_modal import solve_elastic_modes as package_current_modes
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.nonlinear_static import solve_static_nonlinear
+from anyfesolver.nonlinear_restart import canonical_checkpoint_json_bytes
+from anyfesolver._ge_beam3_p5 import NativeP5BeamElement, DirectedHardeningSection
+from anyfesolver._ge_beam3_p5 import codec as package_codec
+from anyfesolver._ge_beam3_p5.reference_modal import solve as package_modes
+from anyfesolver._ge_beam3_p5.committed_modal import solve_elastic_modes as package_current_modes
 from docs.reference_cases.ge_beam3_curved_p5_native_driver_probe import DriverP5Element
 from docs.reference_cases.ge_beam3_curved_p5_native_material_probe import canonical
 from docs.reference_cases.ge_beam3_curved_p5_native_modal_probe import solve as research_modes

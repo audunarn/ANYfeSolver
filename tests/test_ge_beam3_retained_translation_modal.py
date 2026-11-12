@@ -3,11 +3,11 @@ from hashlib import sha256
 import json
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_retained_translation_modal as modal
-from anysolver import _ge_beam3_retained_translation_control as control
-from anysolver import _ge_beam3_retained_nodal_loading as nodal
-from anysolver._ge_beam3_p5_seeded.core import canonical,sha
-from anysolver.control import CancellationToken,SolveCancelled
+from anyfesolver import _ge_beam3_retained_translation_modal as modal
+from anyfesolver import _ge_beam3_retained_translation_control as control
+from anyfesolver import _ge_beam3_retained_nodal_loading as nodal
+from anyfesolver._ge_beam3_p5_seeded.core import canonical,sha
+from anyfesolver.control import CancellationToken,SolveCancelled
 from docs.reference_cases import ge_beam3_retained_arch_case as case
 
 

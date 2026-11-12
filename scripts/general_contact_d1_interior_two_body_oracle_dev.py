@@ -329,13 +329,13 @@ def offline_target_reference(output: Path) -> None:
 
 
 def _spatial_source32_identity():
-    import anysolver
+    import anyfesolver
     import hashlib
     import subprocess
 
     root = Path(__file__).resolve().parents[1]
-    module_path = Path(anysolver.__file__).resolve()
-    if module_path != (root/"src/anysolver/__init__.py").resolve():
+    module_path = Path(anyfesolver.__file__).resolve()
+    if module_path != (root/"src/anyfesolver/__init__.py").resolve():
         raise ValueError("source32 reference must import the intended worktree source")
     paths = (
         "scripts/general_contact_d1_interior_two_body_oracle_dev.py",
@@ -343,11 +343,11 @@ def _spatial_source32_identity():
         "scripts/general_contact_d1_mixed_mesh_jet2_schur_press.py",
         "docs/d1_review_support/d1_two_body_reference_oracle.py",
         "examples/general_contact_d1_interior_controls_dev.py",
-        "src/anysolver/assembly.py", "src/anysolver/matrix_assembly.py",
+        "src/anyfesolver/assembly.py", "src/anyfesolver/matrix_assembly.py",
         "docs/d1_review_support/d1_bounded_single.py",
     )
     return {
-        "anysolver_module": str(module_path),
+        "anyfesolver_module": str(module_path),
         "python_version": sys.version, "numpy_version": np.__version__,
         "git_head": subprocess.check_output(
             ["git", "rev-parse", "HEAD"], cwd=root, text=True).strip(),
@@ -397,8 +397,8 @@ def spatial_source32_allocation_inventory(output: Path) -> None:
     This is a resource estimate, never a scientific uncertainty estimator.
     """
     import psutil
-    from anysolver.assembly import build_constraint_transformation
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.assembly import build_constraint_transformation
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
     from scripts.general_contact_d1_mixed_mesh_jet2_schur_press import build_case
 
     if output.exists():
@@ -806,12 +806,12 @@ def lowload_geometry_decomposition(output: Path, saved_path: Path) -> None:
     if output.exists():
         raise FileExistsError(output)
     from scipy import sparse
-    from anysolver.assembly import build_constraint_transformation
-    from anysolver.general_contact.core import suspend_contact
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.semismooth import linearize
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
-    from anysolver.nonlinear_static import _assemble_nonlinear_system
+    from anyfesolver.assembly import build_constraint_transformation
+    from anyfesolver.general_contact.core import suspend_contact
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.semismooth import linearize
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system
 
     saved = json.loads(saved_path.read_text(encoding="utf-8"))
     if (saved["status"] != "completed" or saved["accepted_steps"] != 2
@@ -902,8 +902,8 @@ def lowload_current_skin_check(output: Path, saved_path: Path) -> None:
     if output.exists():
         raise FileExistsError(output)
     from dataclasses import replace
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.semismooth import linearize
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.semismooth import linearize
     from docs.d1_review_support.d1_two_body_current_skin_quadrature import (
         integrate_current_skin,
     )
@@ -1001,12 +1001,12 @@ def interior_saved_kkt_check(output: Path, saved_path: Path) -> None:
     if output.exists():
         raise FileExistsError(output)
     import time
-    from anysolver.assembly import build_constraint_transformation
-    from anysolver.general_contact.core import suspend_contact
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.semismooth import linearize
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
-    from anysolver.nonlinear_static import _assemble_nonlinear_system
+    from anyfesolver.assembly import build_constraint_transformation
+    from anyfesolver.general_contact.core import suspend_contact
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.semismooth import linearize
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system
     from docs.d1_review_support.d1_two_body_current_skin_quadrature import (
         integrate_current_skin,
     )
@@ -1158,10 +1158,10 @@ def interior_nonlinear_kkt_compare(output: Path, saved_path: Path) -> None:
         raise FileExistsError(output)
     import time
     from scipy import sparse
-    from anysolver.assembly import build_constraint_transformation
-    from anysolver.general_contact.core import suspend_contact
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
-    from anysolver.nonlinear_static import _assemble_nonlinear_system
+    from anyfesolver.assembly import build_constraint_transformation
+    from anyfesolver.general_contact.core import suspend_contact
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system
     from docs.d1_review_support.d1_two_body_current_skin_quadrature import (
         integrate_current_skin,
     )

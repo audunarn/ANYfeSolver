@@ -5,8 +5,8 @@ from scipy.linalg import subspace_angles
 from docs.reference_cases.ge_beam3_reference_modal_groups import reference_groups,principal_correlations,POLICY
 from docs.reference_cases.ge_beam3_curved_p5_modal_reference import parabolic_modal_reference
 from docs.reference_cases import ge_beam3_continuum_frequency_shooting as reference
-from anysolver import _ge_beam3_native_generalized_modal as modal
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver import _ge_beam3_native_generalized_modal as modal
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_native_continuum_frequencies import CASES,REFINEMENTS,data,stations
 from test_ge_beam3_native_generalized_modal import make
 from test_ge_beam3_schur_line_program import save

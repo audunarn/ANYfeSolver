@@ -1,7 +1,7 @@
 """Fixed E01 diagnostic: physical finite-vertex B2 point law in OpenSees.
 
 Run only after the caller freezes this source, runtime and inputs. Requires the
-verified Python 3.12/OpenSees 3.8 runtime. No ANYsolver or NumPy dependency.
+verified Python 3.12/OpenSees 3.8 runtime. No ANYfeSolver or NumPy dependency.
 Run exactly one named case per fresh process; repeated-domain execution failed
 in the retained diagnostic despite a successful identical fresh-process case.
 This is a reference-linear, scalar elastic, two-Q4/two-B2 comparison, not GE

@@ -10,8 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE = "e78c1b667694b43141912c1d85f894de2b41a848"
 TREE = "ec23282230399da6a5c882f025f1bf53b16bc52b"
 EXTENT = {
-    "src/anysolver/_ge_beam3_g3_analysis.py",
-    "src/anysolver/_ge_beam3_g3_constraints.py",
+    "src/anyfesolver/_ge_beam3_g3_analysis.py",
+    "src/anyfesolver/_ge_beam3_g3_constraints.py",
     "scripts/run_ge_beam3_g3a.py",
     "tests/test_ge_beam3_g3a_graph.py",
     "tests/test_ge_beam3_g3a_boundary.py",
@@ -51,7 +51,7 @@ class G3aBoundaryTests(unittest.TestCase):
                 self.assertEqual(sha256(raw).hexdigest(), row["sha256"])
 
     def test_no_public_or_mechanics_implementation_imports(self):
-        raw = source("src/anysolver/_ge_beam3_g3_analysis.py")
+        raw = source("src/anyfesolver/_ge_beam3_g3_analysis.py")
         tree = ast.parse(raw)
         owner = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == "NativeGraphAnalysis")
         self.assertEqual(owner.bases, [])
@@ -73,12 +73,12 @@ class G3aBoundaryTests(unittest.TestCase):
             self.assertIn(token, raw)
 
     def test_separate_graph_constraint_bounds(self):
-        old = source("src/anysolver/_ge_beam3_g2_constraints.py").decode()
-        new = source("src/anysolver/_ge_beam3_g3_constraints.py").decode()
+        old = source("src/anyfesolver/_ge_beam3_g2_constraints.py").decode()
+        new = source("src/anyfesolver/_ge_beam3_g3_constraints.py").decode()
         self.assertIn("size <= 36", old); self.assertIn("len(node_ids) <= 6", old)
         self.assertIn("size <= 192", new); self.assertIn("len(node_ids) <= 32", new)
         self.assertIn("GE_BEAM3_G3_NATIVE_CONSTRAINTS_V1", new)
-        self.assertIn("GE_BEAM3_G3_GRAPH_ELASTIC_RESTART_V1", source("src/anysolver/_ge_beam3_g3_analysis.py").decode())
+        self.assertIn("GE_BEAM3_G3_GRAPH_ELASTIC_RESTART_V1", source("src/anyfesolver/_ge_beam3_g3_analysis.py").decode())
 
 
 if __name__ == "__main__": unittest.main()

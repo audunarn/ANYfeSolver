@@ -5,7 +5,7 @@ from math import cos, sin
 import numpy as np
 import pytest
 
-from anysolver.general_contact.native_event_polynomial import MaterialTimeNumerator, material_time_numerator
+from anyfesolver.general_contact.native_event_polynomial import MaterialTimeNumerator, material_time_numerator
 from test_general_contact_native_surface_event_sequence import pulse
 
 
@@ -55,7 +55,7 @@ def test_bad_time_range_refuses():
 
 
 def test_affine_deformable_triangle_area_and_translating_round_surface():
-    from anysolver.general_contact.native_surface_history import NativeSurfaceMotionSegment
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceMotionSegment
     field,pair,_history,_segment=pulse()
     corners=pair.target.adapter.current_positions(field.initial.shell_displacement)
     kx,ky,vz=.11,-.07,.001
@@ -88,7 +88,7 @@ def test_literal_target_material_weights_are_not_replaced_by_a_plane_corner(pert
     from decimal import localcontext
     from types import SimpleNamespace
     from dataclasses import replace
-    from anysolver.general_contact.s3_friction_point import S3SkinMaterialPoint
+    from anyfesolver.general_contact.s3_friction_point import S3SkinMaterialPoint
     field,pair,_history,segment=pulse()
     offset=.2
     work=pair.target.adapter.work_map.toarray()

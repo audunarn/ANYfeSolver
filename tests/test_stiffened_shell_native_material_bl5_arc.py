@@ -3,11 +3,11 @@ from dataclasses import replace,fields,is_dataclass
 import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken,SolveCancelled
-from anysolver._stiffened_shell_arc_checkpoint import (
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken,SolveCancelled
+from anyfesolver._stiffened_shell_arc_checkpoint import (
     identities,decode_snapshot,encode_snapshot,NATIVE_BL5_CHART_POLICY)
-from anysolver._stiffened_shell_beam_history import arrays as beam_arrays
+from anyfesolver._stiffened_shell_beam_history import arrays as beam_arrays
 from examples.stiffened_shell_native_fibre_bl5_mixed_j2_displacement import definition
 from examples.stiffened_shell_native_fibre_bl5_displacement import ACTIONS,CONTROL,OPTIONS,TARGETS
 from examples.stiffened_shell_native_material_bl5_arc import arc_control
@@ -63,7 +63,7 @@ def test_native_material_bl5_arc_restart_histories_and_retained_state(request,mo
         # Matched mixed/biaxial/P1 fixture: actual gen3 loaded endpoint yields S3.
         # Other force or P0 cases have no simultaneous-yield premise.
         assert any(np.any(row.alpha>0.) for row in owner.recover().shell_s3_material)
-    import anysolver._stiffened_shell_branch_event_trial as events
+    import anyfesolver._stiffened_shell_branch_event_trial as events
     def forbidden(*args,**kwargs):raise AssertionError('native arc reached generalized event-cell selection')
     monkeypatch.setattr(events,'trial_fraction',forbidden)
     seen=[];result=owner.continue_arc_length(ACTIONS,control,on_accepted=seen.append)
@@ -95,8 +95,8 @@ def test_atomic_cancel_failure_and_prefix(request,monkeypatch):
     token=CancellationToken();token.cancel('before arc')
     with pytest.raises(SolveCancelled):owner.continue_arc_length(ACTIONS,control,cancellation_token=token)
     assert owner.checkpoint()==before and owner._finite_driver is driver
-    import anysolver._stiffened_shell_arc_control as controller
-    from anysolver._stiffened_shell_arc_trial import ArcSelectionFailure
+    import anyfesolver._stiffened_shell_arc_control as controller
+    from anyfesolver._stiffened_shell_arc_trial import ArcSelectionFailure
     def fail(*args,**kwargs):raise ArcSelectionFailure('injected bounded selection failure',())
     with monkeypatch.context() as patch:
         patch.setattr(controller,'select_trial',fail)
@@ -107,7 +107,7 @@ def test_atomic_cancel_failure_and_prefix(request,monkeypatch):
     with pytest.raises(SolveCancelled):
         owner.continue_arc_length(ACTIONS,control,steps=2,cancellation_token=token,on_accepted=stop)
     assert len(prefix)==1 and owner.checkpoint()==prefix[0]
-    import anysolver._stiffened_shell_arc_publication as publication
+    import anyfesolver._stiffened_shell_arc_publication as publication
     before=owner.checkpoint();driver=owner._finite_driver;token=CancellationToken()
     safe=publication.cancellation_safe_point
     def cancel_at_commit(value,stage):
@@ -158,8 +158,8 @@ def test_older_q4_native_material_identity_and_history_layout(request):
 
 def test_unadmitted_native_history_flag_does_not_admit_arc(request):
     model=definition();owner=analysis(request,model)
-    from anysolver._stiffened_shell_affine_endpoint import is_native_material_bl5_arc
-    from anysolver._stiffened_shell_arc_checkpoint import identities as arc_identities
+    from anyfesolver._stiffened_shell_affine_endpoint import is_native_material_bl5_arc
+    from anyfesolver._stiffened_shell_arc_checkpoint import identities as arc_identities
     assert is_native_material_bl5_arc(owner)
     owner._finite_bl5=False
     assert not is_native_material_bl5_arc(owner)
@@ -180,8 +180,8 @@ def test_full_frame_metric_measures_normal_spin_and_is_objective():
 
 
 def test_actual_update_path_row_and_full_retained_border(request):
-    from anysolver._stiffened_shell_arc_trial import path_row
-    from anysolver._stiffened_shell_displacement_corrector import bordered_path_correction
+    from anyfesolver._stiffened_shell_arc_trial import path_row
+    from anyfesolver._stiffened_shell_displacement_corrector import bordered_path_correction
     _,owner,control=seeded(request,seed='force');driver=owner._finite_driver
     parent=driver._state;n=len(parent.q);size=n+len(parent.multipliers)
     free=np.r_[owner._free,np.arange(n,size)]

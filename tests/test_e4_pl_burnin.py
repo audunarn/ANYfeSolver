@@ -17,7 +17,7 @@ import pytest
 
 from scripts import run_portable_ci as portable_ci
 
-from anysolver import (
+from anyfesolver import (
     LEGACY_Q4_AVAILABLE_THROUGH,
     LEGACY_Q4_REMOVAL_TARGET,
     LegacyQ4DeprecationWarning,
@@ -111,7 +111,7 @@ def _prospective_gate_result(gate) -> dict[str, object]:
         "candidate": {
             "clean": True,
             "commit": "1" * 40,
-            "repository": "ANYsolver",
+            "repository": "ANYfeSolver",
             "tree": "a" * 40,
         },
         "clean_gate_index": 1,
@@ -183,8 +183,8 @@ def _prospective_package_result(gate, gate_result) -> dict[str, object]:
     }
     names = [name for name, _distribution, _package in gate.LOCAL_DISTRIBUTIONS]
     identities = {
-        "ANYsolver": gate_result["candidate"],
-        **{name: gate_result["siblings"][name] for name in names if name != "ANYsolver"},
+        "ANYfeSolver": gate_result["candidate"],
+        **{name: gate_result["siblings"][name] for name in names if name != "ANYfeSolver"},
     }
     return {
         "build_logs": {name: copy.deepcopy(log) for name in names},
@@ -310,6 +310,7 @@ def test_burn_in_contract_and_runtime_diagnostics_are_aligned() -> None:
         ],
         "success_commit_subject": "docs: record E4 PL Q1M clean burn-in gate 1",
     }
+    # The recorded repository identities belong to the original burn-in contract.
     assert contract["repository_cleanliness"] == {
         "ANYfem": "FULLY_CLEAN_INCLUDING_UNTRACKED",
         "ANYfileIO": "TRACKED_AND_INDEX_CLEAN_HEAD_ARCHIVE_UNTRACKED_EXCLUDED",
@@ -482,7 +483,7 @@ def test_diagnostics_fail_closed_for_unknown_topology_and_formulation() -> None:
 
 def test_migration_surface_is_mechanics_free_and_production_bypasses_stay_closed() -> None:
     diagnostics_source = ast.parse(
-        (ROOT / "src" / "anysolver" / "elements.py").read_text(encoding="utf-8")
+        (ROOT / "src" / "anyfesolver" / "elements.py").read_text(encoding="utf-8")
     )
     function = next(
         node
@@ -505,7 +506,7 @@ def test_migration_surface_is_mechanics_free_and_production_bypasses_stay_closed
         ROOT / relative for relative in _gate_module().inventory()["performance"]
     ]
     guarded_paths = [
-        *(ROOT / "src" / "anysolver").rglob("*.py"),
+        *(ROOT / "src" / "anyfesolver").rglob("*.py"),
         *(ROOT / "scripts").glob("*.py"),
         *performance_paths,
     ]
@@ -554,7 +555,7 @@ def test_migration_surface_is_mechanics_free_and_production_bypasses_stay_closed
                 routed_performance_tests.add(path.relative_to(ROOT).as_posix())
     assert bypasses == []
     assert legacy_calls == {
-        "src/anysolver/elements.py",
+        "src/anyfesolver/elements.py",
         "tests/test_performance_improvements.py",
     }
     assert routed_scripts >= {
@@ -945,11 +946,11 @@ def test_pytest_lane_keeps_source_metadata_visible_during_real_execution(
         "ANYmaterial": ("ANYmaterial", "0.1.1"),
         "ANYmesh": ("ANYmesher", "0.2.5"),
         "ANYfileIO": ("ANYfileio", "0.2.0"),
-        "ANYsolver": ("ANYsolver", "0.3.0"),
+        "ANYfeSolver": ("ANYfeSolver", "0.3.0"),
     }
     roots = {}
     for repository, (distribution, version) in projects.items():
-        project = tmp_path if repository == "ANYsolver" else tmp_path / repository
+        project = tmp_path if repository == "ANYfeSolver" else tmp_path / repository
         project.mkdir(exist_ok=True)
         (project / "pyproject.toml").write_text(
             f'[project]\nname = "{distribution}"\nversion = "{version}"\n',
@@ -989,7 +990,7 @@ def test_package_lane_is_isolated_and_covers_the_declared_wheel_smoke() -> None:
         ("ANYmaterial", "ANYmaterial", "anymaterial"),
         ("ANYmesh", "ANYmesher", "anymesher"),
         ("ANYfileIO", "ANYfileio", "anyfileio"),
-        ("ANYsolver", "ANYsolver", "anysolver"),
+        ("ANYfeSolver", "ANYfeSolver", "anyfesolver"),
     ]
     source = (ROOT / "scripts" / "run_e4_pl_burnin_gate.py").read_text(encoding="utf-8")
     assert 'environment.pop("PYTHONPATH", None)' in source
@@ -1234,7 +1235,7 @@ def test_fail_fast_blocked_result_forbids_fabricated_downstream_evidence() -> No
 def test_repository_identity_validation_fails_closed_on_dirty_inputs(monkeypatch) -> None:
     gate = _gate_module()
     record = _prospective_gate_result(gate)
-    paths = {name: Path(name) for name in ("ANYsolver", *gate.SIBLING_NAMES)}
+    paths = {name: Path(name) for name in ("ANYfeSolver", *gate.SIBLING_NAMES)}
 
     def dirty_status(_repository: Path) -> dict[str, object]:
         raw = b" M tracked.py\0"
@@ -1248,7 +1249,7 @@ def test_repository_identity_validation_fails_closed_on_dirty_inputs(monkeypatch
 def test_repository_cleanliness_policy_is_full_for_candidate_and_anyfem(monkeypatch) -> None:
     gate = _gate_module()
     record = _prospective_gate_result(gate)
-    paths = {name: Path(name) for name in ("ANYsolver", *gate.SIBLING_NAMES)}
+    paths = {name: Path(name) for name in ("ANYfeSolver", *gate.SIBLING_NAMES)}
     status_order = []
 
     def clean_status(repository: Path) -> dict[str, object]:
@@ -1257,13 +1258,13 @@ def test_repository_cleanliness_policy_is_full_for_candidate_and_anyfem(monkeypa
 
     def clean_git(repository: Path, *args: str) -> str:
         name = repository.name
-        identity = record["candidate"] if name == "ANYsolver" else record["siblings"][name]
+        identity = record["candidate"] if name == "ANYfeSolver" else record["siblings"][name]
         return identity["tree"] if args[-1] == "HEAD^{tree}" else identity["commit"]
 
     monkeypatch.setattr(gate, "_functional_source_status", clean_status)
     monkeypatch.setattr(gate, "_git", clean_git)
     gate.validate_gate_result(record, repository_paths=paths)
-    assert status_order == sorted(("ANYsolver", *gate.SIBLING_NAMES))
+    assert status_order == sorted(("ANYfeSolver", *gate.SIBLING_NAMES))
 
 
 def test_complete_sibling_authority_is_fail_closed() -> None:
@@ -1316,7 +1317,7 @@ def test_package_source_override_is_explicit_and_resolved(
     roots = gate._local_roots()
 
     assert roots["ANYgeometry"] == frozen.resolve()
-    assert roots["ANYsolver"] == ROOT.resolve()
+    assert roots["ANYfeSolver"] == ROOT.resolve()
 
 
 def test_pytest_source_metadata_overlay_binds_the_frozen_source_graph(
@@ -1425,13 +1426,13 @@ def test_final_validation_binds_requests_logs_package_and_wheel(
     wheel.write_bytes(b"preserved installed-wheel candidate")
     record["wheel"] = gate.wheel_hash_record(wheel)
     package = _prospective_package_result(gate, record)
-    package["wheels"]["ANYsolver"] = record["wheel"]
+    package["wheels"]["ANYfeSolver"] = record["wheel"]
     package_path = tmp_path / "package-result.json"
     package_path.write_bytes(gate.canonical_json_bytes(package))
     record["package_result"] = gate.file_hash_record(package_path)
 
     monkeypatch.setattr(gate, "_validate_repository_identities", lambda *_args: None)
-    repositories = {name: tmp_path / name for name in ("ANYsolver", *gate.SIBLING_NAMES)}
+    repositories = {name: tmp_path / name for name in ("ANYfeSolver", *gate.SIBLING_NAMES)}
     gate.validate_final_gate_result(
         record,
         contract=contract,
@@ -1535,7 +1536,20 @@ def test_blocked_cycles_remain_verifiable_under_immutable_authority() -> None:
             row["request_id"] for row in blocked_gate["resource_requests"]
         )
 
+    # A current repository name cannot authenticate a sealed record, and a
+    # modified authority cannot opt into the historical repository identity.
+    historical_contract = gate.strict_json_load(authority_path)
+    wrong_repository = copy.deepcopy(blocked_gate)
+    wrong_repository["candidate"]["repository"] = "ANYfeSolver"
+    with pytest.raises(gate.EvidenceError, match="candidate.repository must be ANYsolver"):
+        gate.validate_gate_result(wrong_repository, contract=historical_contract)
+    mutated_contract = dict(historical_contract, default="changed")
+    with pytest.raises(gate.EvidenceError, match="candidate.repository must be ANYfeSolver"):
+        gate.validate_gate_result(blocked_gate, contract=mutated_contract)
+
     live_contract = gate.strict_json_load(CONTRACT)
+    with pytest.raises(gate.EvidenceError, match="candidate.repository must be ANYfeSolver"):
+        gate.validate_gate_result(blocked_gate, contract=live_contract)
     live_request_ids = {
         authority["request_id"]
         for authority in live_contract["resource_requests"].values()

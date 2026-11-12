@@ -3,9 +3,9 @@ from dataclasses import replace
 import json
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
 from examples.stiffened_shell_native_fibre_bl5_material import definition, ACTIONS, CONTROLS
 
 
@@ -22,7 +22,7 @@ def test_policy_admission_and_force_only_refusals(request):
     assert 'shell J2 plastic' not in a.capabilities['excluded']
     assert a.capabilities['retained_coordinate_scale_policy'] == 'native_force_moment_roles_v1'
     start = a._shell_count+6*len(a._beam_ids)
-    from anysolver._stiffened_shell_ge_experimental import _reference_section_tangent
+    from anyfesolver._stiffened_shell_ge_experimental import _reference_section_tangent
     for i, (element, _, _) in enumerate(a._beam_parts):
         scale = np.abs(_reference_section_tangent(element.section))@np.r_[np.ones(3), np.ones(3)/a._reference_length]
         expected = np.r_[np.tile(scale[:3], 2), np.tile(scale[3:], 4)]
@@ -47,10 +47,10 @@ def test_policy_admission_and_force_only_refusals(request):
 
 
 def test_policy_restore_load_and_envelope_refusals_are_atomic(request):
-    from anysolver._stiffened_shell_ge_experimental import CHECKPOINT, CHART_CHECKPOINT_MAGIC
-    from anysolver._stiffened_shell_staged_load_experimental import MAGIC as STAGED_MAGIC
-    from anysolver._stiffened_shell_ge_distributed_load import MAGIC as DISTRIBUTED_MAGIC
-    from anysolver._stiffened_shell_ge_distributed_programme import MAGIC as PROGRAMME_MAGIC
+    from anyfesolver._stiffened_shell_ge_experimental import CHECKPOINT, CHART_CHECKPOINT_MAGIC
+    from anyfesolver._stiffened_shell_staged_load_experimental import MAGIC as STAGED_MAGIC
+    from anyfesolver._stiffened_shell_ge_distributed_load import MAGIC as DISTRIBUTED_MAGIC
+    from anyfesolver._stiffened_shell_ge_distributed_programme import MAGIC as PROGRAMME_MAGIC
     model = definition(shell_material=False)
     a = make(request, model)
     zero = dict(schema=CHECKPOINT, model=a.preflight()['identity'], generation=1,
@@ -95,7 +95,7 @@ def test_public_partial_fibre_workflow():
 
 
 def test_public_partial_report_matches_final_accepted_state(monkeypatch, tmp_path):
-    from anysolver._stiffened_shell_ge_experimental import ExperimentalGEAnalysis
+    from anyfesolver._stiffened_shell_ge_experimental import ExperimentalGEAnalysis
     from examples.stiffened_shell_native_fibre_bl5_material import workflow
     observed = []
     original = ExperimentalGEAnalysis.solve
@@ -125,7 +125,7 @@ def test_public_partial_report_matches_final_accepted_state(monkeypatch, tmp_pat
 
 
 def test_partial_material_trial_rejection_cancel_and_restore_atomicity(request, monkeypatch):
-    from anysolver._stiffened_shell_increment_control import FiniteIncrementFailure
+    from anyfesolver._stiffened_shell_increment_control import FiniteIncrementFailure
     model = definition()
     a = make(request, model)
     prefix = a.solve(ACTIONS, (.01, .1, .2), **CONTROLS)
@@ -268,7 +268,7 @@ def test_native_material_lifecycle_and_fixed_predecessor_tangent(request, monkey
         with pytest.raises(SolveCancelled):
             a.solve(ACTIONS, (1.1,), cancellation_token=midtrial, **CONTROLS)
     assert a.checkpoint() == saved
-    from anysolver._stiffened_shell_increment_control import FiniteIncrementFailure
+    from anyfesolver._stiffened_shell_increment_control import FiniteIncrementFailure
     with pytest.raises(FiniteIncrementFailure) as rejected:
         a.solve(ACTIONS, (1.1,), max_iterations=1, max_backtracks=0)
     assert rejected.value.attempt.status == 'rejected'
@@ -281,7 +281,7 @@ def test_native_material_lifecycle_and_fixed_predecessor_tangent(request, monkey
         with pytest.raises(RuntimeError, match='injected local'):
             a.solve(ACTIONS, (1.1,), **CONTROLS)
     assert a.checkpoint() == saved
-    from anysolver._ge_beam3_retained_fibre import RetainedFibreOperator
+    from anyfesolver._ge_beam3_retained_fibre import RetainedFibreOperator
     calls = []
     def refuse_mutated_inventory(self):
         calls.append(1)

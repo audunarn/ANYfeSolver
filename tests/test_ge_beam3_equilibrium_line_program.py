@@ -3,10 +3,10 @@ import json
 from pathlib import Path
 from hashlib import sha256
 import pytest
-from anysolver import _ge_beam3_equilibrium_line_program as native
-from anysolver import _ge_beam3_fibre_line_program as dense
-from anysolver._ge_beam3_seeded_load_program import ForceProgram
-from anysolver.control import CancellationToken
+from anyfesolver import _ge_beam3_equilibrium_line_program as native
+from anyfesolver import _ge_beam3_fibre_line_program as dense
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram
+from anyfesolver.control import CancellationToken
 from test_ge_beam3_schur_line_program import inputs,save,numerical_difference
 
 ARCHIVE=Path('C:/Users/AudunArnesenNyhus/AppData/Local/ANYrelease/ge-beam3-schur-controller-2756a7b-20260907')

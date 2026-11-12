@@ -8,9 +8,9 @@ SAVED=ROOT/'.development/r8-f06-quiet-caller-repair-20261009/source2/s3'
 
 def definition():
     from scripts.r8_f06_quiet_caller_repair_dev import definition as original
-    from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-    from anysolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
-    from anysolver._stiffened_shell_f06_increment_arithmetic import POLICY
+    from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+    from anyfesolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
+    from anyfesolver._stiffened_shell_f06_increment_arithmetic import POLICY
     base=original();beams=[]
     for item in base.beams:
         e,inertia=item.instantiate();op=e.operator
@@ -20,13 +20,13 @@ def definition():
     return replace(base,beams=tuple(beams))
 
 def owner():
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
     made=ss.create_analysis(definition=definition())
     made.restore((SAVED/'accepted-before.bin').read_bytes(),legacy_compensated_base=True)
     return made
 
 def actual(out):
-    from anysolver._stiffened_shell_ge_finite_experimental import _State
+    from anyfesolver._stiffened_shell_ge_finite_experimental import _State
     out=Path(out);o=owner();d=o._finite_driver;results=[]
     try:
         origins=(d._shell_origins,d._beam_origins)

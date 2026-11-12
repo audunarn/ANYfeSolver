@@ -4,8 +4,8 @@ import json,os
 import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
-from anysolver import stiffened_shell as api
-from anysolver.control import CancellationToken
+from anyfesolver import stiffened_shell as api
+from anyfesolver.control import CancellationToken
 from examples.stiffened_shell_b2_physical_rigid_footprint import definition,preload,batch_workflow
 
 SELECT=api.B2PhysicalRigidFootprintSelection(("physical-left",))
@@ -61,7 +61,7 @@ def test_public_batch_counts_selected_outputs_and_envelopes(owner,count):
 
 
 def test_no_unselected_recovery_and_first_case_tie(owner,monkeypatch):
-    import anysolver._stiffened_shell_b2_q4_panel_experimental as module
+    import anyfesolver._stiffened_shell_b2_q4_panel_experimental as module
     def forbidden(*args,**kwargs):raise AssertionError("unselected wrench recovered")
     monkeypatch.setattr(module,"physical_selected_wrenches",forbidden)
     for _,(member,_) in owner._members:monkeypatch.setattr(type(member.operator),"recover_sections",forbidden)
@@ -180,7 +180,7 @@ def test_invalid_later_load_and_recovery_prevalidate_without_factor(owner):
 
 
 def test_factory_factor_failure_with_offset_propagates(monkeypatch):
-    import anysolver._stiffened_shell_b2_q4_panel_experimental as module
+    import anyfesolver._stiffened_shell_b2_q4_panel_experimental as module
     d=definition();offset=np.array(d.prescribed_offset);offset[36]=.1
     calls=[]
     def failed(*args,**kwargs):calls.append(1);raise RuntimeError("deliberate factorization failure")
@@ -192,7 +192,7 @@ def test_factory_factor_failure_with_offset_propagates(monkeypatch):
 
 def test_nonfirst_disjoint_pad_compact_global_provenance(monkeypatch):
     from scipy import sparse
-    import anysolver._stiffened_shell_b2_q4_panel_experimental as module
+    import anyfesolver._stiffened_shell_b2_q4_panel_experimental as module
     d=definition();nodes={1+i:(float(i),0.,0.) for i in range(4)};nodes.update({5+i:(float(i),1.,0.) for i in range(4)})
     shells=tuple(api.Q4PanelShell(f"s-{i}",(i+1,i+2,i+6,i+5),1000.,.3,.15) for i in range(3))
     members=tuple(api.PhysicalB2Member(f"b-{i}",f"src-{i}",(10+i,11+i),((.5+i,.5,0.),(1.5+i,.5,0.)),(0.,1.,0.),"square",d.members[0].section) for i in range(3))

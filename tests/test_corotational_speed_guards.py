@@ -18,9 +18,9 @@ import pytest
 
 from anymaterial import IsotropicMaterial
 
-from anysolver import _compensated_contractions as cc
-from anysolver import elements as el
-from anysolver.corotational import rotation_matrix_from_vector
+from anyfesolver import _compensated_contractions as cc
+from anyfesolver import elements as el
+from anyfesolver.corotational import rotation_matrix_from_vector
 
 
 class _Recorder:
@@ -214,9 +214,9 @@ def test_rotation_vector_branches_are_the_same_rotation_but_not_equivariant():
 
 
 def _simply_supported_plate(n: int, thickness: float, pressure: float):
-    import anysolver as fs
-    from anysolver.boundary import BoundaryCondition, LoadCase
-    from anysolver.elements import create_shell_element
+    import anyfesolver as fs
+    from anyfesolver.boundary import BoundaryCondition, LoadCase
+    from anyfesolver.elements import create_shell_element
 
     model = fs.FEModel("plate")
     model.add_material("mat", 210e9, 0.3, density=7850.0)
@@ -248,7 +248,7 @@ def _simply_supported_plate(n: int, thickness: float, pressure: float):
 def test_one_step_and_five_step_corotational_plate_agree_as_rotations():
     """Rotation DOF values may differ by multiples of 2*pi; the rotations do not."""
 
-    import anysolver as fs
+    import anyfesolver as fs
 
     model, load = _simply_supported_plate(4, 0.001, 5.0e4)
     states = {}

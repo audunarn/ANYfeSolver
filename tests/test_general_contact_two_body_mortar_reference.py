@@ -3,8 +3,8 @@ import hashlib,importlib.util,json,math,os
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.semismooth import linearize
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.semismooth import linearize
 from examples.general_contact_tilted_relative_sliding import rotation,rigid_pose
 
 ROOT=Path(__file__).parents[1]
@@ -122,7 +122,7 @@ def test_actual_loaded_pose_independent_work_and_bins():
 @pytest.mark.skipif(not (RAW/'refined.json').is_file(),
     reason='archived mortar trace input MORTAR_EVIDENCE/refined.json absent: fixed-structure pressure-trace replay requires the original saved trace')
 def test_fixed_structure_pressure_trace_discriminator():
-    from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
     model,manager,program,meta,pose,q,z,provenance=posed(True)
     stored=json.loads((RAW/'refined.json').read_text());ref=stored['reference'];S=np.asarray(ref['support']);G=np.asarray(ref['gap_gradient']);spin=np.asarray(stored['spin_map']);chart=np.asarray(stored['chart_map'])
     free,_=old.selectors(model,program)
@@ -185,7 +185,7 @@ def test_fixed_structure_pressure_trace_discriminator():
 @pytest.mark.skipif(not BASE.is_file(),
     reason='archived mortar pose input contact_tilted_relative_sliding_20261008/outputs/v3/run-14.json absent: loaded directional-tangent replay requires the original saved pose')
 def test_independent_loaded_directional_tangent():
-    from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
     model,manager,program,meta,pose,q,z,provenance=posed(False)
     free,_=old.selectors(model,program);rng=np.random.default_rng(601420)
     dq=np.zeros(len(q));dq[free]=rng.normal(size=len(free));dq/=np.linalg.norm(dq)

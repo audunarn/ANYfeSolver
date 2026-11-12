@@ -2,8 +2,8 @@
 from fractions import Fraction
 import numpy as np
 import pytest
-from anysolver import _native_dyadic_interval_inertia as dyadic
-from anysolver import _native_exact_shift_inertia as exact
+from anyfesolver import _native_dyadic_interval_inertia as dyadic
+from anyfesolver import _native_exact_shift_inertia as exact
 from test_native_fraction_free_inertia import rational_inertia
 
 
@@ -82,7 +82,7 @@ def test_unchanged_binary64_inputs():
 
 def test_saved_six_benchmark_wiring(tmp_path,monkeypatch):
     import json
-    from docs.reference_cases import ge_beam3_exact_inertia_benchmark as bench
+    from fixtures.reference_cases import ge_beam3_exact_inertia_benchmark as bench
     if not bench.SIX_INPUT.exists(): pytest.skip('preserved native packet not available')
     monkeypatch.setattr(bench,'guard',lambda _:None)
     for key,value in bench.THREAD_ENVIRONMENT.items(): monkeypatch.setenv(key,value)

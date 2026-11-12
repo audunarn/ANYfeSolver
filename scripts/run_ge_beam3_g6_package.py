@@ -73,12 +73,12 @@ def _installed(target):
 def probe(target, output):
     target = _installed(target)
     import numpy as np
-    import anysolver
-    from anysolver.beam_sections import GeneralizedBeamSection
-    from anysolver.elements import BeamElement, QuadraticBeamElement, create_element
-    from anysolver.ge_beam3_element import GeometricallyExactBeam3D3NElement
-    from anysolver.ge_beam3_native import ConsumerPolicy
-    if not Path(anysolver.__file__).resolve().is_relative_to(target):
+    import anyfesolver
+    from anyfesolver.beam_sections import GeneralizedBeamSection
+    from anyfesolver.elements import BeamElement, QuadraticBeamElement, create_element
+    from anyfesolver.ge_beam3_element import GeometricallyExactBeam3D3NElement
+    from anyfesolver.ge_beam3_native import ConsumerPolicy
+    if not Path(anyfesolver.__file__).resolve().is_relative_to(target):
         raise RuntimeError("installed package origin escaped target")
     section = GeneralizedBeamSection(np.diag((12., 10., 9., 4., 5., 6.)),
         mass_matrix=np.diag((2., 2., 2., .1, .2, .3)), name="G6_INSTALLED")

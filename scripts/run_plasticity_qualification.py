@@ -13,7 +13,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from anysolver.plasticity_qualification import (  # noqa: E402
+from anyfesolver.plasticity_qualification import (  # noqa: E402
     DEFAULT_PLASTICITY_QUALIFICATION_PATH,
     write_plasticity_qualification_report,
 )

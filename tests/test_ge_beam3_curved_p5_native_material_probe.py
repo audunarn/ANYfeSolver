@@ -6,10 +6,10 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver.fe_core import FEModel
-from anysolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
-from anysolver.nonlinear_element_evaluation import evaluate_nonlinear_element, NativeNonlinearEvaluationError
-from anysolver.nonlinear_state import StateTransactionError
+from anyfesolver.fe_core import FEModel
+from anyfesolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
+from anyfesolver.nonlinear_element_evaluation import evaluate_nonlinear_element, NativeNonlinearEvaluationError
+from anyfesolver.nonlinear_state import StateTransactionError
 from docs.reference_cases import ge_beam3_curved_p5_native_material_probe as probe
 from docs.reference_cases.ge_beam3_curved_p5_section_probe import SectionHistory
 from test_ge_beam3_curved_p5_algebra_probe import reference, assert_scaled_close

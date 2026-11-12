@@ -3,13 +3,13 @@ import json
 from copy import deepcopy
 import numpy as np
 import pytest
-import anysolver._ge_beam3_reassembled_signed_modes as adapter
-from anysolver._ge_beam3_seeded_loaded_modal import solve_elastic_modes
-from anysolver._ge_beam3_seeded_load_program import ForceProgram, solve_force_program
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_p5_seeded import NativeP5BeamElement
-from anysolver._ge_beam3_p5.algebra import rotation as proper_rotation
-from anysolver.control import CancellationToken, SolveCancelled
+import anyfesolver._ge_beam3_reassembled_signed_modes as adapter
+from anyfesolver._ge_beam3_seeded_loaded_modal import solve_elastic_modes
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram, solve_force_program
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5_seeded import NativeP5BeamElement
+from anyfesolver._ge_beam3_p5.algebra import rotation as proper_rotation
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_ge_beam3_curved_contrast_probe import make_curved, ROTATION
 from test_ge_beam3_seeded_load_program import problem
 from test_ge_beam3_curved_p5_mass_probe import section_mass

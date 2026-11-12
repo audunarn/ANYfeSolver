@@ -7,7 +7,7 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver.general_contact import linearized_pivot
+from anyfesolver.general_contact import linearized_pivot
 from scripts.general_contact_d1_mixed_mesh_jet2_schur_press import main
 
 

@@ -1,9 +1,9 @@
 """Nonzero curved-force derivative through actual mixed-owner coordinates."""
 from dataclasses import replace
 import numpy as np
-from anysolver import b3_ge, stiffened_shell as ss
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver import b3_ge, stiffened_shell as ss
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
 from test_stiffened_shell_ge_experimental import _panel
 from test_stiffened_shell_ge_distributed_load import owner, load
 

@@ -5,8 +5,8 @@ import threading
 import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
-from anysolver._ge_beam3_g3c_definition import expand, command, canonical
-from anysolver._ge_beam3_g3c_owner import MixedGraphOwner
+from anyfesolver._ge_beam3_g3c_definition import expand, command, canonical
+from anyfesolver._ge_beam3_g3c_owner import MixedGraphOwner
 
 def load(stage,scale=.01):
     return dict(kind='LOAD_STAGE',load_factor=[0.,.5,1.,.25,0.][stage],force_scale=scale,root_stage=stage)
@@ -135,7 +135,7 @@ def test_closed_runtime_dispatch_and_no_restart_admission(monkeypatch):
     owner=MixedGraphOwner()
     with pytest.raises(AttributeError): owner._published=None
     assert not hasattr(owner,'resume') and not hasattr(owner,'checkpoint')
-    from anysolver import _ge_beam3_g3c_local_beam as beam
+    from anyfesolver import _ge_beam3_g3c_local_beam as beam
     original=beam.LocalBeam.evaluate
     def changed(*args,**kwargs): return original(*args,**kwargs)
     monkeypatch.setattr(beam.LocalBeam,'evaluate',changed)
@@ -154,8 +154,8 @@ def test_replaced_lock_is_rejected_before_publication_and_original_released():
 
 @pytest.mark.parametrize('module_name',['owner','definition'])
 def test_replaced_common_transform_is_rejected_and_poisoned(monkeypatch,module_name):
-    from anysolver import _ge_beam3_g3c_owner as implementation
-    from anysolver import _ge_beam3_g3c_definition as definition
+    from anyfesolver import _ge_beam3_g3c_owner as implementation
+    from anyfesolver import _ge_beam3_g3c_definition as definition
     target=implementation if module_name=='owner' else definition
     owner=MixedGraphOwner(common_motion='CM0'); published=owner._published; original=target.SHIFT
     def replace(stage):
@@ -167,8 +167,8 @@ def test_replaced_common_transform_is_rejected_and_poisoned(monkeypatch,module_n
 
 @pytest.mark.parametrize('family',['section','reference'])
 def test_imported_class_dispatch_cannot_change(monkeypatch,family):
-    from anysolver._ge_beam3_g1_elastic import ElasticSection
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+    from anyfesolver._ge_beam3_g1_elastic import ElasticSection
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
     owner=MixedGraphOwner(); published=owner._published
     cls,name=(ElasticSection,'response') if family=='section' else (Reference,'frame')
     original=getattr(cls,name)
@@ -178,7 +178,7 @@ def test_imported_class_dispatch_cannot_change(monkeypatch,family):
     assert owner._published is published and not owner._owned_lock.locked()
 
 def test_authority_read_exception_permanently_poisoned(monkeypatch):
-    from anysolver import _ge_beam3_g3c_definition as definition
+    from anyfesolver import _ge_beam3_g3c_definition as definition
     owner=MixedGraphOwner(); published=owner._published; original=definition.bound
     def unreadable(*args): raise ValueError('injected frozen authority read failure')
     monkeypatch.setattr(definition,'bound',unreadable)

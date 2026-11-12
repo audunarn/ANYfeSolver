@@ -7,8 +7,8 @@ import json
 import numpy as np
 import pytest
 
-import anysolver.e4_pl_s3_element as s3_element_module
-from anysolver import (
+import anyfesolver.e4_pl_s3_element as s3_element_module
+from anyfesolver import (
     DEFAULT_Q4_FORMULATION,
     DEFAULT_S3_FORMULATION,
     ElementCapabilityError,
@@ -25,7 +25,7 @@ from anysolver import (
     create_shell_element,
     shell_element_from_dict,
 )
-from anysolver.e4_pl_s3_element import (
+from anyfesolver.e4_pl_s3_element import (
     BUBBLE_OFFSET_D,
     CAPABILITY_GAPS,
     FORMULATION_ID,
@@ -37,8 +37,8 @@ from anysolver.e4_pl_s3_element import (
     TYING_POINTS,
     invariant_drilling_scale,
 )
-from anysolver.fe_core import FEMesh, Material
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.fe_core import FEMesh, Material
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 def _mesh(nodes: np.ndarray) -> FEMesh:

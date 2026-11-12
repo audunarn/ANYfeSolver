@@ -11,8 +11,8 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
-from anysolver._stiffened_shell_increment_control import FiniteIncrementFailure
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver._stiffened_shell_increment_control import FiniteIncrementFailure
 
 # Observed equilibrium ratio of the saved failing prefix attempt; the exact
 # value only fixes the merit scale, no tolerance depends on it.

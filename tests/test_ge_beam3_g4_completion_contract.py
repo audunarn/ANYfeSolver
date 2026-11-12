@@ -54,4 +54,4 @@ def test_plan_forbids_scope_expansion():
     assert "G5, public routing" in text
     tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
     modules = {node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)}
-    assert not any(name and name.startswith("anysolver") for name in modules)
+    assert not any(name and name.startswith("anyfesolver") for name in modules)

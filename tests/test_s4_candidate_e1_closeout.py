@@ -149,23 +149,23 @@ NEW_PATHS = {
 }
 
 PRODUCTION = {
-    "src/anysolver/__init__.py": (
+    "src/anyfesolver/__init__.py": (
         24779,
         "0C782CCE93C1346F8A9B6DB832156A4F2689B33460C58F5966E9DE2169C2B8F0",
     ),
-    "src/anysolver/anystructure_fem_mode.py": (
+    "src/anyfesolver/anystructure_fem_mode.py": (
         60057,
         "2FEACAAFD2A516B8ACCD919124A18614B0C3096EC0EEAF02DF6BC4280A80616E",
     ),
-    "src/anysolver/elements.py": (
+    "src/anyfesolver/elements.py": (
         190422,
         "5D0AF716CD2E466EB831B1896553DE06236AC1BA80A84BD1B09C7E4CEBBDE670",
     ),
-    "src/anysolver/fe_core.py": (
+    "src/anyfesolver/fe_core.py": (
         17364,
         "553CE5A7C6FE86CD10D562A1B7683AF2CC84A7E43E77D201823651F3047B9EFD",
     ),
-    "src/anysolver/shell_sections.py": (
+    "src/anyfesolver/shell_sections.py": (
         11530,
         "C9ECF93AB0E0A9B2A0D57A0252A21C4BF2A885551D5C96C64C1E2D3167919456",
     ),
@@ -392,7 +392,7 @@ def test_s4_candidate_e1_closeout_is_exact_separate_and_production_safe() -> Non
         relative: _canonical_lf(ROOT / relative, size, digest)
         for relative, (size, digest) in PRODUCTION.items()
     }
-    elements_text = source_text["src/anysolver/elements.py"]
+    elements_text = source_text["src/anyfesolver/elements.py"]
     elements_tree = ast.parse(elements_text)
     shell = [
         node
@@ -431,7 +431,7 @@ def test_s4_candidate_e1_closeout_is_exact_separate_and_production_safe() -> Non
     assert 'getattr(self, "drilling_stabilization", 1.0e-3)' in shell_text
     assert "B_d.T @ (drilling_stiffness * np.eye(1)) @ B_d" in shell_text
 
-    package_tree = ast.parse(source_text["src/anysolver/__init__.py"])
+    package_tree = ast.parse(source_text["src/anyfesolver/__init__.py"])
     exports = set(ast.literal_eval(_assignment(package_tree, "__all__").value))
     assert not any("E1" in name or "candidate_e1" in name.lower() for name in exports)
 

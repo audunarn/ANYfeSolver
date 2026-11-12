@@ -5,11 +5,11 @@ from pathlib import Path
 import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 from benchmark_static_batches import mixed_free_model, free_cases, numeric_leaves
-from anysolver import AnalysisSession, RecoveryConfig, StaticCase, prepare_static_evaluator, iter_linear_batches
-from anysolver.matrix_assembly import assemble_load_matrix
-from anysolver.recovery import recover_stress_result
-from anysolver.prepared_static_loads import ingest_static_case, evaluate_load_vector
-from anysolver.prepared_static_recovery import apply_compiled_recovery
+from anyfesolver import AnalysisSession, RecoveryConfig, StaticCase, prepare_static_evaluator, iter_linear_batches
+from anyfesolver.matrix_assembly import assemble_load_matrix
+from anyfesolver.recovery import recover_stress_result
+from anyfesolver.prepared_static_loads import ingest_static_case, evaluate_load_vector
+from anyfesolver.prepared_static_recovery import apply_compiled_recovery
 
 model, groups, balancing = mixed_free_model()
 name, instant, load = next(free_cases(model, groups, balancing, [48]))

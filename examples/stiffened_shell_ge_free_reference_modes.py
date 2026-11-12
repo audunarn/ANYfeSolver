@@ -6,7 +6,7 @@ The empty-support policy deliberately rejects static and accepted-state writes.
 """
 import json
 import numpy as np
-from anysolver import b3_ge, stiffened_shell as api
+from anyfesolver import b3_ge, stiffened_shell as api
 
 
 def main():

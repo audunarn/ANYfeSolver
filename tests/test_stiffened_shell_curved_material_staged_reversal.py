@@ -2,7 +2,7 @@
 from dataclasses import replace
 import json
 import numpy as np
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from test_stiffened_shell_curved_material import curved_material_panel,make_owner,_actions
 from test_stiffened_shell_curved_material_staged import OPTIONS
 from test_stiffened_shell_curved_material_displacement import material_equal

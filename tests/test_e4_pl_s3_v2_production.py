@@ -9,12 +9,12 @@ import pickle
 import numpy as np
 import pytest
 
-import anysolver
-from anysolver.boundary import LoadCase
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
-from anysolver.element_capabilities import ElementCapabilityError
-from anysolver.e4_pl_s3_v2_element import (
+import anyfesolver
+from anyfesolver.boundary import LoadCase
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
+from anyfesolver.element_capabilities import ElementCapabilityError
+from anyfesolver.e4_pl_s3_v2_element import (
     EQUATION_MAP_SHA256,
     FORMULATION_ID,
     HAMMER_POINTS,
@@ -26,7 +26,7 @@ from anysolver.e4_pl_s3_v2_element import (
     _ALLOWED_INHERITED_CALLABLES,
     _SEALED_INHERITED_CALLABLES,
 )
-from anysolver.elements import (
+from anyfesolver.elements import (
     BeamElement,
     DEFAULT_Q4_FORMULATION,
     DEFAULT_S3_FORMULATION,
@@ -38,8 +38,8 @@ from anysolver.elements import (
     shell_element_from_dict,
     shell_formulation_diagnostics,
 )
-from anysolver.fe_core import FEModel, FEMesh, Material
-from anysolver.matrix_assembly import (
+from anyfesolver.fe_core import FEModel, FEMesh, Material
+from anyfesolver.matrix_assembly import (
     assemble_external_load_tangent,
     assemble_load_vector,
 )
@@ -219,12 +219,12 @@ def test_explicit_selector_preserves_every_existing_default_and_q4_route() -> No
 
 def test_authority_identity_and_fixed_hammer_rule_are_exact() -> None:
     assert issubclass(StrictFlatLinearCapabilityError, ElementCapabilityError)
-    assert anysolver.StrictFlatLinearE4PLS3V2ShellElement is (
+    assert anyfesolver.StrictFlatLinearE4PLS3V2ShellElement is (
         StrictFlatLinearE4PLS3V2ShellElement
     )
-    assert anysolver.STRICT_FLAT_S3_V2_FORMULATION_ID == FORMULATION_ID
-    assert anysolver.STRICT_FLAT_S3_V2_IMPLEMENTATION_ID == IMPLEMENTATION_ID
-    assert anysolver.STRICT_FLAT_S3_V2_SELECTOR == "e4-pl-s3-v2"
+    assert anyfesolver.STRICT_FLAT_S3_V2_FORMULATION_ID == FORMULATION_ID
+    assert anyfesolver.STRICT_FLAT_S3_V2_IMPLEMENTATION_ID == IMPLEMENTATION_ID
+    assert anyfesolver.STRICT_FLAT_S3_V2_SELECTOR == "e4-pl-s3-v2"
     assert FORMULATION_ID == "CANDIDATE_E4_PL_S3_V2A_FLAT_LINEAR_V1"
     assert IMPLEMENTATION_ID == "E4_PL_S3_V2_DKMT_EQ12_41_CST_PL_HAMMER3_V1"
     assert SOURCE_CONTRACT_SHA256 == (
@@ -693,7 +693,7 @@ def test_candidate_instance_and_module_authority_fail_closed(monkeypatch) -> Non
             lambda unused_self, unused_material: {},
         )
 
-    import anysolver.e4_pl_s3_v2_element as candidate_module
+    import anyfesolver.e4_pl_s3_v2_element as candidate_module
 
     monkeypatch.setattr(candidate_module, "_validate_module_authority", lambda: None)
     monkeypatch.setattr(candidate_module, "SHEAR_CORRECTION", 0.0)
@@ -719,7 +719,7 @@ def test_candidate_instance_and_module_authority_fail_closed(monkeypatch) -> Non
     with pytest.raises(TypeError):
         object.__setattr__(element, "__class__", ShellElement)
 
-    import anysolver.elements as elements_module
+    import anyfesolver.elements as elements_module
 
     monkeypatch.setattr(
         elements_module,

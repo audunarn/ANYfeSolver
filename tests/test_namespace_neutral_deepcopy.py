@@ -9,18 +9,18 @@ from typing import Any, Dict, Mapping
 import numpy as np
 import pytest
 
-from anysolver import FEModel
-from anysolver.elements import BeamElement, Element, ShellElement
-from anysolver.imperfections import ImperfectionField, apply_imperfection
-from anysolver.e4_pl_s3_state import resolved_material_descriptor
-from anysolver.nonlinear_restart import (
+from anyfesolver import FEModel
+from anyfesolver.elements import BeamElement, Element, ShellElement
+from anyfesolver.imperfections import ImperfectionField, apply_imperfection
+from anyfesolver.e4_pl_s3_state import resolved_material_descriptor
+from anyfesolver.nonlinear_restart import (
     analysis_configuration_fingerprint,
     canonical_checkpoint_json_bytes,
     load_nonlinear_checkpoint,
     model_configuration_descriptor,
     model_configuration_fingerprint,
 )
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 class _SlottedBeamElement(BeamElement):

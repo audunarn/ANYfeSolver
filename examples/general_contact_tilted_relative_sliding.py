@@ -7,9 +7,9 @@ from dataclasses import replace
 import math,os,json
 from pathlib import Path
 import numpy as np
-from anysolver import BoundaryCondition,solve_static_nonlinear
-from anysolver.general_contact import resolve_automatic_contact_domain
-from anysolver.general_contact.static_path import ContactPathControl,ContactPathNodalForce,ContactPathProgram
+from anyfesolver import BoundaryCondition,solve_static_nonlinear
+from anyfesolver.general_contact import resolve_automatic_contact_domain
+from anyfesolver.general_contact.static_path import ContactPathControl,ContactPathNodalForce,ContactPathProgram
 from examples.general_contact_q4_pair_monolithic_cycle import build as base
 from examples.general_contact_finite_rotation_shell_work import rotation,rigid_pose
 

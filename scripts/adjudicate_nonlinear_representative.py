@@ -212,7 +212,7 @@ def adjudicate(raw: Mapping[str, Any], runner: Any) -> dict[str, Any]:
         and not normalized.get("failures")
     )
     return {
-        "schema": "anysolver.nonlinear_static.representative_adjudication",
+        "schema": "anyfesolver.nonlinear_static.representative_adjudication",
         "version": 1,
         "created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "source_identity": normalized["identity"],

@@ -136,13 +136,13 @@ def collect80(site,output):
     site=Path(site).resolve();output=Path(output)
     if output.exists():raise FileExistsError(output)
     output.mkdir(parents=True);sys.path.insert(0,str(site))
-    from anysolver import b3_ge,stiffened_shell as api
-    import anysolver,os,psutil
+    from anyfesolver import b3_ge,stiffened_shell as api
+    import anyfesolver,os,psutil
     from scipy import sparse
     from threadpoolctl import threadpool_info
     evidence=site.parent;binding=json.loads((evidence/'installed-v2/binding.json').read_text())
     wheel=evidence/'dist/anysolver-0.4.7-py3-none-any.whl'
-    if not Path(anysolver.__file__).resolve().is_relative_to(site) or digest(wheel.read_bytes())!=WHEEL_SHA:
+    if not Path(anyfesolver.__file__).resolve().is_relative_to(site) or digest(wheel.read_bytes())!=WHEEL_SHA:
         raise RuntimeError('effective import/guarded wheel identity changed')
     with zipfile.ZipFile(wheel) as archive:
         for relative,expected in binding['module_sha256'].items():
@@ -202,7 +202,7 @@ def collect80(site,output):
             director_contract=DIRECTOR,guards=guards,runtime=runtime,sparse_operators=sparse_inventory)
         (output/'native80-fields.json').write_text(json.dumps(fields,indent=2))
         runtime['imported_modules']={name:str(Path(m.__file__).resolve()) for name,m in sys.modules.items()
-            if name.startswith('anysolver') and getattr(m,'__file__',None)}
+            if name.startswith('anyfesolver') and getattr(m,'__file__',None)}
         if any(not Path(p).is_relative_to(site) for p in runtime['imported_modules'].values()):raise RuntimeError('mixed effective imports')
         runtime['final_numerical_pools']=threadpool_info()
         (output/'runtime-final.json').write_text(json.dumps(runtime,indent=2))

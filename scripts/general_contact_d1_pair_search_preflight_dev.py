@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver.general_contact.s3_patch_mortar_energy import (
+from anyfesolver.general_contact.s3_patch_mortar_energy import (
     MovingS3PatchPrimalMortarPenalty, S3PatchFace,
 )
 

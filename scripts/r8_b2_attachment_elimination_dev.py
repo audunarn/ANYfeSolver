@@ -23,9 +23,9 @@ ENV = {key: "1" for key in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_
 RSS_CAP = 2*1024**3
 TEST_FILES = [ROOT / "tests/test_r8_b2_attachment_elimination_dev.py", ROOT / "tests/test_r8_b2_original_operator_20261010.py"]
 TEST_COUNT = 32
-HELPER = ROOT / "src/anysolver/_b2_attachment_elimination_dev.py"
+HELPER = ROOT / "src/anyfesolver/_b2_attachment_elimination_dev.py"
 PACKAGE = OUT / "package"
-PRODUCT = ROOT / "src/anysolver/_stiffened_shell_b2_q4_panel_experimental.py"
+PRODUCT = ROOT / "src/anyfesolver/_stiffened_shell_b2_q4_panel_experimental.py"
 
 
 def require(condition, message):
@@ -49,14 +49,14 @@ def package_identity(base):
 
 def binding():
     sources = [Path(__file__).resolve(), PRODUCT, HELPER, *TEST_FILES,
-               ROOT / "src/anysolver/_b2_physical_linear_batch_dev.py",
-               ROOT / "src/anysolver/_b2_loaded_point_trace_dev.py",
+               ROOT / "src/anyfesolver/_b2_physical_linear_batch_dev.py",
+               ROOT / "src/anyfesolver/_b2_loaded_point_trace_dev.py",
                ROOT / "tests/test_stiffened_shell_b2_q4_panel_experimental.py",
                ROOT / "tests/test_b2_loaded_point_owner.py", ROOT / "tests/conftest.py"]
     for path in sources:
         ast.parse(path.read_text(), filename=str(path))
     return {"sources": {p.relative_to(ROOT).as_posix(): sha(p) for p in sources},
-            "package_files": package_identity(ROOT / "src/anysolver"),
+            "package_files": package_identity(ROOT / "src/anyfesolver"),
             "build_inputs": {name: sha(ROOT/name) for name in
                 ("pyproject.toml", "README.md", "LICENSE", "COPYRIGHT", "THIRD_PARTY_NOTICES.md")},
             "controls": TEST_COUNT, "qualification": False,
@@ -71,7 +71,7 @@ def package_job(folder, receipt):
         require(any(p.get("passed") == TEST_COUNT and p.get("exit_code") == 0 for p in passed),
                 "focused source controls must pass before ONE frozen build")
         snapshot = PACKAGE / "snapshot"
-        destination = snapshot / "src/anysolver"
+        destination = snapshot / "src/anyfesolver"
         if PACKAGE.exists():
             original = json.loads((OUT / "attempt-build1/receipt.json").read_text())
             require(original["status"] == "failed" and original["binding"]["package_files"] == identity and
@@ -84,7 +84,7 @@ def package_job(folder, receipt):
         else:
             destination.mkdir(parents=True)
             for name, digest in identity.items():
-                source, target = ROOT / "src/anysolver" / name, destination / name
+                source, target = ROOT / "src/anyfesolver" / name, destination / name
                 require(sha(source) == digest, "source changed during snapshot")
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(source, target)
@@ -102,8 +102,8 @@ def package_job(folder, receipt):
         wheels = list(wheel_dir.glob("*.whl"))
         require(len(wheels) == 1, "exactly one wheel required")
         with zipfile.ZipFile(wheels[0]) as archive:
-            wheel_identity = {name[len("anysolver/"):]: hashlib.sha256(archive.read(name)).hexdigest()
-                              for name in archive.namelist() if name.startswith("anysolver/") and not name.endswith("/")}
+            wheel_identity = {name[len("anyfesolver/"):]: hashlib.sha256(archive.read(name)).hexdigest()
+                              for name in archive.namelist() if name.startswith("anyfesolver/") and not name.endswith("/")}
         require(wheel_identity == identity, "source/snapshot/wheel package byte identity required")
         save(PACKAGE / "manifest.json", {"package_files": identity, "file_count": len(identity),
              "wheel": str(wheels[0]), "wheel_sha256": sha(wheels[0]), "binding": receipt["binding"]})
@@ -117,7 +117,7 @@ def package_job(folder, receipt):
         save(folder / "subcommand.json", {"command": command, "cwd": str(ROOT)})
         code = subprocess.call(command, cwd=ROOT)
         require(code == 0, "cold wheel install failed; preserve evidence")
-        require(package_identity(site / "anysolver") == identity, "wheel/site byte identity required")
+        require(package_identity(site / "anyfesolver") == identity, "wheel/site byte identity required")
         manifest.update(installed_site=str(site), installed_files=len(identity))
         save(PACKAGE / "manifest.json", manifest)
     save(folder / "result.json", {"status": operation+"_passed", "exit_code": 0,
@@ -149,22 +149,22 @@ def child(folder, authority_path):
     import numpy as np
     import scipy
     import numba
-    import anysolver
-    import anysolver._stiffened_shell_b2_q4_panel_experimental as panel
-    import anysolver._b2_attachment_elimination_dev as helper
-    import anysolver._b2_physical_linear_batch_dev as batch
-    import anysolver._b2_loaded_point_trace_dev as loaded
+    import anyfesolver
+    import anyfesolver._stiffened_shell_b2_q4_panel_experimental as panel
+    import anyfesolver._b2_attachment_elimination_dev as helper
+    import anyfesolver._b2_physical_linear_batch_dev as batch
+    import anyfesolver._b2_loaded_point_trace_dev as loaded
     from threadpoolctl import threadpool_info
     import pytest
     expected_root = Path(receipt["installed_site"]).resolve() if receipt["installed_site"] else ROOT / "src"
     actual = Path(panel.__file__).resolve()
     require(actual.is_relative_to(expected_root) and sha(actual) == receipt["binding"]["sources"][PRODUCT.relative_to(ROOT).as_posix()],
             "actual imported panel must match source binding within requested source/installed site")
-    require(package_identity(expected_root / "anysolver") == receipt["binding"]["package_files"],
+    require(package_identity(expected_root / "anyfesolver") == receipt["binding"]["package_files"],
             "all imported package files must match source/immutable wheel binding")
     for module in (panel, helper, batch, loaded):
         actual_path = Path(module.__file__).resolve()
-        name = "src/anysolver/"+actual_path.name
+        name = "src/anyfesolver/"+actual_path.name
         require(actual_path.is_relative_to(expected_root) and sha(actual_path) == receipt["binding"]["sources"][name],
                 "actual imported affected module must match requested source/site binding")
     runtime = {"affinity": psutil.Process().cpu_affinity(), "environment": {k: os.environ.get(k) for k in ENV},
@@ -174,7 +174,7 @@ def child(folder, authority_path):
                          "threads": numba.get_num_threads()},
                "installed_site": receipt["installed_site"],
                "imported": {m.__name__: {"path": str(Path(m.__file__).resolve()), "sha256": sha(m.__file__)}
-                            for m in (anysolver, panel, helper, batch, loaded, np, scipy, numba)}}
+                            for m in (anyfesolver, panel, helper, batch, loaded, np, scipy, numba)}}
     require(runtime["affinity"] == [0] and runtime["environment"] == ENV and
             runtime["pools"] and all(p["num_threads"] == 1 for p in runtime["pools"]) and
             runtime["numba"]["disable_jit"] == 1 and runtime["numba"]["threads"] == 1 and

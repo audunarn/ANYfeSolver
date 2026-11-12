@@ -17,14 +17,14 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver.fe_core import FEModel
-from anysolver.elements import BeamElement, create_shell_element
-from anysolver.boundary import BoundaryCondition, FixedSupport, LoadCase
-from anysolver.assembly import solve_linear
-from anysolver.material_curves import DNVC208MaterialCurve
-from anysolver.plasticity import lobatto_layers
-from anysolver.nonlinear_static import NonlinearConvergenceSettings, solve_static_nonlinear
-from anysolver.recovery import ResourceConfig
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement, create_shell_element
+from anyfesolver.boundary import BoundaryCondition, FixedSupport, LoadCase
+from anyfesolver.assembly import solve_linear
+from anyfesolver.material_curves import DNVC208MaterialCurve
+from anyfesolver.plasticity import lobatto_layers
+from anyfesolver.nonlinear_static import NonlinearConvergenceSettings, solve_static_nonlinear
+from anyfesolver.recovery import ResourceConfig
 
 E = 210.0e9
 NU = 0.3
@@ -367,7 +367,7 @@ def test_resource_config_assembly_threads_enters_nonlinear_numba_scope(monkeypat
             calls.append(("exit", self.thread_count))
             return False
 
-    import anysolver.nonlinear_static as nonlinear_static_module
+    import anyfesolver.nonlinear_static as nonlinear_static_module
 
     monkeypatch.setattr(
         nonlinear_static_module,

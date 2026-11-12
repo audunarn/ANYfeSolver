@@ -1,11 +1,11 @@
 """Focused correctness/activation checks; no timings or numerical campaign."""
 import numpy as np
 import pytest
-from anysolver import RecoveryConfig, prepare_static_evaluator, PreparedStaticCapabilityError
-from anysolver.fe_core import FEModel
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.prepared_static_recovery import _capture_owned_local_recovery, _recover_owned_local, owned_recovery_scope
-from anysolver import prepared_static_q4 as staged
+from anyfesolver import RecoveryConfig, prepare_static_evaluator, PreparedStaticCapabilityError
+from anyfesolver.fe_core import FEModel
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.prepared_static_recovery import _capture_owned_local_recovery, _recover_owned_local, owned_recovery_scope
+from anyfesolver import prepared_static_q4 as staged
 
 
 def _q4_model(sign=1, warped=False):
@@ -109,7 +109,7 @@ def test_staged_q4_public_activation_fallback_and_source_deletion(batch_size):
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
     from benchmark_static_batches import mixed_free_model, free_cases
-    from anysolver import StaticCase, iter_linear_batches
+    from anyfesolver import StaticCase, iter_linear_batches
     model, groups, balancing = mixed_free_model()
     cases = [StaticCase(name, load, instant) for name, instant, load in free_cases(model, groups, balancing, [0,48])] * 16
     config = RecoveryConfig(include_displacements=False, include_stresses=True, include_reactions=False)

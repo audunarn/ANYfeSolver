@@ -4,9 +4,9 @@ import numpy as np
 import pytest
 from scipy import linalg
 
-from anysolver._ge_beam3_coupled_modes import capture
-from anysolver._ge_beam3_shell_joint_state import decode
-from anysolver._ge_beam3_variational_shell import response as shell_response
+from anyfesolver._ge_beam3_coupled_modes import capture
+from anyfesolver._ge_beam3_shell_joint_state import decode
+from anyfesolver._ge_beam3_variational_shell import response as shell_response
 from test_ge_beam3_coupled_modes import arguments, fixture
 
 

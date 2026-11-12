@@ -13,13 +13,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver.dynamics import TransientConfig
-from anysolver.ge_beam3_native_dynamics import solve_transient
-from anysolver._ge_beam3_p5_seeded.core import canonical, sha
-from anysolver._ge_beam3_native_transient import (
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.ge_beam3_native_dynamics import solve_transient
+from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
+from anyfesolver._ge_beam3_native_transient import (
     NativeTransientError, _settings, _advance, _record, _result)
-from anysolver._ge_beam3_native_midpoint import MidpointContext
+from anyfesolver._ge_beam3_native_midpoint import MidpointContext
 from examples.native_contact_free_transient_dev import build, run
 
 
@@ -194,7 +194,7 @@ def test_candidate_evidence_is_authenticated_nonpublishing(monkeypatch):
 
 
 def test_genesis_preparation_cancellation_and_serialization_roll_back(monkeypatch):
-    import anysolver._ge_beam3_native_transient as driver
+    import anyfesolver._ge_beam3_native_transient as driver
     for cancel in (False, True):
         owner, config = build(t_end=0.)
         token = CancellationToken()
@@ -243,7 +243,7 @@ def test_config_refusal_without_native_construction(change):
 
 def test_controller_cutback_and_precommit_failure_oracle(monkeypatch):
     """No synthetic mechanics proof: injected controller behavior only."""
-    import anysolver._ge_beam3_native_transient as driver
+    import anyfesolver._ge_beam3_native_transient as driver
     owner, config = build(t_end=.001)
     prefix = solve_transient(owner, replace(config, t_end=0.))
     capsule = json.loads(prefix.checkpoint)
@@ -300,7 +300,7 @@ def test_controller_inflight_cancel_keeps_native_prefix(monkeypatch):
 
 
 def test_keyboard_interrupt_precommit_discards_candidate(monkeypatch):
-    import anysolver._ge_beam3_native_transient as driver
+    import anyfesolver._ge_beam3_native_transient as driver
     owner, config = build(t_end=0.)
     previous = solve_transient(owner, config)
     row = json.loads(previous.checkpoint)

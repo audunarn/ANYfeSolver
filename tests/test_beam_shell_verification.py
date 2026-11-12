@@ -8,8 +8,8 @@ import sys
 from types import SimpleNamespace
 from pathlib import Path
 
-from anysolver import run_beam_shell_verification, verification_manifest_cases, write_beam_shell_verification_report
-import anysolver.beam_shell_verification as beam_shell_verification
+from anyfesolver import run_beam_shell_verification, verification_manifest_cases, write_beam_shell_verification_report
+import anyfesolver.beam_shell_verification as beam_shell_verification
 
 
 def test_manifest_contains_stable_case_ids_from_spec() -> None:
@@ -195,8 +195,12 @@ def test_nonlinear_framework_ingredients_are_cached_only_within_one_report(
 def test_beam_shell_verification_report_separates_pass_and_xfail(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     report = run_beam_shell_verification()
+    (tmp_path / "beam_shell_verification.json").write_text(
+        json.dumps(report, indent=2), encoding="utf-8"
+    )
+    failed = [row for row in report["results"] if row["status"] == "FAIL"]
 
-    assert report["status"] == "passed"
+    assert report["status"] == "passed", failed
     assert report["test_execution_status"] == "passed"
     assert report["verification_completion_status"] == "complete"
     assert report["release_gate_status"] == "passed"

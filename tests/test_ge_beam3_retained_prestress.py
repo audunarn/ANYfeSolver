@@ -4,11 +4,11 @@ from hashlib import sha256
 import json
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_retained_nodal_loading as nodal
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_p5_seeded.core import canonical,sha
-from anysolver._native_paired_factor_chain_modes import solve_paired_factor_chain_modes as paired
+from anyfesolver import _ge_beam3_retained_nodal_loading as nodal
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_p5_seeded.core import canonical,sha
+from anyfesolver._native_paired_factor_chain_modes import solve_paired_factor_chain_modes as paired
 from docs.reference_cases.ge_beam3_exact_family_partition import partition
 from test_ge_beam3_native_generalized_modal import make
 from test_ge_beam3_schur_line_program import save

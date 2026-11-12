@@ -4,14 +4,14 @@ from pathlib import Path
 from fractions import Fraction
 import numpy as np
 import pytest
-from anysolver._ge_beam3_mixed_ad import Jet2
-from anysolver.control import SolveCancelled
-from anysolver.e4_pl_enriched import EnrichedProfileError
-from anysolver.general_contact.enriched_overlap import QuadraturePolicy,EnrichedGeometryError
-from anysolver.general_contact import enriched_small_cut as smallcut
-from anysolver.general_contact import enriched_moment_batch as kernel
-from anysolver.general_contact import enriched_union as scalar
-from anysolver.general_contact.moment_batch_ad import PointJet
+from anyfesolver._ge_beam3_mixed_ad import Jet2
+from anyfesolver.control import SolveCancelled
+from anyfesolver.e4_pl_enriched import EnrichedProfileError
+from anyfesolver.general_contact.enriched_overlap import QuadraturePolicy,EnrichedGeometryError
+from anyfesolver.general_contact import enriched_small_cut as smallcut
+from anyfesolver.general_contact import enriched_moment_batch as kernel
+from anyfesolver.general_contact import enriched_union as scalar
+from anyfesolver.general_contact.moment_batch_ad import PointJet
 
 POLICY=QuadraturePolicy(1e-10,1e-8,1e-5,14144)
 
@@ -148,8 +148,8 @@ def test_input_topology_rounding_reconstruction_and_cancellation_refuse_without_
             assert all(v==0 for row in coordinate.hessian for v in row)
 
 def _small():
-    from anysolver import FEModel,BoundaryCondition,create_shell_element
-    from anysolver.general_contact.enriched_nonlinear import NonlinearEnrichedSystem,PairDefinition
+    from anyfesolver import FEModel,BoundaryCondition,create_shell_element
+    from anyfesolver.general_contact.enriched_nonlinear import NonlinearEnrichedSystem,PairDefinition
     model=FEModel('small_cut_ordinary_C0_oracle');model.add_material('elastic',1e5,.3,density=1.)
     source=((-0.5,-0.5,0.),(.5,-.5,0.),(.5,.5,0.),(-.5,.5,0.))
     target=((-2.,-2.,-.2),(2.,-2.,-.2),(2.,2.,-.2),(-2.,2.,-.2))
@@ -214,7 +214,7 @@ def test_saved_physical_cut_reaches_actual_caller_and_retains_all_modes(monkeypa
     record_property('saved_capture_sha256',data['provenance_sha256'])
 
 def test_actual_owner_cancellation_mutation_and_accepted_checkpoint_are_atomic(monkeypatch):
-    from anysolver.general_contact.enriched_nonlinear import MixedCriteria,IterationControl
+    from anyfesolver.general_contact.enriched_nonlinear import MixedCriteria,IterationControl
     model,system=_small();system.solve(np.zeros(system.offset.size),criteria=MixedCriteria(.04,1e-6,1e-8),control=IterationControl(1,1))
     accepted=system._accepted;checkpoint=system.checkpoint();entered=[];actual=kernel.selected_batch_moments
     def cancelled(*a,**kw):

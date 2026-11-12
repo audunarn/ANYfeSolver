@@ -2,11 +2,11 @@
 import numpy as np
 import pytest
 from test_prepared_static_evaluator import _bar, _case, _shell_model, _shell_case
-from anysolver import (AnalysisSession, RecoveryConfig, StaticCase, prepare_static_evaluator,
+from anyfesolver import (AnalysisSession, RecoveryConfig, StaticCase, prepare_static_evaluator,
                        solve_linear, PreparedStaticError, LoadCase)
-from anysolver.recovery import recover_stress_result
-from anysolver.prepared_static_loads import ingest_static_case, evaluate_load_vector
-from anysolver.matrix_assembly import assemble_load_vector
+from anyfesolver.recovery import recover_stress_result
+from anyfesolver.prepared_static_loads import ingest_static_case, evaluate_load_vector
+from anyfesolver.matrix_assembly import assemble_load_vector
 
 
 def test_factory_session_selection_and_iterator_cleanup():
@@ -69,7 +69,7 @@ def test_selected_derived_recovery_and_actual_full_load():
 
 
 def test_production_s3_v2d_full_load_and_recovery():
-    from anysolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
+    from anyfesolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
     model = _shell_model()
     for eid, old in tuple(model.mesh.elements.items()):
         model.mesh.elements[eid] = NativeParityE4PLS3V2DShellElement(eid, old.node_ids, 'steel', thickness=.01, reference_normal=(0., 0., 1.))
@@ -94,8 +94,8 @@ def test_production_s3_v2d_full_load_and_recovery():
 
 
 def test_generalized_beam_availability_and_coupling_acceleration():
-    from anysolver import FixedSupport, BoundaryCondition
-    from anysolver.elements import CoupledBeamShellElement
+    from anyfesolver import FixedSupport, BoundaryCondition
+    from anyfesolver.elements import CoupledBeamShellElement
     from test_generalized_state_recovery import _beam_model
     model, element = _beam_model()
     model.add_boundary_condition(FixedSupport('fixed', [1]))
@@ -118,7 +118,7 @@ def test_generalized_beam_availability_and_coupling_acceleration():
 
 
 def test_native_massless_coupling_gravity_full_F():
-    from anysolver.elements import CoupledBeamShellElement
+    from anyfesolver.elements import CoupledBeamShellElement
     model = _bar()
     model.add_node(3, 0., 0., 0.)
     model.add_element(2, CoupledBeamShellElement(2, 3, 1, 'steel'))
@@ -132,7 +132,7 @@ def test_native_massless_coupling_gravity_full_F():
 
 
 def test_unknown_derived_component_is_explicitly_refused():
-    from anysolver import PreparedStaticCapabilityError
+    from anyfesolver import PreparedStaticCapabilityError
     model = _bar()
     recovery = RecoveryConfig(include_stresses=True, components=['principal_1'])
     with pytest.raises(PreparedStaticCapabilityError, match='source-reviewed') as error:
@@ -141,7 +141,7 @@ def test_unknown_derived_component_is_explicitly_refused():
 
 
 def test_reaction_diagnostic_metadata_is_detached():
-    from anysolver.prepared_static_recovery import constraint_force_diagnostics
+    from anyfesolver.prepared_static_recovery import constraint_force_diagnostics
     model = _bar()
     with prepare_static_evaluator(model) as owner:
         snap = owner._snapshot
@@ -158,7 +158,7 @@ def test_finalizer_releases_abandoned_close_and_failure_once(monkeypatch):
     import gc
     import importlib
     import weakref
-    module = importlib.import_module('anysolver.prepared_static')
+    module = importlib.import_module('anyfesolver.prepared_static')
     releases = []
     original = module.AutoSparseSolverBackend.release_pattern_slots
     def release(backend):
@@ -203,8 +203,8 @@ def test_numpy_scalar_pressure_and_static_follower_full_F():
 
 
 def test_in_place_native_recovery_code_mutation_refused(monkeypatch):
-    from anysolver.elements import BeamElement
-    from anysolver import PreparedStaticCapabilityError
+    from anyfesolver.elements import BeamElement
+    from anyfesolver import PreparedStaticCapabilityError
     model = _bar()
     function = BeamElement.compute_stresses
     changed = tuple(.25 if type(value) is float and value == .5 else value for value in function.__code__.co_consts)
@@ -215,7 +215,7 @@ def test_in_place_native_recovery_code_mutation_refused(monkeypatch):
 
 def test_custom_material_not_qualified_by_random_probes():
     from anymaterial import IsotropicMaterial
-    from anysolver.prepared_static_recovery import _recovery_admission
+    from anyfesolver.prepared_static_recovery import _recovery_admission
     class ForeignMaterial(IsotropicMaterial):
         pass
     model = _bar()
@@ -228,7 +228,7 @@ def test_custom_material_not_qualified_by_random_probes():
 
 
 def test_instance_helper_shadow_and_custom_numeric_refused():
-    from anysolver.prepared_static_loads import exact_element_authority, native_material_section_authority
+    from anyfesolver.prepared_static_loads import exact_element_authority, native_material_section_authority
     model = _bar()
     element = model.mesh.elements[1]
     element._get_element_displacements = lambda *args: np.zeros(12)
@@ -247,8 +247,8 @@ def test_packet_memory_checked_before_numeric_copy():
     # Replacing a module function after import is outside the supported contract
     # (the response authority check refuses it), so the order is checked through
     # the policy's own 'before copy' refusal.
-    from anysolver import ResourceConfig
-    from anysolver.recovery import ResourcePolicyError
+    from anyfesolver import ResourceConfig
+    from anyfesolver.recovery import ResourcePolicyError
     model = _bar()
     case = _case(1)
     case.load_case.nodal_loads[99999] = np.zeros(200000)
@@ -289,7 +289,7 @@ def test_close_during_input_or_progress_cannot_yield_success():
 
 
 def test_memory_policy_splits_individually_fitting_variable_packets():
-    from anysolver import ResourceConfig
+    from anyfesolver import ResourceConfig
     model = _bar()
     cases = [_case(0), _case(1)]
     for case in cases:
@@ -301,7 +301,7 @@ def test_memory_policy_splits_individually_fitting_variable_packets():
 
 
 def test_principal_measure_analytic_rotation_and_eigen_residual():
-    from anysolver.prepared_static_measures import principal_stresses
+    from anyfesolver.prepared_static_measures import principal_stresses
     tensors = [np.diag([3., -2., 1.]), np.array([[0., 4., 0.], [4., 0., 0.], [0., 0., 0.]])]
     expected = [[3., 1., -2.], [4., 0., -4.]]
     angle = .713
@@ -316,8 +316,8 @@ def test_principal_measure_analytic_rotation_and_eigen_residual():
 
 
 def test_principal_shell_public_path_and_beam_refusal():
-    from anysolver.prepared_static_measures import SHELL_LINEAR_COMPONENTS
-    from anysolver import PreparedStaticCapabilityError
+    from anyfesolver.prepared_static_measures import SHELL_LINEAR_COMPONENTS
+    from anyfesolver import PreparedStaticCapabilityError
     model = _shell_model()
     case = _shell_case(0, pressure=2.)
     selection = ['principal_stresses_top', 'principal_stresses_bottom']
@@ -343,7 +343,7 @@ def test_principal_shell_public_path_and_beam_refusal():
 
 
 def test_preparation_cancellation_preserves_type_and_reports_phases():
-    from anysolver import CancellationToken, SolveCancelled
+    from anyfesolver import CancellationToken, SolveCancelled
     token = CancellationToken()
     token.cancel('before prepare')
     with pytest.raises(SolveCancelled):
@@ -369,7 +369,7 @@ def test_closure_during_iter_construction_still_closes_input():
 
 
 def test_shadowed_model_material_provider_refused_before_callback():
-    from anysolver import PreparedStaticCapabilityError
+    from anyfesolver import PreparedStaticCapabilityError
     model = _bar()
     def forbidden(*args):
         raise AssertionError('foreign provider must not run')
@@ -379,8 +379,8 @@ def test_shadowed_model_material_provider_refused_before_callback():
 
 
 def test_pressure_fast_span_uses_canonical_callback_free_proof(monkeypatch):
-    from anysolver.prepared_static_loads import _pressure_probes_are_package_only
-    import anysolver.boundary as boundary
+    from anyfesolver.prepared_static_loads import _pressure_probes_are_package_only
+    import anyfesolver.boundary as boundary
     model = _shell_model()
     assert _pressure_probes_are_package_only(model)
     monkeypatch.setattr(boundary, '_numpy_error_routes_are_builtin', lambda: False)
@@ -391,7 +391,7 @@ def test_pressure_fast_span_uses_canonical_callback_free_proof(monkeypatch):
 
 
 def test_pressure_fast_span_uses_full_guards_with_activity_provider():
-    from anysolver.prepared_static_loads import _pressure_probes_are_package_only
+    from anyfesolver.prepared_static_loads import _pressure_probes_are_package_only
     model = _shell_model()
     class Activity:
         def __getattr__(self, name):
@@ -401,9 +401,9 @@ def test_pressure_fast_span_uses_full_guards_with_activity_provider():
 
 
 def test_shadowed_mapping_items_never_runs_inside_pressure_trust():
-    from anysolver.prepared_static_loads import _pressure_probes_are_package_only
-    from anysolver.e4_pl_element import _q4_trusted_operation_accepts
-    from anysolver.e4_pl_s3_element import _s3_trusted_operation_accepts
+    from anyfesolver.prepared_static_loads import _pressure_probes_are_package_only
+    from anyfesolver.e4_pl_element import _q4_trusted_operation_accepts
+    from anyfesolver.e4_pl_s3_element import _s3_trusted_operation_accepts
     model = _shell_model()
     observed = []
     def shadow_items():
@@ -434,7 +434,7 @@ def test_returned_dof_headers_cannot_change_future_labels():
 def test_owned_local_refinement_multiple_scales_and_source_gc():
     import gc
     import weakref
-    from anysolver.prepared_static_recovery import apply_compiled_recovery
+    from anyfesolver.prepared_static_recovery import apply_compiled_recovery
     model = _shell_model()
     recovery = RecoveryConfig(include_stresses=True)
     owner = prepare_static_evaluator(model, recovery_config=recovery)
@@ -461,8 +461,8 @@ def test_owned_local_refinement_multiple_scales_and_source_gc():
 
 
 def test_owned_refinement_refuses_post_preparation_class_patch(monkeypatch):
-    from anysolver.prepared_static_recovery import _recover_owned_local
-    from anysolver.prepared_static_loads import PreparedStaticCapabilityError
+    from anyfesolver.prepared_static_recovery import _recover_owned_local
+    from anyfesolver.prepared_static_loads import PreparedStaticCapabilityError
     with prepare_static_evaluator(_shell_model(), recovery_config=RecoveryConfig(include_stresses=True)) as owner:
         recipe = next(iter(owner._snapshot.recovery_compilation.elements.values())).local_recipe
         element = recipe.execution_owner[0]

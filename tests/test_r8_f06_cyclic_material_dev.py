@@ -8,8 +8,8 @@ pytestmark=pytest.mark.skipif(not os.environ.get('F06_CYCLIC_CASE') or not os.en
 def test_installed_framing_only():
  import numpy as np
  from scripts.r8_f06_cyclic_material_dev import definition,DOC
- from anysolver import stiffened_shell as ss
- from anysolver._stiffened_shell_ge_checkpoint_binary import encode_compensated
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._stiffened_shell_ge_checkpoint_binary import encode_compensated
  raw=(DOC/'attempt-source-bend-z2/failure-state.bin').read_bytes()
  owner=ss.create_analysis(definition=definition('bend-z'))
  try:
@@ -32,8 +32,8 @@ def test_installed_framing_only():
 def test_public_cyclic_material():
  import numpy as np
  from scripts.r8_f06_cyclic_material_dev import definition,actions,DOC
- from anysolver import stiffened_shell as ss
- from anysolver._ge_beam3_p5_seeded.core import canonical
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._ge_beam3_p5_seeded.core import canonical
  case=os.environ['F06_CYCLIC_CASE'];out=Path(os.environ['F06_CYCLIC_OUTPUT'])
  model=definition(case);owner=ss.create_analysis(definition=model)
  programme=ss.StagedDeadLoadProgramme(owner.preflight()['identity'],
@@ -76,8 +76,8 @@ def test_public_cyclic_material():
    assert max(derivative_errors.values())<1e-6,derivative_errors
    # Replay the true accepted state before checkpoint/recovery capture.
    evaluate(driver._state)
-   from anysolver._stiffened_shell_beam_history import shapes
-   from anysolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,encode_compensated,decode,encode
+   from anyfesolver._stiffened_shell_beam_history import shapes
+   from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,encode_compensated,decode,encode
    state=driver._state;lows=('q_low','frames_low','cells_low','resultants_low')
    inner,corrections=decode_compensated(raw,owner._identity,tuple((k,getattr(state,k).shape) for k in lows))
    layout=tuple((k,v.shape) for k,v in (('q',state.q),('frames',state.frames),('cells',state.cells),('resultants',state.resultants),
@@ -141,7 +141,7 @@ def test_public_cyclic_material():
   after=owner.checkpoint();phase('continued-or-reversed')
   final=DOC/(case+'-final-prefix.bin')
   if not final.exists():final.write_bytes(after)
-  from anysolver.control import CancellationToken,SolveCancelled
+  from anyfesolver.control import CancellationToken,SolveCancelled
   class Cancel(CancellationToken):
    visits=0
    def raise_if_cancelled(self,stage=''):
@@ -152,7 +152,7 @@ def test_public_cyclic_material():
   cancel=Cancel()
   with pytest.raises(SolveCancelled):owner.solve(load,(continued+.01,),cancellation_token=cancel)
   assert cancel.visits==2 and owner.checkpoint()==after
-  from anysolver._stiffened_shell_increment_control import FiniteIncrementFailure
+  from anyfesolver._stiffened_shell_increment_control import FiniteIncrementFailure
   with pytest.raises(FiniteIncrementFailure):owner.solve(load,((3.9 if programme is not None else 1.2),),max_iterations=1,max_backtracks=0)
   assert owner.checkpoint()==after
   (out/'metrics.json').write_text(json.dumps(dict(status='PASS',case=case,
@@ -167,12 +167,12 @@ def test_installed_material_continuation():
  """Current isolated artifact continues a provenance-bound true public prefix."""
  import numpy as np
  from scripts.r8_f06_cyclic_material_dev import definition,actions,DOC
- from anysolver import stiffened_shell as ss
- from anysolver._ge_beam3_p5_seeded.core import canonical
- from anysolver._stiffened_shell_ge_checkpoint_binary import decode_compensated
- from anysolver.control import CancellationToken,SolveCancelled
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._ge_beam3_p5_seeded.core import canonical
+ from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode_compensated
+ from anyfesolver.control import CancellationToken,SolveCancelled
  case=os.environ['F06_CYCLIC_CASE'];out=Path(os.environ['F06_CYCLIC_OUTPUT']);model=definition(case)
- import anysolver._stiffened_shell_f06_increment_arithmetic as arithmetic
+ import anyfesolver._stiffened_shell_f06_increment_arithmetic as arithmetic
  original=arithmetic.full_log_coefficients;native_cosines=[]
  def capture(c):
   import sys
@@ -228,7 +228,7 @@ def test_installed_material_continuation():
     with pytest.raises(ValueError):fresh.restore(inner)
     assert fresh._finite_driver is None
    else:
-    from anysolver._stiffened_shell_staged_load_experimental import decode_checkpoint
+    from anyfesolver._stiffened_shell_staged_load_experimental import decode_checkpoint
     _,_,inner=decode_checkpoint(after)
     with pytest.raises(ValueError):fresh.restore(inner)
     assert fresh._finite_driver is None
@@ -243,7 +243,7 @@ def test_installed_material_continuation():
   token=Cancel()
   with pytest.raises(SolveCancelled):owner.solve(load,(target+.01,),cancellation_token=token)
   assert token.visits==2 and owner.checkpoint()==after
-  from anysolver._stiffened_shell_increment_control import FiniteIncrementFailure
+  from anyfesolver._stiffened_shell_increment_control import FiniteIncrementFailure
   with pytest.raises(FiniteIncrementFailure):owner.solve(load,((2.2 if programme is not None else .8),),max_iterations=1,max_backtracks=0)
   assert owner.checkpoint()==after
   assert native_cosines and min(native_cosines)<1.-1e-7,'ordinary principal Log must reach retained evaluation'

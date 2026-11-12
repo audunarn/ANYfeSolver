@@ -36,7 +36,7 @@ def prepare(case,owner,output,*,wheel,site):
     require(output.parent.is_dir(), 'existing owned output directory required')
     pools=threadpool_info()
     require(pools and all(pool['num_threads']==1 for pool in pools), 'effective numerical pools1 required')
-    require(not any(name.split('.')[0]=='anysolver' for name in sys.modules), 'saved assessment must be product-free')
+    require(not any(name.split('.')[0]=='anyfesolver' for name in sys.modules), 'saved assessment must be product-free')
     arrays={};report=dict(identity=IDENTITY,status='STARTED',fixture_case=case.fixture_case,
         stationary_bound=stationary_bound,decimal_precision=precision,
         fixture=case.fixture,counts=case.counts,formal_f03_authority_consumed=False,

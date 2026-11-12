@@ -17,9 +17,9 @@ import numpy as np
 import scipy
 from threadpoolctl import threadpool_info
 
-import anysolver
-from anysolver import b3_ge, stiffened_shell
-from anysolver._stiffened_shell_l1_assembly_experimental import SPACE_A, SPACE_B
+import anyfesolver
+from anyfesolver import b3_ge, stiffened_shell
+from anyfesolver._stiffened_shell_l1_assembly_experimental import SPACE_A, SPACE_B
 from scripts.b3_e4_f03_ccx_matched_t_reference import (
     E_PA, NU, PLATE_T_M, WEB_H_M, WEB_T_M, _section,
 )
@@ -162,7 +162,7 @@ def evaluate() -> dict:
         "source_sha256": sha256(Path(__file__).read_bytes()).hexdigest(),
         "runtime": {"python": sys.version.split()[0],
                     "numpy": np.__version__, "scipy": scipy.__version__,
-                    "anysolver_import": str(Path(anysolver.__file__).resolve()),
+                    "anyfesolver_import": str(Path(anyfesolver.__file__).resolve()),
                     "effective_threadpools": [
                         {"internal_api": pool.get("internal_api"),
                          "num_threads": pool.get("num_threads")}

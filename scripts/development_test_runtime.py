@@ -10,9 +10,9 @@ import sys
 def runtime_record(modules, source, pools=None):
     errors = []
     imported = {name: str(Path(module.__file__).resolve()) for name, module in modules.items()
-                if (name == "anysolver" or name.startswith("anysolver.")) and getattr(module, "__file__", None)}
+                if (name == "anyfesolver" or name.startswith("anyfesolver.")) and getattr(module, "__file__", None)}
     if any(not Path(path).is_relative_to(source) for path in imported.values()):
-        errors.append("ANYsolver imports escaped the selected source checkout")
+        errors.append("ANYfeSolver imports escaped the selected source checkout")
     numba = modules.get("numba")
     actual_jit = bool(numba.config.DISABLE_JIT) if numba is not None else None
     actual_threads = int(numba.get_num_threads()) if numba is not None else None

@@ -348,7 +348,7 @@ def run_provenance() -> dict:
     import subprocess
     import sys
 
-    import anysolver
+    import anyfesolver
     import scipy
     from threadpoolctl import threadpool_info
 
@@ -359,8 +359,8 @@ def run_provenance() -> dict:
         "scripts/b3_e4_f03_l1_native_connection_probe.py",
         "scripts/_b3_e4_f03_native_fixture.py",
         "scripts/b3_e4_f03_plate_patch_work.py",
-        "src/anysolver/e4_pl_element.py",
-        "src/anysolver/_ge_beam3_pose_joint.py",
+        "src/anyfesolver/e4_pl_element.py",
+        "src/anyfesolver/_ge_beam3_pose_joint.py",
     )
     hashes = {name: hashlib.sha256((root/name).read_bytes()).hexdigest()
               for name in relevant}
@@ -371,7 +371,7 @@ def run_provenance() -> dict:
         "python": platform.python_version(),
         "python_executable": sys.executable,
         "numpy": np.__version__, "scipy": scipy.__version__,
-        "anysolver_import": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_import": str(Path(anyfesolver.__file__).resolve()),
         "thread_environment": {key: os.getenv(key) for key in (
             "OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS",
             "NUMBA_DISABLE_JIT")},

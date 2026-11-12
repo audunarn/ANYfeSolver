@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 import numpy as np
-from anysolver.general_contact.native_retained_static import CURVED_MATERIAL_PROFILE
+from anyfesolver.general_contact.native_retained_static import CURVED_MATERIAL_PROFILE
 from examples.general_contact_native_curved_material_plane import analysis
 
 
@@ -117,7 +117,7 @@ def test_curved_material_press_open_recontact():
 
 
 def test_curved_material_authentic_split_restart_and_atomic_failure():
-    from anysolver.control import CancellationToken
+    from anyfesolver.control import CancellationToken
     reference=Path(__file__).parent/'data/general_contact_native_curved_plane_v7.checkpoint'
     full=_canonical_fixture_payload(reference)
     owner=_analysis((1.,0.,1.));prefix=owner.solve(stop_after=1)

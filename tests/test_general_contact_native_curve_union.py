@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.native_curve_union import NativeTwoCellUnionSearch
+from anyfesolver.general_contact.native_curve_union import NativeTwoCellUnionSearch
 
 
 def _line(first, last, y):
@@ -161,7 +161,7 @@ def test_source_interval_gap_lower_matches_original_polynomial_oracle():
     endpoint geometries, and no sampled certificate."""
     from scipy.optimize import brentq
     from fractions import Fraction
-    from anysolver.general_contact.beam_curve_pair import (
+    from anyfesolver.general_contact.beam_curve_pair import (
         _positions, _source_interval_target_gap_lower,
     )
 
@@ -203,7 +203,7 @@ def test_source_interval_gap_lower_matches_original_polynomial_oracle():
         return result
 
     def oracle_bound(source, left, right, target, radius):
-        from anysolver.general_contact.beam_curve_pair import _curve
+        from anyfesolver.general_contact.beam_curve_pair import _curve
         start = _curve(source, left)[0]
         end = _curve(source, right)[0]
         middle = _curve(source, 0.5 * (left + right))[0]
@@ -326,7 +326,7 @@ def test_coef_sub_helper_matches_numpy_polyutils_sub_exactly():
     trailing coefficients unchanged."""
     import math
     from numpy.polynomial import polyutils as pu
-    from anysolver.general_contact.beam_curve_pair import _coef_sub
+    from anyfesolver.general_contact.beam_curve_pair import _coef_sub
 
     # the repaired defect direction, as an explicit canary
     assert _coef_sub((1.0,), (2.0, 3.0)) == (-1.0, -3.0)

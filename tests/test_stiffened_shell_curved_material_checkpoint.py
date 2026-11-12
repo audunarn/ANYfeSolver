@@ -4,9 +4,9 @@ import json
 from math import fsum
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver._stiffened_shell_ge_checkpoint_binary import MAGIC,decode,encode
-from anysolver._stiffened_shell_ge_finite_experimental import _position_pair
+from anyfesolver import stiffened_shell as ss
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import MAGIC,decode,encode
+from anyfesolver._stiffened_shell_ge_finite_experimental import _position_pair
 from test_stiffened_shell_curved_material import (
     curved_material_panel,_actions,make_owner,assert_generalized_records_equal,
 )

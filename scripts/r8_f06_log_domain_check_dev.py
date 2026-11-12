@@ -10,7 +10,7 @@ ENV=dict(OMP_NUM_THREADS='1',OPENBLAS_NUM_THREADS='1',MKL_NUM_THREADS='1',
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 def write(p,v):Path(p).write_text(json.dumps(v,indent=2,allow_nan=False)+'\n')
 def bindings():
- current={p.relative_to(ROOT).as_posix():sha(p) for p in [*list((ROOT/'src/anysolver').glob('*.py')),
+ current={p.relative_to(ROOT).as_posix():sha(p) for p in [*list((ROOT/'src/anyfesolver').glob('*.py')),
   Path(__file__),ROOT/'scripts/r8_f06_log_domain_route_dev.py',ROOT/'tests/test_r8_f06_log_domain_dev.py']}
  frozen=DOC/'package/snapshot-bindings.json'
  new_input=DOC/'evidence/route3/accepted-active.bin'
@@ -23,12 +23,12 @@ def runtime(out,name,selected):
   dependencies={n:importlib.metadata.version(n) for n in ('numpy','scipy','numba','pytest','psutil','threadpoolctl')},
   numba=dict(disable_jit=bool(numba.config.DISABLE_JIT),num_threads=numba.get_num_threads()),pools=threadpoolctl.threadpool_info())
  imports={n:str(Path(m.__file__).resolve()) for n,m in sys.modules.items()
-  if (n=='anysolver' or n.startswith('anysolver.')) and getattr(m,'__file__',None)}
+  if (n=='anyfesolver' or n.startswith('anyfesolver.')) and getattr(m,'__file__',None)}
  settings.update(imports=imports,import_sha256={n:sha(p) for n,p in imports.items()})
  write(out/(name+'.json'),settings)
  assert settings['affinity']==[0] and settings['optimize']==0 and settings['numba']==dict(disable_jit=True,num_threads=1)
  assert all(p['num_threads']==1 for p in settings['pools'])
- for n,p in imports.items():assert Path(p).is_relative_to(selected/'anysolver'),(n,p)
+ for n,p in imports.items():assert Path(p).is_relative_to(selected/'anyfesolver'),(n,p)
  return settings
 
 def child(out,stage):
@@ -39,7 +39,7 @@ def child(out,stage):
   frozen=json.loads((package/'snapshot-bindings.json').read_text());site=package/'site'
   verified={};excluded={}
   for rel,h in frozen['package'].items():
-   if not rel.startswith('src/anysolver/'):
+   if not rel.startswith('src/anyfesolver/'):
     excluded[rel]='generated packaging metadata; not an imported package source';continue
    target=site/Path(rel).relative_to('src')
    assert sha(target)==h,(str(target),h)
@@ -62,7 +62,7 @@ def child(out,stage):
   frozen=json.loads((package/'snapshot-bindings.json').read_text())
   verified={}
   for rel,h in frozen['package'].items():
-   if not rel.startswith('src/anysolver/'):continue
+   if not rel.startswith('src/anyfesolver/'):continue
    target=site/Path(rel).relative_to('src')
    assert sha(target)==h,(str(target),h)
    assert sha(package/'snapshot'/rel)==h,'frozen source changed during build'
@@ -86,7 +86,7 @@ def child(out,stage):
    frozen=json.loads((package/'snapshot-bindings.json').read_text())['package']
    checked={}
    for name,module in sys.modules.items():
-    if name=='anysolver' or name.startswith('anysolver.'):
+    if name=='anyfesolver' or name.startswith('anyfesolver.'):
      path=getattr(module,'__file__',None)
      if path:
       relative=Path(path).relative_to(selected).as_posix();key='src/'+relative

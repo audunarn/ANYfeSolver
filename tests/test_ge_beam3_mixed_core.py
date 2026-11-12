@@ -3,10 +3,10 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver.beam_sections import GeneralizedBeamSection
-from anysolver.elements import Element, QuadraticBeamElement
-from anysolver.fe_core import FEModel
-from anysolver.ge_beam3_mixed_element import (
+from anyfesolver.beam_sections import GeneralizedBeamSection
+from anyfesolver.elements import Element, QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.ge_beam3_mixed_element import (
     GE_BEAM3_MIXED_CANDIDATE_ID,
     GE_BEAM3_MIXED_FORMULATION_ID,
     GeBeam3MixedStateError,
@@ -77,7 +77,7 @@ def test_reference_tangent_has_rank_twelve_and_six_rigid_modes() -> None:
 def test_common_finite_rigid_motion_has_zero_energy_and_force() -> None:
     model, element = _model()
     vector = np.array((0.37, -0.21, 0.19))
-    from anysolver._ge_beam3_mixed_ad import rotation_exponential
+    from anyfesolver._ge_beam3_mixed_ad import rotation_exponential
 
     rotation = rotation_exponential(vector)
     translation = np.array((0.8, -0.4, 0.6))
@@ -106,7 +106,7 @@ def test_reversal_preserves_coupled_section_energy_force_and_tangent() -> None:
             0.05, 0.04, 0.03, -0.01, 0.06, 0.04,
         )
     )
-    from anysolver._ge_beam3_mixed_ad import rotation_exponential
+    from anyfesolver._ge_beam3_mixed_ad import rotation_exponential
 
     forward_frame = forward.reference_triad(forward_model.mesh)
     forward_nodal = values.reshape(3, 6)
@@ -147,7 +147,7 @@ def test_condensed_tangent_agrees_with_directional_energy_second_variation() -> 
     )
     direction = np.linspace(-0.7, 0.8, 18)
     direction /= np.linalg.norm(direction)
-    from anysolver._ge_beam3_mixed_ad import rotation_exponential
+    from anyfesolver._ge_beam3_mixed_ad import rotation_exponential
 
     nodal = values.reshape(3, 6)
     base_rotations = np.asarray([rotation_exponential(row[3:]) for row in nodal])
@@ -206,7 +206,7 @@ def test_reversal_sensitive_section_requires_physical_axis_authority() -> None:
     model.add_material("mat", 1.0, 0.25)
     for node, x in enumerate((0.0, 0.5, 1.0), start=1):
         model.add_node(node, x, 0.0, 0.0)
-    from anysolver.ge_beam3_mixed_element import GeBeam3MixedGeometryError
+    from anyfesolver.ge_beam3_mixed_element import GeBeam3MixedGeometryError
 
     with pytest.raises(GeBeam3MixedGeometryError, match="reference_axis_direction"):
         GeometricallyExactBeam3D3NElement(
@@ -219,7 +219,7 @@ def test_reversal_sensitive_section_requires_physical_axis_authority() -> None:
 
 
 def test_cell_vertex_logarithm_uses_frozen_cutback_domain() -> None:
-    from anysolver._ge_beam3_mixed_ad import (
+    from anyfesolver._ge_beam3_mixed_ad import (
         Jet2,
         RotationDomainError,
         constant_matrix,

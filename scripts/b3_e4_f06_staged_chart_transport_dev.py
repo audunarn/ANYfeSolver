@@ -16,13 +16,13 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver import stiffened_shell
-from anysolver._stiffened_shell_ge_checkpoint_binary import CHART_MAGIC
-from anysolver._stiffened_shell_increment_control import decode_control
-from anysolver._stiffened_shell_staged_load_experimental import (
+from anyfesolver import stiffened_shell
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import CHART_MAGIC
+from anyfesolver._stiffened_shell_increment_control import decode_control
+from anyfesolver._stiffened_shell_staged_load_experimental import (
     MAGIC as STAGED_MAGIC, decode_checkpoint,
 )
-from anysolver.e4_pl_s3_state import canonical_json_bytes
+from anyfesolver.e4_pl_s3_state import canonical_json_bytes
 import b3_e4_f06_loaded_chart_transport_dev as oracle
 
 

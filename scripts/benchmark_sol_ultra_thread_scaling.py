@@ -1,7 +1,7 @@
-"""Measure bounded ANYsolver thread scaling through public solver APIs.
+"""Measure bounded ANYfeSolver thread scaling through public solver APIs.
 
 The measurements in this script are evidence, not test thresholds.  Each
-workload uses :class:`anysolver.recovery.ResourceConfig` so that assembly,
+workload uses :class:`anyfesolver.recovery.ResourceConfig` so that assembly,
 native solver, and recovery thread controls are exercised exactly as an
 application exercises them.  A one-thread result is retained as a numerical
 reference, and every invocation audits restoration of Numba/native limits.
@@ -34,7 +34,7 @@ if str(SRC) not in sys.path:
 
 import numpy as np
 
-from anysolver import (
+from anyfesolver import (
     AnalysisSession,
     LoadCase,
     RecoveryConfig,
@@ -43,12 +43,12 @@ from anysolver import (
     solve_linear_many,
     solve_static_nonlinear,
 )
-from anysolver.jit_compiler import jit_diagnostics
-from anysolver.mesh_gen import generate_beam_mesh, generate_simple_panel_mesh
-from anysolver.threading_policy import current_solver_threads
+from anyfesolver.jit_compiler import jit_diagnostics
+from anyfesolver.mesh_gen import generate_beam_mesh, generate_simple_panel_mesh
+from anyfesolver.threading_policy import current_solver_threads
 
 
-SCHEMA_NAME = "anysolver.sol_ultra.thread_scaling"
+SCHEMA_NAME = "anyfesolver.sol_ultra.thread_scaling"
 SCHEMA_VERSION = 1
 DEFAULT_OUTPUT = ROOT / "reports" / "performance" / "sol_ultra_thread_scaling.json"
 REQUIRED_ASSEMBLY_THREADS = (1, 2, 4, 8, 16)
@@ -224,7 +224,7 @@ def collect_environment() -> Dict[str, Any]:
         "packages": {
             name: _package_version(name)
             for name in (
-                "ANYsolver",
+                "ANYfeSolver",
                 "numpy",
                 "scipy",
                 "numba",

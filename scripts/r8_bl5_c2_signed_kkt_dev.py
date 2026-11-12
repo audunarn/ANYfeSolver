@@ -21,10 +21,10 @@ from scipy import linalg, sparse
 from scipy.sparse.linalg import splu
 from threadpoolctl import threadpool_info
 
-import anysolver
-from anysolver import stiffened_shell
-from anysolver._stiffened_shell_ge_experimental import _linear_equilibrium, _scaled_constraint_gap
-from anysolver._b2_physical_linear_batch_dev import _accurate_sparse_residual
+import anyfesolver
+from anyfesolver import stiffened_shell
+from anyfesolver._stiffened_shell_ge_experimental import _linear_equilibrium, _scaled_constraint_gap
+from anyfesolver._b2_physical_linear_batch_dev import _accurate_sparse_residual
 from scripts.b3_e4_bl5_coherent_aggregation_dev import model
 
 
@@ -212,7 +212,7 @@ def evaluate():
             scope='single matched 16x4/32 native halfcell c2 P0 reference case; no F03 or family acceptance',
             policy=policy,source_sha256=sha(__file__),model_source_sha256=sha(sys.modules[model.__module__].__file__),
             owner_source_sha256=sha(sys.modules[type(owner).__module__].__file__),
-            anysolver_import=anysolver.__file__,effective=dict(cpu_affinity=psutil.Process().cpu_affinity(),
+            anyfesolver_import=anyfesolver.__file__,effective=dict(cpu_affinity=psutil.Process().cpu_affinity(),
                 numba_threads=numba.get_num_threads(),jit_disabled=bool(numba.config.DISABLE_JIT),pools=pools),
             dimensions=dict(full_q=k.shape[0],free=len(free),physical=len(x),resultants=len(pp),
                             constraints=c.shape[0],fixed=len(fixed)),

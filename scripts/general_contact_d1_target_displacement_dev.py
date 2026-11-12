@@ -8,8 +8,8 @@ import json
 from pathlib import Path
 import time
 
-import anysolver
-from anysolver import (
+import anyfesolver
+from anyfesolver import (
     BoundaryCondition, ContactPathControl, ContactPathProgram,
     solve_static_nonlinear, validate_general_contact,
 )
@@ -63,7 +63,7 @@ def main(output: Path, normal_motion_m: float, force_reference_n: float):
     )
     payload = {
         "candidate": "d1_interior_target_normal_displacement_development",
-        "anysolver_module": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_module": str(Path(anyfesolver.__file__).resolve()),
         "source_q4_faces": 16,
         "target_s3_faces": 4,
         "normal_motion_m": normal_motion_m,

@@ -15,12 +15,12 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / "src")]
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 import psutil
 from threadpoolctl import threadpool_info
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from scripts import r8_bl5_body_port_probe as port
 from scripts import r8_bl5_matched_native_reference as native
 
@@ -38,7 +38,7 @@ def main(output):
             numba.get_num_threads() != 1 or not pools or
             any(pool["num_threads"] != 1 for pool in pools)):
         raise ValueError("effective CPU/thread/JIT settings differ")
-    if not Path(anysolver.__file__).resolve().is_relative_to(ROOT / "src"):
+    if not Path(anyfesolver.__file__).resolve().is_relative_to(ROOT / "src"):
         raise ValueError("solver imported outside bound source checkout")
     preflight = json.loads((SAVED / "preflight.json").read_text(encoding="utf-8"))
     saved = json.loads((SAVED / "beam-solved.json").read_text(encoding="utf-8"))
@@ -91,7 +91,7 @@ def main(output):
             abs(float(retained @ q_saved)-w_retained-cross_a)/denom > 1e-8):
         raise ValueError("native superposition/work reciprocity failed")
     result = dict(identity=IDENTITY,status="DEVELOPMENT_DIAGNOSTIC_NOT_QUALIFIED",
-        source_paths={"anysolver":str(Path(anysolver.__file__).resolve()),
+        source_paths={"anyfesolver":str(Path(anyfesolver.__file__).resolve()),
                       "port":str(Path(port.__file__).resolve()),
                       "native":str(Path(native.__file__).resolve())},
         source_sha256={"port":digest(port.__file__),"native":digest(native.__file__)},

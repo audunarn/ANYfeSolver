@@ -8,10 +8,10 @@ from test_general_contact_beam_s3_transient_rotational import energy,contact_ora
 
 
 def test_public_directional_impact_opening_restart_and_energy(tmp_path):
-    from anysolver.assembly import assemble_mass_matrix
-    from anysolver.nonlinear_static import _assemble_nonlinear_system
-    from anysolver.general_contact.runtime import suspend_contact,_ACTIVE_CONTACT
-    from anysolver.general_contact.beam_s3_directional_rates import DirectionalBeamS3Manager
+    from anyfesolver.assembly import assemble_mass_matrix
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system
+    from anyfesolver.general_contact.runtime import suspend_contact,_ACTIVE_CONTACT
+    from anyfesolver.general_contact.beam_s3_directional_rates import DirectionalBeamS3Manager
     m,r=run(end=.0008);destination=Path(os.environ.get('CONTACT_APP_RESULT_RECORD',str(tmp_path/'actual_result.json')))
     destination.with_name('accepted_full.checkpoint.json').write_text(json.dumps(r.restart_checkpoint,sort_keys=True,separators=(',',':'))+'\n')
     split_time=float(r.times[len(r.times)//2])
@@ -63,11 +63,11 @@ def test_public_directional_impact_opening_restart_and_energy(tmp_path):
 
 @pytest.mark.parametrize('failure',('cancel','exception','retry'))
 def test_directional_transaction_boundaries(monkeypatch,failure,tmp_path):
-    import anysolver.general_contact.transient as driver
-    import anysolver.general_contact.beam_s3_transient as path
-    from anysolver.control import CancellationToken,SolveCancelled
-    from anysolver.general_contact.runtime import active_contact_manager
-    from anysolver.dynamics import TransientConfig
+    import anyfesolver.general_contact.transient as driver
+    import anyfesolver.general_contact.beam_s3_transient as path
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.general_contact.runtime import active_contact_manager
+    from anyfesolver.dynamics import TransientConfig
     m,d,s,v=build();token=CancellationToken();commits=[];original=driver.commit_state_candidate;bound=path.hermite_gap_bounds;calls=0
     def commit(origin,trial):
         commits.append(1);return original(origin,trial)
@@ -99,9 +99,9 @@ def test_directional_transaction_boundaries(monkeypatch,failure,tmp_path):
 
 def test_directional_secant_history_corruption_refused(tmp_path):
     import copy
-    from anysolver.nonlinear_restart import analysis_configuration_fingerprint
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
-    from anysolver.assembly import build_constraint_transformation
+    from anyfesolver.nonlinear_restart import analysis_configuration_fingerprint
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.assembly import build_constraint_transformation
     _,result=run(end=3.e-5);changed=copy.deepcopy(result.restart_checkpoint)
     m,_,_,v=build();m.apply_boundary_conditions();K,_=assemble_stiffness_matrix(m)
     _,_,_,_,ids,_=build_constraint_transformation(K,np.zeros(len(v)),m)

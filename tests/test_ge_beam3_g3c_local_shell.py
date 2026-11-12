@@ -4,8 +4,8 @@ import json
 from dataclasses import fields, is_dataclass, replace
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_g3c_local_shell as s
-from anysolver._ge_beam3_variational_shell import deformation as old_deformation
+from anyfesolver import _ge_beam3_g3c_local_shell as s
+from anyfesolver._ge_beam3_variational_shell import deformation as old_deformation
 
 SHAPES = ('square', 'rectangle', 'right', 'equilateral')
 STEPS = (1e-4, 1e-5, 1e-6)

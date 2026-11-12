@@ -4,12 +4,12 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import (AnalysisSession, BeamElement, CancellationToken, FEModel, FixedSupport,
+from anyfesolver import (AnalysisSession, BeamElement, CancellationToken, FEModel, FixedSupport,
                        InertiaReliefError, LoadCase, SolveCancelled, create_shell_element,
                        solve_inertia_relief, solve_linear)
-from anysolver.assembly import build_constraint_transformation
-from anysolver.elements import CoupledBeamShellElement
-from anysolver.matrix_assembly import assemble_mass_matrix, assemble_stiffness_matrix
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.elements import CoupledBeamShellElement
+from anyfesolver.matrix_assembly import assemble_mass_matrix, assemble_stiffness_matrix
 
 
 def beam():
@@ -213,7 +213,7 @@ def test_original_free_free_refusal_and_supported_static_behavior_remain():
     ("activity","activity",1.),
 ])
 def test_distinct_activity_policies_and_session_updates(mass_policy,load_policy,ratio):
-    from anysolver.activity import ElementActivity, ElementActivityPolicy
+    from anyfesolver.activity import ElementActivity, ElementActivityPolicy
     model=beam()
     activity=ElementActivity([1],.375,policy=ElementActivityPolicy(mass=mass_policy,load=load_policy))
     model.set_element_activity(activity)
@@ -232,7 +232,7 @@ def test_distinct_activity_policies_and_session_updates(mass_policy,load_policy,
 
 
 def test_hard_deleted_stiffness_with_retained_mass_is_unresolved():
-    from anysolver.activity import ElementActivity,ElementActivityPolicy
+    from anyfesolver.activity import ElementActivity,ElementActivityPolicy
     model=beam()
     activity=ElementActivity([1],0.,policy=ElementActivityPolicy(mass="retain"))
     model.set_element_activity(activity)
@@ -261,7 +261,7 @@ def test_semidefinite_full_mass_with_massless_rotations_is_supported():
 
 
 def test_lanczos_nonconvergence_fails_closed(monkeypatch):
-    import anysolver.inertia_relief as module
+    import anyfesolver.inertia_relief as module
     from scipy.sparse.linalg import ArpackNoConvergence
     def fail(*args,**kwargs):
         raise ArpackNoConvergence("forced nonconvergence",np.empty(0),np.empty((12,0)))
@@ -309,7 +309,7 @@ def test_rigid_dominated_loads_are_invariant_to_density_scale(factor):
 
 
 def test_recovery_refuses_revision_and_direct_constraint_changes():
-    from anysolver import ConstraintEquation
+    from anyfesolver import ConstraintEquation
     model=beam()
     result=solve_inertia_relief(model)
     assert result.converged
@@ -326,7 +326,7 @@ def test_recovery_refuses_revision_and_direct_constraint_changes():
 
 
 def test_nonfinite_operator_produces_typed_refusal_and_arpack_error_is_numerical(monkeypatch):
-    import anysolver.inertia_relief as module
+    import anyfesolver.inertia_relief as module
     from scipy.sparse import eye
     from scipy.sparse.linalg import ArpackError
     original=module.assemble_mass_matrix
@@ -416,7 +416,7 @@ def test_default_linear_s3_reference_profile_and_semidefinite_mass():
 
 
 def test_quadratic_beam_uses_its_consistent_mass_profile():
-    from anysolver import QuadraticBeamElement
+    from anyfesolver import QuadraticBeamElement
     model=beam()
     model.set_node_coordinates(2,1.,0.,0.)
     model.add_node(3,2.,0.,0.)

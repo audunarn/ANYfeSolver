@@ -2,20 +2,20 @@
 from dataclasses import replace
 import json
 
-import anysolver
+import anyfesolver
 import numpy as np
 import pytest
 
-from anysolver import b3_ge
-from anysolver.b3_ge import Fibre, FlowCurve, PhysicalFibreSection
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_ge_experimental import (
+from anyfesolver import b3_ge
+from anyfesolver.b3_ge import Fibre, FlowCurve, PhysicalFibreSection
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_ge_experimental import (
     FINITE_CHECKPOINT, NodalAction,
 )
-from anysolver._stiffened_shell_ge_checkpoint_binary import (
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import (
     CHART_MAGIC, S3_MAGIC, encode,
 )
-from anysolver._stiffened_shell_l1_assembly_experimental import ExperimentalL1Line, SPACE_A
+from anyfesolver._stiffened_shell_l1_assembly_experimental import ExperimentalL1Line, SPACE_A
 from test_stiffened_shell_ge_experimental import _panel
 
 
@@ -48,7 +48,7 @@ def _definition(mixed=False, triangles=False):
 def test_physical_fibre_linear_panel_matches_elastic_section_and_restarts(mixed, triangles):
     definition = _definition(mixed, triangles)
     baseline = replace(_panel(), shell=definition.shell)
-    analysis = anysolver.stiffened_shell.create_analysis(definition=definition)
+    analysis = anyfesolver.stiffened_shell.create_analysis(definition=definition)
     oracle = b3_ge.create_stiffened_shell_analysis(formulation='b3-ge', definition=baseline)
     assert analysis.capabilities['status'] == 'EXPERIMENTAL_NOT_QUALIFIED'
     assert analysis.capabilities['analysis'] == (
@@ -75,7 +75,7 @@ def test_physical_fibre_linear_panel_matches_elastic_section_and_restarts(mixed,
     applied_moment = np.asarray(actions[0].wrench[3:])+np.cross((2.,-.5,.1),actions[0].wrench[:3])
     np.testing.assert_allclose(moment,-applied_moment,atol=1e-5)
     saved = analysis.checkpoint()
-    resumed = anysolver.stiffened_shell.create_analysis(definition=definition)
+    resumed = anyfesolver.stiffened_shell.create_analysis(definition=definition)
     restored = resumed.restore(saved)
     np.testing.assert_array_equal(restored.beam_coordinates,result.beam_coordinates)
     twice = tuple(replace(action,wrench=tuple(2*v for v in action.wrench)) for action in actions)
@@ -90,7 +90,7 @@ def test_physical_fibre_linear_panel_matches_elastic_section_and_restarts(mixed,
 
 @pytest.mark.parametrize('kind', ('json','binary','chart','s3'))
 def test_physical_fibre_legacy_finite_checkpoints_reject_without_state_change(kind):
-    owner = anysolver.stiffened_shell.create_analysis(definition=_definition(mixed=True))
+    owner = anyfesolver.stiffened_shell.create_analysis(definition=_definition(mixed=True))
     actions = (NodalAction('beam',105,(0.,0.,100.,0.,0.,0.)),)
     owner.solve_linear(actions)
     saved = owner.checkpoint()
@@ -101,7 +101,7 @@ def test_physical_fibre_legacy_finite_checkpoints_reject_without_state_change(ki
     raw = (json.dumps(payload).encode() if kind == 'json' else
            encode('finite',owner._identity,1,(('q',np.asarray(payload['q'])),))
            if kind == 'binary' else CHART_MAGIC if kind == 'chart' else S3_MAGIC)
-    fresh = anysolver.stiffened_shell.create_analysis(definition=_definition(mixed=True))
+    fresh = anyfesolver.stiffened_shell.create_analysis(definition=_definition(mixed=True))
     with pytest.raises(ValueError,match='reference-linear checkpoints only|digest mismatch|checkpoint'):
         fresh.restore(raw)
     assert fresh._accepted is None and fresh._finite_driver is None
@@ -114,18 +114,18 @@ def test_physical_fibre_line_admission_rejects_before_mapping():
     line = ExperimentalL1Line((1,2,3,4,5), ((0,0),(0,1),(1,0),(1,1)), SPACE_A)
     definition = replace(_definition(), lines=(line,))
     with pytest.raises(ValueError,match='point attachments only'):
-        anysolver.stiffened_shell.create_analysis(definition=definition)
+        anyfesolver.stiffened_shell.create_analysis(definition=definition)
 
 
 def test_physical_fibre_binary_restart_and_cancel_preserve_prefix(monkeypatch):
-    from anysolver import _stiffened_shell_ge_experimental as owner_module
+    from anyfesolver import _stiffened_shell_ge_experimental as owner_module
     monkeypatch.setattr(owner_module,'MAX_JSON_CHECKPOINT_VALUES',1)
     definition = _definition(mixed=True)
-    owner = anysolver.stiffened_shell.create_analysis(definition=definition)
+    owner = anyfesolver.stiffened_shell.create_analysis(definition=definition)
     actions = (NodalAction('beam',105,(0.,0.,100.,0.,0.,0.)),)
     result = owner.solve_linear(actions)
     saved = owner.checkpoint()
-    fresh = anysolver.stiffened_shell.create_analysis(definition=definition)
+    fresh = anyfesolver.stiffened_shell.create_analysis(definition=definition)
     restored = fresh.restore(saved)
     np.testing.assert_array_equal(restored.beam_coordinates,result.beam_coordinates)
     token = CancellationToken()

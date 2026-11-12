@@ -3,7 +3,7 @@ import threading
 
 import numpy as np
 
-from anysolver.contact import (
+from anyfesolver.contact import (
     RigidSphereImpact,
     SphereContactConfig,
     SphereContactRecord,
@@ -13,7 +13,7 @@ from anysolver.contact import (
     _verification_contact_panel,
     assemble_sphere_contact_load_vector,
 )
-from anysolver.contact_performance import ContactWorkBuffer, ContactWorkCounters
+from anyfesolver.contact_performance import ContactWorkBuffer, ContactWorkCounters
 
 
 def _record_payload(records):

@@ -7,8 +7,8 @@ from dataclasses import replace
 from examples.general_contact_s3_mesh_weak_pressure_friction import build_case
 import examples.general_contact_s3_mesh_moving_friction as old_example
 import test_general_contact_s3_mesh_moving_friction as reuse
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.s3_friction_static import create_s3_friction_manager
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_friction_static import create_s3_friction_manager
 
 
 def manager():
@@ -18,7 +18,7 @@ def manager():
 
 
 def test_weak_local_work_and_front(monkeypatch):
-    from anysolver.general_contact.semismooth import linearize
+    from anyfesolver.general_contact.semismooth import linearize
     case,owner=manager();m,d,s,f,p,r=case
     u=r['manufactured_pose'].copy();z=r['supported_force'].copy()
     owner.commit(owner.validate_successor(u,z))
@@ -159,10 +159,10 @@ def _weak_pose_gate(model,definition,settings,friction,u,z):
 def test_weak_saved_proof():
     """Recompute gates from saved poses without another coupled solve."""
     from examples.general_contact_s3_mesh_weak_pressure_friction import build_case
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.s3_friction_static import create_s3_friction_manager
-    from anysolver.general_contact.semismooth import linearize
-    from anysolver.nonlinear_static import _assemble_nonlinear_system
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_friction_static import create_s3_friction_manager
+    from anyfesolver.general_contact.semismooth import linearize
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system
     evidence=Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])
     prefix=os.environ['FRICTION_STAGE']=='prefix-proof'
     through=3 if os.environ['FRICTION_STAGE']=='slide-proof' else 2 if prefix else 6
@@ -262,10 +262,10 @@ def test_weak_rollback(monkeypatch):
     reason='Archived staged inputs AUTOMATIC_WORKFLOW_EVIDENCE absent; this replay requires its original workflow evidence.')
 def test_weak_safety(monkeypatch):
     from dataclasses import asdict
-    from anysolver import solve_static_nonlinear
-    from anysolver.control import CancellationToken,SolveCancelled
-    from anysolver.general_contact import S3MeshWeakPressureFrictionSettings
-    import anysolver.general_contact.static_path as driver
+    from anyfesolver import solve_static_nonlinear
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.general_contact import S3MeshWeakPressureFrictionSettings
+    import anyfesolver.general_contact.static_path as driver
     evidence=Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE']);case=build_case();m,d,s,f,p,_=case
     with pytest.raises(TypeError):S3MeshWeakPressureFrictionSettings(**{k:v for k,v in asdict(f).items() if k!='finite_material_gap_error_m'})
     with pytest.raises(ValueError):replace(f,closed_point_gap_tolerance_m=1e-11)

@@ -5,8 +5,8 @@ from hashlib import sha256
 import numpy as np
 import pytest
 
-from anysolver import _stiffened_shell_distributing_footprint as footprint
-from anysolver._stiffened_shell_b2_nodal_footprint import reference_shell_matrix
+from anyfesolver import _stiffened_shell_distributing_footprint as footprint
+from anyfesolver._stiffened_shell_b2_nodal_footprint import reference_shell_matrix
 
 
 def fixture():

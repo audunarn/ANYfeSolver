@@ -101,7 +101,7 @@ def test_exact_additive_extent_without_existing_mechanics_changes():
 
 
 def test_adapter_imports_preserved_mechanics_split_without_redefinition():
-    path = ROOT / 'src/anysolver/_ge_beam3_reassembled_signed_modes.py'
+    path = ROOT / 'src/anyfesolver/_ge_beam3_reassembled_signed_modes.py'
     tree = ast.parse(path.read_text())
     assert any(isinstance(n, ast.ImportFrom) and n.module == '_ge_beam3_seeded_signed_modes'
         and [a.name for a in n.names] == ['_split'] for n in ast.walk(tree))
@@ -120,8 +120,8 @@ def test_historical_covariance_failure_test_is_not_modified_or_relaxed():
 
 
 def test_result_types_keep_private_scope_flags():
-    from anysolver._native_reassembled_factor_modes import ReassembledFactorModes
-    from anysolver._ge_beam3_reassembled_signed_modes import SignedLoadedModes
+    from anyfesolver._native_reassembled_factor_modes import ReassembledFactorModes
+    from anyfesolver._ge_beam3_reassembled_signed_modes import SignedLoadedModes
     for cls in (ReassembledFactorModes, SignedLoadedModes):
         assert cls.__dataclass_fields__['production_qualified'].default is False
         assert cls.__dataclass_fields__['certified_intervals'].default is False

@@ -4,8 +4,8 @@ import argparse,json
 from pathlib import Path
 import numpy as np
 from examples.general_contact_s3_mesh_moving_friction import build_case as original
-from anysolver import BoundaryCondition,solve_static_nonlinear
-from anysolver.general_contact import S3MeshHistoryPathFrictionSettings,ContactPathControl,ContactPathNodalForce,ContactPathProgram
+from anyfesolver import BoundaryCondition,solve_static_nonlinear
+from anyfesolver.general_contact import S3MeshHistoryPathFrictionSettings,ContactPathControl,ContactPathNodalForce,ContactPathProgram
 
 A=2.**-14;D=2.**-3
 
@@ -18,7 +18,7 @@ def build_case(ratio=2,workflow="pressure_event"):
     if workflow != "pressure_event":raise ValueError("unknown material history workflow")
     m,definition,s,_f,_p,_r=original()
     m.add_boundary_condition(BoundaryCondition('declared-target-slope-anchor',(7,10),{'uz':0.}))
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
     K=assemble_stiffness_matrix(m)[0].toarray()
     # Literal BC/path selector plus existing MPC reduction, reused qualified K.
     # Independently build the exact fixture selector/MPC nullspace.
@@ -76,7 +76,7 @@ def main():
     a=p.parse_args()
     if a.diagnose_material_work:
         if a.restart or a.through_step is not None or a.ratio is not None or a.workflow is not None:raise ValueError('saved work diagnosis cannot request solver controls or continuation')
-        from anysolver.general_contact.material_work_diagnostics import diagnose_work_bundle
+        from anyfesolver.general_contact.material_work_diagnostics import diagnose_work_bundle
         a.output.write_text(json.dumps(diagnose_work_bundle(json.loads(a.diagnose_material_work.read_text())),indent=2))
         return
     incoming=json.loads(a.restart.read_text()) if a.restart else None

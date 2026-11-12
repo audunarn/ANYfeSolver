@@ -3,10 +3,10 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.overlap import planar_projected_overlap, PlanarFace
-from anysolver.general_contact.q4_overlap_local_bound import overlap_local_swept_lower
-from anysolver.general_contact.q4_source_overlap import projected_q4_source_face
-from anysolver.general_contact.swept_patch_broadphase import conservative_swept_pair_indices
+from anyfesolver.general_contact.overlap import planar_projected_overlap, PlanarFace
+from anyfesolver.general_contact.q4_overlap_local_bound import overlap_local_swept_lower
+from anyfesolver.general_contact.q4_source_overlap import projected_q4_source_face
+from anyfesolver.general_contact.swept_patch_broadphase import conservative_swept_pair_indices
 
 
 Q4 = np.array(((0., 0., 0.), (1., 0., 0.), (1., 1., 0.), (0., 1., 0.)))

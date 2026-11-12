@@ -14,7 +14,7 @@ import json
 import time
 
 import numpy as np
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from scripts.experimental_stiffened_ge_multi_member_panel import make_definition, actions_for
 
 

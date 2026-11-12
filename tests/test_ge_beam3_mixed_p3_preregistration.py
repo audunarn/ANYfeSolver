@@ -293,8 +293,8 @@ def test_cases_package_performance_and_terminal_precedence_are_complete() -> Non
 
 
 def test_base_has_no_public_ge_beam3_selector_or_export() -> None:
-    elements = _git_blob(BASE_COMMIT, "src/anysolver/elements.py").decode("utf-8")
-    package = _git_blob(BASE_COMMIT, "src/anysolver/__init__.py").decode("utf-8")
+    elements = _git_blob(BASE_COMMIT, "src/anyfesolver/elements.py").decode("utf-8")
+    package = _git_blob(BASE_COMMIT, "src/anyfesolver/__init__.py").decode("utf-8")
     assert '"ge-beam3"' not in elements
     assert "GeometricallyExactBeam3D3NElement" not in package
     assert "GE_BEAM3_QUALIFIED_FORMULATION_ID" not in package

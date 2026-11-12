@@ -22,7 +22,7 @@ def install_checked_helpers():
 def loaded_inputs():
  from scripts.r8_f06_paired_loaded_x_dev import DOC,INPUT,INPUT_SHA,write
  from scripts.r8_f06_cyclic_material_dev import definition,actions
- from anysolver import stiffened_shell as ss
+ from anyfesolver import stiffened_shell as ss
  target=json.loads((DOC/'attempt-installed-witness1/witness.json').read_text())['target']
  return ss.create_analysis(definition=definition('coupled')),actions('coupled'),ss.DisplacementControl('shell',2,0,force_seed_sha256=INPUT_SHA),target,INPUT,DOC,write
 
@@ -46,9 +46,9 @@ def test_witness():
  from scipy.sparse.linalg import spsolve
  from dataclasses import asdict
  from decimal import Decimal as D,localcontext
- from anysolver import stiffened_shell as ss
- from anysolver._stiffened_shell_beam_history import arrays
- from anysolver.plasticity import plane_stress_elastic_matrix,_jit_flow_stress
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._stiffened_shell_beam_history import arrays
+ from anyfesolver.plasticity import plane_stress_elastic_matrix,_jit_flow_stress
  from scripts.r8_f06_cyclic_material_dev import definition,actions
  from scripts.r8_f06_paired_loaded_x_dev import DOC,INPUT,INPUT_SHA,write,sha
  out=Path(os.environ['F06_LOADED_X_OUTPUT']);owner=ss.create_analysis(definition=definition('coupled'));before=None

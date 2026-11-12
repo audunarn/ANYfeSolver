@@ -9,15 +9,15 @@ import pytest
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 
-import anysolver._b2_physical_linear_batch_dev as batch_module
-from anysolver.assembly import build_constraint_transformation
-from anysolver.boundary import BoundaryCondition
-from anysolver._b2_physical_linear_batch_dev import CompiledB2AffineBatch
-from anysolver._b2_physical_flexibility_linear import LinearSection
-from anysolver._b2_physical_linear_definition import PhysicalB2OperatorCache
-from anysolver.control import CancellationToken
-from anysolver.fe_core import FEModel
-from anysolver.linalg import FactorizationCache
+import anyfesolver._b2_physical_linear_batch_dev as batch_module
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.boundary import BoundaryCondition
+from anyfesolver._b2_physical_linear_batch_dev import CompiledB2AffineBatch
+from anyfesolver._b2_physical_flexibility_linear import LinearSection
+from anyfesolver._b2_physical_linear_definition import PhysicalB2OperatorCache
+from anyfesolver.control import CancellationToken
+from anyfesolver.fe_core import FEModel
+from anyfesolver.linalg import FactorizationCache
 from test_b2_physical_linear_oriented_graph import (
     _exact_linear_solve, _force_method_energy, _members, _solve,
 )

@@ -1,7 +1,7 @@
 """Independent checks for the literal seed-gap reference.
 
 These checks are deliberately self-contained: the reference module is
-stdlib-only, no ``anysolver`` module is imported and no production
+stdlib-only, no ``anyfesolver`` module is imported and no production
 gap/witness kernel is called for any oracle value. The certified scope is
 the single literal captured Q4/S3 pair path; nothing here asserts anything
 about other faces, poses or the whole solver path.

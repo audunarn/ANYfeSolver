@@ -5,7 +5,7 @@ from fractions import Fraction as F
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver.general_contact import ContactInteraction,resolve_automatic_contact_domain as resolve
+from anyfesolver.general_contact import ContactInteraction,resolve_automatic_contact_domain as resolve
 
 
 
@@ -79,9 +79,9 @@ def _exact_clip_gap(points):
 
 def _footprint(model,resolution,settings,u):
     """Report actual projected pair polygons, not a new admission certificate."""
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.q4_source_overlap import projected_q4_source_face
-    from anysolver.general_contact.overlap import PlanarFace,planar_projected_overlap
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.q4_source_overlap import projected_q4_source_face
+    from anyfesolver.general_contact.overlap import PlanarFace,planar_projected_overlap
     manager=GeneralS3PatchManager(model,resolution.definition,settings)
     source,target=manager._positions(u)
     pairs=[]
@@ -103,10 +103,10 @@ def _footprint(model,resolution,settings,u):
                    reason='bounded installed refined automatic deformable lifecycle')
 def test_installed_automatic_sliding_stage():
     """One guarded stage per invocation, sharing only retained JSON evidence."""
-    import anysolver,numba
+    import anyfesolver,numba
     from threadpoolctl import threadpool_info
-    from anysolver import ContactDefinition,solve_static_nonlinear
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver import ContactDefinition,solve_static_nonlinear
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     from examples.general_contact_automatic_domain import build_projected_shell_pair,solve_shell_pair
     stage=os.environ['AUTOMATIC_SLIDING_STAGE'].split('-')[0]
     evidence=Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])
@@ -125,7 +125,7 @@ def test_installed_automatic_sliding_stage():
         physical_inputs=dict(source_midplane_z_m=.055,source_bottom_offset_m=-.025,
             target_top_offset_m=float(.025-.01),source_director=(0.,0.,1.),target_director=(0.,0.,1.),
             path=path.contract()),
-        runtime_before_solve=dict(anysolver_path=anysolver.__file__,
+        runtime_before_solve=dict(anyfesolver_path=anyfesolver.__file__,
             automatic_domain_path=__import__('inspect').getfile(resolve),
             jit_disabled=bool(numba.config.DISABLE_JIT),numba_threads=int(numba.get_num_threads()),
             pools=threadpool_info()))
@@ -232,7 +232,7 @@ def test_installed_automatic_sliding_stage():
         assert abs(result.displacements[target_dof])>1e-10
         manager=GeneralS3PatchManager(model,resolution.definition,settings)
         residual,_,contact_result=manager.evaluate(result.displacements,tangent=False)
-        from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+        from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
         structural,_,states=_assemble_nonlinear_system(model,result.displacements,result.element_states,
             5,tangent=False,kinematics='von_karman')
         _discard_nonlinear_state_candidate(states)

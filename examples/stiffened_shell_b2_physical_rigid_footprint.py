@@ -2,7 +2,7 @@
 import json
 import numpy as np
 from scipy import sparse
-from anysolver import stiffened_shell as api
+from anyfesolver import stiffened_shell as api
 from examples.stiffened_shell_b2_reference_buckling import traction_sources
 
 def definition():

@@ -48,8 +48,8 @@ def test_checker_is_independent_of_v4b_producer() -> None:
         elif isinstance(node, ast.ImportFrom) and node.module:
             imports.add(node.module)
     assert "e4_pl_s3_v4b_screen_producer" not in imports
-    assert "anysolver.e4_pl_s3_element" not in imports
-    assert "anysolver.e4_pl_s3_v2_element" not in imports
+    assert "anyfesolver.e4_pl_s3_element" not in imports
+    assert "anyfesolver.e4_pl_s3_v2_element" not in imports
 
 
 def test_independent_reconstruction_finds_physical_rank_contradiction() -> None:
@@ -104,7 +104,7 @@ def test_two_bounded_cycles_are_byte_identical_and_stop_locally(tmp_path: Path) 
 
 
 def test_production_boundary_remains_static() -> None:
-    source = (ROOT / "src" / "anysolver" / "elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src" / "anyfesolver" / "elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source
     assert not any(path.is_file() for path in (ROOT / "src").rglob("*v4b*"))

@@ -12,7 +12,7 @@ import json
 import os
 from pathlib import Path
 
-import anysolver
+import anyfesolver
 import numpy as np
 from scipy import sparse
 from threadpoolctl import threadpool_info
@@ -68,8 +68,8 @@ def _patch_rows(line: FinitePatchLineFirstVariation) -> np.ndarray:
 
 def evaluate() -> dict:
     expected_package = (Path(__file__).resolve().parents[1] /
-                        "src" / "anysolver").resolve()
-    actual_package = Path(anysolver.__file__).resolve().parent
+                        "src" / "anyfesolver").resolve()
+    actual_package = Path(anyfesolver.__file__).resolve().parent
     if actual_package != expected_package:
         raise RuntimeError("loaded comparison imported another checkout")
 
@@ -220,7 +220,7 @@ def evaluate() -> dict:
         }
     return {
         "classification": "bounded same-model development comparison; no F03 acceptance",
-        "imported_anysolver": str(actual_package),
+        "imported_anyfesolver": str(actual_package),
         "numerical_thread_environment": {
             name: os.getenv(name) for name in (
                 "OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS")},

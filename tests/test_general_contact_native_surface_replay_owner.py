@@ -5,7 +5,7 @@ from hashlib import sha256
 import numpy as np
 import pytest
 
-from anysolver.general_contact.native_surface_transaction import NativeS3MaterialTransaction
+from anyfesolver.general_contact.native_surface_transaction import NativeS3MaterialTransaction
 from test_general_contact_native_surface_patch import _patch
 from test_general_contact_native_surface_normal import _settings as normal_settings
 from test_general_contact_native_surface_friction_integral import _settings as friction_settings
@@ -20,8 +20,8 @@ def _replay_patch(activation_policy='transverse_events'):
 def test_saved_second_two_event_material_query(tmp_path):
     import json,os
     from pathlib import Path
-    from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment,NativeSurfaceReplayBudget
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment,NativeSurfaceReplayBudget
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
     saved=json.loads((Path(__file__).parents[1]/'docs/d1_review_support/contact_c5_native_surface_point_20261002/replay_owner_second_load_rejected_path.json').read_text())
     _,bridge=_replay_patch()
     field=NativeSurfaceHistoryField(bridge.pair,
@@ -47,10 +47,10 @@ def test_saved_second_support_space_time_discriminator(tmp_path):
     import json,os
     from pathlib import Path
     from dataclasses import asdict
-    from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
-    from anysolver.general_contact.native_surface_support import segment_gap_slab_enclosure,_minimum,_support_path
-    from anysolver.general_contact.native_surface_path import material_path_pose
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_support import segment_gap_slab_enclosure,_minimum,_support_path
+    from anyfesolver.general_contact.native_surface_path import material_path_pose
     saved=json.loads((Path(__file__).parents[1]/'docs/d1_review_support/contact_c5_native_surface_point_20261002/replay_owner_second_load_rejected_path.json').read_text())
     _,bridge=_replay_patch()
     field=NativeSurfaceHistoryField(bridge.pair,
@@ -87,10 +87,10 @@ def test_saved_second_stationary_front_discriminator(tmp_path,region):
     import json,os
     from pathlib import Path
     from scipy.optimize import brentq
-    from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
-    from anysolver.general_contact.native_surface_support import _base,_support_path
-    from anysolver.general_contact.native_surface_path import material_path_pose
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_support import _base,_support_path
+    from anyfesolver.general_contact.native_surface_path import material_path_pose
     saved=json.loads((Path(__file__).parents[1]/'docs/d1_review_support/contact_c5_native_surface_point_20261002/replay_owner_second_load_rejected_path.json').read_text())
     _,bridge=_replay_patch()
     field=NativeSurfaceHistoryField(bridge.pair,
@@ -248,7 +248,7 @@ def test_replay_coupled_active_rebase_and_split_restart(monkeypatch):
     import json,os
     from dataclasses import asdict
     from pathlib import Path
-    import anysolver.general_contact.native_surface_friction_integral as module
+    import anyfesolver.general_contact.native_surface_friction_integral as module
     original=module.integrate_material_friction
     calls=0;timings=[]
     def captured(field,settings,**kwargs):
@@ -316,9 +316,9 @@ def test_saved_replay_candidate_branch_discriminator(tmp_path):
     """Small saved-pose diagnostic; does not repeat the coupled failure."""
     import json,os
     from pathlib import Path
-    from anysolver.general_contact.native_surface_history import (
+    from anyfesolver.general_contact.native_surface_history import (
         NativeSurfaceHistoryField,NativeSurfaceMotionSegment,NativeSurfaceReplayBudget)
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
     path=Path(__file__).parents[1]/'docs/d1_review_support/contact_c5_native_surface_point_20261002/replay_owner_rejected_path.json'
     saved=json.loads(path.read_text())
     _,bridge=_replay_patch()
@@ -346,9 +346,9 @@ def test_saved_replay_candidate_branch_discriminator(tmp_path):
 def test_saved_replay_candidate_front_refinement(tmp_path,filename,monkeypatch,activation_policy):
     import json,os
     from pathlib import Path
-    from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
-    from anysolver.general_contact.native_surface_friction_integral import integrate_material_friction
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_friction_integral import integrate_material_friction
     saved=json.loads((Path(__file__).parents[1]/'docs/d1_review_support/contact_c5_native_surface_point_20261002'/filename).read_text())
     _,bridge=_replay_patch(activation_policy)
     field=NativeSurfaceHistoryField(bridge.pair,
@@ -358,7 +358,7 @@ def test_saved_replay_candidate_front_refinement(tmp_path,filename,monkeypatch,a
     support_charges={}
     if os.environ.get('NATIVE_REPLAY_SUPPORT_TRACE'):
         import inspect
-        from anysolver.general_contact.native_surface_support import SupportIntervalBudget
+        from anyfesolver.general_contact.native_surface_support import SupportIntervalBudget
         original_consume=SupportIntervalBudget.consume
         def counted_consume(budget):
             frame=inspect.currentframe().f_back
@@ -412,9 +412,9 @@ def test_saved_replay_candidate_front_refinement(tmp_path,filename,monkeypatch,a
 def test_saved_envelope_regional_cover(tmp_path):
     import json,os
     from pathlib import Path
-    from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
-    from anysolver.general_contact.native_surface_support import (
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_support import (
         SupportIntervalBudget,history_endpoint_support_certified,history_endpoint_support_cover_certified)
     saved=json.loads((Path(__file__).parents[1]/'docs/d1_review_support/contact_c5_native_surface_point_20261002/replay_owner_envelope_rejected_path.json').read_text())
     _,bridge=_replay_patch()
@@ -438,9 +438,9 @@ def test_saved_envelope_regional_cover(tmp_path):
 def test_saved_regional_candidate_directional_tangent():
     import json
     from pathlib import Path
-    from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
-    from anysolver.general_contact.native_surface_friction_integral import integrate_material_friction
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_friction_integral import integrate_material_friction
     saved=json.loads((Path(__file__).parents[1]/'docs/d1_review_support/contact_c5_native_surface_point_20261002/replay_owner_envelope_rejected_path.json').read_text())
     _,bridge=_replay_patch()
     initial=NativeS3MaterialConfiguration(**{k:np.asarray(v) for k,v in saved['initial'].items()})
@@ -461,8 +461,8 @@ def test_saved_regional_candidate_directional_tangent():
 def test_saved_rebase_branch_discriminator(tmp_path):
     import json,os
     from pathlib import Path
-    from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment,NativeSurfaceReplayBudget
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment,NativeSurfaceReplayBudget
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
     saved=json.loads((Path(__file__).parents[1]/'docs/d1_review_support/contact_c5_native_surface_point_20261002/replay_owner_rebase_rejected_path.json').read_text())
     _,bridge=_replay_patch()
     initial=NativeS3MaterialConfiguration(**{k:np.asarray(v) for k,v in saved['initial'].items()})
@@ -484,9 +484,9 @@ def test_saved_rebase_branch_discriminator(tmp_path):
 def test_saved_rebase_cover_prefix_cost(tmp_path):
     import json,os
     from pathlib import Path
-    from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
-    from anysolver.general_contact.native_surface_support import SupportIntervalBudget,history_endpoint_support_cover_certified
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_support import SupportIntervalBudget,history_endpoint_support_cover_certified
     saved=json.loads((Path(__file__).parents[1]/'docs/d1_review_support/contact_c5_native_surface_point_20261002/replay_owner_rebase_rejected_path.json').read_text())
     _,bridge=_replay_patch()
     initial=NativeS3MaterialConfiguration(**{k:np.asarray(v) for k,v in saved['initial'].items()})
@@ -504,9 +504,9 @@ def test_saved_rebase_cover_prefix_cost(tmp_path):
 def test_saved_second_load_half_trial(tmp_path):
     import json,os
     from pathlib import Path
-    from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
-    from anysolver.general_contact.native_surface_friction_integral import integrate_material_friction
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    from anyfesolver.general_contact.native_surface_friction_integral import integrate_material_friction
     saved=json.loads((Path(__file__).parents[1]/'docs/d1_review_support/contact_c5_native_surface_point_20261002/replay_owner_second_load_rejected_path.json').read_text())
     _,bridge=_replay_patch()
     initial=NativeS3MaterialConfiguration(**{k:np.asarray(v) for k,v in saved['initial'].items()})

@@ -5,14 +5,14 @@ import numpy as np
 import pytest
 from examples.general_contact_arc_length_affine import build,analysis
 from test_general_contact_triangulated_rigid_patch import independent_mass
-from anysolver.matrix_assembly import assemble_stiffness_matrix
-from anysolver.general_contact.arc_contact import ArcContactAdapter
-from anysolver.general_contact.runtime import active_contact_manager
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.general_contact.arc_contact import ArcContactAdapter
+from anyfesolver.general_contact.runtime import active_contact_manager
 
 
 @pytest.mark.parametrize('preload',[False,True])
 def test_affine_preload_response_restart(preload,monkeypatch):
-    arc=importlib.import_module('anysolver.arc_length');captured=[]
+    arc=importlib.import_module('anyfesolver.arc_length');captured=[]
     real=arc._support_reaction_resultants_from_forces
     def recover(model,internal,constant,proportional,factor,**kwargs):
         captured.append(np.asarray(internal)-np.asarray(constant)-factor*np.asarray(proportional))
@@ -38,7 +38,7 @@ def test_affine_preload_response_restart(preload,monkeypatch):
             if np.all(weighted[A]<0.) and np.all(weighted[~A]>=0.):return u
         raise AssertionError('no independent active set')
     if preload:
-        from anysolver.general_contact import transient_results_archive as codec
+        from anyfesolver.general_contact import transient_results_archive as codec
         base_record=codec._decode(result.restart_checkpoint['path_state']['contact_state']['base'],codec._Budget(codec.MAX_BYTES),{})
         base=base_record['displacements'][z]
         assert np.linalg.norm(base-oracle(0.))/1e-5<1e-6
@@ -76,8 +76,8 @@ def test_affine_preload_response_restart(preload,monkeypatch):
 
 
 def test_preload_cancel_and_exception(monkeypatch):
-    from anysolver.control import CancellationToken,SolveCancelled
-    static=importlib.import_module('anysolver.nonlinear_static');original=static._assemble_nonlinear_system
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    static=importlib.import_module('anyfesolver.nonlinear_static');original=static._assemble_nonlinear_system
     calls=[]
     def broken(*args,**kwargs):
         calls.append(True)
@@ -92,8 +92,8 @@ def test_preload_cancel_and_exception(monkeypatch):
 
 
 def test_zero_force_prescribed_preload_and_inflight_cancel(monkeypatch):
-    from anysolver.general_contact import transient_results_archive as codec
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.general_contact import transient_results_archive as codec
+    from anyfesolver.control import CancellationToken,SolveCancelled
     result=analysis(1,preload_force=0.)
     base=codec._decode(result.restart_checkpoint['path_state']['contact_state']['base'],codec._Budget(codec.MAX_BYTES),{})
     model,_,_,_,_=build(True)
@@ -104,7 +104,7 @@ def test_zero_force_prescribed_preload_and_inflight_cancel(monkeypatch):
     K,_=assemble_stiffness_matrix(model)
     assert np.linalg.norm((K@base['displacements'])[z[1:]]) <= 1e-6
     assert base['history'][-1]['load_factor']==1.
-    static=importlib.import_module('anysolver.nonlinear_static');real=static.cancellation_safe_point
+    static=importlib.import_module('anyfesolver.nonlinear_static');real=static.cancellation_safe_point
     token=CancellationToken();observed=[]
     def cancel(value,stage=''):
         if stage!='nonlinear_static.start':
@@ -117,8 +117,8 @@ def test_zero_force_prescribed_preload_and_inflight_cancel(monkeypatch):
 
 def test_resigned_preload_intermediate_constraint_refusal():
     import copy,hashlib
-    from anysolver.general_contact import transient_results_archive as codec
-    from anysolver.nonlinear_restart import canonical_checkpoint_json_bytes
+    from anyfesolver.general_contact import transient_results_archive as codec
+    from anyfesolver.nonlinear_restart import canonical_checkpoint_json_bytes
     result=analysis(1);capsule=copy.deepcopy(result.to_restart_checkpoint())
     namespace=capsule['path_state']['contact_state']
     base=codec._decode(namespace['base'],codec._Budget(codec.MAX_BYTES),{})
@@ -133,7 +133,7 @@ def test_resigned_preload_intermediate_constraint_refusal():
 
 
 def test_unselected_plastic_preload_refuses_before_preload(monkeypatch):
-    from anysolver import create_shell_element,solve_static_arc_length
+    from anyfesolver import create_shell_element,solve_static_arc_length
     model,definition,settings,load,constant=build(True)
     model.add_material('unselected_plastic',1e5,.3,yield_stress=1.)
     model.add_element(3,create_shell_element(3,(1,2,4),'unselected_plastic',thickness=.01,
@@ -148,8 +148,8 @@ def test_unselected_plastic_preload_refuses_before_preload(monkeypatch):
 
 def test_resigned_preload_history_summary_inventory_refusal():
     import copy,hashlib
-    from anysolver.general_contact import transient_results_archive as codec
-    from anysolver.nonlinear_restart import canonical_checkpoint_json_bytes
+    from anyfesolver.general_contact import transient_results_archive as codec
+    from anyfesolver.nonlinear_restart import canonical_checkpoint_json_bytes
     capsule=copy.deepcopy(analysis(1).to_restart_checkpoint())
     namespace=capsule['path_state']['contact_state']
     base=codec._decode(namespace['base'],codec._Budget(codec.MAX_BYTES),{})

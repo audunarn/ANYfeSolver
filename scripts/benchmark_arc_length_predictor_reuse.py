@@ -17,12 +17,12 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
-import anysolver
+import anyfesolver
 import numpy as np
 import pytest
 import scipy
 from threadpoolctl import threadpool_info
-from anysolver.jit_compiler import JIT_ENABLED
+from anyfesolver.jit_compiler import JIT_ENABLED
 
 
 def runtime():
@@ -32,7 +32,7 @@ def runtime():
         numba_version, numba_threads = numba.__version__, numba.get_num_threads()
     return dict(threadpools=threadpool_info(), numba_threads=numba_threads,
                 versions=dict(numpy=np.__version__, scipy=scipy.__version__, numba=numba_version),
-                anysolver_module=str(Path(anysolver.__file__).resolve()))
+                anyfesolver_module=str(Path(anyfesolver.__file__).resolve()))
 
 
 def digest(result):
@@ -70,7 +70,7 @@ def main():
             "OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "NUMBA_NUM_THREADS",
             "FE_SOLVER_DISABLE_NONLINEAR_ACCELERATION")},
         source_sha256={str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
-            for path in (ROOT / "src/anysolver/arc_length.py", fixture, Path(__file__))}, cases=[])
+            for path in (ROOT / "src/anyfesolver/arc_length.py", fixture, Path(__file__))}, cases=[])
     def save():
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(output, indent=2), encoding="utf-8")

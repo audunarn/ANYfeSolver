@@ -45,7 +45,7 @@ def _same(left, right):
 
 def test_portable_native_producer_public_consumer():
     already_imported=set(sys.modules)
-    from anysolver.general_contact import read_native_contact_checkpoint_results
+    from anyfesolver.general_contact import read_native_contact_checkpoint_results
     from examples.general_contact_native_checkpoint_results import read_portable
     raw = FIXTURE.read_bytes()
     expected = json.loads(raw)
@@ -56,8 +56,8 @@ def test_portable_native_producer_public_consumer():
     assert result.identity == expected['identity']
     assert read_portable(FIXTURE).to_bytes() == raw
     forbidden = [name for name in sys.modules if name not in already_imported and name in (
-        'anysolver.general_contact.native_retained_pair_static',
-        'anysolver.general_contact.native_fibre_context')]
+        'anyfesolver.general_contact.native_retained_pair_static',
+        'anyfesolver.general_contact.native_fibre_context')]
     assert forbidden == []
     output = os.environ.get('CONTACT_APP_RESULT_RECORD')
     if output:
@@ -74,13 +74,13 @@ def test_portable_native_consumer_cold_import_excludes_mechanics():
     # test order. Preserve the same real capsule and exact-byte round trip.
     code="""import sys
 from pathlib import Path
-from anysolver.general_contact import read_native_contact_checkpoint_results
+from anyfesolver.general_contact import read_native_contact_checkpoint_results
 from examples.general_contact_native_checkpoint_results import read_portable
 raw=Path(sys.argv[1]).read_bytes()
 assert read_native_contact_checkpoint_results(raw).to_bytes()==raw
 assert read_portable(Path(sys.argv[1])).to_bytes()==raw
-for name in ('anysolver.general_contact.native_retained_pair_static',
-             'anysolver.general_contact.native_fibre_context'):
+for name in ('anyfesolver.general_contact.native_retained_pair_static',
+             'anyfesolver.general_contact.native_fibre_context'):
     assert name not in sys.modules, name
 """
     result=subprocess.run([sys.executable,'-c',code,str(FIXTURE)],
@@ -89,7 +89,7 @@ for name in ('anysolver.general_contact.native_retained_pair_static',
 
 
 def test_native_detachment_and_numeric_bits():
-    from anysolver.general_contact import read_native_contact_checkpoint_results
+    from anyfesolver.general_contact import read_native_contact_checkpoint_results
     value = json.loads(FIXTURE.read_bytes())
     value['records'][0]['mechanical']['position_low'][0][0] = -0.0
     value['records'][0]['mechanical']['position_low'][0][1] = float.fromhex('0x0.0000000000001p-1022')
@@ -104,7 +104,7 @@ def test_native_detachment_and_numeric_bits():
 
 
 def test_native_closed_roles_integrity_and_refusals():
-    from anysolver.general_contact import (read_native_contact_checkpoint_results,
+    from anyfesolver.general_contact import (read_native_contact_checkpoint_results,
         NativeContactCheckpointResultError)
     raw = FIXTURE.read_bytes()
     for mutate in (
@@ -141,7 +141,7 @@ def test_native_closed_roles_integrity_and_refusals():
 
 
 def test_native_preparse_resource_and_type_limits():
-    from anysolver.general_contact import (read_native_contact_checkpoint_results,
+    from anyfesolver.general_contact import (read_native_contact_checkpoint_results,
         NativeContactCheckpointResultError)
     raw = FIXTURE.read_bytes()
     for cap in (len(raw)-1, 0, True, 2*1024*1024+1):
@@ -154,8 +154,8 @@ def test_native_preparse_resource_and_type_limits():
 
 
 def test_public_example_bounded_file_read(tmp_path):
-    from anysolver.general_contact.native_checkpoint_results import MAX_BYTES
-    from anysolver.general_contact import NativeContactCheckpointResultError
+    from anyfesolver.general_contact.native_checkpoint_results import MAX_BYTES
+    from anyfesolver.general_contact import NativeContactCheckpointResultError
     from examples.general_contact_native_checkpoint_results import read_portable
     original = FIXTURE.read_bytes()
     assert read_portable(FIXTURE).to_bytes() == original

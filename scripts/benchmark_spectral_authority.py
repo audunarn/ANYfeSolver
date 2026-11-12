@@ -1,6 +1,6 @@
 """Bounded whole-route benchmark for spectral authority optimizations.
 
-Run this script with ANYsolver and ANYstructure selected through ``PYTHONPATH``.
+Run this script with ANYfeSolver and ANYstructure selected through ``PYTHONPATH``.
 It exercises the real ANYstructure runtime adapter, warms one retained analysis
 context, and records only subsequent complete static-plus-buckling runs.
 """
@@ -18,7 +18,7 @@ from typing import Any
 
 import numpy as np
 
-from anysolver.runtime import RuntimeAnalysisContext
+from anyfesolver.runtime import RuntimeAnalysisContext
 from anystruct import fem_integration
 
 

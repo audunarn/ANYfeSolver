@@ -7,12 +7,12 @@ import numpy as np
 import pytest
 from scipy.linalg import block_diag, null_space
 from scipy.spatial.transform import Rotation
-from anysolver._ge_beam3_g1_analysis import ElasticAnalysis
-from anysolver._ge_beam3_g2_analysis import ConstrainedAnalysis
-from anysolver._ge_beam3_g2_constraints import ConstraintSet
-from anysolver._ge_beam3_g1_element import ElasticElement
-from anysolver._ge_beam3_g1_elastic import canonical
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+from anyfesolver._ge_beam3_g1_analysis import ElasticAnalysis
+from anyfesolver._ge_beam3_g2_analysis import ConstrainedAnalysis
+from anyfesolver._ge_beam3_g2_constraints import ConstraintSet
+from anyfesolver._ge_beam3_g1_element import ElasticElement
+from anyfesolver._ge_beam3_g1_elastic import canonical
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
 from test_ge_beam3_g2_constraints import make, snapshot, invariant, FIXTURE
 from test_ge_beam3_g1_elastic import reference, section
 

@@ -1,19 +1,19 @@
 """B2 or B3 round beam pressing across an internal planar Q4 seam.
 
-Run after installing ANYsolver: python examples/general_contact_round_beam_shell_patch.py
+Run after installing ANYfeSolver: python examples/general_contact_round_beam_shell_patch.py
 Pass --b3 for the quadratic beam route.
 All dimensions use SI units. This is a development example, not qualification.
 """
 
 import argparse
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, LoadCase, create_shell_element,
     solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.elements import BeamElement, QuadraticBeamElement
-from anysolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
 
 
 def main(*, b3: bool = False) -> None:

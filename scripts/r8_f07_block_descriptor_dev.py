@@ -605,8 +605,8 @@ def structural_binding():
     """Stdlib IO/AST only: fresh candidate, never reuse a frozen registration."""
     paths=('scripts/r8_f07_block_descriptor_dev.py','tests/test_r8_f07_block_descriptor_dev.py',
            'scripts/r8_f07_public_descriptor_dev.py','tests/conftest.py','examples/stiffened_shell_ge_mixed_reference_modes.py',
-           'examples/stiffened_shell_native_fibre_bl5.py','src/anysolver/_stiffened_shell_ge_experimental.py',
-           'src/anysolver/_ge_beam3_pose_joint.py')
+           'examples/stiffened_shell_native_fibre_bl5.py','src/anyfesolver/_stiffened_shell_ge_experimental.py',
+           'src/anyfesolver/_ge_beam3_pose_joint.py')
     for path in paths:ast.parse((ROOT/path).read_text(),filename=path)
     return dict(sources={path:sha(ROOT/path) for path in paths},
         inputs={str(OLD/name):sha(OLD/name) for name in
@@ -825,7 +825,7 @@ def run_control(name,out):
 
 def run_installed(out):
     import numpy as np
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
     from examples.stiffened_shell_ge_mixed_reference_modes import definition
     saved=dict(np.load(OLD/'pencil.npz'));physical=dict(np.load(OLD/'original-physical.npz'))
     proof=json.loads((HERE/'source1/saved-current-public/result.json').read_text())
@@ -890,7 +890,7 @@ def prepare():
     candidates={rel:sha(ROOT/rel) for rel in paths}
     for rel in paths:(DOC/('frozen-'+Path(rel).name)).write_bytes((ROOT/rel).read_bytes())
     inputs={str(OLD/name):sha(OLD/name) for name in ('pencil.npz','homogeneous-qz.npz','original-physical.npz','public-status.json','blocks.json')}
-    source={p.relative_to(ROOT/'src').as_posix():sha(p) for p in (ROOT/'src/anysolver').rglob('*.py')}
+    source={p.relative_to(ROOT/'src').as_posix():sha(p) for p in (ROOT/'src/anyfesolver').rglob('*.py')}
     artifact=ROOT/'.development/r8-f13-dependency-repair-20261009/artifact-v2'
     need(all(sha(artifact/'site'/rel)==h for rel,h in source.items()),'source/site mismatch')
     manifest=json.loads((artifact/'artifact-binding.json').read_text());wheel=artifact/'dist/anysolver-0.4.7-py3-none-any.whl'

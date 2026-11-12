@@ -3,13 +3,13 @@ from copy import deepcopy
 from dataclasses import replace
 import numpy as np
 import pytest
-from anysolver._ge_beam3_native_generalized_parameter import parameter_column
-from anysolver._ge_beam3_native_generalized_loading import assemble_distributed_trial,DistributedPattern
-from anysolver._ge_beam3_native_generalized_element import seal
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
-from anysolver.nonlinear_state import NonlinearStateStore,create_model_native_rotation_store
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_native_generalized_parameter import parameter_column
+from anyfesolver._ge_beam3_native_generalized_loading import assemble_distributed_trial,DistributedPattern
+from anyfesolver._ge_beam3_native_generalized_element import seal
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
+from anyfesolver.nonlinear_state import NonlinearStateStore,create_model_native_rotation_store
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_native_generalized_restart import make,pattern,scale
 from test_ge_beam3_native_fibre_static_element import sample
 from test_ge_beam3_native_spatial_couples import left_jacobian
@@ -76,7 +76,7 @@ def test_accepted_origin_and_zero_direction(tmp_path):
 
 @pytest.mark.parametrize('kind',['missing','foreign','stale','state','jacobian','pattern','moment','absent-node','live-mutation'])
 def test_parameter_authority(kind,monkeypatch,tmp_path):
-    import anysolver._ge_beam3_native_generalized_parameter as module
+    import anyfesolver._ge_beam3_native_generalized_parameter as module
     m,store,u=setup('straight-elastic');load=pattern(m);before=canonical(store.materialize())
     _,states=net(m,store,u,load,.7,SpatialNodalMoments(((3,.1,.0,.0),)))
     states=deepcopy(dict(states));moment=None

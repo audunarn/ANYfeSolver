@@ -6,7 +6,7 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
+from anyfesolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
 from docs.reference_cases import ge_beam3_curved_p5_dynamic_assembly_probe as assembly
 from docs.reference_cases.ge_beam3_curved_p5_algebra_probe import rotation
 from docs.reference_cases.ge_beam3_curved_p5_continuum_probe import parabolic_references

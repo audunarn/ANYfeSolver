@@ -5,15 +5,15 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction, ContactPathControl,
     ContactPathProgram, ContactSurface, FEModel, create_shell_element,
     DisplacementControl, LoadCase, solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.general_contact.multiple_projected_pairs import (
+from anyfesolver.general_contact.multiple_projected_pairs import (
     MultipleProjectedPairManager, MultiplePairResults, PROFILE,
 )
-from anysolver.nonlinear_restart import canonical_checkpoint_json_bytes, load_nonlinear_checkpoint
+from anyfesolver.nonlinear_restart import canonical_checkpoint_json_bytes, load_nonlinear_checkpoint
 from test_general_contact_projected_penalty import _candidate
 
 
@@ -138,7 +138,7 @@ def test_nested_numpy_scalar_certificates_export_with_standard_json():
 
 
 def test_actual_analysis_control_is_forwarded_to_composite_admission():
-    from anysolver.general_contact.core import contact_scope
+    from anyfesolver.general_contact.core import contact_scope
     model,definition,settings,_=build()
     assert validate_general_contact(model,definition,settings).valid
     report=validate_general_contact(model,definition,settings,analysis_control="arc_length")

@@ -16,7 +16,7 @@ from math import fsum, nextafter
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_deterministic_reduction import (
+from anyfesolver._ge_beam3_deterministic_reduction import (
     _round_sqrt,
     _sqrt_fraction,
     deterministic_dot,
@@ -32,7 +32,7 @@ def isolated_decimal_context():
 
 def test_fma_overflow_accumulator_and_signed_zero():
     from math import copysign, inf
-    from anysolver._ge_beam3_deterministic_reduction import _fma
+    from anyfesolver._ge_beam3_deterministic_reduction import _fma
     assert deterministic_dot([2.**1023, 2.**1023], [2., -2.]) == inf
     assert deterministic_dot([-2.**1023, 2.**1023], [2., 2.]) == -inf
     assert copysign(1., _fma(-0., 1., -0.)) == -1.

@@ -5,9 +5,9 @@ import json
 import numpy as np
 import pytest
 
-import anysolver._ge_beam3_load_program as driver
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._ge_beam3_p5_loads.core import canonical, sha
+import anyfesolver._ge_beam3_load_program as driver
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._ge_beam3_p5_loads.core import canonical, sha
 from test_ge_beam3_native_load_state import problem, store_for, equilibrium
 
 

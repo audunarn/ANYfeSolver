@@ -5,12 +5,12 @@ from hashlib import sha256
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_p5_seeded.core import sha
-from anysolver.general_contact.friction_point import initial_friction_point
-from anysolver.general_contact.native_surface_history import (
+from anyfesolver._ge_beam3_p5_seeded.core import sha
+from anyfesolver.general_contact.friction_point import initial_friction_point
+from anyfesolver.general_contact.native_surface_history import (
     NativeSurfaceHistoryField,NativeSurfaceMotionSegment,NativeSurfaceReplayBudget)
-from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
-from anysolver.general_contact.native_surface_transaction import NativeS3MaterialTransaction
+from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+from anyfesolver.general_contact.native_surface_transaction import NativeS3MaterialTransaction
 from test_general_contact_native_surface_patch import _patch
 from test_general_contact_native_surface_normal import _settings
 
@@ -26,9 +26,9 @@ def _segment(x,z):
 
 
 def test_exact_path_pose_reuse_preserves_arithmetic_refusal_and_mutation_isolation():
-    from anysolver.general_contact.native_surface_path import material_path_pose, _PATH_POSES
-    from anysolver._ge_beam3_p5.compensated_coordinates import advance
-    from anysolver._ge_beam3_p5.algebra import rotation
+    from anyfesolver.general_contact.native_surface_path import material_path_pose, _PATH_POSES
+    from anyfesolver._ge_beam3_p5.compensated_coordinates import advance
+    from anyfesolver._ge_beam3_p5.algebra import rotation
     owner, _ = _patch(activation_policy='transverse_events', gap_check='straight_patch')
     start = _origin(owner)
     translations = np.arange(9, dtype=float).reshape(3, 3)*.00013
@@ -131,7 +131,7 @@ def test_history_snapshot_from_coupled_transaction_and_restored_path():
     'unexpected constitutive defect'])
 def test_ordinary_resolution_request_uses_certified_replay_but_other_errors_remain_fatal(monkeypatch,reason):
     from test_general_contact_native_surface_support import _field
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialPointFriction
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialPointFriction
     motion=NativeSurfaceMotionSegment(np.zeros((3,3)),
         np.array(((1.6,0.,0.),(0.,0.,0.))),np.zeros(18))
     field=_field(height=.025,rotation=-.8,segments=(motion,))
@@ -182,8 +182,8 @@ def test_prefix_state_reuse_keeps_fresh_endpoint_law_budget_and_binding(monkeypa
 
 def test_complete_schedule_replay_keeps_constitutive_refusal(monkeypatch):
     from test_general_contact_native_surface_support import _field
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialPointFriction
-    import anysolver.general_contact.native_surface_activation as activation
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialPointFriction
+    import anyfesolver.general_contact.native_surface_activation as activation
     motion=NativeSurfaceMotionSegment(np.zeros((3,3)),np.array(((1.6,0.,0.),(0.,0.,0.))),np.zeros(18))
     field=_field(height=.025,rotation=-.8,segments=(motion,))
     def ordinary(*args,**kwargs):raise AssertionError('ordinary certificate should not be duplicated')
@@ -200,8 +200,8 @@ def test_complete_schedule_replay_keeps_constitutive_refusal(monkeypatch):
 
 
 def test_bound_whole_patch_ownership_reuses_only_the_same_point_path():
-    from anysolver.general_contact.native_surface_support import history_target_ownership_certified,SupportIntervalBudget
-    from anysolver.general_contact.native_surface_path import certify_material_ownership
+    from anyfesolver.general_contact.native_surface_support import history_target_ownership_certified,SupportIntervalBudget
+    from anyfesolver.general_contact.native_surface_path import certify_material_ownership
     owner,bridge=_patch(activation_policy='transverse_events',gap_check='straight_patch')
     motion=_segment(.004,-.004)
     field=NativeSurfaceHistoryField(bridge.pair,_origin(owner),(motion,))
@@ -219,7 +219,7 @@ def test_bound_whole_patch_ownership_reuses_only_the_same_point_path():
 
 
 def test_whole_history_proof_cannot_issue_for_a_foreign_replay_motion():
-    from anysolver.general_contact.native_surface_support import history_target_ownership_certified,SupportIntervalBudget
+    from anyfesolver.general_contact.native_surface_support import history_target_ownership_certified,SupportIntervalBudget
     owner,bridge=_patch(activation_policy='transverse_events',gap_check='straight_patch')
     field=NativeSurfaceHistoryField(bridge.pair,_origin(owner),(_segment(.004,-.004),))
     assert history_target_ownership_certified(field,budget=SupportIntervalBudget(128))

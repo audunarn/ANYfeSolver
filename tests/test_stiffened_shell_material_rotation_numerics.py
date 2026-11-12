@@ -1,9 +1,9 @@
 """Numerical evaluation regressions; no new connection/material law."""
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_g3c_so3_numerics as stable
-from anysolver import _ge_beam3_variational_shell as shell
-from anysolver._ge_beam3_mixed_ad import Jet2
+from anyfesolver import _ge_beam3_g3c_so3_numerics as stable
+from anyfesolver import _ge_beam3_variational_shell as shell
+from anyfesolver._ge_beam3_mixed_ad import Jet2
 from test_ge_beam3_g3c_elementary_diagnostic import oracle
 
 
@@ -38,7 +38,7 @@ def test_material_deformation_dispatch_does_not_replace_historical_globals(monke
 
 
 def test_selected_spatial_chart_preserves_historical_dispatch(monkeypatch):
-    from anysolver import _stiffened_shell_algorithmic_pullback as pullback
+    from anyfesolver import _stiffened_shell_algorithmic_pullback as pullback
     u = np.zeros(24);u[3:6] = [.00062, .00125, .00045]
     force = np.arange(24.)
     def forbidden(*args):raise AssertionError("historical chart dispatch")
@@ -52,7 +52,7 @@ def test_selected_spatial_chart_preserves_historical_dispatch(monkeypatch):
 
 def test_pre_stable_material_checkpoint_rejected_without_commit():
     from pathlib import Path
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
     from test_stiffened_shell_ge_distributing_material import definition
     owner = ss.create_analysis(definition=definition())
     try:

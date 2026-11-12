@@ -1,7 +1,7 @@
 """Native fibre BL5 all-S3/mixed isotropic J2 fixed translation development route."""
 from dataclasses import replace
 import json
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from anymaterial import DNVC208MaterialCurve
 from examples.stiffened_shell_native_fibre_bl5 import definition as elastic_definition
 from examples.stiffened_shell_native_fibre_bl5_displacement import ACTIONS, CONTROL, OPTIONS, TARGETS

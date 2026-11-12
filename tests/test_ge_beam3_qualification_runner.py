@@ -213,7 +213,7 @@ class GuardTests(unittest.TestCase):
         self.assertEqual(sum(row['kind']=='mutation' for row in inventories['rehearsal']),136)
         self.assertEqual([row['case']['case_id'] for row in inventories['smoke']],
                          [graph+'::BASE::S0::NONE' for graph in r.physical_support().GRAPHS])
-        self.assertNotIn('numpy',sys.modules);self.assertNotIn('anysolver',sys.modules)
+        self.assertNotIn('numpy',sys.modules);self.assertNotIn('anyfesolver',sys.modules)
 
     def test_physical_formal_case_association_is_exact_and_complete(self):
         rows=r.physical_formal_case_associations();inventory=r.physical_inventory('formal')
@@ -350,7 +350,7 @@ class GuardTests(unittest.TestCase):
             and 'formal runtime authority' in ast.get_source_segment(source,node))
         self.assertLess(runtime_guard,authority_line)
         imports=[node for node in ast.walk(worker) if isinstance(node,(ast.Import,ast.ImportFrom))
-                 and (getattr(node,'module','')or'').startswith('anysolver')]
+                 and (getattr(node,'module','')or'').startswith('anyfesolver')]
         self.assertTrue(imports);self.assertTrue(all(node.lineno>authority_line for node in imports))
         formal_test=(Path(r.__file__).resolve().parents[1]/r.PHYSICAL_FORMAL_TEST).read_text(encoding='utf-8')
         formal_tree=ast.parse(formal_test);case=next(node for node in formal_tree.body
@@ -627,7 +627,7 @@ class GuardTests(unittest.TestCase):
     def test_physical_review_schema_and_mutations(self):
         candidate=dict(commit='a'*40,tree='b'*40)
         rows={'docs/reference_cases/ge_beam3_g3c_fixtures_v1.json':dict(bytes=1,sha256='c'*64),
-              'src/anysolver/_ge_beam3_g3c_definition.py':dict(bytes=1,sha256='d'*64)}
+              'src/anyfesolver/_ge_beam3_g3c_definition.py':dict(bytes=1,sha256='d'*64)}
         scope=dict(scope_id=r.SCOPE,gate='g3c-physical',subject_tree=candidate['tree'],
             inputs_sha256=sha256(r.canonical(rows)).hexdigest(),contract_sha256=r.PHYSICAL_PLAN_SHA,
             partition_addendum_sha256=r.PHYSICAL_PARTITION_ADDENDUM_SHA,
@@ -952,7 +952,7 @@ class GuardTests(unittest.TestCase):
             self.assertFalse((root/'scientific.json').exists());self.assertTrue((root/'process.json').exists())
 
     def test_no_mechanics_import_before_authority(self):
-        self.assertNotIn('numpy',sys.modules);self.assertNotIn('anysolver',sys.modules)
+        self.assertNotIn('numpy',sys.modules);self.assertNotIn('anyfesolver',sys.modules)
 
     def test_checker_gate_and_replica_before_import(self):
         with self.assertRaises(ValueError):r.q4_checker(Path('.'),'wrong','1','bad')

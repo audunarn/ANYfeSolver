@@ -4,10 +4,10 @@ import json
 
 import numpy as np
 
-from anysolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, FEModel, LoadCase, RigidContactBody, create_shell_element)
-from anysolver.dynamics import TransientConfig
-from anysolver.general_contact.transient import (
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.general_contact.transient import (
     ContactFreeRigidBody, ContactNodalLoadHistory, ContactTransientSolverControls, solve_transient_contact)
 
 

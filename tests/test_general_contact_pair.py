@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     ContactDefinition,
     ContactInteraction,
@@ -15,9 +15,9 @@ from anysolver import (
     solve_static_nonlinear,
     validate_general_contact,
 )
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.pair import _PlanarShellPairManager
-from anysolver.general_contact.patch_sliding import _RestrictedSlidingPatchFEManager
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.pair import _PlanarShellPairManager
+from anyfesolver.general_contact.patch_sliding import _RestrictedSlidingPatchFEManager
 
 
 def _guided_pair(*, split_target=False, target_shift=0.0,
@@ -439,8 +439,8 @@ def test_restricted_sliding_s3_source_solves_with_physical_offset():
 
 
 def test_restricted_swept_bound_uses_fixed_overlap_endpoint_certificate():
-    from anysolver.general_contact.moving import bound_swept_moving_mortar_gap
-    from anysolver.general_contact.sliding import _RestrictedSlidingPairFEManager
+    from anyfesolver.general_contact.moving import bound_swept_moving_mortar_gap
+    from anyfesolver.general_contact.sliding import _RestrictedSlidingPairFEManager
 
     model, _load, original, source_nodes = _guided_mixed_pair(
         "Q4", "S3", source_shift=(0.15, 0.1),

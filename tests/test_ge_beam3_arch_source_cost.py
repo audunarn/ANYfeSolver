@@ -21,11 +21,11 @@ def test_sixteen_macro_empty_handoff(tmp_path):
         source_sha256=sha256(source_raw).hexdigest(),manifest_sha256=sha256(manifest_raw).hexdigest()))
     from test_ge_beam3_uniform_arch_sixteen import make
     from test_ge_beam3_native_arc import packet
-    from anysolver._ge_beam3_native_arc import ArcProgram,solve_arc
-    from anysolver._ge_beam3_native_arc_source import TranslationArcSource
-    from anysolver._ge_beam3_native_arc_restart import decode_checkpoint,encode_checkpoint
-    from anysolver._ge_beam3_native_history_profile import HISTORY8M
-    from anysolver._ge_beam3_p5_seeded.core import canonical
+    from anyfesolver._ge_beam3_native_arc import ArcProgram,solve_arc
+    from anyfesolver._ge_beam3_native_arc_source import TranslationArcSource
+    from anyfesolver._ge_beam3_native_arc_restart import decode_checkpoint,encode_checkpoint
+    from anyfesolver._ge_beam3_native_history_profile import HISTORY8M
+    from anyfesolver._ge_beam3_p5_seeded.core import canonical
     model,translation=make();source=TranslationArcSource(translation,source_raw,row['sha256'],1.)
     program=ArcProgram((.12,.12,.12),.01,translation.distributed,parameter_scale=.1,history_profile=HISTORY8M,source=source)
     started=monotonic();cpu=process_time();timings={};phase='initial_handoff'

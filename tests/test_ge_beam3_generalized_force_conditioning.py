@@ -1,13 +1,13 @@
 """Actual nonlinear force diagnostic; genuine failures are saved then raised."""
 import numpy as np
 import pytest
-from anysolver._ge_beam3_native_generalized_program import solve_distributed_model, model_identity
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_native_generalized_recovery import recover_native_fields
-from anysolver._ge_beam3_retained_generalized import RetainedGeneralizedOperator
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_native_generalized_program import solve_distributed_model, model_identity
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_native_generalized_recovery import recover_native_fields
+from anyfesolver._ge_beam3_retained_generalized import RetainedGeneralizedOperator
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_generalized_slenderness_diagnostic import make
 from test_ge_beam3_schur_line_program import save
 

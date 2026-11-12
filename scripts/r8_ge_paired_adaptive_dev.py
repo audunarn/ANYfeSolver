@@ -70,7 +70,7 @@ def bindings():
 
 def source_tree():
     expected=json.loads((BASE_DOC/'SOURCE_TREE.json').read_text())
-    actual={p.relative_to(ROOT).as_posix():sha(p) for p in (ROOT/'src/anysolver').rglob('*.py')}
+    actual={p.relative_to(ROOT).as_posix():sha(p) for p in (ROOT/'src/anyfesolver').rglob('*.py')}
     if actual!=expected:raise ValueError('current source tree changed after preparation')
     return expected
 
@@ -96,7 +96,7 @@ class AttemptObserver(prior.PublicObserver):
             self.merit=float(arg)
         super().observe(frame,event,arg)
     def __enter__(self):
-        from anysolver import _stiffened_shell_displacement_control as fixed
+        from anyfesolver import _stiffened_shell_displacement_control as fixed
         if self.atomic is None:
             from scripts import r8_f06_paired_active_tangent_dev as atomic
             self.atomic=atomic
@@ -112,7 +112,7 @@ class AttemptObserver(prior.PublicObserver):
                     exception=dict(type=type(error).__name__,message=str(error),detail=plain(getattr(error,'detail',None))),
                     actual_fixed_dual_work_merit=self.merit,
                     merit_provenance='last executed fixed-corrector merit call; unavailable before first merit call; not reconstructed final failure residual')
-                from anysolver._stiffened_shell_displacement_corrector import DisplacementCorrectorFailure
+                from anyfesolver._stiffened_shell_displacement_corrector import DisplacementCorrectorFailure
                 if isinstance(error,DisplacementCorrectorFailure) and owner._generation==before['generation']:
                     prior.check_atomic(row['flags'])
                 raise
@@ -133,8 +133,8 @@ def _connected_program(out,*,control_factory=None,control_kwargs=None):
     """
     if control_factory is not None and control_kwargs is not None:
         raise ValueError('one explicit control injection route required')
-    from anysolver import stiffened_shell as ss
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver import stiffened_shell as ss
+    from anyfesolver.control import CancellationToken,SolveCancelled
     from scripts.r8_f06_cyclic_material_dev import definition,actions
     from scripts import r8_f06_paired_active_tangent_dev as atomic
     import numpy as np

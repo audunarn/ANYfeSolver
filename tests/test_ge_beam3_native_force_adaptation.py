@@ -2,17 +2,17 @@
 from hashlib import sha256
 import numpy as np
 import pytest
-from anysolver._ge_beam3_native_force_adaptation import AdaptiveForcePolicy,describe,require_capacity,settings
-from anysolver._ge_beam3_native_generalized_combined_couples import solve_combined_static,_RUN
-from anysolver._ge_beam3_native_generalized_program import _PROGRAM
-from anysolver._ge_beam3_native_generalized_loading import _ACTIVE,DistributedPattern
-from anysolver._ge_beam3_native_generalized_combined_restart import LoadPoint,encode_checkpoint,decode_checkpoint
-from anysolver._ge_beam3_native_generalized_restart import LoadPoint as DistributedPoint
-from anysolver._ge_beam3_native_generalized_recovery import recover_native_fields
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._ge_beam3_native_force_adaptation import AdaptiveForcePolicy,describe,require_capacity,settings
+from anyfesolver._ge_beam3_native_generalized_combined_couples import solve_combined_static,_RUN
+from anyfesolver._ge_beam3_native_generalized_program import _PROGRAM
+from anyfesolver._ge_beam3_native_generalized_loading import _ACTIVE,DistributedPattern
+from anyfesolver._ge_beam3_native_generalized_combined_restart import LoadPoint,encode_checkpoint,decode_checkpoint
+from anyfesolver._ge_beam3_native_generalized_restart import LoadPoint as DistributedPoint
+from anyfesolver._ge_beam3_native_generalized_recovery import recover_native_fields
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5.algebra import rotation
 from test_ge_beam3_native_generalized_restart import make,pattern,packet,CASES,EMPTY
 from test_ge_beam3_native_generalized_combined_restart import snapshots
 from test_ge_beam3_native_generalized_combined_couples import convert,simple
@@ -21,7 +21,7 @@ from test_ge_beam3_schur_line_program import save
 
 @pytest.mark.parametrize('case',CASES)
 def test_actual_cutback_reproduces_fixed_history(case,monkeypatch,tmp_path):
-    import anysolver.nonlinear_static as solver
+    import anyfesolver.nonlinear_static as solver
     fixed_model=make(case);line=pattern(fixed_model);moments=SpatialNodalMoments(((3,.015,-.01,.008),))
     fixed,_=solve_combined_static(fixed_model,moments,distributed_pattern=line)
     assert fixed.status=='completed',fixed.info
@@ -72,7 +72,7 @@ def test_policy_fields_reject(change,tmp_path):
 
 @pytest.mark.parametrize('kind',['wrong-type','non-dyadic-steps','boolean-steps','iteration-type','line-search-type','capacity'])
 def test_invalid_controls_before_solver(kind,monkeypatch,tmp_path):
-    import anysolver._ge_beam3_native_generalized_combined_couples as module
+    import anyfesolver._ge_beam3_native_generalized_combined_couples as module
     kwargs=dict(step_policy=AdaptiveForcePolicy(),steps=2)
     if kind=='wrong-type':kwargs['step_policy']={}
     elif kind=='non-dyadic-steps':kwargs['steps']=3
@@ -100,7 +100,7 @@ def test_capacity_and_settings(tmp_path):
 
 
 def test_actual_growth_nonconvergence_and_resume_capacity(monkeypatch,tmp_path):
-    import anysolver.nonlinear_static as solver
+    import anyfesolver.nonlinear_static as solver
     model=convert(simple()[0]);line=DistributedPattern(LinePattern(()),((1,.12,0.,0.),));moments=SpatialNodalMoments(((3,.3,0.,0.),))
     initial={i:e.init_model_bound_nonlinear_state(model.mesh,e.section,1) for i,e in model.mesh.elements.items()}
     policy=AdaptiveForcePolicy(cutback_levels=1,growth=True)
@@ -134,7 +134,7 @@ def test_actual_growth_nonconvergence_and_resume_capacity(monkeypatch,tmp_path):
 
 
 def test_live_policy_mutation_discards_before_commit(monkeypatch,tmp_path):
-    import anysolver.nonlinear_static as solver
+    import anyfesolver.nonlinear_static as solver
     model=convert(simple()[0]);policy=AdaptiveForcePolicy(cutback_levels=1,growth=False);original=solver.factorize;captured=[]
     def changed(matrix,kind,*a,**k):
         handle=original(matrix,kind,*a,**k)

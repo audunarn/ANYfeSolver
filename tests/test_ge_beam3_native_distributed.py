@@ -3,14 +3,14 @@ from copy import deepcopy
 from dataclasses import replace
 import numpy as np
 import pytest
-from anysolver.fe_core import FEModel
-from anysolver.boundary import LoadCase
-from anysolver._ge_beam3_native_distributed_element import NativeDistributedFibreStaticElement,seal
-from anysolver._ge_beam3_native_distributed_loading import DistributedPattern,assemble_distributed_trial,_ACTIVE
-from anysolver._ge_beam3_native_distributed_program import solve_distributed_model,_PROGRAM
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import LoadCase
+from anyfesolver._ge_beam3_native_distributed_element import NativeDistributedFibreStaticElement,seal
+from anyfesolver._ge_beam3_native_distributed_loading import DistributedPattern,assemble_distributed_trial,_ACTIVE
+from anyfesolver._ge_beam3_native_distributed_program import solve_distributed_model,_PROGRAM
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
 from docs.reference_cases import ge_beam3_distributed_couple_oracle as oracle
 from test_ge_beam3_native_line_loading import problem as line_problem,independent_work
 from test_ge_beam3_native_line_restart import make as line_connected
@@ -84,8 +84,8 @@ def test_actual_fixed_origin_directional(curved,plastic,tmp_path):
 
 @pytest.mark.parametrize('case',['straight','curved-elastic','curved-plastic','connected-plastic'])
 def test_actual_global_equilibrium_and_general_factorization(case,monkeypatch,tmp_path):
-    import anysolver.nonlinear_static as solver
-    from anysolver.linalg import MatrixClass
+    import anyfesolver.nonlinear_static as solver
+    from anyfesolver.linalg import MatrixClass
     m=convert(line_connected('curved-connected-plastic')) if case=='connected-plastic' else problem(case!='straight',case=='curved-plastic')[0]
     load=pattern(m);calls=[];original=solver.factorize
     def record(matrix,kind,*args,**kwargs):
@@ -114,7 +114,7 @@ def test_actual_global_equilibrium_and_general_factorization(case,monkeypatch,tm
 
 def test_pure_distributed_torsion_and_zero_nodal_load(tmp_path):
     from test_ge_beam3_native_spatial_couples import make
-    from anysolver._ge_beam3_p5.algebra import rotation
+    from anyfesolver._ge_beam3_p5.algebra import rotation
     m=convert(make()[0]);load=DistributedPattern(LinePattern(()),((1,.12,0.,0.),))
     result,evidence=solve_distributed_model(m,load)
     save(tmp_path/'torsion.json',dict(result=packet(result),evidence=evidence))
@@ -163,7 +163,7 @@ def test_wrong_load_trial_and_foreign_registration(tmp_path):
 
 
 def test_mid_assembly_failure_discards_owned_trial(monkeypatch,tmp_path):
-    import anysolver.nonlinear_static as solver
+    import anyfesolver.nonlinear_static as solver
     m,e=problem();store=store_for(m,e);before=canonical(store.materialize());original=solver._assemble_nonlinear_system
     def changed(*args,**kwargs):
         result=original(*args,**kwargs);object.__setattr__(_ACTIVE.get().pattern,'signature','0'*64);return result
@@ -174,7 +174,7 @@ def test_mid_assembly_failure_discards_owned_trial(monkeypatch,tmp_path):
 
 
 def test_failed_global_step_and_restart_fail_closed(tmp_path):
-    import anysolver.nonlinear_static as solver
+    import anyfesolver.nonlinear_static as solver
     m,e=problem();initial=e.init_model_bound_nonlinear_state(m.mesh,e.section,1)
     result,evidence=solve_distributed_model(m,pattern(m),steps=1,max_iterations=1)
     save(tmp_path/'failed.json',dict(result=packet(result),evidence=evidence))

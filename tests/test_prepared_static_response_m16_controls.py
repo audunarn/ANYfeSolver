@@ -8,7 +8,7 @@ threshold for each criterion instead of assuming it. Criteria are unchanged.
 import json
 import numpy as np
 import prepared_static_response_m16_assessment as assessment
-from anysolver import RecoveryConfig
+from anyfesolver import RecoveryConfig
 from test_prepared_static_evaluator import _shell_model, _shell_case
 
 

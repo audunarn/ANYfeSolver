@@ -4,7 +4,7 @@ from hashlib import sha256
 import json,os
 import numpy as np
 import pytest
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_general_contact_native_curved_s3_static import _analysis
 from test_general_contact_native_fibre_s3 import _independent_material_history
 from test_general_contact_native_fibre_enforcement import _gap

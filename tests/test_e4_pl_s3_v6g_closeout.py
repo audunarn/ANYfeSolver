@@ -4,7 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from anysolver.elements import DEFAULT_Q4_FORMULATION, DEFAULT_S3_FORMULATION
+from anyfesolver.elements import DEFAULT_Q4_FORMULATION, DEFAULT_S3_FORMULATION
 
 
 ROOT = Path(__file__).resolve().parents[1]

@@ -285,8 +285,8 @@ def test_independent_modules_have_no_solver_or_production_imports() -> None:
             elif isinstance(node, ast.ImportFrom) and node.module:
                 imports.add(node.module.split(".", 1)[0])
         assert imports <= allowed_roots
-        assert "from anysolver" not in source
-        assert "import anysolver" not in source
+        assert "from anyfesolver" not in source
+        assert "import anyfesolver" not in source
 
     checker_source = CHECKER_PATH.read_text(encoding="utf-8")
     checker_tree = ast.parse(checker_source)

@@ -8,12 +8,12 @@ No fitted coefficients, default change or full-domain qualification claim.
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_relative_virgin_reference_modes import solve_relative_virgin_reference_modes
-from anysolver._ge_beam3_p5_loads import NativeP5BeamElement, DirectedHardeningSection
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-from anysolver._ge_beam3_p5_loads.core import canonical
-from anysolver.fe_core import FEModel
-from anysolver.boundary import BoundaryCondition
+from anyfesolver._ge_beam3_relative_virgin_reference_modes import solve_relative_virgin_reference_modes
+from anyfesolver._ge_beam3_p5_loads import NativeP5BeamElement, DirectedHardeningSection
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+from anyfesolver._ge_beam3_p5_loads.core import canonical
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import BoundaryCondition
 from docs.reference_cases.ge_beam3_straight_prestress_reference import StraightPrestress
 
 

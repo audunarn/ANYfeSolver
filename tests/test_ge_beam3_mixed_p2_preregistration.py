@@ -272,8 +272,8 @@ def test_execution_bounds_and_production_boundary_are_exact() -> None:
         "qualified_s3_v2d_unchanged": True,
     }
     for route in (
-        "src/anysolver/__init__.py",
-        "src/anysolver/elements.py",
+        "src/anyfesolver/__init__.py",
+        "src/anyfesolver/elements.py",
     ):
         text = _accepted_route_text(route)
         assert "GeometricallyExactBeam3D3NElement" not in text

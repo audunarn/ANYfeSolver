@@ -6,12 +6,12 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-import anysolver.e4_pl_element as e4_pl_module
-import anysolver.matrix_assembly as matrix_assembly_module
-from anysolver import FEModel, assemble_stiffness_matrix
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.fe_core import _QualifiedStateMapping
-from anysolver.matrix_assembly import AssemblyError
+import anyfesolver.e4_pl_element as e4_pl_module
+import anyfesolver.matrix_assembly as matrix_assembly_module
+from anyfesolver import FEModel, assemble_stiffness_matrix
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.fe_core import _QualifiedStateMapping
+from anyfesolver.matrix_assembly import AssemblyError
 
 
 def _model() -> tuple[FEModel, QualifiedE4PLShellElement]:

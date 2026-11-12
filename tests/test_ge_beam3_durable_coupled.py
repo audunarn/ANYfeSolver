@@ -5,11 +5,11 @@ from time import monotonic
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_durable_coupled import DurableCoupledBeamAnalysis
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver._ge_beam3_shell_joint_state import decode
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver._ge_beam3_durable_coupled import DurableCoupledBeamAnalysis
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver._ge_beam3_shell_joint_state import decode
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_ge_beam3_coupled_modes import fixture, arguments
 
 
@@ -36,7 +36,7 @@ def test_later_operations_reconstruct_and_replay_without_renewing_old_owner(topo
     first = made.solve(stop_after=1)
     assert first.status == 'paused', first.failure
     # Simulate idle time, not a relaxed deadline: the original owner expires.
-    import anysolver._ge_beam3_coupled_beam_subdomain as subdomain
+    import anyfesolver._ge_beam3_coupled_beam_subdomain as subdomain
     clock = monotonic()+240.
     monkeypatch.setattr(subdomain, 'monotonic', lambda: monotonic()+240.)
     with pytest.raises(RuntimeError, match='deadline'): direct.guard()
@@ -85,7 +85,7 @@ def test_real_spectral_queries_replay_exact_accepted_state(topology, tmp_path):
     made, direct = durable(topology)
     a = made.solve(stop_after=1); b = direct.solve(stop_after=1)
     assert a.status == b.status == 'paused', (a.failure, b.failure)
-    from anysolver._ge_beam3_coupled_modes import modes, buckling
+    from anyfesolver._ge_beam3_coupled_modes import modes, buckling
     expected_modes = modes(direct, b.state, **arguments(direct), bounds=(-100., 10000.), num_modes=2)
     expected_buckling = buckling(direct, b.state, bounds=(0., 1000.), num_modes=2)
     actual_modes = made.modes(a.checkpoint, expected_sha256=a.checkpoint_sha256, bounds=(-100., 10000.), num_modes=2)
@@ -112,7 +112,7 @@ def test_cancelled_solve_preserves_real_prefix_and_does_not_advance_input(tmp_pa
 
 
 def test_near_limit_inner_payload_roundtrips_without_tightening_historical_bound(monkeypatch):
-    from anysolver._ge_beam3_durable_coupled import MAX_BYTES, OUTER_MAX_BYTES, _outer
+    from anyfesolver._ge_beam3_durable_coupled import MAX_BYTES, OUTER_MAX_BYTES, _outer
     made, _ = durable()
     backend = canonical(dict(padding='"'*(MAX_BYTES//2-32)))
     assert MAX_BYTES-100 < len(backend) <= MAX_BYTES
@@ -128,7 +128,7 @@ def test_near_limit_inner_payload_roundtrips_without_tightening_historical_bound
 @pytest.mark.parametrize('raw', (b'{"a":1,"a":2}\n', b'{"a":NaN}\n', b'{"a":1e999}\n',
     b' {"a":1}\n', b'['*33+b'0'+b']'*33+b'\n', b'"\xff"\n'))
 def test_strict_outer_decoder(raw):
-    from anysolver._ge_beam3_durable_coupled import _outer
+    from anyfesolver._ge_beam3_durable_coupled import _outer
     with pytest.raises(ValueError): _outer(raw)
 
 
@@ -164,7 +164,7 @@ def test_mutating_caller_configuration_cannot_change_owned_definition():
     original, _ = durable()
     shell = deepcopy(original._shell); controls = deepcopy(original._controls)
     definitions = tuple(NativeBeamDefinition(raw) for raw in original._definitions)
-    from anysolver.boundary import BoundaryCondition
+    from anyfesolver.boundary import BoundaryCondition
     boundaries = (BoundaryCondition('extra-support', [3], {'ux':0.}),)
     program = deepcopy(original._program)
     made = DurableCoupledBeamAnalysis(definitions, boundaries, program,

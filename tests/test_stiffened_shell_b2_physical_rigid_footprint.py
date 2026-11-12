@@ -5,9 +5,9 @@ import numpy as np
 import pytest
 from scipy import sparse,linalg
 from scipy.spatial.transform import Rotation
-from anysolver import stiffened_shell as api
-from anysolver.control import CancellationToken
-from anysolver._stiffened_shell_b2_reference_buckling import compile_geometric
+from anyfesolver import stiffened_shell as api
+from anyfesolver.control import CancellationToken
+from anyfesolver._stiffened_shell_b2_reference_buckling import compile_geometric
 from examples.stiffened_shell_b2_physical_rigid_footprint import definition,preload,workflow,traction_sources
 
 @pytest.fixture
@@ -58,7 +58,7 @@ def test_finite_rigid_motion_gradient_acceleration(owner):
         assert abs(v@h@v+g@a)<=1e-10*bound
 
 def test_tangent_basis_covariance_and_owned_arrays(owner):
-    from anysolver._stiffened_shell_b2_physical_rigid_footprint import _node
+    from anyfesolver._stiffened_shell_b2_physical_rigid_footprint import _node
     group=definition().physical_footprints[0];orth=np.array(((0.,-1.),(1.,0.)))
     changed=replace(group,tangent_basis=group.tangent_basis@orth)
     for old in owner._footprint_incidence:
@@ -108,8 +108,8 @@ def test_public_default_workflow():
 
 
 def test_native_physical_first_work_and_exp_chart_scalar(owner):
-    from anysolver._stiffened_shell_b2_physical_rigid_footprint import q4_exp_director_chart_correction
-    from anysolver.e4_pl_element import _compatible,_coefficients
+    from anyfesolver._stiffened_shell_b2_physical_rigid_footprint import q4_exp_director_chart_correction
+    from anyfesolver.e4_pl_element import _compatible,_coefficients
     shell,element,material_id,slots=owner._buckling_shells[0]
     mesh=owner._buckling_model.mesh;material=owner._buckling_model.get_material(material_id)
     displacement=np.array((.01,.02,.03,.04,-.02,.07,-.03,.02,-.01,.03,.05,-.04,.04,-.01,.02,-.05,.03,.06,-.02,.03,.04,.02,-.04,-.03))
@@ -137,7 +137,7 @@ def test_native_physical_first_work_and_exp_chart_scalar(owner):
 
 
 def test_midassembly_cancellation_no_identity(owner,monkeypatch):
-    import anysolver._stiffened_shell_b2_reference_buckling as service
+    import anyfesolver._stiffened_shell_b2_reference_buckling as service
     token=CancellationToken();original=service.compile_geometric
     def interrupted(model,request,pre,safe):
         def checkpoint(stage):
@@ -150,7 +150,7 @@ def test_midassembly_cancellation_no_identity(owner,monkeypatch):
 
 
 def test_full_shell_frozen_green_scalar_second_variation(owner):
-    from anysolver._stiffened_shell_b2_physical_rigid_footprint import q4_exp_director_chart_correction
+    from anyfesolver._stiffened_shell_b2_physical_rigid_footprint import q4_exp_director_chart_correction
     shell,element,mid,slots=owner._buckling_shells[0];mesh=owner._buckling_model.mesh;material=owner._buckling_model.get_material(mid)
     coords=np.array([definition().shell_nodes_m[i] for i in shell.node_ids])
     u=np.zeros((4,6));u[:,2]=-.5*coords[:,0]*coords[:,1];u[:,3]=-.5*coords[:,0];u[:,4]=.5*coords[:,1]
@@ -181,7 +181,7 @@ def test_full_shell_frozen_green_scalar_second_variation(owner):
 
 
 def test_rigid_geometry_covariance_director_reversal(owner):
-    from anysolver._stiffened_shell_b2_physical_rigid_footprint import _node
+    from anyfesolver._stiffened_shell_b2_physical_rigid_footprint import _node
     group=definition().physical_footprints[0];r=Rotation.from_rotvec((.3,-.2,.4)).as_matrix();lam=np.array((2.,-3.,4.,.7,-.9));block=sparse.block_diag((r,r,r,r)).toarray()
     for old in owner._footprint_incidence:
         changed=replace(group,reference_director=r@group.reference_director,tangent_basis=r@group.tangent_basis)
@@ -195,7 +195,7 @@ def test_rigid_geometry_covariance_director_reversal(owner):
 
 
 def test_nonzero_director_multiplier_combined_shell_pad_chart(owner):
-    from anysolver._stiffened_shell_b2_physical_rigid_footprint import q4_exp_director_chart_correction
+    from anyfesolver._stiffened_shell_b2_physical_rigid_footprint import q4_exp_director_chart_correction
     shell,element,mid,slots=owner._buckling_shells[0];mesh=owner._buckling_model.mesh;material=owner._buckling_model.get_material(mid)
     coords=np.array([definition().shell_nodes_m[i] for i in shell.node_ids])
     u=np.zeros((4,6));u[:,2]=-.5*coords[:,0]*coords[:,1];u[:,3]=-.5*coords[:,0];u[:,4]=.5*coords[:,1]
@@ -226,7 +226,7 @@ def test_nonzero_director_multiplier_combined_shell_pad_chart(owner):
 
 def test_new_family_point_coexistence_and_selection_refuse():
     d=definition()
-    from anysolver._stiffened_shell_b2_q4_panel_experimental import ExperimentalB2Q4PanelAnalysis
+    from anyfesolver._stiffened_shell_b2_q4_panel_experimental import ExperimentalB2Q4PanelAnalysis
     with pytest.raises(ValueError,match="separate physical footprint static family required"):
         ExperimentalB2Q4PanelAnalysis(d.shell_nodes_m,d.shells,d.members,(api.Q4B2Point("p","shell-1","beam-right",0.),),transformation=d.transformation,prescribed_offset=d.prescribed_offset,physical_footprints=d.physical_footprints)
     with pytest.raises(ValueError,match="sequence"):
@@ -235,9 +235,9 @@ def test_new_family_point_coexistence_and_selection_refuse():
 
 @pytest.mark.parametrize("reverse",(False,True))
 def test_distorted_skew_frozen_shell_tensor_frame_and_scalar_work(owner,reverse):
-    from anysolver._stiffened_shell_b2_physical_rigid_footprint import q4_kernel_frame_resultants,_exp_director_covector_hessian
-    from anysolver.e4_pl_element import QualifiedE4PLShellElement
-    from anysolver.fe_core import FEModel
+    from anyfesolver._stiffened_shell_b2_physical_rigid_footprint import q4_kernel_frame_resultants,_exp_director_covector_hessian
+    from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+    from anyfesolver.fe_core import FEModel
     r=Rotation.from_rotvec((.3,-.2,.4)).as_matrix()
     plane=np.array(((0.,0.,0.),(1.3,.2,0.),(1.7,1.1,0.),(.1,.8,0.)))
     coords=plane@r.T;n=r[:,2]*(-1. if reverse else 1.)

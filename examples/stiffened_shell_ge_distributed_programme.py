@@ -8,8 +8,8 @@ This is an elastic lifecycle example, not bonded-line or capacity qualification.
 from contextlib import ExitStack
 import json
 
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
 from stiffened_shell_ge_gravity import definition
 
 

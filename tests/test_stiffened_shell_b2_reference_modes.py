@@ -8,13 +8,13 @@ import pytest
 from scipy import sparse, linalg
 from scipy.sparse.linalg import ArpackNoConvergence
 
-from anysolver import stiffened_shell
-from anysolver.control import CancellationToken
-from anysolver._stiffened_shell_physical_q4_mass import physical_mass
-from anysolver._stiffened_shell_b2_q4_panel_experimental import (
+from anyfesolver import stiffened_shell
+from anyfesolver.control import CancellationToken
+from anyfesolver._stiffened_shell_physical_q4_mass import physical_mass
+from anyfesolver._stiffened_shell_b2_q4_panel_experimental import (
     ExperimentalB2Q4PanelAnalysis, ExperimentalB2Q4PanelError,
 )
-import anysolver._stiffened_shell_b2_q4_panel_experimental as owner
+import anyfesolver._stiffened_shell_b2_q4_panel_experimental as owner
 from test_stiffened_shell_b2_q4_panel_experimental import _panel, _independent_dense
 
 

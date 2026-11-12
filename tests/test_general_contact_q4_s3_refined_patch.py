@@ -7,13 +7,13 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction, ContactPathControl,
     ContactPathProgram, ContactSolverSettings, ContactSurface,
     create_shell_element, solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.s3_patch_static import (
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.s3_patch_static import (
     GeneralS3PatchManager, REFINED_Q4_S3_AUGMENTED_PROFILE,
     REFINED_Q4_S3_PROJECTED_AUGMENTED_PROFILE,
 )

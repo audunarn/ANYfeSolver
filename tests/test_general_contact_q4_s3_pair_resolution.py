@@ -8,18 +8,18 @@ from decimal import Decimal
 from pathlib import Path
 
 from scripts.general_contact_d1_coupled_refinement import build_case
-from anysolver import create_shell_element
-from anysolver.general_contact.core import ContactSolverSettings
-from anysolver.general_contact.overlap import PlanarFace, planar_projected_overlap
-from anysolver.general_contact.q4_source_overlap import projected_q4_source_face
-from anysolver.general_contact.q4_s3_overlap_derivatives import UnsupportedQ4S3Branch
-from anysolver.general_contact.s3_patch_augmented import (
+from anyfesolver import create_shell_element
+from anyfesolver.general_contact.core import ContactSolverSettings
+from anyfesolver.general_contact.overlap import PlanarFace, planar_projected_overlap
+from anyfesolver.general_contact.q4_source_overlap import projected_q4_source_face
+from anyfesolver.general_contact.q4_s3_overlap_derivatives import UnsupportedQ4S3Branch
+from anyfesolver.general_contact.s3_patch_augmented import (
     MovingS3PatchProjectedNormal,
     _q4_s3_pair_value_rtol, _q4_s3_pair_values_agree,
     _q4_s3_gap_operand_roundoff,
     _touching_shared_target_edge,
 )
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 
 
 def test_tiny_wedge_area_disagreement_has_small_bounded_value_allowance():

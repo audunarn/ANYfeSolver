@@ -8,8 +8,8 @@ import subprocess
 
 import pytest
 
-from anysolver import b3_ge
-from anysolver.elements import QuadraticBeamElement, create_element
+from anyfesolver import b3_ge
+from anyfesolver.elements import QuadraticBeamElement, create_element
 from scripts import verify_release_046 as gate
 
 
@@ -35,7 +35,8 @@ def test_release_archive_contains_only_current_user_documents() -> None:
         if line.startswith("include docs/")
     }
     assert included_docs == gate.RELEASE_DOCS | {
-        "docs/releases/ANYsolver_0.4.7.md", "docs/NATIVE_SOURCE_AUTHORITY.md"
+        "docs/releases/ANYsolver_0.4.7.md", "docs/releases/ANYfeSolver_0.5.0.md",
+        "docs/NATIVE_SOURCE_AUTHORITY.md"
     }
     assert {
         "prune docs",

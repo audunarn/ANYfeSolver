@@ -6,15 +6,15 @@ pytestmark=pytest.mark.skipif('F06_LOG_OUTPUT' not in os.environ,reason='fresh o
 @pytest.mark.parametrize('angle',[.0006,.4,1.7,2.7])
 def test_control_full_coefficients_independent_series(angle):
     from scripts.r8_f06_log_domain_route_dev import coefficient_oracle
-    from anysolver._stiffened_shell_f06_increment_arithmetic import Pair,full_log_coefficients
+    from anyfesolver._stiffened_shell_f06_increment_arithmetic import Pair,full_log_coefficients
     high=float(np.cos(angle));low=2.**-60
     got=full_log_coefficients(Pair(high,low));want=coefficient_oracle(high,low)
     np.testing.assert_allclose([p.scalar() for p in got],want,rtol=5e-13,atol=5e-13)
 
 @pytest.mark.parametrize('low',[2.**-80,0.,-2.**-80])
 def test_control_physical_pair_branch_and_cutoff(low,monkeypatch):
-    import anysolver._stiffened_shell_f06_increment_arithmetic as a
-    from anysolver._ge_beam3_mixed_ad import math_cos_limit,RotationDomainError
+    import anyfesolver._stiffened_shell_f06_increment_arithmetic as a
+    from anyfesolver._ge_beam3_mixed_ad import math_cos_limit,RotationDomainError
     c=a.Pair(1.-1e-7,low);calls=[];original=a.full_log_coefficients
     def capture(c):calls.append(c);return original(c)
     monkeypatch.setattr(a,'full_log_coefficients',capture)
@@ -29,7 +29,7 @@ def test_control_physical_pair_branch_and_cutoff(low,monkeypatch):
 @pytest.mark.parametrize('angle',[.0003,.0006,.7,2.7])
 def test_control_axis_equivalence_and_left_jacobian(angle):
     from scipy.spatial.transform import Rotation
-    from anysolver._stiffened_shell_f06_increment_arithmetic import Jet,exp,mm,const,log
+    from anyfesolver._stiffened_shell_f06_increment_arithmetic import Jet,exp,mm,const,log
     axis=np.array([2.,-1.,3.]);axis/=np.linalg.norm(axis);phi=angle*axis
     r=Rotation.from_rotvec(phi).as_matrix();w=[Jet.variable(0.,i,3) for i in range(3)]
     values=log(mm(exp(w),const(r,np.zeros((3,3)),3)))
@@ -43,7 +43,7 @@ def test_control_axis_equivalence_and_left_jacobian(angle):
 def test_control_off_so3_affine_gradient_hessian():
     from scripts.r8_f06_log_domain_route_dev import coefficient_oracle
     from scipy.spatial.transform import Rotation
-    from anysolver._stiffened_shell_f06_increment_arithmetic import Jet,Pair,log
+    from anyfesolver._stiffened_shell_f06_increment_arithmetic import Jet,Pair,log
     high=Rotation.from_rotvec([.4,-.2,.3]).as_matrix();high[1,1]+=3e-13
     low=np.zeros((3,3));low[0,0]=2.**-58
     D=np.array([[.7,.2,-.3],[-.1,-.4,.8],[.4,-.6,.2]])
@@ -57,8 +57,8 @@ def test_control_off_so3_affine_gradient_hessian():
 def test_control_native_active_fixed_origin_spatial_work_and_objectivity():
     from scripts.r8_f06_log_domain_route_dev import definition
     from scipy.spatial.transform import Rotation
-    from anysolver._stiffened_shell_f06_increment_arithmetic import add_state,updated_rotation
-    from anysolver._ge_beam3_generalized_static_boundary import spatial_jacobian
+    from anyfesolver._stiffened_shell_f06_increment_arithmetic import add_state,updated_rotation
+    from anyfesolver._ge_beam3_generalized_static_boundary import spatial_jacobian
     e,_=definition().beams[0].instantiate();op=e.operator;x=op.reference.coordinates.copy();x[2]+=[.03,.02,.01]
     q=Rotation.from_rotvec([[.4,-.1,.2],[.2,.3,-.1],[.7,.1,.2]]).as_matrix()
     u=Rotation.from_rotvec([[.1,.15,-.05],[.2,-.1,.15]]).as_matrix()
@@ -95,8 +95,8 @@ def test_route_public_active_ordinary_lifecycle():
 
 def test_control_point_ordinary_spatial_derivative_work_objectivity():
     from scipy.spatial.transform import Rotation
-    from anysolver._ge_beam3_pose_joint import RigidPoseJoint
-    from anysolver._stiffened_shell_f06_increment_arithmetic import add_state,updated_rotation
+    from anyfesolver._ge_beam3_pose_joint import RigidPoseJoint
+    from anyfesolver._stiffened_shell_f06_increment_arithmetic import add_state,updated_rotation
     x0=np.array([[0.,0.,0.],[.3,-.2,.1]]);q0=np.tile(np.eye(3),(2,1,1))
     joint=RigidPoseJoint(x0,q0);x=x0+np.array([[.01,.02,0.],[-.01,.03,.04]])
     q=Rotation.from_rotvec([[.3,-.2,.1],[-.2,.4,.5]]).as_matrix();lam=np.array([2.,-3.,4.,7.,-5.,6.])
@@ -123,7 +123,7 @@ def test_control_point_ordinary_spatial_derivative_work_objectivity():
 def test_control_paired_coefficient_low_parts(angle):
     from decimal import Decimal,localcontext
     from scripts.r8_f06_log_domain_route_dev import coefficient_oracle
-    from anysolver._stiffened_shell_f06_increment_arithmetic import Pair,full_log_coefficients
+    from anyfesolver._stiffened_shell_f06_increment_arithmetic import Pair,full_log_coefficients
     high=float(np.cos(angle));low=float(np.spacing(abs(high)))/4.
     expected=coefficient_oracle(high,low,decimal=True)
     actual=full_log_coefficients(Pair(high,low))
@@ -142,10 +142,10 @@ def test_control_historical_compensated_checkpoint_encoding():
     from dataclasses import replace
     from types import SimpleNamespace
     from scripts.r8_f06_log_domain_route_dev import definition
-    from anysolver import stiffened_shell as ss
-    from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
-    from anysolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,decode
-    from anysolver._stiffened_shell_q4_algorithmic_pullback import HISTORICAL_POLICY
+    from anyfesolver import stiffened_shell as ss
+    from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+    from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,decode
+    from anyfesolver._stiffened_shell_q4_algorithmic_pullback import HISTORICAL_POLICY
     owner=ss.create_analysis(definition=replace(definition(),q4_pullback_policy=HISTORICAL_POLICY))
     try:
         driver=FinitePointDriver(owner);assert driver._compensated and driver._stable_q4

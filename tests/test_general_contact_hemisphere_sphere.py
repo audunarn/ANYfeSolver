@@ -7,17 +7,17 @@ from pathlib import Path
 import numpy as np
 import pytest
 from scipy.optimize import minimize_scalar, brentq
-from anysolver import (BoundaryCondition, LoadCase, DisplacementControl,
+from anyfesolver import (BoundaryCondition, LoadCase, DisplacementControl,
     CancellationToken, SolveCancelled, solve_static_nonlinear,
     validate_general_contact, report_general_contact_capability)
-from anysolver.general_contact.beam_hemisphere_sphere_work import hemisphere_sphere_work
-from anysolver.general_contact.beam_hemisphere_sphere import HemisphereSphereManager, PROFILE
-from anysolver.general_contact.beam_radial_ends import BeamRadialEndManager
+from anyfesolver.general_contact.beam_hemisphere_sphere_work import hemisphere_sphere_work
+from anyfesolver.general_contact.beam_hemisphere_sphere import HemisphereSphereManager, PROFILE
+from anyfesolver.general_contact.beam_radial_ends import BeamRadialEndManager
 from test_general_contact_radial_beam_ends import _case, _static
 
 
 def test_full_radius_bound_preserves_exact_sum_of_literal_radii():
-    from anysolver.general_contact.beam_end_radial_geometry import curve_gap_lower
+    from anyfesolver.general_contact.beam_end_radial_geometry import curve_gap_lower
     f=Fraction.from_float
     radius=f(.01)+f(.1);point=f(.11)
     lower=curve_gap_lower(((point,point),(Fraction(0),Fraction(0)),(Fraction(0),Fraction(0))),radius,1e-6,16)
@@ -156,7 +156,7 @@ def test_active_seam_sweep_keeps_complete_cap_work_and_legacy_rejection():
 
 
 def test_material_junction_and_b3_midnode_are_not_caps():
-    from anysolver.elements import QuadraticBeamElement
+    from anyfesolver.elements import QuadraticBeamElement
     model,definition,settings=support_case(True)
     model.add_node(10,.112,-.1,0.);model.add_node(11,.112,.1,0.)
     model.add_element(2,QuadraticBeamElement(2,(10,1,11),'elastic',
@@ -232,7 +232,7 @@ def test_coupled_bar_force_displacement_restart_and_explicit_scope():
     second=replace(definition.rigid_bodies[0],name='other',point=(1.,0.,0.))
     multi=replace(definition,rigid_bodies=(*definition.rigid_bodies,second),interactions=(
         *definition.interactions,replace(definition.interactions[0],name='other pair',target='other')))
-    from anysolver.general_contact.multiple_beam_rigid import PROFILE_SUPPORT_ANALYTIC, MultipleBeamRigidManager
+    from anyfesolver.general_contact.multiple_beam_rigid import PROFILE_SUPPORT_ANALYTIC, MultipleBeamRigidManager
     assert validate_general_contact(model,multi,settings).profile==PROFILE_SUPPORT_ANALYTIC
     assert all(isinstance(child,HemisphereSphereManager) for _,child in MultipleBeamRigidManager(model,multi,settings).pairs)
     record=os.environ.get('CONTACT_APP_RESULT_RECORD')

@@ -5,8 +5,8 @@ from decimal import Decimal, localcontext
 import numpy as np
 import pytest
 
-import anysolver._relative_reference_svd as driver
-from anysolver._native_relative_reference_factor_spectrum import solve_relative_reference_factor_spectrum
+import anyfesolver._relative_reference_svd as driver
+from anyfesolver._native_relative_reference_factor_spectrum import solve_relative_reference_factor_spectrum
 
 
 @pytest.mark.parametrize('amplitude', [1., 1e8, 1e16])

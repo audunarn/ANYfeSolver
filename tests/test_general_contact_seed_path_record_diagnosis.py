@@ -82,8 +82,8 @@ def _production_stages(record):
     certificate, and the expensive matching/overlap-local schedules are
     recorded as skipped-known-admitted.
     """
-    from anysolver.general_contact import q4_overlap_local_bound as bounds
-    from anysolver.general_contact.q4_source_overlap import (
+    from anyfesolver.general_contact import q4_overlap_local_bound as bounds
+    from anyfesolver.general_contact.q4_source_overlap import (
         q4_source_projected_gap_lower,
     )
     a0, a1, b0, b1, errors, tolerance = _arrays(record)

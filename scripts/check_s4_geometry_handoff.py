@@ -17,15 +17,15 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-import anysolver.shell_formulations.director_field as director_field_module  # noqa: E402
-from anysolver.shell_formulations.director_field import (  # noqa: E402
+import anyfesolver.shell_formulations.director_field as director_field_module  # noqa: E402
+from anyfesolver.shell_formulations.director_field import (  # noqa: E402
     DirectorValidationLimits,
     PreparedDirectorField,
     SourceCornerSamples,
     prepare_supplied_corner_directors,
     reconstruct_corner_directors,
 )
-from anysolver.shell_formulations.geometry_provenance import (  # noqa: E402
+from anyfesolver.shell_formulations.geometry_provenance import (  # noqa: E402
     GeometryAuditStatus,
     GeometryProvenanceHeader,
     GeometryProvenanceTables,
@@ -39,7 +39,7 @@ from anysolver.shell_formulations.geometry_provenance import (  # noqa: E402
     validate_provenance_snapshot,
     validate_shell_source_association,
 )
-from anysolver.shell_formulations.mitc4_plus_d_quality import (  # noqa: E402
+from anyfesolver.shell_formulations.mitc4_plus_d_quality import (  # noqa: E402
     numeric_payload_fingerprint,
 )
 
@@ -316,7 +316,7 @@ def _linear_preprocessing_structure_check() -> MappingResult:
 def _no_geometry_import_check() -> MappingResult:
     imported: set[str] = set()
     for name in ("geometry_provenance.py", "director_field.py", "mitc4_plus_d_quality.py"):
-        path = SRC / "anysolver" / "shell_formulations" / name
+        path = SRC / "anyfesolver" / "shell_formulations" / name
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):

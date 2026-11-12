@@ -57,7 +57,7 @@ def test_force_program_wheel_two_fresh_processes(tmp_path):
     candidates = list(wheels.glob('*.whl')); assert len(candidates) == 1
     wheel = candidates[0]
     with zipfile.ZipFile(wheel) as archive:
-        assert 'anysolver/_ge_beam3_load_program.py' in archive.namelist()
+        assert 'anyfesolver/_ge_beam3_load_program.py' in archive.namelist()
         assert not any(name.startswith(('docs/','tests/')) for name in archive.namelist())
     environment = tmp_path/'environment'
     command([sys.executable,'-I','-B','-m','venv',str(environment)],tmp_path,'venv')

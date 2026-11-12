@@ -7,14 +7,14 @@ import numpy as np
 import pytest
 from scipy.optimize import root
 
-from anysolver import (ContactSurface, ContactInteraction, RigidContactBody, DisplacementControl,
+from anyfesolver import (ContactSurface, ContactInteraction, RigidContactBody, DisplacementControl,
     CancellationToken, SolveCancelled, solve_static_nonlinear, validate_general_contact,
     report_general_contact_capability)
-from anysolver.elements import BeamElement, QuadraticBeamElement
-from anysolver.general_contact.multiple_beam_s3_caps import MultipleBeamS3CapManager, PROFILE
-from anysolver.general_contact.deformable_beam_s3_caps import DeformableBeamS3CapManager
-from anysolver.general_contact.beam_hemisphere_plane import HemispherePlaneManager
-from anysolver.general_contact.beam_hemisphere_sphere import HemisphereSphereManager
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver.general_contact.multiple_beam_s3_caps import MultipleBeamS3CapManager, PROFILE
+from anyfesolver.general_contact.deformable_beam_s3_caps import DeformableBeamS3CapManager
+from anyfesolver.general_contact.beam_hemisphere_plane import HemispherePlaneManager
+from anyfesolver.general_contact.beam_hemisphere_sphere import HemisphereSphereManager
 from examples.general_contact_multiple_beam_s3_caps import build, run
 from test_general_contact_deformable_beam_s3_caps import scalar_total
 from s3_von_karman_oracle import model_triangle_von_karman
@@ -116,7 +116,7 @@ def test_two_deforming_skins_independent_shared_beam_work_full_hessian_and_coupl
 
 
 def test_actual_four_coordinate_response_both_targets_controls_and_split_restart():
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
     model, definition, settings, load = fixture()
     common = dict(contact=definition, contact_settings=settings, num_steps=4,
         max_iterations=25, tolerance=1e-10, emit_restart_checkpoint=True)

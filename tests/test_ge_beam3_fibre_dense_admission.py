@@ -3,8 +3,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver import _ge_beam3_retained_fibre_state as state
-from anysolver._ge_beam3_seeded_load_program import ForceProgram
+from anyfesolver import _ge_beam3_retained_fibre_state as state
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram
 from docs.reference_cases import ge_beam3_fibre_arch_refinement as family
 
 
@@ -58,8 +58,8 @@ def test_default_capture_is_unchanged_and_explicit_budget_is_bound():
 
 @pytest.mark.parametrize('entry', ['force', 'translation', 'seeded', 'solve'])
 def test_explicit_budget_reaches_layout_before_any_mechanics(monkeypatch, entry):
-    from anysolver import _ge_beam3_retained_fibre_control as translation
-    from anysolver import _ge_beam3_seeded_fibre_control as seeded
+    from anyfesolver import _ge_beam3_retained_fibre_control as translation
+    from anyfesolver import _ge_beam3_seeded_fibre_control as seeded
     class CapturedBeforeAssembly(Exception): pass
     def capture(model, program, *, max_coordinates):
         assert max_coordinates == 512

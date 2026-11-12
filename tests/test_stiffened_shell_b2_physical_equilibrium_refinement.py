@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell as api
+from anyfesolver import stiffened_shell as api
 from examples.stiffened_shell_b2_physical_rigid_footprint import definition as physical_definition
 
 

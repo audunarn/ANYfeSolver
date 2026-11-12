@@ -57,9 +57,9 @@ from test_ge_beam3_precise_work_enrollment import original,precise_model
 
 
 def test_actual_precise_endpoint_capture_schur_and_custody(original):
-    from anysolver import _ge_beam3_elastic_seed_continuation as owner
-    from anysolver import _ge_beam3_elastic_seed_modal as modal
-    from anysolver._ge_beam3_p5_seeded.core import canonical as native
+    from anyfesolver import _ge_beam3_elastic_seed_continuation as owner
+    from anyfesolver import _ge_beam3_elastic_seed_modal as modal
+    from anyfesolver._ge_beam3_p5_seeded.core import canonical as native
     from docs.reference_cases.ge_beam3_precise_work_enrollment import enroll
     program=programme((.0003,));context,enrolled=enroll(precise_model(),program,original,sha256(original).hexdigest())
     result=owner.solve(precise_model(),program,enrolled,expected_seed_sha256=sha256(enrolled).hexdigest())

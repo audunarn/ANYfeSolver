@@ -10,9 +10,9 @@ import numpy as np
 import pytest
 
 from anymaterial import DNVC208MaterialCurve
-from anysolver import b3_ge, stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_ge_checkpoint_binary import MAGIC, decode, encode
+from anyfesolver import b3_ge, stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import MAGIC, decode, encode
 from test_stiffened_shell_ge_distributing_finite_public import definition as elastic_definition
 
 
@@ -210,7 +210,7 @@ def test_native_axial_yield_zero_signed_restart_and_canonical_tamper(coupled):
 
 
 def test_mixed_biaxial_yield_and_cancel_after_recovery_before_publication(monkeypatch):
-    from anysolver import _stiffened_shell_ge_finite_experimental as finite
+    from anyfesolver import _stiffened_shell_ge_finite_experimental as finite
     model = definition(mixed=True, yielding="biaxial", biaxial=True)
     owner = ss.create_analysis(definition=model)
     resumed = ss.create_analysis(definition=model)

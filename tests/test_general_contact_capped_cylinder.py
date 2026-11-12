@@ -7,9 +7,9 @@ import numpy as np
 import pytest
 from scipy.integrate import quad
 
-from anysolver import (RigidCappedCylinder, validate_general_contact, solve_static_nonlinear,
+from anyfesolver import (RigidCappedCylinder, validate_general_contact, solve_static_nonlinear,
     BoundaryCondition, DisplacementControl, LoadCase)
-from anysolver.general_contact.capped_cylinder import (signed_distance_work,_frame,
+from anyfesolver.general_contact.capped_cylinder import (signed_distance_work,_frame,
     curve_gap_lower,CappedCylinderBeamManager,signed_distance_value)
 from test_general_contact_beam_radial import _model,_trial
 
@@ -303,7 +303,7 @@ def test_public_development_example_runs_actual_static_route():
 
 
 def test_capability_reports_development_geometry_without_application_admission():
-    from anysolver import report_general_contact_capability
+    from anyfesolver import report_general_contact_capability
     model,definition,settings=_case(True)
     report=report_general_contact_capability(model,definition,settings)
     assert report.implemented and report.rigid_profiles==(('obstacle','capped_cylinder'),)
@@ -321,26 +321,26 @@ def test_nonmidpoint_b3_reference_rejects_chord_measure_substitution():
 
 
 def test_actual_import_root_preserves_lazy_no_contact_solve():
-    import anysolver
+    import anyfesolver
     import subprocess
     import sys
-    root=Path(anysolver.__file__).resolve().parent.parent
+    root=Path(anyfesolver.__file__).resolve().parent.parent
     environment=dict(os.environ,PYTHONPATH=str(root),CAPS_EXPECTED_IMPORT_ROOT=str(root))
     code='''import os,sys
 from pathlib import Path
-import anysolver
-assert Path(anysolver.__file__).resolve().is_relative_to(Path(os.environ['CAPS_EXPECTED_IMPORT_ROOT']))
-assert 'anysolver.general_contact' not in sys.modules
-from anysolver.boundary import LoadCase
-from anysolver.mesh_gen import generate_beam_mesh
+import anyfesolver
+assert Path(anyfesolver.__file__).resolve().is_relative_to(Path(os.environ['CAPS_EXPECTED_IMPORT_ROOT']))
+assert 'anyfesolver.general_contact' not in sys.modules
+from anyfesolver.boundary import LoadCase
+from anyfesolver.mesh_gen import generate_beam_mesh
 model=generate_beam_mesh(1.,num_divisions=1)
 load=LoadCase('axial'); load.add_nodal_load(2,[10.,0.,0.,0.,0.,0.])
-result=anysolver.solve_static_nonlinear(model,load,num_steps=1,max_iterations=5)
+result=anyfesolver.solve_static_nonlinear(model,load,num_steps=1,max_iterations=5)
 assert result.status=='completed',result.failure_reason
-assert 'anysolver.general_contact.core' not in sys.modules
-assert 'anysolver.general_contact.capped_cylinder' not in sys.modules
-from anysolver import RigidCappedCylinder
-from anysolver.general_contact import RigidCappedCylinder as exported
+assert 'anyfesolver.general_contact.core' not in sys.modules
+assert 'anyfesolver.general_contact.capped_cylinder' not in sys.modules
+from anyfesolver import RigidCappedCylinder
+from anyfesolver.general_contact import RigidCappedCylinder as exported
 assert RigidCappedCylinder is exported
 '''
     completed=subprocess.run([sys.executable,'-c',code],env=environment,

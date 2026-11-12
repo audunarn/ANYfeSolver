@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BeamElement,
     FEModel,
     GeneralizedBeamSection,

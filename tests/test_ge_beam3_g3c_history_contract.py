@@ -62,7 +62,7 @@ class HistoryContractTests(unittest.TestCase):
         changed=copy.deepcopy(self.c); changed['mutation_categories'].pop()
         with self.assertRaises(ValueError): contract.validate_contract(changed)
         self.assertNotIn('numpy',sys.modules)
-        self.assertNotIn('anysolver',sys.modules)
+        self.assertNotIn('anyfesolver',sys.modules)
 
 
 if __name__ == '__main__':

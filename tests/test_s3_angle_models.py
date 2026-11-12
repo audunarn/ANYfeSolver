@@ -17,8 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import qualify_s3_angles as campaign  # noqa: E402
-from anysolver import LoadCase, assemble_load_vector  # noqa: E402
-from anysolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement  # noqa: E402
+from anyfesolver import LoadCase, assemble_load_vector  # noqa: E402
+from anyfesolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement  # noqa: E402
 
 
 @pytest.mark.parametrize("angle", (20.0, 15.0))
@@ -126,10 +126,10 @@ def test_corotational_restart_is_bitwise_equivalent_on_a_15_degree_mesh() -> Non
     """Restart/identity: V2D state carries no geometry-admission field, so a
     reduced-angle model must checkpoint and resume exactly like any other."""
 
-    from anysolver import FEModel, create_shell_element
-    from anysolver.boundary import FixedSupport
-    from anysolver.e4_pl_s3_v2d_state import canonical_json_bytes
-    from anysolver.nonlinear_static import solve_static_nonlinear
+    from anyfesolver import FEModel, create_shell_element
+    from anyfesolver.boundary import FixedSupport
+    from anyfesolver.e4_pl_s3_v2d_state import canonical_json_bytes
+    from anyfesolver.nonlinear_static import solve_static_nonlinear
 
     # Two 15/75/90 triangles: restart checkpoint normalization currently runs
     # a model-wide lifecycle guard per JSON node (quadratic in model size, see

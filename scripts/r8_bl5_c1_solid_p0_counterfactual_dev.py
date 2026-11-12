@@ -10,7 +10,7 @@ from hashlib import sha256
 import json
 from pathlib import Path
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 import psutil
@@ -92,8 +92,8 @@ def _interior_max(station: np.ndarray) -> list[float]:
 
 
 def evaluate() -> dict:
-    if Path(anysolver.__file__).resolve().parent != (ROOT / "src" / "anysolver").resolve():
-        raise RuntimeError("wrong ANYsolver checkout")
+    if Path(anyfesolver.__file__).resolve().parent != (ROOT / "src" / "anyfesolver").resolve():
+        raise RuntimeError("wrong ANYfeSolver checkout")
     meta_path = PREPARED / "metadata.json"
     metadata = json.loads(meta_path.read_text(encoding="utf-8"))
     strong_saved = json.loads(STRONG.read_text(encoding="utf-8"))
@@ -227,7 +227,7 @@ def evaluate() -> dict:
             "numba_disable_jit": int(numba.config.DISABLE_JIT),
             "numba_threads": numba.get_num_threads(),
             "threadpools": threadpool_info(),
-            "anysolver_import": str(Path(anysolver.__file__).resolve()),
+            "anyfesolver_import": str(Path(anyfesolver.__file__).resolve()),
         },
         "limitation": "one saved C1 solid body, exact half-cell P0 source KKT; not external execution, native body equivalence, P0 selection, mesh convergence or formal F03",
     }

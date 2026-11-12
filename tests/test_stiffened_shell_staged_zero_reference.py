@@ -8,11 +8,11 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell as ss
-from anysolver import _stiffened_shell_staged_load_experimental as staged
-from anysolver._stiffened_shell_ge_experimental import _linear_equilibrium, PROFILE
-from anysolver._stiffened_shell_beam_history import arrays as native_history_arrays
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import stiffened_shell as ss
+from anyfesolver import _stiffened_shell_staged_load_experimental as staged
+from anyfesolver._stiffened_shell_ge_experimental import _linear_equilibrium, PROFILE
+from anyfesolver._stiffened_shell_beam_history import arrays as native_history_arrays
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_stiffened_shell_staged_load_definition_experimental import (
     MODEL, _load, _owner as compiler_owner, _programme, _unframe, _frame, _canonical)
 from test_stiffened_shell_ge_physical_fibre_finite import _yielding_definition
@@ -114,7 +114,7 @@ def test_zero_reference_equivalent_work_units_preserve_small_component_checks():
 
 def test_first_zero_stage_uses_prepared_reference_without_precommit_mutation(request,monkeypatch):
     from test_stiffened_shell_staged_load_owner_experimental import _owner,_actions
-    from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+    from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
     owner = _owner(request)
     programme = ss.StagedDeadLoadProgramme(owner._identity,((),_actions()),
         zero_load_reference_endpoint=2)
@@ -181,7 +181,7 @@ def test_point_plastic_zero_unload_restart_and_atomic_failure(request,monkeypatc
         failed.solve(programme,(1.5,2.),cancellation_token=token,**options)
     assert failed.checkpoint() == loaded_checkpoint
     with monkeypatch.context() as patch:
-        from anysolver import _stiffened_shell_ge_finite_experimental as finite
+        from anyfesolver import _stiffened_shell_ge_finite_experimental as finite
         patch.setattr(finite.spla,'spsolve',lambda matrix,rhs:np.zeros_like(rhs))
         with pytest.raises(RuntimeError):
             failed.solve(programme,(2.,),max_iterations=1,max_backtracks=0)
@@ -212,7 +212,7 @@ def test_point_plastic_zero_unload_restart_and_atomic_failure(request,monkeypatc
     assert descriptor == programme and position == 2.
     other_reference = replace(programme,zero_load_reference_endpoint=3)
     other = make()
-    from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+    from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
     forged = staged.encode_checkpoint(other_reference.compile(other,FinitePointDriver(other)._load),2.,inner)
     with pytest.raises(ValueError):
         other.restore(forged)

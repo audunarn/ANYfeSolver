@@ -1,17 +1,17 @@
 """Bounded library scopes preserve source probes and caller authority boundaries."""
 import numpy as np
 import pytest
-from anysolver import (BoundaryCondition, FixedSupport, LoadCase, RecoveryConfig,
+from anyfesolver import (BoundaryCondition, FixedSupport, LoadCase, RecoveryConfig,
                        PreparedStaticCapabilityError, SolveCancelled,
                        prepare_static_response_evaluator)
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
-from anysolver.prepared_static_recovery import _OWNED_RECOVERY_SCOPE
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.prepared_static_recovery import _OWNED_RECOVERY_SCOPE
 from test_prepared_static_evaluator import _shell_model, _shell_case
 
 
 def test_library_tiles_preserve_order_size_and_original_safe_point_positions():
-    from anysolver.prepared_static_response import _library_tiles, _LIBRARY_SAFE_POINT_STRIDE
+    from anyfesolver.prepared_static_response import _library_tiles, _LIBRARY_SAFE_POINT_STRIDE
     entries={index:None for index in range(399,199,-1)}
     tiles=list(_library_tiles(entries))
     assert [start for start,_ in tiles]==[0,64,128,192]
@@ -46,8 +46,8 @@ def test_preparation_timing_counts_native_probes_columns_and_snapshot_phases():
 
 
 def test_memory_base_is_cached_with_factor_state_aware_policy(monkeypatch):
-    from anysolver import ResourceConfig
-    from anysolver.recovery import ResourcePolicyError
+    from anyfesolver import ResourceConfig
+    from anyfesolver.recovery import ResourcePolicyError
     with prepare_static_response_evaluator(_shell_model(),{'p':_shell_case(1,pressure=2.).load_case},
             recovery_config=RecoveryConfig(include_stresses=True,include_reactions=False),
             stress_execution='certified_library') as evaluator:
@@ -80,8 +80,8 @@ def test_memory_base_is_cached_with_factor_state_aware_policy(monkeypatch):
 
 
 def test_memory_cache_accounts_operator_bytes_even_for_same_matrix_owner():
-    from anysolver import ResourceConfig
-    from anysolver.recovery import ResourcePolicyError
+    from anyfesolver import ResourceConfig
+    from anyfesolver.recovery import ResourcePolicyError
     with prepare_static_response_evaluator(_shell_model(),{'p':_shell_case(1,pressure=2.).load_case},
             recovery_config=RecoveryConfig(include_stresses=True,include_reactions=False),
             stress_execution='certified_library') as evaluator:
@@ -104,8 +104,8 @@ def test_memory_cache_accounts_operator_bytes_even_for_same_matrix_owner():
 
 
 def test_memory_cache_accounts_snapshot_csr_growth_for_same_snapshot_owner():
-    from anysolver import ResourceConfig
-    from anysolver.recovery import ResourcePolicyError
+    from anyfesolver import ResourceConfig
+    from anyfesolver.recovery import ResourcePolicyError
     with prepare_static_response_evaluator(_shell_model(),{'p':_shell_case(1,pressure=2.).load_case},
             recovery_config=RecoveryConfig(include_stresses=True,include_reactions=False),
             stress_execution='certified_library') as evaluator:
@@ -145,7 +145,7 @@ def _independent_beams(count):
 
 @pytest.mark.parametrize('action',['cancel','source_helper','clock_alias'])
 def test_actual_second_caller_boundary_outside_scope_refuses_without_success(monkeypatch,action):
-    import anysolver.prepared_static_response as response
+    import anyfesolver.prepared_static_response as response
     model,load=_independent_beams(129)
     class CallerToken:
         schema_observations=0

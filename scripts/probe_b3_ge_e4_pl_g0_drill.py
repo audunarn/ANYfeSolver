@@ -6,8 +6,8 @@ import json
 
 import numpy as np
 
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEMesh, Material
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEMesh, Material
 
 
 def specimen(formulation: str, coordinates: tuple[tuple[float, ...], ...]) -> dict:

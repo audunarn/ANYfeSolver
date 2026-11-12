@@ -37,7 +37,7 @@ def test_bound_sources_have_no_runtime_research_dependency():
                 if isinstance(node, ast.Import): imports = [a.name for a in node.names]
                 elif isinstance(node, ast.ImportFrom): imports = [node.module]
                 else: continue
-                assert all(name.split('.')[0] in sys.stdlib_module_names | {'anysolver', 'numpy'} for name in imports)
+                assert all(name.split('.')[0] in sys.stdlib_module_names | {'anyfesolver', 'numpy'} for name in imports)
 
 
 def test_external_archive_and_cycle_equality():

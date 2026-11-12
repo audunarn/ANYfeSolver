@@ -6,7 +6,7 @@ from pathlib import Path
 import json
 import pytest
 import numpy as np
-from anysolver.general_contact.native_normal_angles import PreciseNormalAngles
+from anyfesolver.general_contact.native_normal_angles import PreciseNormalAngles
 
 
 @pytest.mark.parametrize('slope',(0.,1e-20,-1e-20))
@@ -44,8 +44,8 @@ def test_constant_angular_gap_does_not_create_roots():
 
 
 def test_positive_quadrature_measure_underflow_cannot_report_zero_work():
-    from anysolver._ge_beam3_mixed_ad import Jet2
-    from anysolver.general_contact.native_surface_normal import (
+    from anyfesolver._ge_beam3_mixed_ad import Jet2
+    from anyfesolver.general_contact.native_surface_normal import (
         StraightNormalIntegrationSettings, _integrate_material_normal_data)
     minimum=float(np.nextafter(0.,1.))
     with localcontext() as ctx:

@@ -12,10 +12,10 @@ import pytest
 from numpy.testing import assert_allclose
 from scipy.optimize import minimize_scalar
 
-from anysolver.general_contact.beam_hemisphere_cylinder_work import (
+from anyfesolver.general_contact.beam_hemisphere_cylinder_work import (
     hemisphere_cylinder_work,
 )
-from anysolver.general_contact.beam_hemisphere_support import (
+from anyfesolver.general_contact.beam_hemisphere_support import (
     HemispherePlaneGeometryError,
 )
 

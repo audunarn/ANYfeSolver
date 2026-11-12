@@ -6,8 +6,8 @@ import json
 from pathlib import Path
 import zipfile
 
-import anysolver
-from anysolver import stiffened_shell as api
+import anyfesolver
+from anyfesolver import stiffened_shell as api
 import numba
 import numpy as np
 from scipy import sparse
@@ -39,13 +39,13 @@ def plain(value):
 
 def evaluate(site,wheel,source,old_root,kernel,output):
     if output.exists():raise FileExistsError(output)
-    if not Path(anysolver.__file__).resolve().is_relative_to(site.resolve()):
+    if not Path(anyfesolver.__file__).resolve().is_relative_to(site.resolve()):
         raise ValueError('declared installed package required')
     modules={}
-    source_files={'anysolver/'+p.relative_to(source/'src/anysolver').as_posix():p
-                  for p in (source/'src/anysolver').rglob('*.py')}
+    source_files={'anyfesolver/'+p.relative_to(source/'src/anyfesolver').as_posix():p
+                  for p in (source/'src/anyfesolver').rglob('*.py')}
     with zipfile.ZipFile(wheel) as z:
-        names={n for n in z.namelist() if n.startswith('anysolver/') and n.endswith('.py')}
+        names={n for n in z.namelist() if n.startswith('anyfesolver/') and n.endswith('.py')}
         if len(names)!=417 or names!=set(source_files):raise ValueError('complete417-module graph required')
         for name in sorted(names):
             raw=z.read(name)
@@ -131,7 +131,7 @@ def evaluate(site,wheel,source,old_root,kernel,output):
             identity='BL5_P1_discontinuous_cell_average_span_8',policy='four shell intervals, complete five-channel pair, same coarse model',
             predicates=predicates,cases=cases,operator_parity=dict(K=k_error,C=c_error),
             factorization_count=owner._linear_factorizations,accurate_refinements=owner._linear_refinements,
-            imported_anysolver=anysolver.__file__,wheel_sha256=sha(wheel),module_sha256=modules,
+            imported_anyfesolver=anyfesolver.__file__,wheel_sha256=sha(wheel),module_sha256=modules,
             source_sha256=sha(__file__),helper_sha256={Path(f.__code__.co_filename).name:sha(f.__code__.co_filename)
                 for f in (model,physical_transfer,saved_csr,exact_transfer_moments,rigid_maps,layout)},
             input_sha256=dict(kernel_json=sha(kernel),kernel_npz=sha(kernel.with_suffix('.npz')),

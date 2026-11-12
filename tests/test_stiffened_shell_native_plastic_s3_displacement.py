@@ -3,15 +3,15 @@ from dataclasses import replace
 import numpy as np
 import pytest
 from anymaterial import DNVC208MaterialCurve
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_displacement_checkpoint import decode_snapshot, encode_snapshot
-from anysolver._stiffened_shell_q4_algorithmic_pullback import HISTORICAL_POLICY
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_displacement_checkpoint import decode_snapshot, encode_snapshot
+from anyfesolver._stiffened_shell_q4_algorithmic_pullback import HISTORICAL_POLICY
 from test_stiffened_shell_ge_experimental import _panel
 from test_stiffened_shell_native_point_displacement import owner, DIRECTION, CONTROL, OPTIONS
 from test_stiffened_shell_native_coupled_material import definition_for
 from test_stiffened_shell_native_s3_displacement_admission import compare_generalized
-from anysolver.e4_pl_s3_v2d_state import seal_v2d_state
+from anyfesolver.e4_pl_s3_v2d_state import seal_v2d_state
 
 
 def definition(fibre=False, mixed_shell=False):
@@ -135,7 +135,7 @@ def test_mixed_j2_s3_binding_and_rejected_nominal_target(request,tmp_path):
     seed=failed.checkpoint()
     kw=dict(OPTIONS,displacement_control=CONTROL)
     # Frozen large-target failure is used solely as a rollback oracle.
-    from anysolver._stiffened_shell_displacement_corrector import DisplacementCorrectorFailure
+    from anyfesolver._stiffened_shell_displacement_corrector import DisplacementCorrectorFailure
     with pytest.raises(DisplacementCorrectorFailure,match='backtrack budget exhausted'):
         failed.solve(DIRECTION,(nominal*1.01,),**kw)
     assert failed.checkpoint()==seed and getattr(failed,'_displacement_snapshot',None) is None

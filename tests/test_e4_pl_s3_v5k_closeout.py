@@ -63,6 +63,6 @@ def test_v5k_does_not_activate_s3_or_change_q4() -> None:
         "default_s3_formulation": "legacy-s3",
         "q4_mechanics_unchanged": True,
     }
-    source = (ROOT / "src/anysolver/elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src/anyfesolver/elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source

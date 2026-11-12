@@ -13,11 +13,11 @@ from anyhydro import ExcitationSeries, build_excitation_series, UNIT_INCIDENT_AM
 from anyhydro.fixtures import make_two_body_fixture
 from anyloads import (JonswapSpectrum, WaveRealization, DirectionalSpectrum,
     MorisonSection, HydrodynamicOwnership)
-from anysolver.marine_potential_flow import (data_to_dict,data_from_dict,
+from anyfesolver.marine_potential_flow import (data_to_dict,data_from_dict,
     PotentialFlowDevelopmentContribution,MarinePotentialFlowError)
-from anysolver.marine_morison import MemberEndpoint, MorisonMember, MorisonMemberSetContribution
-from anysolver.marine_contributions import ContributionSet, StepInformation, MarineContributionsError
-from anysolver.marine_mechanical import MarineMechanicalModel, MarineMechanicalRunSpec, solve_marine_mechanical
+from anyfesolver.marine_morison import MemberEndpoint, MorisonMember, MorisonMemberSetContribution
+from anyfesolver.marine_contributions import ContributionSet, StepInformation, MarineContributionsError
+from anyfesolver.marine_mechanical import MarineMechanicalModel, MarineMechanicalRunSpec, solve_marine_mechanical
 from test_marine_potential_flow import fixture,frame,body,states_for
 
 
@@ -55,7 +55,7 @@ def test_series_work_pullback_and_diagnostics():
     states=states_for(frames,True);owner=ContributionSet(('a','b'),(p,))
     step=owner.prepare_step(StepInformation(0,.1,'initialization'))
     trial=owner.evaluate_trial(step,states);diag=trial.diagnostics[p.contribution_id]
-    from anysolver.marine_hydro_coordinates import evaluate_coupled
+    from anyfesolver.marine_hydro_coordinates import evaluate_coupled
     mapped=evaluate_coupled(frames,states)
     expected=np.zeros(12);expected[0]=.4-.1
     np.testing.assert_allclose(diag['components']['excitation'],mapped.jacobian.T@expected,rtol=1e-12,atol=1e-12)
@@ -104,7 +104,7 @@ def test_series_cancellation_preserves_accepted_memory():
 
 
 def shared_model():
-    from anysolver.marine_hydro_coordinates import EquilibriumHydroFrame
+    from anyfesolver.marine_hydro_coordinates import EquilibriumHydroFrame
     ds=make_two_body_fixture()
     frames=tuple(EquilibriumHydroFrame(str(b),tuple(ds.rotation_center.values[i]),
         np.eye(3),np.eye(3),(0.,)*3) for i,b in enumerate(ds.body.values))

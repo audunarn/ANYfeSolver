@@ -5,10 +5,10 @@ import ast
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver._ge_beam3_fibre_distributed_couples import cell_couple_load, spatial_jacobian, chart_pullback, solve_distributed_static
-from anysolver._ge_beam3_fibre_line_work import evaluate as line_work
-from anysolver._ge_beam3_p5.algebra import rotation, skew
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_fibre_distributed_couples import cell_couple_load, spatial_jacobian, chart_pullback, solve_distributed_static
+from anyfesolver._ge_beam3_fibre_line_work import evaluate as line_work
+from anyfesolver._ge_beam3_p5.algebra import rotation, skew
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from docs.reference_cases import ge_beam3_distributed_couple_oracle as oracle
 from test_ge_beam3_fibre_static_boundary import inputs, solve as conservative_solve
 from test_ge_beam3_schur_line_program import save
@@ -154,7 +154,7 @@ def test_bad_density_rejected(bad):
 
 
 def test_deadline_and_source_separation(monkeypatch):
-    import anysolver._ge_beam3_fibre_distributed_couples as module
+    import anyfesolver._ge_beam3_fibre_distributed_couples as module
     op,x,low,q=inputs(False,False);times=[]
     def clock():times.append(True);return 61.*len(times)
     monkeypatch.setattr(module,'monotonic',clock)

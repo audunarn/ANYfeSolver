@@ -8,8 +8,8 @@ import pytest
 import test_general_contact_s3_mesh_weak_pressure_friction as weak
 import examples.general_contact_s3_mesh_weak_pressure_friction as endpoint_example
 from examples.general_contact_s3_mesh_swept_gap import build_case
-from anysolver.general_contact import S3MeshWholeChordGapFrictionSettings
-from anysolver.general_contact import s3_friction_swept_gap as gap
+from anyfesolver.general_contact import S3MeshWholeChordGapFrictionSettings
+from anyfesolver.general_contact import s3_friction_swept_gap as gap
 
 def _bind(monkeypatch):
     monkeypatch.setattr(weak,'build_case',build_case)
@@ -27,7 +27,7 @@ def test_squared_chord_proof(monkeypatch):
     # Target z=t*x; material point x=t,z=t. Endpoints touch, midpoint opens.
     target=(_p((0,0),(0,0),(0,0)),_p((1,0),(0,0),(0,1)),_p((0,0),(1,0),(0,0)))
     point=_p((0,1),(F(1,4),0),(0,1));budget=F(float(5e-5))
-    from anysolver.general_contact.s3_friction_mesh_coverage import restrict
+    from anyfesolver.general_contact.s3_friction_mesh_coverage import restrict
     at=lambda p,t:tuple(restrict(v,t,t) for v in p)
     assert gap.point_facet_certified(at(point,F(0)),tuple(at(p,F(0)) for p in target),budget)
     assert gap.point_facet_certified(at(point,F(1)),tuple(at(p,F(1)) for p in target),budget)
@@ -47,8 +47,8 @@ def test_squared_chord_proof(monkeypatch):
         first[dd[2]]=-a*x
         last[dd[2]]=a*(x+drift if node in source_ids else x)
         if node in source_ids:last[dd[0]]=drift
-    from anysolver.general_contact.s3_friction_mesh_coverage import mesh_moving_coverage
-    from anysolver.general_contact.s3_friction_dyadic_interval import outward_dyadic_160
+    from anyfesolver.general_contact.s3_friction_mesh_coverage import mesh_moving_coverage
+    from anyfesolver.general_contact.s3_friction_dyadic_interval import outward_dyadic_160
     with outward_dyadic_160():assert mesh_moving_coverage(owner,first,last)
     mark('strict patch union certified')
     # 2^-14 is drift's ideal opening contribution; bind actual reference

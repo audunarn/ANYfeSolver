@@ -3,10 +3,10 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 from scipy import sparse
-from anysolver import stiffened_shell as api
-from anysolver.control import CancellationToken
-from anysolver._b2_attachment_elimination_dev import prepare_attachment_elimination
-import anysolver._b2_attachment_elimination_dev as elimination
+from anyfesolver import stiffened_shell as api
+from anyfesolver.control import CancellationToken
+from anyfesolver._b2_attachment_elimination_dev import prepare_attachment_elimination
+import anyfesolver._b2_attachment_elimination_dev as elimination
 
 
 def raw_fixture(*, groups=1, nodes=3, nonsymmetric=False):

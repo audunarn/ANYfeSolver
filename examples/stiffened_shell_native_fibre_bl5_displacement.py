@@ -1,6 +1,6 @@
 """Experimental fixed axial translation control, native BL5 history and restart."""
 import json
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from examples.stiffened_shell_native_fibre_bl5_material import definition
 
 ACTIONS = (ss.NodalAction('beam', 105, (500., 0., 0., 0., 0., 0.)),)

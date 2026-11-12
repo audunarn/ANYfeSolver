@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import numpy as np
 from scipy.sparse import csr_matrix
 
-from anysolver.general_contact.s3_sliding_friction import S3SlidingFrictionManager
+from anyfesolver.general_contact.s3_sliding_friction import S3SlidingFrictionManager
 
 import json,os
 import pytest
@@ -21,10 +21,10 @@ def _save(data):
 
 def test_mesh_unit():
     from examples.general_contact_s3_mesh_moving_friction import build_case,TILT
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager,S3_MESH_MONOLITHIC_PROFILE
-    from anysolver.general_contact.s3_friction_static import create_s3_friction_manager
-    from anysolver.general_contact.semismooth import linearize,reference_nodal_support
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager,S3_MESH_MONOLITHIC_PROFILE
+    from anyfesolver.general_contact.s3_friction_static import create_s3_friction_manager
+    from anyfesolver.general_contact.semismooth import linearize,reference_nodal_support
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
     model,definition,settings,friction,program,reference=build_case()
     normal=GeneralS3PatchManager(model,definition,settings)
     assert normal.profile==S3_MESH_MONOLITHIC_PROFILE
@@ -70,8 +70,8 @@ def test_mesh_unit():
 
 
 def _pose_gate(model,definition,settings,friction,u,z):
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.s3_friction_static import create_s3_friction_manager
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_friction_static import create_s3_friction_manager
     normal=GeneralS3PatchManager(model,definition,settings);manager=create_s3_friction_manager(model,normal,friction)
     source,target=normal._positions(u);ids=normal.law.source_node_ids+normal.law.target_node_ids
     independent=[]
@@ -107,7 +107,7 @@ def test_mesh_public():
     # on-disk counters even if the resource guard terminates the process.
     if os.environ.get('MESH_CAPTURE')=='1':
         import time
-        import anysolver.general_contact.s3_friction_static as factory
+        import anyfesolver.general_contact.s3_friction_static as factory
         original=factory.create_s3_friction_manager;counter={};events=[]
         path=Path(os.environ['AUTOMATIC_RUNTIME_RESULT']).parent/'diagnostic.json'
         def capture(*args):
@@ -192,10 +192,10 @@ def test_mesh_public():
 def test_mesh_saved_proof():
     """Recompute gates from saved poses without another coupled solve."""
     from examples.general_contact_s3_mesh_moving_friction import build_case
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.s3_friction_static import create_s3_friction_manager
-    from anysolver.general_contact.semismooth import linearize
-    from anysolver.nonlinear_static import _assemble_nonlinear_system
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_friction_static import create_s3_friction_manager
+    from anyfesolver.general_contact.semismooth import linearize
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system
     evidence=Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])
     prefix=os.environ['FRICTION_STAGE']=='prefix-proof'
     saved=json.loads((evidence/('A2.json' if prefix else 'A6.json')).read_text())
@@ -285,10 +285,10 @@ def test_mesh_saved_proof():
 def test_mesh_rollback(monkeypatch):
     import copy,pytest
     from examples.general_contact_s3_mesh_moving_friction import build_case
-    from anysolver import solve_static_nonlinear
-    from anysolver.control import CancellationToken,SolveCancelled
-    from anysolver.general_contact.runtime import active_contact_manager
-    import anysolver.general_contact.s3_friction_static as factory
+    from anyfesolver import solve_static_nonlinear
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.general_contact.runtime import active_contact_manager
+    import anyfesolver.general_contact.s3_friction_static as factory
     evidence=Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])
     checkpoint=json.loads((evidence/'A2.json').read_text())['checkpoint']
     immutable=copy.deepcopy(checkpoint);expected=checkpoint['path_state']['friction_state']
@@ -326,18 +326,18 @@ def test_mesh_rollback(monkeypatch):
 def test_mesh_refusal(monkeypatch):
     import copy,pytest
     from examples.general_contact_s3_mesh_moving_friction import build_case
-    from anysolver import solve_static_nonlinear
-    from anysolver.control import CancellationToken,SolveCancelled
-    from anysolver.general_contact.s3_sliding_friction import S3SlidingFrictionSettings
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.s3_friction_static import create_s3_friction_manager
+    from anyfesolver import solve_static_nonlinear
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.general_contact.s3_sliding_friction import S3SlidingFrictionSettings
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_friction_static import create_s3_friction_manager
     case=build_case();model,definition,settings,friction,program,_=case;before=repr(model)
     token=CancellationToken();token.cancel('moving friction precancel')
     with pytest.raises(SolveCancelled):
         solve_static_nonlinear(model,contact=definition,contact_settings=settings,
             contact_friction=friction,contact_path_program=program,cancellation_token=token)
     assert repr(model)==before
-    import anysolver.general_contact.static_path as owned_driver
+    import anyfesolver.general_contact.static_path as owned_driver
     with monkeypatch.context() as patch:
         patch.setattr(owned_driver,'_assemble_nonlinear_system',lambda *a,**k:(_ for _ in ()).throw(AssertionError('normal-only mesh reached material')))
         with pytest.raises(ValueError,match='requires exact S3MeshMovingNormalFrictionSettings'):
@@ -345,7 +345,7 @@ def test_mesh_refusal(monkeypatch):
     normal=GeneralS3PatchManager(model,definition,settings)
     with pytest.raises(ValueError):
         create_s3_friction_manager(model,normal,S3SlidingFrictionSettings(.3,1000.,(2e-8,)*60,201))
-    import anysolver.general_contact.static_path as path_driver
+    import anyfesolver.general_contact.static_path as path_driver
     with monkeypatch.context() as patch:
         patch.setattr(path_driver,'_assemble_nonlinear_system',
             lambda *a,**k: (_ for _ in ()).throw(AssertionError('wrong subtype reached material')))
@@ -368,7 +368,7 @@ def test_mesh_archive_checkpoint_refusals():
     import copy,pytest,hashlib
     from dataclasses import replace
     from examples.general_contact_s3_mesh_moving_friction import build_case
-    from anysolver import solve_static_nonlinear
+    from anyfesolver import solve_static_nonlinear
     evidence=Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])
     from test_general_contact_s3_sliding_friction import _manager
     old=_manager()[-1]
@@ -390,10 +390,10 @@ def test_mesh_archive_checkpoint_refusals():
 def test_mesh_certificate_controls(monkeypatch):
     import pytest
     from examples.general_contact_s3_mesh_moving_friction import build_case
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.s3_friction_static import create_s3_friction_manager
-    import anysolver.general_contact.s3_friction_mesh_monolithic as module
-    from anysolver.general_contact.s3_friction_mesh_coverage import mesh_moving_coverage,_chart_check
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_friction_static import create_s3_friction_manager
+    import anyfesolver.general_contact.s3_friction_mesh_monolithic as module
+    from anyfesolver.general_contact.s3_friction_mesh_coverage import mesh_moving_coverage,_chart_check
     case=build_case();m,d,s,f,p,r=case;owner=create_s3_friction_manager(m,GeneralS3PatchManager(m,d,s),f)
     original=module.mesh_moving_coverage;calls=[]
     def counted(*a):calls.append(True);return original(*a)
@@ -439,9 +439,9 @@ def test_mesh_certificate_controls(monkeypatch):
     source=[poly((-.01,-.01,0.)),poly((.01,-.01,0.)),poly((0.,.01,0.))]
     assert not _chart_check(source,facets,rim,())
     # Exercise the same guard through the actual public path, before material.
-    import anysolver.general_contact.s3_friction_static as factory
-    import anysolver.general_contact.static_path as driver
-    from anysolver import solve_static_nonlinear
+    import anyfesolver.general_contact.s3_friction_static as factory
+    import anyfesolver.general_contact.static_path as driver
+    from anyfesolver import solve_static_nonlinear
     import copy
     original_factory=factory.create_s3_friction_manager
     m,d,s,f,p,r=build_case();before=repr(m);captured=[];origins=[]

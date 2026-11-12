@@ -5,15 +5,15 @@ import math
 import numpy as np
 import pytest
 
-from anysolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, RigidContactBody, LoadCase)
-from anysolver.dynamics import TransientConfig
-from anysolver.elements import BeamElement, QuadraticBeamElement
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.beam_radial import _BeamRadialManager
-from anysolver.general_contact.core import active_contact_manager
-from anysolver.general_contact.free_rigid import ContactFreeRigidBody, _FreeSphereManager
-from anysolver.general_contact.transient import ContactNodalLoadHistory, ContactTransientSolverControls, solve_transient_contact
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.beam_radial import _BeamRadialManager
+from anyfesolver.general_contact.core import active_contact_manager
+from anyfesolver.general_contact.free_rigid import ContactFreeRigidBody, _FreeSphereManager
+from anyfesolver.general_contact.transient import ContactNodalLoadHistory, ContactTransientSolverControls, solve_transient_contact
 
 
 CONTROLS = ContactTransientSolverControls(allow_classical_beam_dev=True,
@@ -152,7 +152,7 @@ def test_complete_coupled_virtual_work_tangent_and_centre_wrench(quadratic):
 
 def test_active_restart_binds_inertia_spin_and_named_state():
     import copy
-    from anysolver.nonlinear_restart import analysis_configuration_fingerprint
+    from anyfesolver.nonlinear_restart import analysis_configuration_fingerprint
     _, direct = impact()
     _, prefix = impact(end=.014, emit=True)
     assert prefix.restart_checkpoint['version'] == 6
@@ -239,8 +239,8 @@ def test_free_sphere_nodal_history_and_work_survive_active_restart():
 
 @pytest.mark.parametrize('cancel', [False, True])
 def test_free_body_candidate_failure_does_not_commit(monkeypatch, cancel):
-    import anysolver.general_contact.transient as driver
-    from anysolver.control import CancellationToken, SolveCancelled
+    import anyfesolver.general_contact.transient as driver
+    from anyfesolver.control import CancellationToken, SolveCancelled
     token = CancellationToken()
     commits, calls = [], []
     commit, evaluate = driver.commit_state_candidate, _FreeSphereManager.evaluate

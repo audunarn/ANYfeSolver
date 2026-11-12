@@ -9,7 +9,7 @@ import sys
 import numpy as np
 import pytest
 
-from anysolver.elements import DEFAULT_Q4_FORMULATION, DEFAULT_S3_FORMULATION
+from anyfesolver.elements import DEFAULT_Q4_FORMULATION, DEFAULT_S3_FORMULATION
 
 
 ROOT = Path(__file__).resolve().parents[1]

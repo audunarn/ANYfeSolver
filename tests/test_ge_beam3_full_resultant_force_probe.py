@@ -1,10 +1,10 @@
 """Small actual force solves of the elastic retained-resultant experiment."""
 import numpy as np
 import pytest
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from docs.reference_cases.ge_beam3_full_resultant_force_probe import solve_two_macro_probe
 from test_ge_beam3_curved_contrast_probe import make_curved
-from anysolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._ge_beam3_p5.algebra import rotation
 
 
 @pytest.mark.parametrize('slenderness', [100., 10000., 1000000.])

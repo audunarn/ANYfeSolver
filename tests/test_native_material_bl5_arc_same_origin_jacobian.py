@@ -12,12 +12,12 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import stiffened_shell as ss
-from anysolver._stiffened_shell_arc_trial import correct, path_row
-from anysolver._stiffened_shell_ge_finite_experimental import _fibre_recovery
-from anysolver._stiffened_shell_beam_history import arrays as beam_arrays
-from anysolver._stiffened_shell_q4_material_event import _origin_values
-from anysolver.plasticity import _jit_consistency_residual_scalar
+from anyfesolver import stiffened_shell as ss
+from anyfesolver._stiffened_shell_arc_trial import correct, path_row
+from anyfesolver._stiffened_shell_ge_finite_experimental import _fibre_recovery
+from anyfesolver._stiffened_shell_beam_history import arrays as beam_arrays
+from anyfesolver._stiffened_shell_q4_material_event import _origin_values
+from anyfesolver.plasticity import _jit_consistency_residual_scalar
 from examples.stiffened_shell_native_fibre_bl5_mixed_j2_displacement import definition
 from examples.stiffened_shell_native_fibre_bl5_displacement import ACTIONS, CONTROL, OPTIONS, TARGETS
 from examples.stiffened_shell_native_material_bl5_arc import arc_control
@@ -337,7 +337,7 @@ def test_authentic_old_loaded_checkpoint_current_owner_recovery(request, tmp_pat
     physical = {row.element_id for row in loaded.beam_fibre_material}
     generalized = {row.element_id for row in loaded.beam_generalized_material}
     assert physical and generalized and physical.isdisjoint(generalized)
-    from anysolver._stiffened_shell_displacement_checkpoint import decode_snapshot
+    from anyfesolver._stiffened_shell_displacement_checkpoint import decode_snapshot
     raw = owner.checkpoint()
     _, payload = decode_snapshot(owner, raw)
     for name, value in (('frames', loaded.beam_frames), ('cells', loaded.cell_frames),

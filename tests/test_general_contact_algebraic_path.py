@@ -4,14 +4,14 @@ import numpy as np
 import pytest
 from scipy.optimize import minimize_scalar, root
 
-from anysolver import ContactNodalLoadHistory, ContactTransientSolverControls, TransientConfig, solve_transient_contact
-from anysolver.matrix_assembly import assemble_stiffness_matrix
-import anysolver.general_contact.transient as driver
+from anyfesolver import ContactNodalLoadHistory, ContactTransientSolverControls, TransientConfig, solve_transient_contact
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+import anyfesolver.general_contact.transient as driver
 from test_general_contact_transient_plane import _guided_s3_descriptor_impact, _uniform_s3_normal_load
 from s3_vk_element_oracle import S3VonKarmanExcess
 
-from anysolver.general_contact.algebraic_path import affine_descriptor_path
-import anysolver.general_contact.algebraic_path as path_kernel
+from anyfesolver.general_contact.algebraic_path import affine_descriptor_path
+import anyfesolver.general_contact.algebraic_path as path_kernel
 
 
 @pytest.mark.parametrize("physical", [[.1, -.2, 0.], [.1, -.8, .8]])
@@ -296,7 +296,7 @@ def test_public_s3_active_path_restart_and_failure_cleanup(monkeypatch):
                                    getattr(direct, field), rtol=0., atol=1e-11)
     np.testing.assert_allclose(prefix.represented_path_transition_times+resumed.represented_path_transition_times,
                                direct.represented_path_transition_times, rtol=0., atol=1e-12)
-    from anysolver.general_contact.core import active_contact_manager
+    from anyfesolver.general_contact.core import active_contact_manager
     commits = []
     original_commit = driver.commit_state_candidate
     def commit(*args, **kwargs):

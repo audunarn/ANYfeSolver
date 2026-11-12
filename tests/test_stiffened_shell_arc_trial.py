@@ -3,13 +3,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 from scipy import sparse
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._stiffened_shell_arc_metric import PhysicalChordMetric
-from anysolver._stiffened_shell_displacement_corrector import bordered_path_correction
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._stiffened_shell_arc_metric import PhysicalChordMetric
+from anyfesolver._stiffened_shell_displacement_corrector import bordered_path_correction
 
 
 def test_physical_chord_gradient_units_frame_and_ownership():
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
     class AlteredMetric(PhysicalChordMetric):pass
     with pytest.raises(ValueError,match='explicit physical arc metric'):
         ss.ArcLengthControl('beam',105,2,AlteredMetric([1.],1.),1e-5)
@@ -49,8 +49,8 @@ def test_native_arc_trial_preserves_accepted_owner(request,tmp_path):
     from test_stiffened_shell_bl5_coupled_material import coupled
     from test_stiffened_shell_bl5_material import make
     from test_stiffened_shell_bl5_finite import _action
-    from anysolver._stiffened_shell_arc_trial import correct,select_trial
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver._stiffened_shell_arc_trial import correct,select_trial
+    from anyfesolver.control import CancellationToken,SolveCancelled
     owner=make(request,coupled())
     seed=(Path(__file__).parent/'data/stiffened_shell_event_excursion/force-seed.bin').read_bytes()
     owner.restore(seed);driver=owner._finite_driver
@@ -87,8 +87,8 @@ def test_native_arc_trial_preserves_accepted_owner(request,tmp_path):
     with pytest.raises(SolveCancelled):correct(driver,**args,cancellation_token=token)
     assert owner.checkpoint()==seed
     from hashlib import sha256
-    from anysolver._stiffened_shell_arc_checkpoint import from_selection,decode_snapshot,encode_snapshot
-    from anysolver._stiffened_shell_arc_publication import publish
+    from anyfesolver._stiffened_shell_arc_checkpoint import from_selection,decode_snapshot,encode_snapshot
+    from anyfesolver._stiffened_shell_arc_publication import publish
     raw=from_selection(owner,selected,seed_generation=owner._generation,
         seed_sha256=sha256(seed).hexdigest())
     metadata,arrays=decode_snapshot(owner,raw)
@@ -117,12 +117,12 @@ def test_native_arc_trial_preserves_accepted_owner(request,tmp_path):
 
 def test_public_arc_cancel_restart_and_absolute_load(request,tmp_path,monkeypatch):
     from dataclasses import replace
-    from anysolver import stiffened_shell as ss
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver import stiffened_shell as ss
+    from anyfesolver.control import CancellationToken,SolveCancelled
     from test_stiffened_shell_bl5_coupled_material import coupled
     from test_stiffened_shell_bl5_material import make
     from test_stiffened_shell_bl5_finite import _action
-    from anysolver._stiffened_shell_arc_checkpoint import decode_snapshot,encode_snapshot
+    from anyfesolver._stiffened_shell_arc_checkpoint import decode_snapshot,encode_snapshot
     owner=make(request,coupled())
     seed=(Path(__file__).parent/'data/stiffened_shell_event_excursion/force-seed.bin').read_bytes()
     owner.restore(seed)

@@ -4,10 +4,10 @@ Run from a source checkout with its src directory on PYTHONPATH.
 """
 from contextlib import closing
 
-from anysolver import (AnalysisSession, EnvelopeReducer, FixedSupport, LoadCase,
+from anyfesolver import (AnalysisSession, EnvelopeReducer, FixedSupport, LoadCase,
     RecoveryConfig, ResourceConfig, StaticCase, iter_linear_batches)
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
 
 
 def build_model():

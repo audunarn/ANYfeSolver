@@ -4,13 +4,13 @@ from hashlib import sha256
 import json
 import numpy as np
 import pytest
-from anysolver.fe_core import FEModel
-from anysolver._ge_beam3_native_line_static_element import NativeLineFibreStaticElement
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_native_line_program import solve_line_static,_PROGRAM
-from anysolver._ge_beam3_native_line_restart import LoadPoint,encode_checkpoint,decode_checkpoint,capture_solver_state
-from anysolver._ge_beam3_native_line_recovery import recover_native_fields
-from anysolver._ge_beam3_p5_seeded.core import canonical,sha
+from anyfesolver.fe_core import FEModel
+from anyfesolver._ge_beam3_native_line_static_element import NativeLineFibreStaticElement
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_native_line_program import solve_line_static,_PROGRAM
+from anyfesolver._ge_beam3_native_line_restart import LoadPoint,encode_checkpoint,decode_checkpoint,capture_solver_state
+from anyfesolver._ge_beam3_native_line_recovery import recover_native_fields
+from anyfesolver._ge_beam3_p5_seeded.core import canonical,sha
 from test_ge_beam3_native_line_loading import problem
 from test_ge_beam3_native_fibre_connected_restart import make as connected_model
 from test_ge_beam3_schur_line_program import save
@@ -138,7 +138,7 @@ def test_resealed_mutations(saved,mutation,tmp_path):
 
 @pytest.mark.parametrize('mutation',['duplicate','nonfinite','noncanonical','external-hash','wrong-constant'])
 def test_restart_authority_before_solver(saved,mutation,monkeypatch,tmp_path):
-    import anysolver.nonlinear_static as solver
+    import anyfesolver.nonlinear_static as solver
     case,_,pattern,_,raw,_=saved;kwargs={}
     if mutation=='duplicate':raw=raw.replace(b'{',b'{"schema":"duplicate",',1)
     elif mutation=='nonfinite':raw=raw.replace(b'"parameter":0.0',b'"parameter":NaN',1)
@@ -173,7 +173,7 @@ def test_failed_restarted_increment_keeps_checkpoint_state(saved):
 
 
 def test_support_identity_mutation_rejected(saved):
-    from anysolver.boundary import BoundaryCondition
+    from anyfesolver.boundary import BoundaryCondition
     case,_,_,_,raw,_=saved;model=make(case)
     model.add_boundary_condition(BoundaryCondition('changed-support',[3],{'ux':0.}))
     with pytest.raises(ValueError,match='model'):decode_checkpoint(model,raw,expected_sha256=sha256(raw).hexdigest())

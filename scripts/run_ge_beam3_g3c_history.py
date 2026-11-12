@@ -75,7 +75,7 @@ def worker(out, expected):
     if lane not in INVENTORIES or lease['inventory']!=INVENTORIES[lane]: raise ValueError('unknown lane')
     print('G3C CHECKPOINT history authority',flush=True)
     sys.path[:0]=[str(ROOT/'src'),str(ROOT),str(inherited.infrastructure.CAPSULE.parent/'site')]
-    from anysolver._ge_beam3_g3c_stable import authority as runtime
+    from anyfesolver._ge_beam3_g3c_stable import authority as runtime
     runtime.capture(raw)
     import pytest
     inventory=inherited.Inventory(1)
@@ -227,7 +227,7 @@ def main():
     if args.wave=='restart':
         if args.prior_smoke is None: raise ValueError('five-family smoke prerequisite')
         verify_prior_smoke(args.prior_smoke,candidate,inputs,args.review_sha256)
-    out=Path(tempfile.mkdtemp(prefix='anysolver-g3c-history-'))
+    out=Path(tempfile.mkdtemp(prefix='anyfesolver-g3c-history-'))
     print('DIAGNOSTICS '+str(out),flush=True)
     lease=dict(kind='G3C_STABLE_PRIVATE_DEVELOPMENT',scope_id=SCOPE,candidate=candidate,inputs=inputs,
         source_map_sha256=inherited.MAP_SHA,review_sha256=args.review_sha256,implementation_review=environment.strict(review))

@@ -9,16 +9,16 @@ import subprocess
 import sys
 from pathlib import Path
 
-from anysolver import (
+from anyfesolver import (
     element_tangent_metrics,
     generate_plasticity_qualification_report,
     material_point_path_metrics,
     reference_plastic_curve,
     yield_function_residual,
 )
-from anysolver.plasticity import plane_stress_return_map
-from anysolver.elements import _jit_integrate_nonlinear_response
-from anysolver.vectorized_nonlinear import _jit_batch_integrate_nonlinear_response
+from anyfesolver.plasticity import plane_stress_return_map
+from anyfesolver.elements import _jit_integrate_nonlinear_response
+from anyfesolver.vectorized_nonlinear import _jit_batch_integrate_nonlinear_response
 
 import numpy as np
 

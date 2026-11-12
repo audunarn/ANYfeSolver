@@ -15,10 +15,10 @@ import json
 from pathlib import Path
 import subprocess
 
-import anysolver
-from anysolver import stiffened_shell
-from anysolver._stiffened_shell_l1_local_experimental import NativeHalfCellPort
-from anysolver._ge_beam3_retained_generalized_state import Mechanical
+import anyfesolver
+from anyfesolver import stiffened_shell
+from anyfesolver._stiffened_shell_l1_local_experimental import NativeHalfCellPort
+from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
 from scripts._b3_e4_f03_p1_dual_norm import p1_nonuniform_dual_gram
 import numpy as np
 from scipy import linalg
@@ -178,9 +178,9 @@ def _multiplier_contract_probe(owner):
 
 
 def analyze():
-    expected = (ROOT/"src"/"anysolver"/"__init__.py").resolve()
-    if Path(anysolver.__file__).resolve() != expected:
-        raise RuntimeError("trace-kernel diagnostic imported another ANYsolver")
+    expected = (ROOT/"src"/"anyfesolver"/"__init__.py").resolve()
+    if Path(anyfesolver.__file__).resolve() != expected:
+        raise RuntimeError("trace-kernel diagnostic imported another ANYfeSolver")
     base = _bl5_joint_mesh_definition(4, 8, 1)
     coordinates = tuple((KNOTS[i % 5], xyz[1], xyz[2])
                         for i, xyz in enumerate(base.shell.coordinates_m))
@@ -229,9 +229,9 @@ def analyze():
                 "source_git": subprocess.check_output(
                     ("git", "rev-parse", "HEAD"), cwd=ROOT, text=True).strip(),
                 "runner_sha256": sha256(Path(__file__).read_bytes()).hexdigest(),
-                "product_sha256": sha256((ROOT/"src"/"anysolver"/
+                "product_sha256": sha256((ROOT/"src"/"anyfesolver"/
                     "_stiffened_shell_l1_assembly_experimental.py").read_bytes()).hexdigest(),
-                "imported_anysolver": str(expected),
+                "imported_anyfesolver": str(expected),
                 "threadpools": pools,
                 "fixture": {"shell_knots_m": KNOTS, "beam_halfcells": 8,
                             "surface_width_m": WIDTH_M,

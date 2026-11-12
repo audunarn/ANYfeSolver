@@ -17,7 +17,7 @@ import numpy as np
 from numpy.polynomial import Polynomial as P
 
 
-ARCHIVE = Path("C:/Github/ANYsolver/.qualification/b3-ge-e4-pl/calculix-223/ccx_2.23.src.tar.bz2")
+ARCHIVE = Path("C:/Github/ANYfeSolver/.qualification/b3-ge-e4-pl/calculix-223/ccx_2.23.src.tar.bz2")
 EXPECTED = "9c88385c10fb04f5dc6c4e98027a51bebdd8aee3920e05190d6c1dd08357d6e7"
 
 

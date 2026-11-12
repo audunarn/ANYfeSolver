@@ -7,12 +7,12 @@ and spectral covariance from nonlinear equilibrium defects.
 
 import numpy as np
 import pytest
-from anysolver.fe_core import FEModel
-from anysolver.boundary import BoundaryCondition
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-from anysolver._ge_beam3_p5_seeded import NativeP5BeamElement, DirectedHardeningSection
-from anysolver._ge_beam3_p5_loads.core import canonical
-from anysolver._ge_beam3_seeded_signed_modes import solve_signed_loaded_modes
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import BoundaryCondition
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+from anyfesolver._ge_beam3_p5_seeded import NativeP5BeamElement, DirectedHardeningSection
+from anyfesolver._ge_beam3_p5_loads.core import canonical
+from anyfesolver._ge_beam3_seeded_signed_modes import solve_signed_loaded_modes
 
 
 ROTATION = np.array([[0., -1., 0.], [1., 0., 0.], [0., 0., 1.]])

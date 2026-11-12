@@ -13,8 +13,8 @@ from pathlib import Path
 import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import splu
-from anysolver import stiffened_shell as ss
-from anysolver._stiffened_shell_ge_experimental import _linear_equilibrium
+from anyfesolver import stiffened_shell as ss
+from anyfesolver._stiffened_shell_ge_experimental import _linear_equilibrium
 from scripts import r8_bl5_matched_native_reference as matched
 from scripts import r8_bl5_weak_continuum_reference as continuum
 

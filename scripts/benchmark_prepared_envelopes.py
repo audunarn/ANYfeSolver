@@ -69,13 +69,13 @@ def main():
     args = parser.parse_args()
     if not 1 <= args.cases <= 10000:
         parser.error('cases must be a prefix length between 1 and 10000')
-    import anysolver
+    import anyfesolver
     import psutil
     import numba
     from threadpoolctl import threadpool_info
-    from anysolver import (LoadCase, StaticCase, RecoveryConfig, ResourceConfig,
+    from anyfesolver import (LoadCase, StaticCase, RecoveryConfig, ResourceConfig,
                            AnalysisSession, EnvelopeReducer)
-    from anysolver.linalg import backend_operation_counts
+    from anyfesolver.linalg import backend_operation_counts
     built = None
     fixture_digest = None
     if args.family == 'barge':
@@ -103,7 +103,7 @@ def main():
     else:
         model, groups, balancing = mixed_free_model(2 if args.family == 'multiple' else 1)
         if args.family == 'supported':
-            from anysolver import FixedSupport
+            from anyfesolver import FixedSupport
             model.add_boundary_condition(FixedSupport('screen support', [groups[0][0][0]]))
         def records():
             for i in range(args.cases):
@@ -136,7 +136,7 @@ def main():
     started = time.perf_counter()
     if args.route == 'prepared':
         if built is None:
-            owner = anysolver.prepare_static_evaluator(model, output_dofs=dofs,
+            owner = anyfesolver.prepare_static_evaluator(model, output_dofs=dofs,
                 recovery_config=history_config, envelope_recovery_config=envelope_config,
                 resource_config=resources)
         else:
@@ -155,7 +155,7 @@ def main():
         if args.route == 'prepared':
             stream = owner.iter_batches(records(), batch_size=args.block_size)
         elif built is None:
-            stream = anysolver.iter_linear_batches(model, records(), session=owner,
+            stream = anyfesolver.iter_linear_batches(model, records(), session=owner,
                 output_dofs=dofs, recovery_config=envelope_config,
                 resource_config=resources, batch_size=args.block_size)
         else:
@@ -226,7 +226,7 @@ def main():
         fixture_sha256=fixture_digest, model_elements=len(elements), model_nodes=len(nodes),
         selected_elements=selected_elements, selected_nodes=selected_nodes,
         operations={k: after[k]-before[k] for k in before},
-        runtime=dict(python=sys.executable, solver=anysolver.__file__,
+        runtime=dict(python=sys.executable, solver=anyfesolver.__file__,
             numba_disable_jit=numba.config.DISABLE_JIT, numba_threads=numba.get_num_threads(),
             threadpools=threadpool_info()))
     args.output.write_text(json.dumps(result, indent=2, default=str))

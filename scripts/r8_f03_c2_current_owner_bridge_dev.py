@@ -23,12 +23,12 @@ from scipy.sparse.linalg import splu
 from threadpoolctl import threadpool_info
 
 # The shared virtual environment points at the main checkout. Pin product code
-# to this assigned worktree before importing anysolver or the frozen builder.
+# to this assigned worktree before importing anyfesolver or the frozen builder.
 WORKTREE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(WORKTREE / 'src'))
 sys.path.insert(0, str(WORKTREE / 'tests'))
-import anysolver
-from anysolver import stiffened_shell
+import anyfesolver
+from anyfesolver import stiffened_shell
 from scripts.b3_e4_bl5_coherent_aggregation_dev import model
 from scripts.r8_bl5_actual_mref_dev import flat_p0_reference_dual
 from scripts.r8_bl5_actual_primal_work_dev import actual_flat_primal_work
@@ -70,7 +70,7 @@ def effective_runtime():
 
 
 def product_provenance(owner=None):
-    modules = dict(anysolver=anysolver.__file__,
+    modules = dict(anyfesolver=anyfesolver.__file__,
                    stiffened_shell=stiffened_shell.__file__)
     if owner is not None:
         modules['owner'] = sys.modules[type(owner).__module__].__file__

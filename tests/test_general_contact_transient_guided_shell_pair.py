@@ -5,12 +5,12 @@ from copy import deepcopy
 import json,os,runpy
 import numpy as np
 import pytest
-from anysolver import ContactTransientSolverControls,TransientConfig,solve_transient_contact
-from anysolver.assembly import assemble_mass_matrix
-from anysolver.general_contact.core import ContactSolverSettings
-from anysolver.general_contact.pair import _PlanarShellPairManager
-from anysolver.general_contact.runtime import active_contact_manager
-from anysolver.nonlinear_restart import analysis_configuration_fingerprint
+from anyfesolver import ContactTransientSolverControls,TransientConfig,solve_transient_contact
+from anyfesolver.assembly import assemble_mass_matrix
+from anyfesolver.general_contact.core import ContactSolverSettings
+from anyfesolver.general_contact.pair import _PlanarShellPairManager
+from anyfesolver.general_contact.runtime import active_contact_manager
+from anyfesolver.nonlinear_restart import analysis_configuration_fingerprint
 
 example=runpy.run_path(str(Path(__file__).parents[1]/'examples/general_contact_guided_shell_pair_impact_dev.py'))
 MASS=np.diag([20.,14.4]);GAP=.0002;KN=3.e8;D=np.array([1.,-1.])
@@ -185,9 +185,9 @@ def test_pair_default_and_invalid_motion_rejected_before_integration():
 
 
 def test_pair_public_cancellation_retains_model_and_no_partial_checkpoint(monkeypatch):
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.control import CancellationToken,SolveCancelled
     model,definition,modes=example['build_model']()
-    from anysolver.nonlinear_restart import model_configuration_fingerprint
+    from anyfesolver.nonlinear_restart import model_configuration_fingerprint
     fingerprint=model_configuration_fingerprint(model)
     token=CancellationToken();calls=0
     original=_PlanarShellPairManager.evaluate

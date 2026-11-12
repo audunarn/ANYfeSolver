@@ -24,8 +24,8 @@ from scipy.sparse.linalg import splu
 # namespace from an installed package.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from anysolver._ge_beam3_generalized_static_boundary import spatial_jacobian
-from anysolver._stiffened_shell_ge_experimental import _beam_reference
+from anyfesolver._ge_beam3_generalized_static_boundary import spatial_jacobian
+from anyfesolver._stiffened_shell_ge_experimental import _beam_reference
 from scripts import r8_bl5_matched_native_reference as native
 from scripts import r8_bl5_released_director_reference as solid
 from scripts import r8_bl5_weak_continuum_reference as weak

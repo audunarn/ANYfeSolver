@@ -7,27 +7,27 @@ import itertools
 import numpy as np
 import pytest
 
-from anysolver import FEModel, PatchRecoveryConfig
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.corotational import rotation_matrix_from_vector
-from anysolver.e4_pl_s3_element import (
+from anyfesolver import FEModel, PatchRecoveryConfig
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.corotational import rotation_matrix_from_vector
+from anyfesolver.e4_pl_s3_element import (
     QualifiedE4PLS3ShellElement,
     triangle_frame,
 )
-from anysolver.e4_pl_s3_state import (
+from anyfesolver.e4_pl_s3_state import (
     GENERALIZED_NONLINEAR_STATE_SCHEMA,
     seal_committed_s3_state,
 )
-from anysolver.elements import ShellElement
-from anysolver.plasticity import lobatto_layers
-from anysolver.recovery import (
+from anyfesolver.elements import ShellElement
+from anyfesolver.plasticity import lobatto_layers
+from anyfesolver.recovery import (
     _qualified_s3_current_physical_frame,
     _recover_qualified_s3_committed_state,
     recover_shell_patch_stresses,
     recover_stress_result,
 )
-from anysolver.results import _gauss_to_node_extrapolation
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.results import _gauss_to_node_extrapolation
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 _SURFACE_COMPONENTS = ("xx", "yy", "zz", "xy", "yz", "xz")

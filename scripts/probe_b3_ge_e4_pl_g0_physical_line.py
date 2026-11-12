@@ -8,10 +8,10 @@ import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEMesh, Material
-from anysolver._ge_beam3_mixed_ad import so3_log, transpose
-from anysolver._ge_beam3_variational_shell import rotation_jets
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEMesh, Material
+from anyfesolver._ge_beam3_mixed_ad import so3_log, transpose
+from anyfesolver._ge_beam3_variational_shell import rotation_jets
 
 
 def line_samples():

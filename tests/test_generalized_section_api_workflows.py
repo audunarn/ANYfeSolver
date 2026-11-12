@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     GENERALIZED_BEAM_RESULTANT_ORDER,
     GENERALIZED_BEAM_STRAIN_ORDER,
     GeneralizedBeamSection,
@@ -15,18 +15,18 @@ from anysolver import (
     validate_generalized_beam_section,
     validate_generalized_shell_section,
 )
-from anysolver.nonlinear_performance_bootstrap import (
+from anyfesolver.nonlinear_performance_bootstrap import (
     clear_nonlinear_assembly_cache,
     get_nonlinear_assembly_plan,
     install_nonlinear_performance_optimizations,
 )
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.e4_pl_s3_v2d_element import (
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.e4_pl_s3_v2d_element import (
     FORMULATION_ID as S3_V2D_FORMULATION_ID,
     NativeParityE4PLS3V2DShellElement,
 )
-from anysolver.elements import LegacyShellElement
-from anysolver.vectorized_nonlinear import shell_nonlinear_batch_eligible
+from anyfesolver.elements import LegacyShellElement
+from anyfesolver.vectorized_nonlinear import shell_nonlinear_batch_eligible
 
 
 def _shell_section(name: str = "laminate") -> GeneralizedShellSection:

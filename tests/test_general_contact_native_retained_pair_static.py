@@ -6,25 +6,25 @@ import json
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_centered_reference import (
+from anyfesolver._ge_beam3_centered_reference import (
     CenteredCurvedBeam3ReferenceGeometry,
 )
-from anysolver._ge_beam3_generalized_ellipsoid_section import (
+from anyfesolver._ge_beam3_generalized_ellipsoid_section import (
     EllipsoidalGeneralizedSection,
 )
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver._ge_beam3_native_generalized_element import (
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver._ge_beam3_native_generalized_element import (
     NativeGeneralizedStaticElement,
 )
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_retained_nodal_loading import NodalDeadForces, Program
-from anysolver._ge_beam3_p5_seeded.core import canonical, sha
-from anysolver.boundary import BoundaryCondition
-from anysolver.general_contact.native_retained_cell_pair import (
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_retained_nodal_loading import NodalDeadForces, Program
+from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
+from anyfesolver.boundary import BoundaryCondition
+from anyfesolver.general_contact.native_retained_cell_pair import (
     NativeRetainedSelectedCellPair,
 )
-from anysolver.general_contact.native_retained_pair_static import (
+from anyfesolver.general_contact.native_retained_pair_static import (
     NativeRetainedRoundPairAnalysis,
 )
 from test_general_contact_native_retained_cell_pair import _references

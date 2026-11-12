@@ -37,7 +37,7 @@ def test_refinement_and_signed_stability_not_qualification(saved):
 
 
 def test_original_factor_ritz_identity_and_state_policy(saved):
-    from anysolver._dyadic_factor_chain import reassemble_chain_exact_binary64
+    from anyfesolver._dyadic_factor_chain import reassemble_chain_exact_binary64
     for cursor in (1,4):
         value=probe.parse(probe.read(OUTPUT/f'native-{cursor}.json')); p=value['packet']; modes=value['modes']
         assert p['material_policy']==modes['material_policy']=='FROZEN_PLASTIC_COORDINATES_ELASTIC_PERTURBATION'

@@ -17,10 +17,10 @@ import numpy as np
 from scipy import linalg
 from scipy.sparse.linalg import lsqr
 
-from anysolver.assembly import build_constraint_transformation
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.semismooth import linearize
-from anysolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.semismooth import linearize
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
 from scripts.general_contact_d1_interior_press_dev import build_interior_press
 from scripts.general_contact_d1_interior_work_spectrum_dev import _reference_mass
 from scripts.general_contact_d1_pressure_transport_preflight_dev import _smooth_pose

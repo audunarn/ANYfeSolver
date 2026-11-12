@@ -3,10 +3,10 @@
 from copy import deepcopy
 import numpy as np
 import pytest
-import anysolver._ge_beam3_signed_loaded_modes as adapter
-from anysolver._ge_beam3_loaded_modal import solve_elastic_modes
-from anysolver._ge_beam3_p5_loads.core import canonical
-from anysolver.control import CancellationToken, SolveCancelled
+import anyfesolver._ge_beam3_signed_loaded_modes as adapter
+from anyfesolver._ge_beam3_loaded_modal import solve_elastic_modes
+from anyfesolver._ge_beam3_p5_loads.core import canonical
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_ge_beam3_native_load_state import problem
 from test_ge_beam3_loaded_modal import accepted
 from test_ge_beam3_curved_p5_mass_probe import section_mass
@@ -103,9 +103,9 @@ def test_plastic_increment_is_rejected_but_elastic_unloading_keeps_history():
 
 
 def test_curved_mode_shapes_covary_under_proper_frame_rotation():
-    from anysolver.fe_core import FEModel
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-    from anysolver._ge_beam3_p5_loads import NativeP5BeamElement
+    from anyfesolver.fe_core import FEModel
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+    from anyfesolver._ge_beam3_p5_loads import NativeP5BeamElement
     old = problem(); rotation = np.array([[0., -1., 0.], [1., 0., 0.], [0., 0., 1.]])
     new = FEModel('signed-rotated-loaded-native')
     for i, node in old.mesh.nodes.items(): new.add_node(i, *(rotation@node.coords()))

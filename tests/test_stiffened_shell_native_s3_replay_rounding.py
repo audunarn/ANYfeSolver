@@ -13,8 +13,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver._stiffened_shell_ge_finite_experimental import _require_native_s3_replay
-from anysolver.e4_pl_s3_v2d_state import seal_v2d_state
+from anyfesolver._stiffened_shell_ge_finite_experimental import _require_native_s3_replay
+from anyfesolver.e4_pl_s3_v2d_state import seal_v2d_state
 from test_stiffened_shell_native_point_displacement import owner
 from test_stiffened_shell_native_plastic_s3_displacement import definition
 

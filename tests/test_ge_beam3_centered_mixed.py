@@ -5,13 +5,13 @@ import math
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Centered
-from anysolver._ge_beam3_centered_mixed import CenteredStationaryBeam
-from anysolver._ge_beam3_p5.compensated import CompensatedStationaryBeam
-from anysolver._ge_beam3_p5.mixed import LocalForceAccuracy
-from anysolver._ge_beam3_p5.section import DirectedHardeningSection
-from anysolver._ge_beam3_p5.core import canonical
-from anysolver._ge_beam3_p5_coordinates.positions import from_total
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Centered
+from anyfesolver._ge_beam3_centered_mixed import CenteredStationaryBeam
+from anyfesolver._ge_beam3_p5.compensated import CompensatedStationaryBeam
+from anyfesolver._ge_beam3_p5.mixed import LocalForceAccuracy
+from anyfesolver._ge_beam3_p5.section import DirectedHardeningSection
+from anyfesolver._ge_beam3_p5.core import canonical
+from anyfesolver._ge_beam3_p5_coordinates.positions import from_total
 from test_ge_beam3_centered_reference import fixture
 from test_ge_beam3_curved_p5_native_chart_probe import sample
 from test_ge_beam3_curved_p5_nonlinear_mixed_probe import law

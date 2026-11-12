@@ -23,11 +23,11 @@ def _context(tmp_path, monkeypatch):
     run_root = tmp_path / "run"
     case_dir = run_root / "cases" / "Q1_L0"
     source_root.mkdir()
-    version = identity.observed_package("ANYsolver")[0]
+    version = identity.observed_package("ANYfeSolver")[0]
     (source_root / "pyproject.toml").write_text(
-        f"[project]\nname = 'ANYsolver'\nversion = '{version}'\n", encoding="ascii",
+        f"[project]\nname = 'ANYfeSolver'\nversion = '{version}'\n", encoding="ascii",
     )
-    solver_origin = source_root / "src" / "anysolver" / "__init__.py"
+    solver_origin = source_root / "src" / "anyfesolver" / "__init__.py"
     solver_origin.parent.mkdir(parents=True)
     solver_origin.write_text("__version__ = '0.4.7'\n", encoding="ascii")
     case_dir.mkdir(parents=True)
@@ -37,7 +37,7 @@ def _context(tmp_path, monkeypatch):
 
     def observed_package(name):
         version, origin = original_observed_package(name)
-        return version, str(solver_origin) if name == "ANYsolver" else origin
+        return version, str(solver_origin) if name == "ANYfeSolver" else origin
 
     monkeypatch.setattr(identity, "observed_package", observed_package)
     packages = tuple(
@@ -120,17 +120,17 @@ def test_child_identity_rejects_runtime_package_and_hardware_changes(tmp_path, m
         identity.verify_child_context(directory, plan, SOURCE, DIGEST)
 
 
-def test_child_rejects_external_anysolver_even_if_registration_matches(tmp_path, monkeypatch):
+def test_child_rejects_external_anyfesolver_even_if_registration_matches(tmp_path, monkeypatch):
     directory, plan, _, value = _context(tmp_path, monkeypatch)
-    external = tmp_path / "external_anysolver.py"
+    external = tmp_path / "external_anyfesolver.py"
     external.write_text("external\n", encoding="ascii")
     package = value.packages[0]
-    value.packages = (SimpleNamespace(name="ANYsolver", version=package.version,
+    value.packages = (SimpleNamespace(name="ANYfeSolver", version=package.version,
                                       origin=str(external)), *value.packages[1:])
     observed = identity.observed_package
     monkeypatch.setattr(identity, "observed_package",
                         lambda name: (package.version, str(external))
-                        if name == "ANYsolver" else observed(name))
+                        if name == "ANYfeSolver" else observed(name))
     with pytest.raises(ValueError, match="origin/version disagrees"):
         identity.verify_child_context(directory, plan, SOURCE, DIGEST)
 

@@ -9,12 +9,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-from anysolver._ge_beam3_p5.compensated_coordinates import split_sum
-from anysolver._ge_beam3_retained_generalized_state import Context, Mechanical
-from anysolver._stiffened_shell_l1_local_experimental import NativeHalfCellPort
-from anysolver._ge_beam3_mixed_ad import rotation_exponential
-from anysolver import _ge_beam3_mixed_ad as ad
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+from anyfesolver._ge_beam3_p5.compensated_coordinates import split_sum
+from anyfesolver._ge_beam3_retained_generalized_state import Context, Mechanical
+from anyfesolver._stiffened_shell_l1_local_experimental import NativeHalfCellPort
+from anyfesolver._ge_beam3_mixed_ad import rotation_exponential
+from anyfesolver import _ge_beam3_mixed_ad as ad
 from scripts import r8_e01_native_polar_work as native
 from scripts import r8_e01_objective_polar_trace as polar
 

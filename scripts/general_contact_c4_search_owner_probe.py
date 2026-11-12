@@ -12,13 +12,13 @@ import time
 
 import numpy as np
 
-from anysolver.general_contact import patch_mortar
-from anysolver.general_contact.contact_search import ContactAABBIndex
+from anyfesolver.general_contact import patch_mortar
+from anyfesolver.general_contact.contact_search import ContactAABBIndex
 from examples.general_contact_patch_sliding import main as sliding_example
 
 
 BASE_COMMIT = "53871171"
-BASE_PATH = "src/anysolver/general_contact/patch_broadphase.py"
+BASE_PATH = "src/anyfesolver/general_contact/patch_broadphase.py"
 
 
 class OwnerPatchAABBTree:

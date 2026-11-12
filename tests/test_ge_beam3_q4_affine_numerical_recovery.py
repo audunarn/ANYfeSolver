@@ -19,16 +19,16 @@ import pytest
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'docs/reference_cases'))
-from anysolver import _ge_beam3_g3c_affine_q4_recovery as candidate
-from anysolver import _ge_beam3_g3c_affine_q4_registry as registry
+from anyfesolver import _ge_beam3_g3c_affine_q4_recovery as candidate
+from anyfesolver import _ge_beam3_g3c_affine_q4_registry as registry
 import ge_beam3_q4_affine_numerical_checker as checker
-from anysolver import _ge_beam3_g3c_affine_q4_chart as stable_chart
-from anysolver import _ge_beam3_g3c_affine_q4_increment_chart as increment_chart
-from anysolver import _ge_beam3_g3c_so3_numerics as stable_so3
-from anysolver import _ge_beam3_variational_shell as original_fit
-from anysolver import _ge_beam3_mixed_ad as original_ad
-from anysolver import _ge_beam3_g3c_local_shell as original_shell
-from anysolver import _ge_beam3_pose_joint as original_joint
+from anyfesolver import _ge_beam3_g3c_affine_q4_chart as stable_chart
+from anyfesolver import _ge_beam3_g3c_affine_q4_increment_chart as increment_chart
+from anyfesolver import _ge_beam3_g3c_so3_numerics as stable_so3
+from anyfesolver import _ge_beam3_variational_shell as original_fit
+from anyfesolver import _ge_beam3_mixed_ad as original_ad
+from anyfesolver import _ge_beam3_g3c_local_shell as original_shell
+from anyfesolver import _ge_beam3_pose_joint as original_joint
 
 SCIENTIFIC_RECORDS=[]
 CONTRADICTIONS=[]
@@ -38,14 +38,14 @@ _EXPECTED={}
 _OBSERVATIONS={}
 _CURRENT_OBSERVATION=None
 SOURCES={
- 'src/anysolver/e4_pl_element.py':'7fc46a18046e043512a5fb2c3f61ed0b95b834e4dde764f63c500a885e87ea38',
- 'src/anysolver/elements.py':'f8c59792947a3c9b84416c61a4d9db98e42926d1bf21e74e736afbf6a9a88b37',
- 'src/anysolver/_ge_beam3_g3c_local_shell.py':'69d9f27a96ed7e9a5959a42a081eeafbbe72021de6e4da1f91355c5fb3850f10',
- 'src/anysolver/_ge_beam3_variational_shell.py':'b0db7a83633f4a835c06e940a6f0de36ab958f7e816c37a23c6ebc16259a2a60',
- 'src/anysolver/_ge_beam3_mixed_ad.py':'b299ff765cd2eaae8b33a2ba1d05069f6fe8c39209e1eac75df356a2afb1fe36',
- 'src/anysolver/_ge_beam3_pose_joint.py':'69cfb0a71761ab7cad0d62080d81511949e7c920f7f70162bcaba0497b402657',
- 'src/anysolver/_ge_beam3_g3c_definition.py':'4b46b870fec010e3378df83c374d763f858d8f25820c14f9704dc6f0a656f0c2',
- 'src/anysolver/_ge_beam3_g3c_owner.py':'18b9565d56192e23f192b1a3fbae3cb12ed7ede958c0e4b3e46279a799d1afc5',
+ 'src/anyfesolver/e4_pl_element.py':'7fc46a18046e043512a5fb2c3f61ed0b95b834e4dde764f63c500a885e87ea38',
+ 'src/anyfesolver/elements.py':'f8c59792947a3c9b84416c61a4d9db98e42926d1bf21e74e736afbf6a9a88b37',
+ 'src/anyfesolver/_ge_beam3_g3c_local_shell.py':'69d9f27a96ed7e9a5959a42a081eeafbbe72021de6e4da1f91355c5fb3850f10',
+ 'src/anyfesolver/_ge_beam3_variational_shell.py':'b0db7a83633f4a835c06e940a6f0de36ab958f7e816c37a23c6ebc16259a2a60',
+ 'src/anyfesolver/_ge_beam3_mixed_ad.py':'b299ff765cd2eaae8b33a2ba1d05069f6fe8c39209e1eac75df356a2afb1fe36',
+ 'src/anyfesolver/_ge_beam3_pose_joint.py':'69cfb0a71761ab7cad0d62080d81511949e7c920f7f70162bcaba0497b402657',
+ 'src/anyfesolver/_ge_beam3_g3c_definition.py':'4b46b870fec010e3378df83c374d763f858d8f25820c14f9704dc6f0a656f0c2',
+ 'src/anyfesolver/_ge_beam3_g3c_owner.py':'18b9565d56192e23f192b1a3fbae3cb12ed7ede958c0e4b3e46279a799d1afc5',
  'docs/reference_cases/ge_beam3_g3c_fixtures_v1.json':'d5fecc80c3203ac7d191b4031d64bf35c56d2900066cb01fc1dfa4276d24c006'}
 
 
@@ -279,14 +279,14 @@ def chart_authority():
     assert registry._exp_terms is original_joint._exp_terms
     assert registry._exp_terms.__globals__['so3_exp'] is original_ad.so3_exp
     sources={
-      'src/anysolver/_ge_beam3_g3c_affine_q4_chart.py':'2a26742ec7680a5e75934fb32ee8601d3877cd0befb250489f991f1b9d198a9f',
+      'src/anyfesolver/_ge_beam3_g3c_affine_q4_chart.py':'2a26742ec7680a5e75934fb32ee8601d3877cd0befb250489f991f1b9d198a9f',
       'docs/reference_cases/ge_beam3_q4_affine_numerical_chart.py':'b7cc92f70d35e3b8f2ab10202cb2f3ad1116e92775425888e482293b323c23ac',
-      'src/anysolver/_ge_beam3_g3c_so3_numerics.py':'588ace39570658f1a83c0110d3a019ebad770d6091b271ff4bbc40b97f96e12e',
+      'src/anyfesolver/_ge_beam3_g3c_so3_numerics.py':'588ace39570658f1a83c0110d3a019ebad770d6091b271ff4bbc40b97f96e12e',
       'docs/GE_BEAM3_G3C_SO3_NUMERICS_CONTRACT.md':'269bcd4e1fda151e7c22c396a70c43498e8450b222c263dd2655b9ca45998496',
       'docs/reference_cases/ge_beam3_g3c_so3_numerics_implementation_review_v1.json':'4debde89b44c990478487dda4852d7734b852ca01dfb2d3626e782c2328756f1',
       'docs/reference_cases/ge_beam3_g3c_so3_numerics_confirmation_receipt_v1.json':'aa7225cae347662bf92b3c02f8a1ff541d40e67f13db21900d0ad3269f88b91f',
       'docs/reference_cases/ge_beam3_g3c_so3_numerics_result_v1.json':'c8b938bbdbcce329aa83afc00037905d158142d7d2e417acee159bab95aba6fd',
-      'src/anysolver/_ge_beam3_g3c_affine_q4_registry.py':'5f208b716d89ba778193d1261fb5975db4ece68c93fa2efce97e5c129c56acf1'}
+      'src/anyfesolver/_ge_beam3_g3c_affine_q4_registry.py':'5f208b716d89ba778193d1261fb5975db4ece68c93fa2efce97e5c129c56acf1'}
     addendum='1eb29b8814e6555e7d16569e2c8d30c828a60458dea4a2801c10f4d58d2c2176'
     review='ca6de27e79186c9e0b37bf21e765322aa8e46dc323eb858db039951fec7efeab'
     increment_addendum='7e637ff69453715e5251614d76e08d2be7c7fd8ac4932c5fd7a4cc939023caf0'

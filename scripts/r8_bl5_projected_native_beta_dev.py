@@ -131,8 +131,8 @@ def installed_graph(site, wheel, summary):
     modules = summary['module_sha256']
     require(len(modules) == 417, 'complete 417-module historical graph required')
     with zipfile.ZipFile(wheel) as archive:
-        names = {n for n in archive.namelist() if n.startswith('anysolver/') and n.endswith('.py')}
-        installed_names = {'anysolver/'+p.relative_to(site/'anysolver').as_posix() for p in (site/'anysolver').rglob('*.py')}
+        names = {n for n in archive.namelist() if n.startswith('anyfesolver/') and n.endswith('.py')}
+        installed_names = {'anyfesolver/'+p.relative_to(site/'anyfesolver').as_posix() for p in (site/'anyfesolver').rglob('*.py')}
         require(names == set(modules) == installed_names, 'complete historical wheel/site module names differ')
         for name in sorted(names):
             require(hashlib.sha256(archive.read(name)).hexdigest() == modules[name] == envelope.sha(site/name),
@@ -175,9 +175,9 @@ def sparse_input(raw, name, shape):
 
 
 def compile_constraints(case, data, c):
-    from anysolver._ge_beam3_retained_generalized_state import Mechanical
-    from anysolver._stiffened_shell_l1_local_experimental import NativeHalfCellPort
-    from anysolver._stiffened_shell_bl5_local_experimental import BL5LocalOperator
+    from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
+    from anyfesolver._stiffened_shell_l1_local_experimental import NativeHalfCellPort
+    from anyfesolver._stiffened_shell_bl5_local_experimental import BL5LocalOperator
     cells, ns = case.halfcells, case.counts['shell_nodes']
     xyz = finite(data['xyz_m'], 'coordinates')
     state = Mechanical(xyz[ns:], np.zeros_like(xyz[ns:]), np.tile(np.eye(3), (cells+1, 1, 1)),
@@ -289,7 +289,7 @@ def assess(case, root, registration, wheel, site, output):
         output.write_text(json.dumps(json_record(report), indent=2, allow_nan=False)+'\n', encoding='utf-8')
 
     try:
-        require(not any(name.split('.')[0] == 'anysolver' for name in sys.modules), 'fresh process without product preimports required')
+        require(not any(name.split('.')[0] == 'anyfesolver' for name in sys.modules), 'fresh process without product preimports required')
         pools = threadpool_info()
         require(pools and all(pool['num_threads'] == 1 for pool in pools), 'effective numerical pools must each be one')
         summary, binding = frozen_owner(case, root)
@@ -340,7 +340,7 @@ def assess(case, root, registration, wheel, site, output):
                     np.allclose(frame@op.reference_director, n, rtol=0., atol=1e-13) and op.thickness == local.thickness
                     for op in records), 'nonconstant physical trace/frame/arms')
         for name, module in sys.modules.copy().items():
-            if name.split('.')[0] == 'anysolver' and getattr(module, '__file__', None):
+            if name.split('.')[0] == 'anyfesolver' and getattr(module, '__file__', None):
                 path = Path(module.__file__).resolve()
                 require(path.is_relative_to(site) and envelope.sha(path) == modules.get(path.relative_to(site).as_posix()), 'changed installed import: '+name)
                 report.setdefault('imported_modules', {})[name] = dict(path=str(path), sha256=envelope.sha(path))

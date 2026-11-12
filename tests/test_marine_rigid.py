@@ -4,7 +4,7 @@ import math
 import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
-from anysolver.marine_rigid import (RigidBody6D, RigidBodyState,
+from anyfesolver.marine_rigid import (RigidBody6D, RigidBodyState,
     MarineRigidInputError, rotation_matrix, left_jacobian, left_jacobian_rate)
 
 def close(actual, expected, tol=1e-10):
@@ -187,7 +187,7 @@ def test_dry_tangents_match_finite_differences_8_states():
 @pytest.mark.parametrize('theta', [(0., 0., 0.), (1e-9, 2e-9, -1e-9), (.019, 0., 0.),
                                    (.021, 0., 0.), (.49, 0., -.3), (.5, .1, .2), (1.2, -.8, .4)])
 def test_left_jacobian_second_rate_matches_fd_and_symmetry(theta):
-    from anysolver.marine_rigid import left_jacobian_second_rate
+    from anyfesolver.marine_rigid import left_jacobian_second_rate
     a = np.array([.3, -.7, .5])
     e = np.array([-.2, .4, .6])
     # Small theta makes the closed-form (1-cos)/t^2 cancellation the FD noise

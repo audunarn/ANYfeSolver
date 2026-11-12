@@ -6,7 +6,7 @@ import pytest
 pytestmark=pytest.mark.skipif('F06_COMPENSATED_OUTPUT' not in os.environ,reason='bounded supervisor only')
 
 def test_control_error_free_owned_accumulation_and_refusal():
-    from anysolver._stiffened_shell_f06_increment_arithmetic import Pair,add_state,validate_frames,validate_pairs,Jet,log
+    from anyfesolver._stiffened_shell_f06_increment_arithmetic import Pair,add_state,validate_frames,validate_pairs,Jet,log
     high=np.array([1.]);low=np.zeros(1);delta=np.array([2.**-55])
     h,l=add_state(high,low,delta)
     assert h[0]==1. and l[0]==delta[0] and high[0]==1. and low[0]==0.
@@ -25,8 +25,8 @@ def test_control_direct_material_resultant_boundary():
     assert cell.virgin()==origin
 
 def test_control_point_transpose_work_and_moving_rows():
-    from anysolver._ge_beam3_pose_joint import RigidPoseJoint
-    from anysolver._stiffened_shell_f06_increment_arithmetic import updated_rotation
+    from anyfesolver._ge_beam3_pose_joint import RigidPoseJoint
+    from anyfesolver._stiffened_shell_f06_increment_arithmetic import updated_rotation
     joint=RigidPoseJoint(np.array([[0.,0.,0.],[1.,0.,0.]]),np.tile(np.eye(3),(2,1,1)))
     x=np.array([[0.,0.,0.],[1.,0.,0.]])
     low=np.zeros((2,3));low[1,1]=2.**-55
@@ -51,9 +51,9 @@ def test_actual_original_full48_updater_and_evaluator():
 
 def test_lifecycle_public_accepted_correction_cancel_rebase_and_cold_restore():
     from scripts.r8_f06_compensated_state_route_dev import owner,definition,SAVED
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
     from test_stiffened_shell_ge_finite_experimental import _actions
-    from anysolver._stiffened_shell_ge_checkpoint_binary import COMPENSATED_MAGIC
+    from anyfesolver._stiffened_shell_ge_checkpoint_binary import COMPENSATED_MAGIC
     o=owner();d=o._finite_driver
     try:
         old=o.checkpoint()
@@ -86,7 +86,7 @@ def test_lifecycle_public_accepted_correction_cancel_rebase_and_cold_restore():
         try:
             rebased.restore(raw);assert rebased.checkpoint()==raw
         finally:rebased.close()
-        from anysolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,encode_compensated
+        from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,encode_compensated
         shapes=(('q_low',state.q.shape),('frames_low',state.frames.shape),('cells_low',state.cells.shape),('resultants_low',state.resultants.shape))
         inner,lows=decode_compensated(saved,o._identity,shapes)
         lows['q_low'][o._shell_count]=1.
@@ -99,7 +99,7 @@ def test_lifecycle_public_accepted_correction_cancel_rebase_and_cold_restore():
             with pytest.raises(ValueError,match='spectra'):fresh.modes(None)
             with pytest.raises(ValueError,match='controllers'):fresh.solve(_actions(),(.1,),increment_control=object())
         finally:fresh.close()
-        from anysolver.control import CancellationToken,SolveCancelled
+        from anyfesolver.control import CancellationToken,SolveCancelled
         class CancelAfterCandidate(CancellationToken):
             calls=0
             def raise_if_cancelled(self,stage=''):
@@ -119,17 +119,17 @@ def test_lifecycle_public_accepted_correction_cancel_rebase_and_cold_restore():
 def test_legacy_affected_definition_default_pose_retained_and_checkpoint_controls():
     from scripts.r8_f06_quiet_caller_repair_dev import definition as original
     from scripts.r8_f06_compensated_state_route_dev import definition,SAVED
-    from anysolver import stiffened_shell as ss
-    from anysolver._ge_beam3_native_definition import NativeBeamDefinition,STABLE_SO3_SCHEMA,COMPENSATED_SCHEMA
-    from anysolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
-    from anysolver._ge_beam3_centered_so3_strain import POLICY as STABLE_POLICY
-    from anysolver._ge_beam3_pose_joint import RigidPoseJoint
+    from anyfesolver import stiffened_shell as ss
+    from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition,STABLE_SO3_SCHEMA,COMPENSATED_SCHEMA
+    from anyfesolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
+    from anyfesolver._ge_beam3_centered_so3_strain import POLICY as STABLE_POLICY
+    from anyfesolver._ge_beam3_pose_joint import RigidPoseJoint
     import json
     default=original().beams[0];element,inertia=default.instantiate();op=element.operator
     assert op.arithmetic_policy is None
     assert NativeBeamDefinition.capture(element,inertia).raw==default.raw
     for policy,schema in ((STABLE_POLICY,STABLE_SO3_SCHEMA),
-            (__import__('anysolver._stiffened_shell_f06_increment_arithmetic',fromlist=['POLICY']).POLICY,COMPENSATED_SCHEMA)):
+            (__import__('anyfesolver._stiffened_shell_f06_increment_arithmetic',fromlist=['POLICY']).POLICY,COMPENSATED_SCHEMA)):
         made=NativeGeneralizedStaticElement(element.element_id,element.node_ids,op.reference,op.section,
             order=op.order,arithmetic_policy=policy)
         capture=NativeBeamDefinition.capture(made,inertia)

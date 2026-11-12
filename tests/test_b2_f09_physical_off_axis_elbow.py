@@ -16,8 +16,8 @@ from scipy.sparse.linalg import splu
 PROBE = runpy.run_path(str(Path(__file__).resolve().parents[1] / "scripts"
                            / "probe_b3_ge_e4_pl_g0_f09_graph_reversal.py"))
 
-from anysolver._b2_physical_linear_batch_dev import CompiledB2AffineBatch
-from anysolver._b2_physical_flexibility_linear import (
+from anyfesolver._b2_physical_linear_batch_dev import CompiledB2AffineBatch
+from anyfesolver._b2_physical_flexibility_linear import (
     LinearOperator, LinearSection, _flexibility,
 )
 

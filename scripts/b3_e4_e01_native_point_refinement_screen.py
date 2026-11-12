@@ -13,13 +13,13 @@ from pathlib import Path
 
 import numpy as np
 
-import anysolver
-from anysolver import b3_ge
-from anysolver._stiffened_shell_ge_experimental import (
+import anyfesolver
+from anyfesolver import b3_ge
+from anyfesolver._stiffened_shell_ge_experimental import (
     PROFILE, FixedCoordinate, LinearDefinition, NodalAction, PointConnection,
     ShellPanel,
 )
-from anysolver.stiffened_shell import create_analysis
+from anyfesolver.stiffened_shell import create_analysis
 
 
 E = 210e9
@@ -143,7 +143,7 @@ def main(external_dir: Path, output: Path, two_d_refinement: bool = False):
     record = {
         "classification": "E01 source-development comparison; not accepted",
         "source_sha256": sha256(Path(__file__).read_bytes()).hexdigest(),
-        "solver_import": str(Path(anysolver.__file__).resolve()),
+        "solver_import": str(Path(anyfesolver.__file__).resolve()),
         "two_d_refinement": two_d_refinement,
         "external_files": {}, "cases": [], "failure": None,
     }

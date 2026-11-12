@@ -4,13 +4,13 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import (AnalysisSession, CancellationToken, CoupledBeamShellElement,
+from anyfesolver import (AnalysisSession, CancellationToken, CoupledBeamShellElement,
     BeamElement, FixedSupport, LoadCase, RecoveryConfig, ResourceConfig,
     SolveCancelled, StaticBatchError, StaticCase, iter_linear_batches,
     solve_inertia_relief, solve_linear)
-from anysolver.matrix_assembly import assemble_mass_matrix, assemble_stiffness_matrix
-from anysolver.assembly import build_constraint_transformation
-from anysolver.recovery import ResourcePolicyError
+from anyfesolver.matrix_assembly import assemble_mass_matrix, assemble_stiffness_matrix
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.recovery import ResourcePolicyError
 from test_inertia_relief import bar, rigid, load_vector
 from test_inertia_relief_integration import panel
 
@@ -42,7 +42,7 @@ def assert_stress_values(actual, expected):
 
 @pytest.mark.parametrize("consistent", [False, True])
 def test_multiple_rhs_blocks_reuse_preparation_and_match_scalar(consistent, monkeypatch):
-    import anysolver.inertia_relief as module
+    import anyfesolver.inertia_relief as module
     model = bar(consistent=consistent)
     model.mesh.point_masses[2] = .7
     inputs = cases(model)
@@ -104,7 +104,7 @@ def test_selected_output_rigid_acceleration_and_zero_columns_are_analytical():
 
 
 def test_scalar_and_batch_share_plan_mechanism_and_factorization_across_reference_changes(monkeypatch):
-    import anysolver.inertia_relief as module
+    import anyfesolver.inertia_relief as module
     model = bar()
     case = cases(model)[0]
     with AnalysisSession(model) as session:
@@ -205,7 +205,7 @@ def test_stream_mutation_remains_rejected(mutation):
 
 @pytest.mark.parametrize("stage", ["static_batch.start", "inertia_relief.mechanism_iteration", "static_batch.before_solve", "static_batch.before_yield"])
 def test_cancellation_propagates_and_owned_session_closes(stage, monkeypatch):
-    import anysolver.static_batch as module
+    import anyfesolver.static_batch as module
     model = bar()
     made = []
     original = module.AnalysisSession
@@ -221,7 +221,7 @@ def test_cancellation_propagates_and_owned_session_closes(stage, monkeypatch):
 
 
 def test_numerical_non_success_never_yields_and_closes_session(monkeypatch):
-    import anysolver.inertia_relief as module
+    import anyfesolver.inertia_relief as module
     model = bar()
     monkeypatch.setattr(module, "_mechanism_check", lambda *args: {"status": "unresolved", "error": "test nonconvergence"})
     with AnalysisSession(model) as session:
@@ -293,7 +293,7 @@ def test_nullspace_default_refusal_and_legacy_opt_in_are_unchanged():
 
 @pytest.mark.parametrize("mode", ["auto", "nullspace"])
 def test_collecting_fast_path_relief_and_nullspace_auto(mode):
-    from anysolver import solve_linear_many
+    from anyfesolver import solve_linear_many
     model = bar()
     inputs = cases(model)[:3]
     with AnalysisSession(model) as session:
@@ -316,7 +316,7 @@ def test_collecting_fast_path_relief_and_nullspace_auto(mode):
 
 @pytest.mark.parametrize("mass_policy,load_policy,ratio", [("delete_only", "activity", .375), ("activity", "delete_only", 1./.375), ("activity", "activity", 1.)])
 def test_activity_policies_and_invalidation_are_preserved(mass_policy, load_policy, ratio):
-    from anysolver.activity import ElementActivity, ElementActivityPolicy
+    from anyfesolver.activity import ElementActivity, ElementActivityPolicy
     model = bar(n=1)
     activity = ElementActivity([1], .375, policy=ElementActivityPolicy(mass=mass_policy, load=load_policy))
     model.set_element_activity(activity)
@@ -352,7 +352,7 @@ def test_direct_constraint_change_does_not_reuse_physical_plan():
 
 
 def test_generator_close_releases_owned_session_and_input(monkeypatch):
-    import anysolver.static_batch as module
+    import anyfesolver.static_batch as module
     model = bar()
     closed = []
     made = []
@@ -370,8 +370,8 @@ def test_generator_close_releases_owned_session_and_input(monkeypatch):
 
 
 def test_collecting_relief_external_cache_and_conflict():
-    from anysolver import solve_linear_many
-    from anysolver.linalg import FactorizationCache
+    from anyfesolver import solve_linear_many
+    from anyfesolver.linalg import FactorizationCache
     model = bar()
     cache = FactorizationCache(name="relief caller", max_entries=2)
     try:
@@ -387,8 +387,8 @@ def test_collecting_relief_external_cache_and_conflict():
 
 
 def test_memory_preflight_accounts_for_krylov_workspace_before_certification(monkeypatch):
-    import anysolver.inertia_relief as module
-    from anysolver.recovery import estimate_model_memory
+    import anyfesolver.inertia_relief as module
+    from anyfesolver.recovery import estimate_model_memory
     model = bar(n=20)
     n = model.mesh.dof_manager.total_dofs
     recovery = RecoveryConfig(include_displacements=False, include_stresses=False, include_reactions=False)
@@ -457,7 +457,7 @@ def test_raw_backend_gauge_quality_is_reported_before_cleanup(monkeypatch):
 
 
 def test_admitted_mpc_structure_change_rebuilds_and_recertifies(monkeypatch):
-    import anysolver.inertia_relief as module
+    import anyfesolver.inertia_relief as module
     model = bar()
     count = []
     original = module._mechanism_check
@@ -488,7 +488,7 @@ def test_scalar_zero_load_has_zero_acceleration_with_reused_plan():
 
 @pytest.mark.parametrize("kind,code", [("support", "unsupported_constraints"), ("disconnected", "disconnected_body")])
 def test_empty_inputs_do_not_skip_model_admission(kind, code):
-    from anysolver import solve_linear_many
+    from anyfesolver import solve_linear_many
     model = bar()
     if kind == "support": model.add_boundary_condition(FixedSupport("fixed", [1]))
     else: model.add_node(99, 10., 0., 0.)
@@ -515,7 +515,7 @@ def test_non_success_mechanism_details_are_detached_from_session_cache():
 
 
 def test_collecting_refuses_solid_protocol_before_downstream_dispatch():
-    from anysolver import InertiaReliefError, solve_linear_many
+    from anyfesolver import InertiaReliefError, solve_linear_many
     class Solid:
         _solid_model_protocol = True
     with pytest.raises(InertiaReliefError) as error:

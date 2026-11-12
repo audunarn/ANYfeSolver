@@ -26,7 +26,7 @@ from typing import Any, Callable, Mapping, Sequence
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 REPORT_ROOT = ROOT / "reports" / "s4_improved"
-SCHEMA_NAME = "anysolver.s4_improved.benchmark"
+SCHEMA_NAME = "anyfesolver.s4_improved.benchmark"
 SCHEMA_VERSION = 1
 PERF_LEASE_ENV = "ANYSOLVER_PERF_LEASE"
 
@@ -149,7 +149,7 @@ def _load_case_factories() -> tuple[Mapping[str, Callable[[], Any]] | None, str 
 
     try:
         module = importlib.import_module(
-            "anysolver.shell_formulations.mitc4_plus_d_batch"
+            "anyfesolver.shell_formulations.mitc4_plus_d_batch"
         )
     except Exception as exc:
         return None, f"batch_module_unavailable: {exc!r}"

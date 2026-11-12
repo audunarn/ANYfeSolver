@@ -178,7 +178,7 @@ def _rewrite(path: Path, value: dict[str, object]) -> None:
     path.write_bytes(funnel.canonical_bytes(value))
 
 
-def test_checker_is_independent_of_producer_and_anysolver_mechanics() -> None:
+def test_checker_is_independent_of_producer_and_anyfesolver_mechanics() -> None:
     tree = ast.parse(PROGRAM.read_text(encoding="utf-8"))
     imported = {
         node.module
@@ -191,7 +191,7 @@ def test_checker_is_independent_of_producer_and_anysolver_mechanics() -> None:
         if isinstance(node, ast.Import)
         for alias in node.names
     )
-    assert not any(name.startswith("anysolver") for name in imported)
+    assert not any(name.startswith("anyfesolver") for name in imported)
     assert not any("producer" in name for name in imported)
 
 

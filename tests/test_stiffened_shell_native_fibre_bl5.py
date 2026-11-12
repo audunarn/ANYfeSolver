@@ -5,15 +5,15 @@ import numpy as np
 import pickle
 import pytest
 from scipy.linalg import eig
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver import _stiffened_shell_ge_point_buckling as buckling
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver import _stiffened_shell_ge_point_buckling as buckling
 from examples.stiffened_shell_native_fibre_bl5 import definition, workflow
 from test_stiffened_shell_ge_line_buckling import line_oracle, direct_line_ad
 from test_stiffened_shell_ge_mixed_buckling import dense_mixed_oracle
-from anysolver._ge_beam3_pose_joint import _exp_terms
-from anysolver._ge_beam3_retained_generalized_state import Mechanical
-from anysolver._stiffened_shell_ge_finite_experimental import _position_pair
+from anyfesolver._ge_beam3_pose_joint import _exp_terms
+from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
+from anyfesolver._stiffened_shell_ge_finite_experimental import _position_pair
 
 ACTIONS = (ss.NodalAction('beam',105,(-1000.,0.,100.,0.,0.,0.)),)
 

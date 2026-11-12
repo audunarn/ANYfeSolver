@@ -32,7 +32,7 @@ import copy
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     DisplacementControl,
     FEModel,
@@ -40,20 +40,20 @@ from anysolver import (
     create_shell_element,
     solve_static_nonlinear,
 )
-from anysolver.assembly import build_constraint_transformation
-from anysolver.corotational import (
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.corotational import (
     SO3MeanDomainError,
     _so3_weighted_mean,
     build_nonlinear_rotating_mpc_map,
     rotation_matrix_from_vector,
 )
-from anysolver.elements import BeamElement, CoupledBeamShellElement
-from anysolver.matrix_assembly import (
+from anyfesolver.elements import BeamElement, CoupledBeamShellElement
+from anyfesolver.matrix_assembly import (
     assemble_load_vector,
     assemble_stiffness_matrix,
 )
-from anysolver.mesh_gen import InterpolatedBeamShellMPCElement
-from anysolver.nonlinear_static import (
+from anyfesolver.mesh_gen import InterpolatedBeamShellMPCElement
+from anyfesolver.nonlinear_static import (
     ShellInitialField,
     _assemble_nonlinear_system,
     _weighted_external_load_system,
@@ -780,8 +780,8 @@ def test_d1_displacement_control_augmented_factorization_declared_general(
     actual solve unchanged, so the regression is independent of optional
     PARDISO availability and does not count a bare SciPy pass as coverage.
     """
-    import anysolver.nonlinear_static as nonlinear_static
-    from anysolver.linalg import MatrixClass
+    import anyfesolver.nonlinear_static as nonlinear_static
+    from anyfesolver.linalg import MatrixClass
 
     model, meta = _build_coupled_cantilever("eccentric")
     load = LoadCase("tip")
@@ -825,18 +825,26 @@ def test_intrinsic_mean_two_master_independent_geodesic_and_differential() -> No
 
     thetas = [np.array([0.4, -0.2, 0.3]), np.array([-0.3, 0.5, 0.1])]
     weights = [0.35 * (1.0 + 1.0e-9), 0.65 * (1.0 + 1.0e-9)]
-    a, b = [Rotation.from_rotvec(t) for t in thetas]
-    expected = (a * Rotation.from_rotvec(0.65 * (a.inv() * b).as_rotvec())).as_rotvec()
+    def independent_geodesic(vectors):
+        a, b = [Rotation.from_rotvec(t) for t in vectors]
+        return (a * Rotation.from_rotvec(0.65 * (a.inv() * b).as_rotvec())).as_rotvec()
+
+    expected = independent_geodesic(thetas)
     actual, blocks = _so3_weighted_mean(thetas, weights, "test")
     np.testing.assert_allclose(actual, expected, rtol=0.0, atol=2.0e-15)
     for i in range(2):
         fd = np.empty((3, 3))
         for j in range(3):
-            plus, minus = [t.copy() for t in thetas], [t.copy() for t in thetas]
-            plus[i][j] += 1.0e-6
-            minus[i][j] -= 1.0e-6
-            fd[:, j] = (_so3_weighted_mean(plus, weights, "test")[0]
-                        - _so3_weighted_mean(minus, weights, "test")[0]) / 2.0e-6
+            # The centered four-point stencil balances O(h**4) truncation
+            # against O(eps/h) roundoff on the independent SciPy geodesic.
+            h = np.finfo(float).eps ** 0.2
+            samples = []
+            for step in (-2, -1, 1, 2):
+                displaced = [t.copy() for t in thetas]
+                displaced[i][j] += step * h
+                samples.append(independent_geodesic(displaced))
+            fd[:, j] = ((samples[0] - samples[3])
+                        + 8.0 * (samples[2] - samples[1])) / (12.0 * h)
         np.testing.assert_allclose(blocks[i], fd, rtol=1.0e-8, atol=1.0e-10)
 
 
@@ -852,7 +860,7 @@ def test_intrinsic_mean_ambiguous_or_unadmitted_domain_refused(thetas, weights, 
 
 
 def test_dc_zero_span_failed_attempt_is_bounded_and_rolls_back(monkeypatch) -> None:
-    import anysolver.nonlinear_static as nonlinear_static
+    import anyfesolver.nonlinear_static as nonlinear_static
 
     model, meta = _build_coupled_cantilever("eccentric", nx=2, ny=1)
     tip = meta["grid"][(meta["nx"], 0)]
@@ -891,7 +899,7 @@ def test_dc_accepted_subincrements_receive_independent_cutback_budget(monkeypatc
     intervals use the actual element assembly, tangent and state transaction.
     """
     import inspect
-    import anysolver.nonlinear_static as nonlinear_static
+    import anyfesolver.nonlinear_static as nonlinear_static
 
     model, meta = _build_coupled_cantilever("eccentric", nx=2, ny=1)
     tip = meta["grid"][(meta["nx"], 0)]
@@ -976,7 +984,7 @@ def test_dc_quadratic_search_reaches_small_descent_step_within_eight_trials(
     """
     import inspect
     from scipy import sparse
-    import anysolver.nonlinear_static as nonlinear_static
+    import anyfesolver.nonlinear_static as nonlinear_static
 
     model, meta = _build_coupled_cantilever("eccentric", nx=2, ny=1)
     tip = meta["grid"][(meta["nx"], 0)]
@@ -1048,7 +1056,7 @@ def test_dc_search_crosses_a_rising_constitutive_shoulder_within_eight_trials(mo
     """
     import inspect
     from scipy import sparse
-    import anysolver.nonlinear_static as nonlinear_static
+    import anyfesolver.nonlinear_static as nonlinear_static
     model, meta = _build_coupled_cantilever("eccentric", nx=2, ny=1)
     tip = meta["grid"][(meta["nx"], 0)]
     dofs = model.mesh.dof_manager.get_node_dofs(tip)
@@ -1126,7 +1134,7 @@ def test_dc_trial_domain_refusal_is_backtracked_not_aborted(monkeypatch) -> None
     must be refused, and the solve must return a classified failure with the
     committed state preserved, within the bounded subdivision budget.
     """
-    import anysolver.nonlinear_static as nonlinear_static
+    import anyfesolver.nonlinear_static as nonlinear_static
 
     model, meta = _build_coupled_cantilever("interpolated", nx=2, ny=1)
     tip = meta["grid"][(meta["nx"], 0)]
@@ -1182,7 +1190,7 @@ def test_dc_trial_domain_refusal_is_backtracked_not_aborted(monkeypatch) -> None
 @pytest.mark.parametrize("plastic_origin", ("elastic", "committed", "trial"))
 def test_dc_merit_search_requires_actual_trial_or_committed_plasticity(monkeypatch, plastic_origin):
     import inspect
-    import anysolver.nonlinear_static as ns
+    import anyfesolver.nonlinear_static as ns
     model, meta = _build_coupled_cantilever("eccentric", nx=2, ny=1)
     tip = meta["grid"][(meta["nx"], 0)]
     load = LoadCase("tip"); load.add_nodal_load(tip, forces=(0., 0., -100.))
@@ -1282,7 +1290,7 @@ def test_fiber_beam_unyielded_limit_matches_full_elastic_timoshenko_matrix(lengt
 
 def test_fiber_beam_elastic_limit_retains_objective_rigid_motion():
     from test_nonlinear_beam_shell_slice3_continuation import _add_ep_material, CS
-    import anysolver.corotational as cr
+    import anyfesolver.corotational as cr
     model = FEModel("fiber_rigid_motion")
     _add_ep_material(model, 1.)
     model.add_node(1, 0., 0., 0.)
@@ -1323,7 +1331,7 @@ def test_rotating_geometric_tangent_stencil_stays_in_admitted_domain(boundary):
 @pytest.mark.parametrize("control_mode", ("force", "force_plain", "displacement"))
 @pytest.mark.parametrize("refusal", ("once", "all", "unrelated"))
 def test_trial_domain_recovery_and_unrelated_error_propagation(monkeypatch, control_mode, refusal):
-    from anysolver.corotational import NonlinearRotatingMPCMap
+    from anyfesolver.corotational import NonlinearRotatingMPCMap
 
     model, meta = _build_coupled_cantilever("interpolated", nx=2, ny=1)
     tip = meta["grid"][(meta["nx"], 0)]
@@ -1397,7 +1405,7 @@ def test_dc_line_search_no_improvement_is_classified_and_rolls_back(
     the attempt with a classified reason instead of committing a full step
     that sustains a Newton limit cycle; the committed state is preserved.
     """
-    from anysolver.corotational import NonlinearRotatingMPCMap
+    from anyfesolver.corotational import NonlinearRotatingMPCMap
 
     model, meta = _build_coupled_cantilever("eccentric", nx=2, ny=1)
     tip = meta["grid"][(meta["nx"], 0)]
@@ -1445,7 +1453,7 @@ def test_dc_line_search_no_improvement_is_classified_and_rolls_back(
 
 @pytest.mark.parametrize("refusal", ["none", "domain", "unrepresentable", "unrelated"])
 def test_material_event_localization_is_bounded_pure_and_fails_closed(refusal):
-    from anysolver._nonlinear_events import MaterialEvents, crossed_material_event
+    from anyfesolver._nonlinear_events import MaterialEvents, crossed_material_event
     event = 6.4e-8
     q = np.array([1.0e20 if refusal == "unrepresentable" else .1])
     direction = np.ones(1)
@@ -1478,7 +1486,7 @@ def test_material_event_localization_is_bounded_pure_and_fails_closed(refusal):
 
 
 def test_material_event_indicators_match_actual_fiber_entry_and_copy_inputs():
-    from anysolver._nonlinear_events import material_events
+    from anyfesolver._nonlinear_events import material_events
     from test_nonlinear_beam_shell_slice3_continuation import _build_ep_model
     model, *_ = _build_ep_model("direct")
     element = next(e for e in model.mesh.elements.values() if isinstance(e, BeamElement))
@@ -1518,9 +1526,9 @@ def test_dc_resolved_material_event_crossing_preserves_rollback_and_cancellation
     """A narrow resolved event is crossed, but no non-equilibrium state commits."""
     import inspect
     from scipy import sparse
-    import anysolver.nonlinear_static as nonlinear_static
-    import anysolver._nonlinear_events as events
-    from anysolver.control import CancellationToken, SolveCancelled
+    import anyfesolver.nonlinear_static as nonlinear_static
+    import anyfesolver._nonlinear_events as events
+    from anyfesolver.control import CancellationToken, SolveCancelled
     model, meta = _build_coupled_cantilever("eccentric", nx=2, ny=1)
     tip = meta["grid"][(meta["nx"], 0)]
     dofs = model.mesh.dof_manager.get_node_dofs(tip)
@@ -1574,7 +1582,7 @@ def test_dc_resolved_material_event_crossing_preserves_rollback_and_cancellation
 
 
 def _return_band_fixture(kind, alpha_old):
-    from anysolver.material_curves import LinearHardeningCurve, PiecewiseLinearCurve
+    from anyfesolver.material_curves import LinearHardeningCurve, PiecewiseLinearCurve
     scale = 1.25
     if kind == "constant":
         curve = LinearHardeningCurve(355e6/scale, 0.)
@@ -1660,7 +1668,7 @@ def test_beam_return_map_keeps_yield_entry_and_closure_band_boundaries(kind, sig
 
 
 def _secant_seed_cubic(maximum_solves=20, *, evaluate_override=None, solve_override=None):
-    from anysolver._nonlinear_seed import secant_plane_seed
+    from anyfesolver._nonlinear_seed import secant_plane_seed
     q = np.array([1.]); previous = (np.array([0.]), 0.)
     calls = []
     def evaluate(values, lam, tangent):
@@ -1713,7 +1721,7 @@ def test_uncommitted_secant_plane_seed_refusal_is_bounded_and_unaccepted(mode):
 
 
 @pytest.mark.parametrize('exception', (ValueError('unrelated assembly error'),
-    __import__('anysolver.control', fromlist=['SolveCancelled']).SolveCancelled('cancel seed')))
+    __import__('anyfesolver.control', fromlist=['SolveCancelled']).SolveCancelled('cancel seed')))
 def test_uncommitted_secant_plane_seed_propagates_unrelated_error_and_cancellation(exception):
     def fail(*args): raise exception
     with pytest.raises(type(exception), match=str(exception)):
@@ -1723,7 +1731,7 @@ def test_uncommitted_secant_plane_seed_propagates_unrelated_error_and_cancellati
 @pytest.mark.parametrize('retained_rows', (True, False))
 def test_restart_reduction_inverts_affine_constraints_and_refuses_incompatible_state(retained_rows):
     from scipy import sparse
-    from anysolver.nonlinear_static import _reduced_coordinates
+    from anyfesolver.nonlinear_static import _reduced_coordinates
 
     T = sparse.csr_matrix([[1., 0.], [0., 1.], [.75, .25]] if retained_rows
                           else [[2., 0.], [0., 3.], [.75, .25]])

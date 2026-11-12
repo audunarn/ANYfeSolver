@@ -2,8 +2,8 @@
 import argparse
 import json
 import numpy as np
-from anysolver.ge_beam3_native import define_beam, SELECTOR as BEAM, EllipsoidalGeneralizedSection
-from anysolver.ge_beam3_native_connected_dynamics import create_analysis, SELECTOR
+from anyfesolver.ge_beam3_native import define_beam, SELECTOR as BEAM, EllipsoidalGeneralizedSection
+from anyfesolver.ge_beam3_native_connected_dynamics import create_analysis, SELECTOR
 
 
 def build(clamped=False):
@@ -15,7 +15,7 @@ def build(clamped=False):
                               (2,(30,40,50),((0.,0.,0.),(.5,0.,0.),(1.,0.,0.)))))
     boundaries=()
     if clamped:
-        from anysolver.boundary import BoundaryCondition
+        from anyfesolver.boundary import BoundaryCondition
         boundaries=(BoundaryCondition('root',[10],dict.fromkeys(('ux','uy','uz','rx','ry','rz'),0.)),)
     return create_analysis(SELECTOR,definitions,boundaries)
 

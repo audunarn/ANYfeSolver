@@ -4,16 +4,16 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.overlap import current_planar_shell_face
-from anysolver.general_contact.friction_point import (
+from anyfesolver import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.overlap import current_planar_shell_face
+from anyfesolver.general_contact.friction_point import (
     objective_relative_tangent_increment,
     objective_relative_tangent_variation,
 )
-from anysolver.general_contact.s3_friction_point import S3SkinMaterialPoint
-from anysolver.general_contact.s3_skin_work import S3SkinWorkAdapter
-from anysolver.general_contact.triangle_pair_energy import MovingS3PairPenalty
+from anyfesolver.general_contact.s3_friction_point import S3SkinMaterialPoint
+from anyfesolver.general_contact.s3_skin_work import S3SkinWorkAdapter
+from anyfesolver.general_contact.triangle_pair_energy import MovingS3PairPenalty
 
 
 def _model():

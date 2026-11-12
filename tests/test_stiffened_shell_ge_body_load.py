@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver._stiffened_shell_ge_body_load import GEBodyLoad, encode_checkpoint, decode_checkpoint
+from anyfesolver._stiffened_shell_ge_body_load import GEBodyLoad, encode_checkpoint, decode_checkpoint
 from test_stiffened_shell_native_gravity import reference, inertia
 
 

@@ -12,8 +12,8 @@ import math
 
 import numpy as np
 
-import anysolver.e4_pl_s3_element as s3
-from anysolver.e4_pl_s3_state import reconstruct_director_triad
+import anyfesolver.e4_pl_s3_element as s3
+from anyfesolver.e4_pl_s3_state import reconstruct_director_triad
 from _e4_pl_s3_native_trial import native_trial_for_increment
 
 

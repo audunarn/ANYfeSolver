@@ -17,8 +17,8 @@ from scipy import linalg, sparse
 from scipy.sparse.linalg import spsolve
 from threadpoolctl import threadpool_info, threadpool_limits
 
-from anysolver._ge_beam3_mixed_ad import Jet2, matvec, so3_exp, transpose
-from anysolver._ge_beam3_pose_joint import RigidPoseJoint
+from anyfesolver._ge_beam3_mixed_ad import Jet2, matvec, so3_exp, transpose
+from anyfesolver._ge_beam3_pose_joint import RigidPoseJoint
 from scripts._b3_e4_f03_coupled_point_work_candidate import directional_point_work
 from scripts._b3_e4_f03_e4_trial_panel import FlatE4TrialPanel
 from scripts._b3_e4_f03_native_fixture import SECTION_DIAGONAL, build

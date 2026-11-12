@@ -153,7 +153,7 @@ def test_checker_has_no_production_or_peer_builder_imports() -> None:
         elif isinstance(node, ast.ImportFrom) and node.module:
             imports.add(node.module.split(".")[0])
 
-    assert imports.isdisjoint({"anysolver", "numpy", "scipy", "sympy"})
+    assert imports.isdisjoint({"anyfesolver", "numpy", "scipy", "sympy"})
     assert "ge_beam3_mixed_reference" not in source
     assert "QuadraticBeamElement" not in source
     assert "BeamElement" not in source

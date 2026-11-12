@@ -58,11 +58,11 @@ def imports(source, original_module, mapping):
                 made.append('import '+mapping.get(whole, whole)+' as '+(alias.asname or alias.name))
             else:
                 module = mapping.get(absolute, absolute)
-                if absolute == 'anysolver._ge_beam3_mixed_ad' and alias.name in ('so3_exp', 'so3_log'):
-                    module = 'anysolver._ge_beam3_g3c_so3_numerics'
+                if absolute == 'anyfesolver._ge_beam3_mixed_ad' and alias.name in ('so3_exp', 'so3_log'):
+                    module = 'anyfesolver._ge_beam3_g3c_so3_numerics'
                 made.append('from '+module+' import '+alias.name+(' as '+alias.asname if alias.asname else ''))
         # External absolute imports retain their exact original spelling.
-        if node.level == 0 and absolute not in mapping and absolute != 'anysolver._ge_beam3_mixed_ad' and not any(absolute+'.'+a.name in mapping for a in node.names):
+        if node.level == 0 and absolute not in mapping and absolute != 'anyfesolver._ge_beam3_mixed_ad' and not any(absolute+'.'+a.name in mapping for a in node.names):
             continue
         start = offsets[node.lineno-1]+node.col_offset
         end = offsets[node.end_lineno-1]+node.end_col_offset
@@ -130,7 +130,7 @@ def audit(contract, root=ROOT, *, implemented=False):
     destinations = set()
     for row in contract['copies']:
         destination = row['destination']
-        if destination in destinations or not destination.startswith(('src/anysolver/_ge_beam3_g3c_stable/', 'tests/test_ge_beam3_g3c_stable_')) or '..' in Path(destination).parts:
+        if destination in destinations or not destination.startswith(('src/anyfesolver/_ge_beam3_g3c_stable/', 'tests/test_ge_beam3_g3c_stable_')) or '..' in Path(destination).parts:
             raise ValueError('duplicate or out-of-scope destination')
         destinations.add(destination)
         if tree.get(row['source']) != row['source_blob']:

@@ -1,8 +1,8 @@
 # FE Solver Theory Notes
 
 This note records the theoretical basis, equation audit, and validity limits
-for the production `anysolver` package. The implementation target is an
-ANYsolver beam-shell solver, not a general-purpose nonlinear FE code. A cited
+for the production `anyfesolver` package. The implementation target is an
+ANYfeSolver beam-shell solver, not a general-purpose nonlinear FE code. A cited
 formulation is a design anchor; qualification still comes from the executable
 tests and comparison evidence described in
 [`QUALITY_CONTROL.md`](QUALITY_CONTROL.md).
@@ -735,7 +735,7 @@ Implemented interfaces:
 
 ### Arc-length continuation
 
-`anysolver.arc_length.solve_static_arc_length()` adds a bounded
+`anyfesolver.arc_length.solve_static_arc_length()` adds a bounded
 [Crisfield-style](https://doi.org/10.1016/0045-7949(81)90108-5) spherical
 constraint to the same nonlinear element, material-state, load, and constraint
 machinery:

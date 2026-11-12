@@ -38,8 +38,8 @@ def test_source_maps_are_independent_and_agree() -> None:
         elif isinstance(node, ast.ImportFrom) and node.module:
             imports.add(node.module)
     assert "e4_pl_s3_v5a_screen_producer" not in imports
-    assert "anysolver.e4_pl_s3_element" not in imports
-    assert "anysolver.e4_pl_s3_v2_element" not in imports
+    assert "anyfesolver.e4_pl_s3_element" not in imports
+    assert "anyfesolver.e4_pl_s3_v2_element" not in imports
     vertices = np.asarray(((0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.2, 0.9, 0.0)))
     produced = min3_components(vertices)
     checked = reconstruct(vertices)
@@ -109,7 +109,7 @@ def test_terminal_precedence_and_two_bounded_cycles(tmp_path: Path) -> None:
 
 
 def test_production_boundary_and_optional_closeout() -> None:
-    source = (ROOT / "src" / "anysolver" / "elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src" / "anyfesolver" / "elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source
     assert not any(path.is_file() for path in (ROOT / "src").rglob("*v5a*"))

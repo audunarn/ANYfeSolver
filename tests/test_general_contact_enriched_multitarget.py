@@ -6,12 +6,12 @@ import os
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver.control import SolveCancelled
-from anysolver.e4_pl_enriched import EnrichedProfileError
-from anysolver.general_contact.enriched_overlap import EnrichedGeometryError
-from anysolver.general_contact.enriched_multitarget_topology import disk_topology,certify_disk
-from anysolver.general_contact.enriched_multitarget import MultiTargetSystem
-from anysolver.general_contact.enriched_path import EnrichedPathOwner
+from anyfesolver.control import SolveCancelled
+from anyfesolver.e4_pl_enriched import EnrichedProfileError
+from anyfesolver.general_contact.enriched_overlap import EnrichedGeometryError
+from anyfesolver.general_contact.enriched_multitarget_topology import disk_topology,certify_disk
+from anyfesolver.general_contact.enriched_multitarget import MultiTargetSystem
+from anyfesolver.general_contact.enriched_path import EnrichedPathOwner
 from examples.general_contact_enriched_d1_path import build
 
 
@@ -32,9 +32,9 @@ def test_explicit_multiedge_disk_and_nonmanifold_refusals():
 
 
 def test_new_selected_operator_preserves_ordinary_full37_value_gradient_hessian(record_property):
-    from anysolver.general_contact.enriched_overlap import QuadraturePolicy
-    from anysolver.general_contact.enriched_moment_batch import batch_moments
-    from anysolver.general_contact.enriched_multitarget_moments import selected_batch_moments
+    from anyfesolver.general_contact.enriched_overlap import QuadraturePolicy
+    from anyfesolver.general_contact.enriched_moment_batch import batch_moments
+    from anyfesolver.general_contact.enriched_multitarget_moments import selected_batch_moments
     ref=np.array(((-.5,-.5,0.),(.5,-.5,0.),(.5,.5,0.),(-.5,.5,0.)))
     source=ref.copy();source[:,2]=(.001,-.002,.0015,-.0005)
     mid=source.copy();target=np.array(((-3.,-3.,-.2),(0.,4.,-.21),(4.,-3.,-.19)))
@@ -60,7 +60,7 @@ def test_new_selected_operator_preserves_ordinary_full37_value_gradient_hessian(
 
 
 def test_registered_layout_affine_lift_all8_and_legacy_unchanged(layouts,record_property,tmp_path):
-    from anysolver.general_contact.enriched_nonlinear import NonlinearEnrichedSystem
+    from anyfesolver.general_contact.enriched_nonlinear import NonlinearEnrichedSystem
     measured={}
     for mode,(model,definition,owner,descriptor) in layouts.items():
         template=owner.template;c=template._control_matrix;t=template.transform

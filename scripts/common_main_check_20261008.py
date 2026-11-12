@@ -5,7 +5,7 @@ import argparse, hashlib, json, os, subprocess, sys, time
 REPO = Path(__file__).resolve().parents[1]
 RAW = REPO / '.development/common-main-20261008'
 SITE = RAW / 'site-v5'
-DEPS = Path('C:/Github/ANYsolver/.perf2-worktrees/stiffened-main-reconcile-20261001/.qualification/b3-ge-e4-pl/r8-native-s3-restart-binding-dev-20261005-v1/ci-site-network-v2')
+DEPS = Path('C:/Github/ANYfeSolver/.perf2-worktrees/stiffened-main-reconcile-20261001/.qualification/b3-ge-e4-pl/r8-native-s3-restart-binding-dev-20261005-v1/ci-site-network-v2')
 BASE = Path('C:/Python/Python314/Lib/site-packages')
 SIBLINGS = [Path('C:/Github') / n / 'src' for n in ('ANYmaterial', 'ANYfileIO', 'ANYmesh', 'ANYgeometry')]
 ENV = dict(NUMBA_DISABLE_JIT='1', NUMBA_NUM_THREADS='1', OMP_NUM_THREADS='1', OPENBLAS_NUM_THREADS='1', MKL_NUM_THREADS='1', NUMEXPR_NUM_THREADS='1', PYTEST_DISABLE_PLUGIN_AUTOLOAD='1', PIP_NO_INDEX='1')
@@ -52,15 +52,15 @@ def child(args):
         subprocess.run([sys.executable, '-m', 'pip', 'install', '--no-index', '--no-deps', '--target', str(SITE), str(wheels[0])], env=env, check=True)
         write(out / 'artifact.json', {'wheel': str(wheels[0]), 'sha256': sha(wheels[0]), 'site': str(SITE)})
         return 0
-    import anysolver, psutil, numpy, scipy, numba
+    import anyfesolver, psutil, numpy, scipy, numba
     from threadpoolctl import threadpool_info
-    imported = Path(anysolver.__file__).resolve()
+    imported = Path(anyfesolver.__file__).resolve()
     expected = (REPO / 'src' if args.mode == 'source' else SITE).resolve()
     if not imported.is_relative_to(expected):
-        raise RuntimeError(f'Wrong ANYsolver import: {imported}')
+        raise RuntimeError(f'Wrong ANYfeSolver import: {imported}')
     if numba.get_num_threads() != 1 or not numba.config.DISABLE_JIT:
         raise RuntimeError('Effective Numba settings mismatch')
-    runtime = dict(anysolver=str(imported), numpy=numpy.__version__, scipy=scipy.__version__, numba=numba.__version__, affinity=psutil.Process().cpu_affinity(), jit_disabled=bool(numba.config.DISABLE_JIT), numba_threads=numba.get_num_threads(), pools=threadpool_info(), environment=ENV, mode=args.mode)
+    runtime = dict(anyfesolver=str(imported), numpy=numpy.__version__, scipy=scipy.__version__, numba=numba.__version__, affinity=psutil.Process().cpu_affinity(), jit_disabled=bool(numba.config.DISABLE_JIT), numba_threads=numba.get_num_threads(), pools=threadpool_info(), environment=ENV, mode=args.mode)
     write(out / 'runtime-before.json', runtime)
     if runtime['affinity'] != [0] or any(p['num_threads'] != 1 for p in runtime['pools']):
         raise RuntimeError('Effective CPU/thread settings mismatch')
@@ -71,12 +71,12 @@ def child(args):
         pools = threadpool_info()
         if any(p['num_threads'] != 1 for p in pools):
             raise RuntimeError('Example changed thread settings')
-        write(out / 'runtime-after.json', dict(imports={n: str(m.__file__) for n, m in list(sys.modules.items()) if n.startswith('anysolver') and getattr(m, '__file__', None)}, pools=pools))
+        write(out / 'runtime-after.json', dict(imports={n: str(m.__file__) for n, m in list(sys.modules.items()) if n.startswith('anyfesolver') and getattr(m, '__file__', None)}, pools=pools))
         return 0
     import pytest
     # Existing runtime plugin also validates imports after callbacks and tests.
     os.environ['ANYSOLVER_DEVELOPMENT_RECORD'] = str(out / 'runtime-after.json')
-    os.environ['ANYSOLVER_DEVELOPMENT_SOURCE'] = str(expected / 'anysolver')
+    os.environ['ANYSOLVER_DEVELOPMENT_SOURCE'] = str(expected / 'anyfesolver')
     return int(pytest.main(['-q', '-x', '-o', 'pythonpath=', '-p', 'no:cacheprovider', '-p', 'scripts.development_test_runtime', '--junitxml=' + str(out / 'junit.xml'), '--basetemp=' + str(out / 'temp'), *args.targets]))
 
 def main():
@@ -101,7 +101,7 @@ def main():
     out = RAW / args.phase
     out.mkdir(exist_ok=False)
     head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=REPO, text=True).strip()
-    paths = sorted((REPO / 'src/anysolver').rglob('*.py')) + [REPO / 'pyproject.toml', Path(__file__).resolve()]
+    paths = sorted((REPO / 'src/anyfesolver').rglob('*.py')) + [REPO / 'pyproject.toml', Path(__file__).resolve()]
     paths += [REPO / p for p in ('dependency-licenses.json', 'THIRD_PARTY_NOTICES.md', 'scripts/ge_beam3_release_test_inventory.json', 'scripts/run_portable_ci.py', 'scripts/check_license_compliance.py', 'scripts/development_test_runtime.py')]
     paths += [REPO / t.partition('::')[0] for t in args.targets]
     identities = {str(p.relative_to(REPO)): sha(p) for p in paths}

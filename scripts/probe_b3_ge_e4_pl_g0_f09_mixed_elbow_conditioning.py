@@ -14,8 +14,8 @@ import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import splu
 
-from anysolver._b2_physical_flexibility_linear import LinearSection
-from anysolver._b2_physical_linear_definition import PhysicalB2Member
+from anyfesolver._b2_physical_flexibility_linear import LinearSection
+from anyfesolver._b2_physical_linear_definition import PhysicalB2Member
 
 
 AREA = 2.0 ** -80

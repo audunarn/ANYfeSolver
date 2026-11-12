@@ -10,8 +10,8 @@ from pathlib import Path
 import numpy as np
 from scipy.optimize import least_squares
 
-import anysolver.general_contact.linearized_pivot as pivot
-from anysolver import solve_static_nonlinear
+import anyfesolver.general_contact.linearized_pivot as pivot
+from anyfesolver import solve_static_nonlinear
 
 from general_contact_d1_coupled_refinement import build_case
 

@@ -1,13 +1,13 @@
 """Combined distributed/nodal work through actual native assembly and Newton."""
 import numpy as np
 import pytest
-from anysolver._ge_beam3_native_combined_couples import solve_combined_static,external_at,_Run,_RUN
-from anysolver._ge_beam3_native_distributed_loading import DistributedPattern,assemble_distributed_trial,_ACTIVE
-from anysolver._ge_beam3_native_distributed_program import solve_distributed_model,_PROGRAM
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._ge_beam3_native_combined_couples import solve_combined_static,external_at,_Run,_RUN
+from anyfesolver._ge_beam3_native_distributed_loading import DistributedPattern,assemble_distributed_trial,_ACTIVE
+from anyfesolver._ge_beam3_native_distributed_program import solve_distributed_model,_PROGRAM
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_spatial_nodal_moments import SpatialNodalMoments
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5.algebra import rotation
 from test_ge_beam3_native_distributed import problem,convert,pattern,packet
 from test_ge_beam3_native_spatial_couples import left_jacobian,make as simple
 from test_ge_beam3_native_fibre_static_element import store_for,sample
@@ -39,8 +39,8 @@ def test_combined_directional_work(plastic,tmp_path):
 
 
 def test_combined_analytical_torsion(monkeypatch,tmp_path):
-    import anysolver.nonlinear_static as solver
-    from anysolver.linalg import MatrixClass
+    import anyfesolver.nonlinear_static as solver
+    from anyfesolver.linalg import MatrixClass
     model=convert(simple()[0]);calls=[];original=solver.factorize;tip=.3;density=.12
     def observed(matrix,kind,*args,**kwargs):
         if str(kwargs.get('signature','')).startswith('nonlinear.static_newton'):
@@ -75,7 +75,7 @@ def test_zero_nodal_limit_and_fixed_reaction(tmp_path):
 
 @pytest.mark.parametrize('mutation',['pattern','foreign-store','unissued-pose'])
 def test_live_load_authority(mutation,monkeypatch,tmp_path):
-    import anysolver._ge_beam3_native_combined_couples as module
+    import anyfesolver._ge_beam3_native_combined_couples as module
     m,e=problem();store=store_for(m,e);before=canonical(store.materialize());u=sample()
     run=_Run(m,SpatialNodalMoments(((3,.1,.2,.3),)));token=_RUN.set(run)
     try:

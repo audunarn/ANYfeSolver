@@ -15,9 +15,9 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.results import _operator_for_returned_rows, recover_nodal_stresses
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.results import _operator_for_returned_rows, recover_nodal_stresses
 
 G = 1.0 / np.sqrt(3.0)
 STIFFNESS_ORDER = np.array([[-G, -G], [G, -G], [G, G], [-G, G]])

@@ -21,14 +21,14 @@ import time
 import traceback
 import zipfile
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 from scipy import linalg, sparse
 from scipy.sparse.linalg import splu
 from threadpoolctl import threadpool_info
-from anysolver._stiffened_shell_ge_experimental import _linear_equilibrium, _scaled_constraint_gap
-from anysolver._b2_physical_linear_batch_dev import B2NumericalSolveFailure, _accurate_sparse_residual
+from anyfesolver._stiffened_shell_ge_experimental import _linear_equilibrium, _scaled_constraint_gap
+from anyfesolver._b2_physical_linear_batch_dev import B2NumericalSolveFailure, _accurate_sparse_residual
 from scripts.r8_bl5_nested_projected_kernel_dev import saved_csr, relative
 
 
@@ -262,24 +262,24 @@ def evaluate(root, output):
                 "actual owner helper source identities changed")
         report["owner_helper_sha256"] = owner_helpers
         site = Path(owner_report["site"]).resolve(strict=True)
-        require(anysolver.__version__ == "0.4.7", "actual installed0.4.7 product identity required")
+        require(anyfesolver.__version__ == "0.4.7", "actual installed0.4.7 product identity required")
         modules = owner_report["module_sha256"]
-        source_names = {"anysolver/"+p.relative_to(source/"src/anysolver").as_posix()
-                        for p in (source/"src/anysolver").rglob("*.py")}
-        site_names = {"anysolver/"+p.relative_to(site/"anysolver").as_posix()
-                      for p in (site/"anysolver").rglob("*.py")}
+        source_names = {"anyfesolver/"+p.relative_to(source/"src/anyfesolver").as_posix()
+                        for p in (source/"src/anyfesolver").rglob("*.py")}
+        site_names = {"anyfesolver/"+p.relative_to(site/"anyfesolver").as_posix()
+                      for p in (site/"anyfesolver").rglob("*.py")}
         wheel = Path(owner_report["wheel"])
         require(len(modules) == 417 and set(modules) == source_names == site_names and
                 sha(wheel) == owner_report["wheel_sha256"], "complete417 source/site and exact wheel graph required")
         with zipfile.ZipFile(wheel) as archive:
-            wheel_names = {n for n in archive.namelist() if n.startswith("anysolver/") and n.endswith(".py")}
+            wheel_names = {n for n in archive.namelist() if n.startswith("anyfesolver/") and n.endswith(".py")}
             require(wheel_names == set(modules), "complete417 actual wheel module graph required")
             for name, digest in modules.items():
                 require(sha(site/name) == sha(source/"src"/name) == digest and
                         hashlib.sha256(archive.read(name)).hexdigest() == digest,
                         "source/wheel/site product module identity changed: "+name)
         imports = {name: str(Path(module.__file__).resolve()) for name, module in sys.modules.copy().items()
-                   if name.split(".")[0] == "anysolver" and getattr(module, "__file__", None)}
+                   if name.split(".")[0] == "anyfesolver" and getattr(module, "__file__", None)}
         require(imports and all(Path(p).is_relative_to(site) and
             sha(p) == modules[Path(p).relative_to(site).as_posix()] for p in imports.values()),
             "all current product imports must match saved installed graph")
@@ -348,7 +348,7 @@ def evaluate(root, output):
                 "actual40 complete independent interface row inventory required")
         report.update(source_files=source_files, owner_source_sha256=owner_report["source_sha256"],
             installed_identity=dict(site=str(site), wheel_sha256=owner_report["wheel_sha256"],
-                module_sha256=modules, anysolver_import=anysolver.__file__, product_imports=imports),
+                module_sha256=modules, anyfesolver_import=anyfesolver.__file__, product_imports=imports),
             helpers={Path(f.__code__.co_filename).name: sha(f.__code__.co_filename) for f in
                 (saved_csr, relative, _linear_equilibrium, _scaled_constraint_gap, _accurate_sparse_residual)})
         with np.load(native/"operators.npz", allow_pickle=False) as saved:

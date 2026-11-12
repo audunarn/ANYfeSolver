@@ -26,7 +26,7 @@ PINS = ["numpy==2.5.4", "scipy==1.18.1", "numba==0.68.0", "llvmlite==0.50.0",
         "threadpoolctl==3.7.0", "shapely==2.2.0", "pytest==9.1.1", "psutil==7.2.2"]
 PRIVATE = ["anyfileio-0.3.2-py3-none-any.whl", "anygeometry-0.4.3-py3-none-any.whl",
            "anymaterial-0.2.0-py3-none-any.whl", "anymesher-0.5.0-py3-none-any.whl",
-           "anysolver_results-2.1.1-py3-none-any.whl"]
+           "anyfesolver_results-2.1.1-py3-none-any.whl"]
 TESTS = ["test_beam_shell_connection_options.py", "test_director_integrated_trace.py",
          "test_beam_shell_workflow.py", "test_beam_shell_checkpoint_workflow.py",
          "test_nonlinear_beam_shell_slice3_continuation.py"]
@@ -47,7 +47,7 @@ def main():
     output.mkdir(parents=True, exist_ok=False)
     commit = subprocess.check_output(["git", "rev-parse", args.source_ref + "^{commit}"],
                                      cwd=ROOT, text=True).strip()
-    selected = ["src/anysolver", "pyproject.toml", "README.md", "LICENSE", "COPYRIGHT",
+    selected = ["src/anyfesolver", "pyproject.toml", "README.md", "LICENSE", "COPYRIGHT",
                 "THIRD_PARTY_NOTICES.md", "examples/beam_shell_coupling.py",
                 "docs/BEAM_SHELL_CONNECTION.md", "CHANGELOG.md",
                 "scripts/build_static_contact_candidate.py", "scripts/contact_candidate_slice2.json"]
@@ -90,7 +90,7 @@ def main():
         finally:
             os.chdir(previous)
         sources = {str(p.relative_to(stage / "src")): sha(p)
-                   for p in sorted((stage / "src" / "anysolver").rglob("*"))
+                   for p in sorted((stage / "src" / "anyfesolver").rglob("*"))
                    if p.is_file() and "__pycache__" not in p.parts and p.suffix != ".pyc"}
         for directory in ("examples", "docs", "tests"):
             shutil.copytree(committed / directory, bundle / directory)
@@ -175,7 +175,7 @@ selection. This artifact is identified by source `{commit}` and its SHA manifest
                     runtime_environment=environment,
                     install_command=recipe)
     (bundle / "MANIFEST.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    zip_path = Path(shutil.make_archive(str(output / ("ANYsolver-beam-shell-"+VERSION)),
+    zip_path = Path(shutil.make_archive(str(output / ("ANYfeSolver-beam-shell-"+VERSION)),
                                        "zip", root_dir=bundle))
     (output / "BUILD.json").write_text(json.dumps(dict(source_commit=commit,
         bundle=str(bundle), zip=str(zip_path), sha256=sha(zip_path)), indent=2))

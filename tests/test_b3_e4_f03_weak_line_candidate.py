@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_pose_joint import RigidPoseJoint
+from anyfesolver._ge_beam3_pose_joint import RigidPoseJoint
 
 from scripts._b3_e4_f03_e4_trial_panel import FlatE4TrialPanel
 from scripts._b3_e4_f03_native_fixture import build

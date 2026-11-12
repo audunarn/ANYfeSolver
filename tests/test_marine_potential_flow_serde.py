@@ -5,9 +5,9 @@ import json
 import numpy as np
 import pytest
 from test_marine_potential_flow import fixture, body, frame
-from anysolver.marine_potential_flow import (PotentialFlowDevelopmentContribution,
+from anyfesolver.marine_potential_flow import (PotentialFlowDevelopmentContribution,
     PotentialFlowDevelopmentData, MarinePotentialFlowError, data_to_dict, data_from_dict)
-from anysolver.marine_mechanical import (MarineMechanicalModel, MarineMechanicalInputError,
+from anyfesolver.marine_mechanical import (MarineMechanicalModel, MarineMechanicalInputError,
     model_to_dict, model_from_dict, model_to_json, model_from_json)
 
 pytestmark=pytest.mark.serde

@@ -7,11 +7,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver.general_contact import linearized_pivot
-from anysolver.general_contact.linearized_pivot import (
+from anyfesolver.general_contact import linearized_pivot
+from anyfesolver.general_contact.linearized_pivot import (
     _exact_artificial_seam_gap_gradient, _jet2_integral_gradients,
 )
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 from scripts.general_contact_d1_coupled_refinement import build_case
 
 

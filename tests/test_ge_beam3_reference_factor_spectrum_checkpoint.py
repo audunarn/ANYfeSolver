@@ -38,7 +38,7 @@ def test_exact_source_bindings_and_no_old_source_replacement():
         raw = path.read_text(encoding='utf-8').encode('utf-8')
         assert len(raw) == row['bytes'] and hashlib.sha256(raw).hexdigest() == row['sha256']
     assert {r['path'] for r in record['sources'] if r['path'].startswith('src/')} == {
-        'src/anysolver/_native_reference_factor_spectrum.py', 'src/anysolver/_ge_beam3_virgin_reference_modes.py'}
+        'src/anyfesolver/_native_reference_factor_spectrum.py', 'src/anyfesolver/_ge_beam3_virgin_reference_modes.py'}
 
 
 def test_failed_evidence_preserved_without_fabricated_absent_output():

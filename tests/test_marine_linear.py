@@ -18,8 +18,8 @@ import numpy as np
 import pytest
 from scipy.integrate import solve_ivp
 
-from anysolver.control import CancellationToken
-from anysolver.marine_linear import (
+from anyfesolver.control import CancellationToken
+from anyfesolver.marine_linear import (
     NEWMARK_BETA,
     NEWMARK_GAMMA,
     MarineLinearInputError,
@@ -397,7 +397,7 @@ def test_cancellation_returns_incomplete_accepted_history() -> None:
     assert immediate.n_accepted == 1
     np.testing.assert_array_equal(immediate.times, full.times[:1])
 
-    # anysolver.control.CancellationToken is accepted directly.
+    # anyfesolver.control.CancellationToken is accepted directly.
     token = CancellationToken()
     token.cancel("demo stop")
     by_token = solve_marine_linear(spec, cancel=token)

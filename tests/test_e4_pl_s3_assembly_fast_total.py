@@ -6,16 +6,16 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-import anysolver.e4_pl_s3_element as s3_module
-import anysolver.s3_reference_batch as s3_batch_module
-from anysolver import (
+import anyfesolver.e4_pl_s3_element as s3_module
+import anyfesolver.s3_reference_batch as s3_batch_module
+from anyfesolver import (
     FEModel,
     QualifiedE4PLS3ShellElement,
     QualifiedE4PLShellElement,
     assemble_stiffness_matrix,
 )
-from anysolver.matrix_assembly import AssemblyError
-import anysolver.matrix_assembly as matrix_module
+from anyfesolver.matrix_assembly import AssemblyError
+import anyfesolver.matrix_assembly as matrix_module
 
 
 def _model(*, s3_count: int = 4, include_q4: bool = False) -> FEModel:

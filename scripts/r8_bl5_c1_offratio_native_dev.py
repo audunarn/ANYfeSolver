@@ -11,12 +11,12 @@ from hashlib import sha256
 import json
 from pathlib import Path
 
-import anysolver
+import anyfesolver
 import numpy as np
 from scipy import sparse
 
-from anysolver._stiffened_shell_bl5_local_experimental import BL5LocalOperator, LAW_ID
-from anysolver._stiffened_shell_l1_local_experimental import NativeHalfCellPort
+from anyfesolver._stiffened_shell_bl5_local_experimental import BL5LocalOperator, LAW_ID
+from anyfesolver._stiffened_shell_l1_local_experimental import NativeHalfCellPort
 from scripts._b3_e4_f03_native_fixture import build
 from scripts.b3_e4_f03_c1_fy_supported_native import _wrench
 from scripts.b3_e4_f03_material_line_loaded import _scales, _solve
@@ -83,8 +83,8 @@ def _rows(samples, size, basis):
 
 
 def evaluate():
-    if Path(anysolver.__file__).resolve().parent != (ROOT / "src" / "anysolver").resolve():
-        raise RuntimeError("wrong ANYsolver source checkout")
+    if Path(anyfesolver.__file__).resolve().parent != (ROOT / "src" / "anyfesolver").resolve():
+        raise RuntimeError("wrong ANYfeSolver source checkout")
     xs, ys = local_grid(8, transverse_cells=4)
     shell, _ = raw_e4_tangent(xs, ys, thickness=.035)
     beam = build(14, z_offset=.0675,

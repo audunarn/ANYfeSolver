@@ -7,15 +7,15 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver.general_contact.overlap import PlanarFace
-from anysolver.general_contact.s3_patch_augmented import _touching_projected_boundaries
+from anyfesolver.general_contact.overlap import PlanarFace
+from anyfesolver.general_contact.s3_patch_augmented import _touching_projected_boundaries
 
 
 def _old_touch():
     # Extract only the exact prepatch predicate; do not import another kernel.
     path = Path(__file__).parents[1] / "docs/d1_review_support/d1_touch_bounds_prepatch_20260930.py.txt"
     raw = path.read_bytes()
-    # Byte-identical to 590d7a42^:src/anysolver/general_contact/s3_patch_augmented.py.
+    # Byte-identical to 590d7a42^:src/anyfesolver/general_contact/s3_patch_augmented.py.
     # The former digest did not identify this committed prepatch source.
     assert hashlib.sha256(raw).hexdigest() == "e5e885bfdc10469d476f86db60376ed9ef165d3cae7b351f76fee2715fa2d4e3"
     node = next(n for n in ast.parse(raw).body

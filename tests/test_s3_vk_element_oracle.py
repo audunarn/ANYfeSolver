@@ -2,8 +2,8 @@
 import numpy as np
 import pytest
 
-from anysolver import create_shell_element
-from anysolver.fe_core import FEModel
+from anyfesolver import create_shell_element
+from anyfesolver.fe_core import FEModel
 from s3_vk_element_oracle import S3VonKarmanExcess
 
 # Complex-step: force = dU/du and tangent = dF/du to 1e-12 of their scale (observed ~1e-15).

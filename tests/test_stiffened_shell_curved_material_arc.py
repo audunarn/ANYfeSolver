@@ -3,8 +3,8 @@ from dataclasses import replace
 import json
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_stiffened_shell_curved_material import (
     curved_material_panel, make_owner, _actions, assert_generalized_records_equal)
 
@@ -18,7 +18,7 @@ def control_for(owner, orientation):
 
 @pytest.mark.parametrize('orientation',[-1,1])
 def test_material_arc_prefix_restart(request,tmp_path,monkeypatch,orientation):
-    from anysolver._stiffened_shell_arc_checkpoint import decode_snapshot,encode_snapshot
+    from anyfesolver._stiffened_shell_arc_checkpoint import decode_snapshot,encode_snapshot
     d=curved_material_panel();owner=make_owner(request,d)
     seed=owner.solve(_actions(),(.5,1.),max_iterations=20,max_backtracks=12)
     seed_checkpoint=owner.checkpoint()
@@ -67,7 +67,7 @@ def test_material_arc_prefix_restart(request,tmp_path,monkeypatch,orientation):
         encode_snapshot(owner,dict(m,policy='B3_GE_CURVED_ELASTIC_POINT_TANGENT_PLANE_V1_DEV'),a)
     with pytest.raises(ValueError,match='arc history'):owner.solve(_actions())
     # Candidate validation finishes, but cancellation before commit is atomic.
-    from anysolver import _stiffened_shell_arc_publication as publication
+    from anyfesolver import _stiffened_shell_arc_publication as publication
     prefix=owner.checkpoint();generation=owner._generation;cancel=CancellationToken()
     safe_point=publication.cancellation_safe_point
     def cancel_at_commit(token,where):
@@ -90,7 +90,7 @@ def test_material_arc_prefix_restart(request,tmp_path,monkeypatch,orientation):
 
 
 def test_material_arc_without_shell_j2(request):
-    from anysolver._stiffened_shell_arc_checkpoint import decode_snapshot
+    from anyfesolver._stiffened_shell_arc_checkpoint import decode_snapshot
     d=curved_material_panel();d=replace(d,shell=replace(d.shell,j2_curve=None))
     owner=make_owner(request,d);owner.solve(_actions(),(.5,1.),max_iterations=20,max_backtracks=12)
     result=owner.continue_arc_length(_actions(),control_for(owner,-1))

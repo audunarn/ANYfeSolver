@@ -13,12 +13,12 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver.assembly import build_constraint_transformation
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.semismooth import (
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.semismooth import (
     linearize, reference_nodal_support,
 )
-from anysolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
 from docs.d1_review_support.d1_cut_front_shell_work import build_patch
 from docs.d1_review_support.d1_cut_front_two_hat_limit import (
     limit_matrix, null_coefficients,

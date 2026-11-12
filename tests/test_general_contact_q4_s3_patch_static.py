@@ -2,14 +2,14 @@
 
 import numpy as np
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactPathControl, ContactPathProgram, ContactSolverSettings,
     ContactSurface, create_shell_element, solve_static_nonlinear,
     validate_general_contact,
 )
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 
 
 def _case(origin_shift=(0., 0., 0.)):
@@ -60,7 +60,7 @@ def test_reported_patch_wrench_origin_and_translation():
             u[model.mesh.dof_manager.get_node_dofs(node)[2]] = -.02
         _, _, report = manager.evaluate(u, tangent=False)
         assert report.to_dict()["wrench_origin_m"] == [0., 0., 0.]
-        from anysolver.nonlinear_static import _augmented_contact_increment_summary
+        from anyfesolver.nonlinear_static import _augmented_contact_increment_summary
         summary = _augmented_contact_increment_summary(report)
         assert summary["wrench_origin_m"] == report.to_dict()["wrench_origin_m"]
         assert summary["integration_moment"] == report.to_dict()["integration_moment"]

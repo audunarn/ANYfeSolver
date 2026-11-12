@@ -1,9 +1,9 @@
 import copy
 import numpy as np
 import pytest
-from anysolver import FEModel, LoadCase, calculate_mass_properties, solve_inertia_relief, AnalysisSession
-from anysolver.concentrated_mass import ConcentratedMass
-from anysolver.matrix_assembly import assemble_mass_matrix
+from anyfesolver import FEModel, LoadCase, calculate_mass_properties, solve_inertia_relief, AnalysisSession
+from anyfesolver.concentrated_mass import ConcentratedMass
+from anyfesolver.matrix_assembly import assemble_mass_matrix
 from test_inertia_relief import bar, rigid, load_vector
 
 
@@ -47,7 +47,7 @@ def test_invalid_mass(mass,J):
 
 
 def test_batch_matches_scalar_and_refuses_midstream_mass_mutation():
-    from anysolver import iter_linear_batches, StaticCase, StaticBatchError
+    from anyfesolver import iter_linear_batches, StaticCase, StaticBatchError
     m=bar(); m.add_concentrated_mass(4,5.,offset=(1.,2.,3.),inertia_cg=np.diag([2.,3.,4.]))
     M,_=assemble_mass_matrix(m)
     a=rigid(m,np.zeros(3))@np.array([.2,.1,-.3,.4,.5,-.2])
@@ -64,7 +64,7 @@ def test_batch_matches_scalar_and_refuses_midstream_mass_mutation():
 
 
 def test_mesh_positional_constructor_stays_compatible():
-    from anysolver.fe_core import FEMesh,DOFManager
+    from anyfesolver.fe_core import FEMesh,DOFManager
     activity=object(); revisions={'mass':0}
     mesh=FEMesh({}, {}, DOFManager(), {}, activity, revisions)
     assert mesh.element_activity is activity and mesh.revisions is revisions
@@ -73,7 +73,7 @@ def test_mesh_positional_constructor_stays_compatible():
 
 def test_legacy_pickle_state_without_concentrated_masses():
     import pickle
-    from anysolver.fe_core import FEMesh
+    from anyfesolver.fe_core import FEMesh
     m=bar(); state=m.mesh.__getstate__(); state.pop('concentrated_masses')
     mesh=FEMesh.__new__(FEMesh); mesh.__setstate__(state)
     assert mesh.concentrated_masses=={}
@@ -83,7 +83,7 @@ def test_legacy_pickle_state_without_concentrated_masses():
 
 
 def test_exact_canonical_record_types():
-    from anysolver.concentrated_mass import identity
+    from anyfesolver.concentrated_mass import identity
     class Sub(ConcentratedMass): pass
     good=ConcentratedMass(1.)
     for bad in ({4:[Sub(1.)]},{4.0:[good]},{True:[good]},{4:good},{4:{good}}):
@@ -109,7 +109,7 @@ def test_rotated_inertia_roundoff_is_symmetrized():
 
 
 def test_empty_concentrated_mass_keeps_legacy_relief_identity():
-    from anysolver.inertia_relief import _mass_identity
+    from anyfesolver.inertia_relief import _mass_identity
     m=bar(); m.add_point_mass(4,3.)
     assert _mass_identity(m)==((4,3.),)
     m.add_concentrated_mass(4,1.)
@@ -129,7 +129,7 @@ def test_pure_gravity_inertia_relief_with_eccentric_mass():
 
 def _native_mesh(concentrated):
     from types import SimpleNamespace
-    from anysolver.fe_core import DOFManager
+    from anyfesolver.fe_core import DOFManager
     dm=DOFManager(); dm.add_node(1)
     return SimpleNamespace(elements={1:object()},dof_manager=dm,nodes={1:None},point_masses={},
                            element_activity=None,concentrated_masses=concentrated)
@@ -137,7 +137,7 @@ def _native_mesh(concentrated):
 
 def test_native_distributed_identity_rejects_concentrated_masses():
     from types import SimpleNamespace
-    from anysolver._ge_beam3_native_generalized_program import _model_identity
+    from anyfesolver._ge_beam3_native_generalized_program import _model_identity
     model=SimpleNamespace(mesh=_native_mesh({1:[ConcentratedMass(1.)]}),constraint_equations=[])
     with pytest.raises(ValueError,match='activity/dynamics'): _model_identity(model,16)
     # Control: without the mass admission proceeds to the element-authority check.
@@ -146,8 +146,8 @@ def test_native_distributed_identity_rejects_concentrated_masses():
 
 
 def test_native_fibre_load_admission_rejects_concentrated_masses(monkeypatch):
-    import anysolver._ge_beam3_native_fibre_static_element as fibre
-    from anysolver._ge_beam3_native_load_admission import assemble_nodal_forces
+    import anyfesolver._ge_beam3_native_fibre_static_element as fibre
+    from anyfesolver._ge_beam3_native_load_admission import assemble_nodal_forces
     class Fake:
         def _check(self,mesh): pass
     monkeypatch.setattr(fibre,'NativeFibreStaticElement',Fake)

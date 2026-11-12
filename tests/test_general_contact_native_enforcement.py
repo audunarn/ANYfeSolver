@@ -6,10 +6,10 @@ from pathlib import Path
 import time
 import numpy as np
 import pytest
-from anysolver.general_contact.native_s3_swept import native_s3_swept_admissible
+from anyfesolver.general_contact.native_s3_swept import native_s3_swept_admissible
 from test_general_contact_native_multiple_s3_static import _example, rebuild, independent_energy
-from anysolver.control import CancellationToken
-from anysolver.general_contact import NativeContactActivationSettings
+from anyfesolver.control import CancellationToken
+from anyfesolver.general_contact import NativeContactActivationSettings
 
 
 def candidate(*, activation=False, beams=1, stiffness=1.2e6, targets=(.25,.5,.75,1.), activation_gap=1e-7):

@@ -7,9 +7,9 @@ import pytest
 from scipy.linalg import eig
 from scipy.spatial.transform import Rotation
 
-from anysolver._b2_physical_flexibility_linear import LinearOperator, LinearSection
-from anysolver._b2_physical_linear_definition import PhysicalB2Member
-from anysolver._ge_beam3_pose_joint import RigidPoseJoint
+from anyfesolver._b2_physical_flexibility_linear import LinearOperator, LinearSection
+from anyfesolver._b2_physical_linear_definition import PhysicalB2Member
+from anyfesolver._ge_beam3_pose_joint import RigidPoseJoint
 from test_b2_f10_f11_point_attachment import specimen
 
 

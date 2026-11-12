@@ -7,21 +7,21 @@ from dataclasses import FrozenInstanceError, replace
 from types import SimpleNamespace
 from scipy import sparse
 from scipy.linalg import null_space
-from anysolver import stiffened_shell
+from anyfesolver import stiffened_shell
 
-from anysolver._b2_f10_f11_point_attachment import compile_reference_point
-from anysolver._b2_physical_flexibility_linear import LinearSection
-from anysolver._b2_physical_linear_definition import PhysicalB2Member
-from anysolver.control import CancellationToken
-from anysolver._stiffened_shell_b2_q4_panel_experimental import (
+from anyfesolver._b2_f10_f11_point_attachment import compile_reference_point
+from anyfesolver._b2_physical_flexibility_linear import LinearSection
+from anyfesolver._b2_physical_linear_definition import PhysicalB2Member
+from anyfesolver.control import CancellationToken
+from anyfesolver._stiffened_shell_b2_q4_panel_experimental import (
     ExperimentalB2Q4PanelAnalysis, ExperimentalB2Q4PanelError,
     Q4B2Point, Q4PanelShell,
     _NumericalFailure, _require_independent_supported_point_rows,
     _scaled_point_kkt,
 )
-from anysolver.e4_pl_element import QualifiedE4PLShellElement
-from anysolver.fe_core import FEModel
-from anysolver.linalg import MatrixClass, factorize_cached
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.linalg import MatrixClass, factorize_cached
 from test_b2_f09_physical_off_axis_elbow import (
     _high_precision_rounded_matrix_solve, _physical_section,
 )

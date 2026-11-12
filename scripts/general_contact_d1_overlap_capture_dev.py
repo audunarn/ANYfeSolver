@@ -10,10 +10,10 @@ import argparse
 import json
 from pathlib import Path
 
-import anysolver
-from anysolver import solve_static_nonlinear
-from anysolver.general_contact import s3_patch_augmented as patch
-from anysolver.general_contact.q4_s3_overlap_derivatives import UnsupportedQ4S3Branch
+import anyfesolver
+from anyfesolver import solve_static_nonlinear
+from anyfesolver.general_contact import s3_patch_augmented as patch
+from anyfesolver.general_contact.q4_s3_overlap_derivatives import UnsupportedQ4S3Branch
 
 from scripts.general_contact_d1_interior_press_dev import build_interior_press
 
@@ -52,7 +52,7 @@ def main(output: Path) -> None:
                     "rejection": str(exc),
                 })
                 output.write_text(json.dumps({
-                    "anysolver_module": str(Path(anysolver.__file__).resolve()),
+                    "anyfesolver_module": str(Path(anyfesolver.__file__).resolve()),
                     "source": "corrected_left_edge_first_press_development",
                     "captures": captures,
                 }, indent=2) + "\n", encoding="utf-8")
@@ -76,7 +76,7 @@ def main(output: Path) -> None:
         patch.q4_s3_overlap_derivatives = original_derivative
         patch._q4_s3_pair_value_rtol = original_gate
     payload = {
-        "anysolver_module": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_module": str(Path(anyfesolver.__file__).resolve()),
         "source": "corrected_left_edge_first_press_development",
         "status": result.status,
         "failure_reason": result.failure_reason,

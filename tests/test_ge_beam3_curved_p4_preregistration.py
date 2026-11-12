@@ -43,10 +43,10 @@ PATHS = {
     "tests/test_ge_beam3_curved_p4_preregistration.py",
 }
 PROTECTED_STRAIGHT_BLOBS = {
-    "src/anysolver/ge_beam3_element.py": "70542da7fea26dcb2da5b5f9da5fc0b0b8d484ab",
-    "src/anysolver/ge_beam3_mixed_element.py": "f49062b55b4bf749a1654100cf3a4ed6ffb61d37",
-    "src/anysolver/ge_beam3_mixed_state.py": "74caa1814448245f907bd3efdb6c8a1cc1d2269d",
-    "src/anysolver/ge_beam3_state.py": "ba8f65761197c62cb2b7ce74bf488e75f2c24818",
+    "src/anyfesolver/ge_beam3_element.py": "70542da7fea26dcb2da5b5f9da5fc0b0b8d484ab",
+    "src/anyfesolver/ge_beam3_mixed_element.py": "f49062b55b4bf749a1654100cf3a4ed6ffb61d37",
+    "src/anyfesolver/ge_beam3_mixed_state.py": "74caa1814448245f907bd3efdb6c8a1cc1d2269d",
+    "src/anyfesolver/ge_beam3_state.py": "ba8f65761197c62cb2b7ce74bf488e75f2c24818",
 }
 TERMINALS = [
     "BLOCKED_GE_BEAM3_P4_BASELINE_OR_AUTHORITY",
@@ -291,7 +291,7 @@ def test_accepted_straight_core_is_bound_by_git_blob_and_content_hash() -> None:
         assert _git("rev-parse", f"{BASE_COMMIT}:{path}") == git_blob
         blob = _git_blob(P3_CLOSEOUT, path)
         assert (len(blob), _sha(blob)) == (row["bytes"], row["sha256"])
-    for path in ("src/anysolver/__init__.py", "src/anysolver/elements.py", "pyproject.toml"):
+    for path in ("src/anyfesolver/__init__.py", "src/anyfesolver/elements.py", "pyproject.toml"):
         row = rows[path]
         assert _git("rev-parse", f"{P3_CLOSEOUT}:{path}") == row["git_blob"]
         assert _git("rev-parse", f"{BASE_COMMIT}:{path}") == row["git_blob"]

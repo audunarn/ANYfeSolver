@@ -3,11 +3,11 @@ from dataclasses import replace
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken,SolveCancelled
-from anysolver._stiffened_shell_displacement_adaptive import (
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken,SolveCancelled
+from anyfesolver._stiffened_shell_displacement_adaptive import (
     Context,NATIVE_MAGIC,MAGIC,encode,decode,validate_progress,direction_hash)
-from anysolver._stiffened_shell_displacement_increment import DisplacementIncrementState
+from anyfesolver._stiffened_shell_displacement_increment import DisplacementIncrementState
 from test_stiffened_shell_native_point_displacement import owner,ACTIONS,DIRECTION,CONTROL,OPTIONS
 from test_stiffened_shell_native_plastic_s3_displacement import definition,compare
 from test_stiffened_shell_displacement_increment import assert_single_cutback_history
@@ -26,7 +26,7 @@ def test_native_adaptive_actual_s3_cutback_cancel_restart(request,monkeypatch):
     targets=(initial*1.01,initial*1.02)
     limits=ss.AdaptiveIncrementControl(2,8)
     kw=dict(OPTIONS,displacement_control=CONTROL,increment_control=limits)
-    import anysolver._stiffened_shell_displacement_control as module
+    import anyfesolver._stiffened_shell_displacement_control as module
     original=module.correct;first=True
     def once(driver,**args):
         nonlocal first
@@ -73,7 +73,7 @@ def test_native_mixed_rejected_work_is_durable_and_seed_guards(request,monkeypat
     analysis=owner(request,model);restored=owner(request,model)
     raw=(Path(__file__).parent/'data/native_mixed_j2_displacement/quarter-prefix-v1.bin').read_bytes()
     prefix=analysis.restore(raw)
-    import anysolver._stiffened_shell_displacement_control as module
+    import anyfesolver._stiffened_shell_displacement_control as module
     kw=dict(OPTIONS,displacement_control=CONTROL,increment_control=ss.AdaptiveIncrementControl(0,1))
     with monkeypatch.context() as patch:
         patch.setattr(module,'correct',reject)
@@ -107,7 +107,7 @@ def test_native_mixed_rejected_work_is_durable_and_seed_guards(request,monkeypat
         seed_resumed.solve(DIRECTION,context.state.targets,**kw)
     with pytest.raises(ValueError,match='nested'):
         encode(seed._identity,context,seed_saved,native=True)
-    from anysolver._stiffened_shell_increment_control import MAGIC as FORCE_MAGIC
+    from anyfesolver._stiffened_shell_increment_control import MAGIC as FORCE_MAGIC
     with pytest.raises(ValueError,match='nested'):
         encode(seed._identity,context,FORCE_MAGIC+seed_raw,native=True)
     seed._finite_driver._adaptive_state=object()
@@ -121,7 +121,7 @@ def test_native_mixed_rejected_work_is_durable_and_seed_guards(request,monkeypat
     seed._finite_driver._external=None
     seed._finite_driver._state=replace(seed._finite_driver._state,
         shell_anchors=np.tile(np.eye(3),(len(seed._shell_ids),1,1)))
-    from anysolver._stiffened_shell_ge_checkpoint_binary import CHART_MAGIC
+    from anyfesolver._stiffened_shell_ge_checkpoint_binary import CHART_MAGIC
     # Identity chart framing is still a nested chart, not an ordinary force seed.
     with pytest.raises(ValueError,match='nested'):
         encode(seed._identity,context,CHART_MAGIC+seed_raw,native=True)

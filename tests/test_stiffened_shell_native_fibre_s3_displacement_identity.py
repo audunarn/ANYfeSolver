@@ -3,10 +3,10 @@ from hashlib import sha256
 import json
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver._stiffened_shell_displacement_checkpoint import MAGIC, decode_snapshot
-from anysolver._stiffened_shell_ge_checkpoint_binary import decode, encode
-from anysolver._stiffened_shell_beam_history import shapes
+from anyfesolver import stiffened_shell as ss
+from anyfesolver._stiffened_shell_displacement_checkpoint import MAGIC, decode_snapshot
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode, encode
+from anyfesolver._stiffened_shell_beam_history import shapes
 from test_stiffened_shell_native_point_displacement import owner, ACTIONS, DIRECTION, CONTROL, OPTIONS
 from test_stiffened_shell_native_fibre_s3_displacement import fibre_model
 
@@ -64,7 +64,7 @@ def test_legacy_s3_direct_corrector_rejects_before_assembly(request, monkeypatch
     historical = encode('finite_native_material', analysis._identity, generation, tuple(values.items()))
     legacy.restore(historical)
     before = legacy.recover()
-    from anysolver._stiffened_shell_displacement_corrector import correct
+    from anyfesolver._stiffened_shell_displacement_corrector import correct
     def forbidden(*args, **kwargs):
         raise AssertionError('incompatible numerical policy reached assembly')
     monkeypatch.setattr(legacy._finite_driver, '_assemble', forbidden)
@@ -75,8 +75,8 @@ def test_legacy_s3_direct_corrector_rejects_before_assembly(request, monkeypatch
     assert legacy.recover() is before and legacy._generation == generation
     assert legacy.checkpoint() == historical and not legacy._finite_driver._stable_s3
     # A native adaptive envelope cannot smuggle the same incompatible force seed.
-    from anysolver._stiffened_shell_displacement_adaptive import Context,encode as envelope,direction_hash
-    from anysolver._stiffened_shell_displacement_increment import DisplacementIncrementState
+    from anyfesolver._stiffened_shell_displacement_adaptive import Context,encode as envelope,direction_hash
+    from anyfesolver._stiffened_shell_displacement_increment import DisplacementIncrementState
     context=Context(DisplacementIncrementState(ss.AdaptiveIncrementControl(),(.001,),0.),
         CONTROL.dof(legacy),direction_hash(legacy._finite_driver._load(DIRECTION)),0,20,12)
     fresh=owner(request,definition)

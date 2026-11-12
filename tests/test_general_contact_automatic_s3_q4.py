@@ -5,15 +5,15 @@ from fractions import Fraction as F
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver.general_contact import ContactInteraction,resolve_automatic_contact_domain as resolve
+from anyfesolver.general_contact import ContactInteraction,resolve_automatic_contact_domain as resolve
 
 
 
 from test_general_contact_automatic_q4_pair import _turn,_clip_exact,_bilinear_extrema
 
 def _footprint(model,resolution,settings,u):
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.overlap import PlanarFace,planar_projected_overlap
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.overlap import PlanarFace,planar_projected_overlap
     manager=GeneralS3PatchManager(model,resolution.definition,settings);source,target=manager._positions(u);pairs=[]
     for si in manager.law.source_face_indices:
         normal=np.cross(source[si][1]-source[si][0],source[si][2]-source[si][0]);normal/=np.linalg.norm(normal)
@@ -27,10 +27,10 @@ def _footprint(model,resolution,settings,u):
                    reason='bounded installed refined automatic deformable lifecycle')
 def test_installed_automatic_s3_q4_stage(monkeypatch):
     """One guarded stage per invocation, sharing only retained JSON evidence."""
-    import anysolver,numba
+    import anyfesolver,numba
     from threadpoolctl import threadpool_info
-    from anysolver import ContactDefinition,solve_static_nonlinear
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver import ContactDefinition,solve_static_nonlinear
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     from examples.general_contact_automatic_s3_q4 import build,solve_shell_pair
     stage=os.environ['S3_Q4_STAGE'].split('-')[0]
     evidence=Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])
@@ -49,7 +49,7 @@ def test_installed_automatic_s3_q4_stage(monkeypatch):
         physical_inputs=dict(source_reference_z_m=.065,source_supported_reference_offset_m=.01,source_bottom_physical_offset_m=-.035,
             target_midplane_z_m=-.01,target_top_offset_m=.025,source_director=(0.,0.,1.),target_director=(0.,0.,1.),
             path=path.contract()),
-        runtime_before_solve=dict(anysolver_path=anysolver.__file__,
+        runtime_before_solve=dict(anyfesolver_path=anyfesolver.__file__,
             automatic_domain_path=__import__('inspect').getfile(resolve),
             jit_disabled=bool(numba.config.DISABLE_JIT),numba_threads=int(numba.get_num_threads()),
             pools=threadpool_info()))
@@ -60,7 +60,7 @@ def test_installed_automatic_s3_q4_stage(monkeypatch):
     assert report['runtime_before_solve']['jit_disabled']
     assert report['runtime_before_solve']['numba_threads']==1
     assert all(pool['num_threads']==1 for pool in report['runtime_before_solve']['pools'])
-    import anysolver.general_contact.s3_q4_swept as swept
+    import anyfesolver.general_contact.s3_q4_swept as swept
     certificate=swept.s3_q4_affine_lower;enclosures=[]
     def recorded_certificate(*args,**kw):
         error=kw.get('endpoint_errors')
@@ -163,7 +163,7 @@ def test_installed_automatic_s3_q4_stage(monkeypatch):
         assert abs(result.displacements[target_dof])>1e-10
         manager=GeneralS3PatchManager(model,resolution.definition,settings)
         residual,_,contact_result=manager.evaluate(result.displacements,tangent=False)
-        from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+        from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
         structural,_,states=_assemble_nonlinear_system(model,result.displacements,result.element_states,
             5,tangent=False,kinematics='von_karman')
         _discard_nonlinear_state_candidate(states)
@@ -289,9 +289,9 @@ def _exact_source_pair(source,target):
 
 
 def test_independent_scalar_shared_work_and_tangent():
-    from anysolver.general_contact.s3_q4_overlap_derivatives import s3_q4_overlap_derivatives
-    from anysolver.general_contact.s3_patch_mortar_energy import MovingS3PatchPrimalMortarPenalty,S3PatchFace
-    from anysolver.general_contact.s3_patch_augmented import MovingS3PatchProjectedNormal
+    from anyfesolver.general_contact.s3_q4_overlap_derivatives import s3_q4_overlap_derivatives
+    from anyfesolver.general_contact.s3_patch_mortar_energy import MovingS3PatchPrimalMortarPenalty,S3PatchFace
+    from anyfesolver.general_contact.s3_patch_augmented import MovingS3PatchProjectedNormal
     source=np.array([[-.2,-.15,0.],[1.8,-.15,0.],[1.8,1.85,0.],[-.2,1.85,0.]])
     target_reference=np.array([[0.,0.,.003],[1.,0.,.003],[1.,1.,.003],[0.,1.,.003]])
     target=target_reference.copy();x,y=target[:,:2].T;target[:,2]=.003+.0004*x+.0002*y+.0003*x*y
@@ -330,9 +330,9 @@ def test_independent_scalar_shared_work_and_tangent():
 
 def test_public_transient_refuses_unused_predictor(monkeypatch):
     from examples.general_contact_multiple_beam_s3_transient import build
-    from anysolver.dynamics import TransientConfig
-    from anysolver.general_contact.transient import solve_transient_contact,_admit,ContactTransientSolverControls
-    import anysolver.general_contact.multiple_beam_s3_transient as owner
+    from anyfesolver.dynamics import TransientConfig
+    from anyfesolver.general_contact.transient import solve_transient_contact,_admit,ContactTransientSolverControls
+    import anyfesolver.general_contact.multiple_beam_s3_transient as owner
     model,definition,settings,velocity=build()
     controls=ContactTransientSolverControls(allow_multiple_deformable_beam_s3_dev=True)
     before=repr(model)
@@ -365,9 +365,9 @@ def test_public_transient_refuses_unused_predictor(monkeypatch):
 
 
 def test_default_identity_physical_map_and_public_safety(monkeypatch):
-    from anysolver import CancellationToken,SolveCancelled,solve_static_nonlinear
+    from anyfesolver import CancellationToken,SolveCancelled,solve_static_nonlinear
     from examples.general_contact_automatic_s3_q4 import build,solve_shell_pair
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     candidate=build();model,domain,settings,res,path=candidate;before=repr(model)
     manager=GeneralS3PatchManager(model,res.definition,settings);positions=manager._positions(np.zeros(manager.n_dof))
     np.testing.assert_allclose(positions[0][:,2],.03,atol=1e-17,rtol=0);np.testing.assert_allclose(positions[1][:,2],.015,atol=1e-17,rtol=0)

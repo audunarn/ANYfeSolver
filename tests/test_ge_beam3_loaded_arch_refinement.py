@@ -8,7 +8,7 @@ from docs.reference_cases import ge_beam3_loaded_arch_refinement as probe
 
 def test_complete_worker_wiring_without_eigensolves(tmp_path,monkeypatch):
     if not probe.INPUT.exists(): pytest.skip('external preserved state absent')
-    from anysolver import _ge_beam3_controlled_fibre_modes as spectral
+    from anyfesolver import _ge_beam3_controlled_fibre_modes as spectral
     calls=[]
     def fake_modes(model,program,raw,inertias,**options):
         assert options['coordinate_limit']==128 and options['exact_dimension_limit']==96
@@ -33,21 +33,21 @@ def test_complete_worker_wiring_without_eigensolves(tmp_path,monkeypatch):
 def test_original_default_packet_bytes_unchanged():
     if not probe.OLD.exists(): pytest.skip('external preserved state absent')
     from docs.reference_cases import ge_beam3_fibre_arch_refinement as family
-    from anysolver import _ge_beam3_controlled_fibre_modes as spectral
+    from anyfesolver import _ge_beam3_controlled_fibre_modes as spectral
     model=family.model(4); program=family.program(4); raw=probe.read(probe.OLD/'checkpoint-1.json')
     inertias={eid:np.diag([1.,1.,1.,.02,.01,.01]) for eid in model.mesh.elements}
     packet,guard,_=spectral.prepare(model,program,raw,inertias,material_policy=spectral.FROZEN,
         expected_checkpoint_sha256=sha256(raw).hexdigest())
     guard()
     expected=probe.parse(probe.read(probe.OLD/'native-1.json'))['packet']
-    from anysolver._ge_beam3_p5_seeded.core import canonical as native_canonical
+    from anyfesolver._ge_beam3_p5_seeded.core import canonical as native_canonical
     assert native_canonical(packet)==probe.canonical(expected)
 
 
 def test_six_macros_rejected_by_original_default_budget():
     if not probe.INPUT.exists(): pytest.skip('external preserved state absent')
     from docs.reference_cases import ge_beam3_fibre_arch_refinement as family
-    from anysolver import _ge_beam3_controlled_fibre_modes as spectral
+    from anyfesolver import _ge_beam3_controlled_fibre_modes as spectral
     model=family.model(6); program=family.program(6)
     inertias={eid:np.diag([1.,1.,1.,.02,.01,.01]) for eid in model.mesh.elements}
     with pytest.raises(ValueError,match='small fibre spectral correctness model'):

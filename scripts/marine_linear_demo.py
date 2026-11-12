@@ -1,6 +1,6 @@
 """Deterministic two-body 4-DOF synthetic development example (NOT Capytaine).
 
-Runs the experimental ``anysolver.marine_linear`` route on a fixed synthetic
+Runs the experimental ``anyfesolver.marine_linear`` route on a fixed synthetic
 linear two-body model and prints the response summary, the force
 decomposition and a cancellation demonstration. This is a development
 example with hand-written synthetic matrices: it uses no Capytaine, ANYhydro
@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from anysolver.control import CancellationToken
-from anysolver.marine_linear import (
+from anyfesolver.control import CancellationToken
+from anyfesolver.marine_linear import (
     MarineLinearSpec,
     exponential_radiation_kernel,
     solve_marine_linear,
@@ -73,7 +73,7 @@ def main() -> int:
     spec = build_spec(dt, n_steps)
     result = solve_marine_linear(spec)
 
-    print("anysolver.marine_linear synthetic two-body development example")
+    print("anyfesolver.marine_linear synthetic two-body development example")
     print("development evidence only - no Capytaine data, no qualification")
     print(f"labels          : {list(result.labels)}")
     print(f"dt / steps      : {result.dt} / {result.n_steps}")

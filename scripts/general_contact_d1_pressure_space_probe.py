@@ -12,7 +12,7 @@ import time
 
 import numpy as np
 
-from anysolver.general_contact.core import contact_scope
+from anyfesolver.general_contact.core import contact_scope
 from scripts.general_contact_d1_finite_area_load import build_case
 
 

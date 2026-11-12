@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from anysolver import (PatternCase, prepare_static_response_evaluator, prepare_static_evaluator,
+from anyfesolver import (PatternCase, prepare_static_response_evaluator, prepare_static_evaluator,
     RecoveryConfig, ResourceConfig, StaticCase, LoadCase, PreparedStaticError, CancellationToken, SolveCancelled)
 from test_prepared_static_evaluator import _bar, _case, _shell_model, _shell_case
 
@@ -79,7 +79,7 @@ def test_memory_batches_and_callback_cancel():
             next(evaluator.iter_batches([PatternCase('x',{})],cancellation_token=token))
 
 def test_dense_coefficients_and_execution_authority(monkeypatch):
-    from anysolver.prepared_static_response import PreparedStaticResponseEvaluator
+    from anyfesolver.prepared_static_response import PreparedStaticResponseEvaluator
     model = _bar()
     with prepare_static_response_evaluator(model,{'p':_case(1).load_case}) as evaluator:
         batches = list(evaluator.iter_batches([PatternCase('a',[2.]),PatternCase('b',np.array([2.]))]))
@@ -102,7 +102,7 @@ def test_callback_failure_does_not_publish_envelope():
 
 
 def test_nonzero_prescribed_offset_applied_once():
-    from anysolver import BoundaryCondition
+    from anyfesolver import BoundaryCondition
     model = _bar()
     # Use the native boundary API for a nonzero support offset.
     model = _bar(False)
@@ -133,7 +133,7 @@ def test_tiny_actual_source_discrepancy_still_replays():
         assert evaluator.diagnostics()['source_response']['certification_fallback_cases'] == 1
 
 def test_library_metadata_is_retained_and_budgeted():
-    from anysolver.prepared_static_response import _library_storage_bytes
+    from anyfesolver.prepared_static_response import _library_storage_bytes
     with prepare_static_response_evaluator(_bar(),{'long_pattern_name'*100:_case(1).load_case}) as evaluator:
         info = evaluator.diagnostics()['source_response']
         numeric = evaluator._force_columns.nbytes + evaluator._solution_columns.nbytes
@@ -149,8 +149,8 @@ def test_library_metadata_is_retained_and_budgeted():
 
 @pytest.mark.parametrize('stage', ['before_library','ready'])
 def test_preparation_token_never_runs_in_owned_scope_and_rechecks_authority(monkeypatch, stage):
-    import anysolver.prepared_static_response as response_module
-    import anysolver.prepared_static_recovery as recovery_module
+    import anyfesolver.prepared_static_response as response_module
+    import anyfesolver.prepared_static_recovery as recovery_module
     observed = []
     class HostileToken:
         def raise_if_cancelled(self, where):
@@ -163,7 +163,7 @@ def test_preparation_token_never_runs_in_owned_scope_and_rechecks_authority(monk
     assert observed == [None]
 
 def test_pattern_label_memory_is_checked_before_ingestion():
-    from anysolver.recovery import ResourcePolicyError
+    from anyfesolver.recovery import ResourcePolicyError
     with prepare_static_response_evaluator(_bar(),{'p':_case(1).load_case},
             resource_config=ResourceConfig(memory_limit_bytes=200000)) as owner:
         with pytest.raises(ResourcePolicyError,match='before copy'):
@@ -178,8 +178,8 @@ def test_pattern_label_memory_is_checked_before_ingestion():
 @pytest.mark.parametrize('kind',['base','response'])
 @pytest.mark.parametrize('hook',['_load_vector','_require_open'])
 def test_evaluator_subclasses_refused_before_trusted_preparation(kind,hook):
-    from anysolver import PreparedStaticEvaluator, PreparedStaticResponseEvaluator
-    from anysolver.prepared_static_response import _require_response_authority
+    from anyfesolver import PreparedStaticEvaluator, PreparedStaticResponseEvaluator
+    from anyfesolver.prepared_static_response import _require_response_authority
     parent = PreparedStaticEvaluator if kind == 'base' else PreparedStaticResponseEvaluator
     def foreign(*args,**kwargs):
         pytest.fail('foreign evaluator hook executed')
@@ -192,8 +192,8 @@ def test_evaluator_subclasses_refused_before_trusted_preparation(kind,hook):
 @pytest.mark.parametrize('where',['class','instance','global'])
 @pytest.mark.parametrize('when',['before_iteration','during_input'])
 def test_native_base_hook_authority_before_owned_load_span(monkeypatch,where,when):
-    from anysolver import PreparedStaticEvaluator
-    import anysolver.prepared_static as base_module
+    from anyfesolver import PreparedStaticEvaluator
+    import anyfesolver.prepared_static as base_module
     owner = prepare_static_evaluator(_bar())
     called = []
     def foreign(*args,**kwargs):

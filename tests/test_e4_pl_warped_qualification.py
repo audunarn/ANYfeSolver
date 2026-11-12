@@ -3,12 +3,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-import anysolver.e4_pl_element as e4_pl_module
-from anysolver.e4_pl_element import QualifiedE4PLShellElement, equation7_frame
-from anysolver.elements import ShellElement
-from anysolver.fe_core import FEMesh, Material
-from anysolver.materials import OrthotropicMaterial
-from anysolver.shell_sections import GeneralizedShellSection
+import anyfesolver.e4_pl_element as e4_pl_module
+from anyfesolver.e4_pl_element import QualifiedE4PLShellElement, equation7_frame
+from anyfesolver.elements import ShellElement
+from anyfesolver.fe_core import FEMesh, Material
+from anyfesolver.materials import OrthotropicMaterial
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 OPERATIONS = (

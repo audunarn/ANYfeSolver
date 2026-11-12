@@ -54,9 +54,9 @@ def test_both_arch_traces_and_capsules_are_bound_identically():
 
 
 @pytest.mark.parametrize('path',[
-    'src/anysolver/_ge_beam3_arc_program.py',
-    'src/anysolver/_ge_beam3_arc_geometry.py',
-    'src/anysolver/_native_rotation_state.py',
+    'src/anyfesolver/_ge_beam3_arc_program.py',
+    'src/anyfesolver/_ge_beam3_arc_geometry.py',
+    'src/anyfesolver/_native_rotation_state.py',
 ])
 def test_new_or_preserved_source_mutation_breaks_binding(monkeypatch,path):
     original = source

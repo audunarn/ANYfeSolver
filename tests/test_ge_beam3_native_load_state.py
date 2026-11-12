@@ -5,12 +5,12 @@ from copy import deepcopy
 import numpy as np
 import pytest
 
-from anysolver.fe_core import FEModel
-from anysolver.nonlinear_static import _assemble_nonlinear_system
-from anysolver.nonlinear_state import NonlinearStateStore, create_model_native_rotation_store, StateTransactionError
-from anysolver._ge_beam3_p5_loads import NativeP5BeamElement, LoadStateStore
-from anysolver._ge_beam3_p5_loads.core import canonical, seal
-from anysolver._ge_beam3_p5_loads import codec
+from anyfesolver.fe_core import FEModel
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver.nonlinear_state import NonlinearStateStore, create_model_native_rotation_store, StateTransactionError
+from anyfesolver._ge_beam3_p5_loads import NativeP5BeamElement, LoadStateStore
+from anyfesolver._ge_beam3_p5_loads.core import canonical, seal
+from anyfesolver._ge_beam3_p5_loads import codec
 from test_ge_beam3_centered_native import problem as centered_problem
 
 
@@ -287,7 +287,7 @@ def test_packaged_load_work_is_exact_extraction_of_checked_probe():
     import ast
     import inspect
     from docs.reference_cases.ge_beam3_centered_line_load_probe import load_work as source
-    from anysolver._ge_beam3_p5_loads.work import load_work as packaged
+    from anyfesolver._ge_beam3_p5_loads.work import load_work as packaged
     assert ast.dump(ast.parse(inspect.getsource(source))) == ast.dump(ast.parse(inspect.getsource(packaged)))
 
 

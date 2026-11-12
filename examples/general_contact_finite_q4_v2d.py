@@ -10,9 +10,9 @@ import json
 import math
 from pathlib import Path
 import numpy as np
-from anysolver import FEModel, BoundaryCondition, create_shell_element, solve_static_nonlinear
-from anysolver.general_contact import ContactSurface, ContactDefinition, ContactInteraction, ContactSolverSettings
-from anysolver.general_contact.static_path import ContactPathControl, ContactPathNodalForce, ContactPathProgram
+from anyfesolver import FEModel, BoundaryCondition, create_shell_element, solve_static_nonlinear
+from anyfesolver.general_contact import ContactSurface, ContactDefinition, ContactInteraction, ContactSolverSettings
+from anyfesolver.general_contact.static_path import ContactPathControl, ContactPathNodalForce, ContactPathProgram
 from examples.general_contact_finite_rotation_shell_work import rigid_pose, rotation
 
 SCHEMA = 'ANYSOLVER_FINITE_Q4_V2D_EXAMPLE_V1'

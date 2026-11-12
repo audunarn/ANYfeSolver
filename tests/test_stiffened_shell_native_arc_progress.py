@@ -4,17 +4,17 @@ from types import SimpleNamespace as NS
 import numpy as np
 import pytest
 from scipy import sparse
-from anysolver._stiffened_shell_arc_metric import PhysicalChordMetric
-from anysolver._stiffened_shell_arc_trial import correct,select_trial,ArcTrialFailure,ArcSelectionFailure
-from anysolver._stiffened_shell_arc_checkpoint import identities
+from anyfesolver._stiffened_shell_arc_metric import PhysicalChordMetric
+from anyfesolver._stiffened_shell_arc_trial import correct,select_trial,ArcTrialFailure,ArcSelectionFailure
+from anyfesolver._stiffened_shell_arc_checkpoint import identities
 
 
 def planar_driver(monkeypatch,endpoint,orientation=1,legacy=False):
     # q(s)=(-orientation*s**2,s), with both coordinates in one physical node.
     # This exact oracle snaps only roundoff close to the known endpoint. The
     # residual, tangent, plane, Newton/backtracking and cutbacks remain actual.
-    import anysolver._stiffened_shell_affine_endpoint as affine
-    import anysolver._stiffened_shell_arc_checkpoint as checkpoint
+    import anyfesolver._stiffened_shell_affine_endpoint as affine
+    import anyfesolver._stiffened_shell_arc_checkpoint as checkpoint
     monkeypatch.setattr(affine,'is_native_point_material',lambda owner:True)
     monkeypatch.setattr(checkpoint,'require_native_seed',lambda owner,driver:None)
     a=.25;parent_q=np.zeros(6);parent_q[:2]=(-orientation*a*a,-a)

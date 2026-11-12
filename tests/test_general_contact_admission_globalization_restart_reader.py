@@ -23,7 +23,7 @@ trajectory) stays in the driver module.
 import numpy as np
 import pytest
 
-from anysolver.general_contact.static_path import (
+from anyfesolver.general_contact.static_path import (
     _CONTACT_PATH_PHYSICAL_SUBSTEPS_REVISION,
     _validate_continuation_history_record,
 )

@@ -6,12 +6,12 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import _ge_beam3_loaded_modal as modal
-from anysolver._ge_beam3_load_program import ForceProgram, solve_force_program
-from anysolver._ge_beam3_p5_loads.core import canonical
-from anysolver._ge_beam3_centered_mixed import CenteredStationaryBeam
-from anysolver._ge_beam3_p5_centered.mass import reference_kinetic_factors
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import _ge_beam3_loaded_modal as modal
+from anyfesolver._ge_beam3_load_program import ForceProgram, solve_force_program
+from anyfesolver._ge_beam3_p5_loads.core import canonical
+from anyfesolver._ge_beam3_centered_mixed import CenteredStationaryBeam
+from anyfesolver._ge_beam3_p5_centered.mass import reference_kinetic_factors
+from anyfesolver.control import CancellationToken, SolveCancelled
 from docs.reference_cases import ge_beam3_centered_line_load_oracle as load_oracle
 from docs.reference_cases.ge_beam3_curved_p5_finite_probe import CurvedFiniteProbe
 from test_ge_beam3_native_load_state import problem
@@ -168,10 +168,10 @@ def test_model_guard_and_pre_cancel_fail_closed():
 
 
 def straight_model():
-    from anysolver.fe_core import FEModel
-    from anysolver.boundary import BoundaryCondition
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-    from anysolver._ge_beam3_p5_loads import NativeP5BeamElement, DirectedHardeningSection
+    from anyfesolver.fe_core import FEModel
+    from anyfesolver.boundary import BoundaryCondition
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+    from anyfesolver._ge_beam3_p5_loads import NativeP5BeamElement, DirectedHardeningSection
     model = FEModel('loaded-straight-native')
     points = np.array([[-1., 0., 0.], [0., 0., 0.], [1., 0., 0.]])
     for i, point in enumerate(points, 1): model.add_node(i, *point)
@@ -219,9 +219,9 @@ def test_two_element_shared_traces_and_large_translation_are_preserved(tmp_path)
 
 
 def test_loaded_pencil_covariance_under_proper_coordinate_reexpression():
-    from anysolver.fe_core import FEModel
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-    from anysolver._ge_beam3_p5_loads import NativeP5BeamElement
+    from anyfesolver.fe_core import FEModel
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+    from anyfesolver._ge_beam3_p5_loads import NativeP5BeamElement
     old = problem(); rotation = np.array([[0., -1., 0.], [1., 0., 0.], [0., 0., 1.]])
     new = FEModel('rotated-loaded-native')
     for i, node in old.mesh.nodes.items(): new.add_node(i, *(rotation@node.coords()))

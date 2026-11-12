@@ -86,8 +86,8 @@ def test_coupled_coordinate_force_direction_through_zero_weight_activation():
 
 
 def test_complete_physical_skin_map_including_rotations_and_target_motion():
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.semismooth import linearize
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.semismooth import linearize
     from test_general_contact_q4_s3_refined_patch import _two_q4_two_s3
     from test_general_contact_q4_s3_jet2_static_owner import _settings
     model,definition,settings=_two_q4_two_s3()

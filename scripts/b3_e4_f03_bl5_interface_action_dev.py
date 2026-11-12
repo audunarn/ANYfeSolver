@@ -14,8 +14,8 @@ import json
 from pathlib import Path
 import subprocess
 
-import anysolver
-from anysolver import stiffened_shell
+import anyfesolver
+from anyfesolver import stiffened_shell
 import numpy as np
 from scipy.sparse.linalg import splu
 from threadpoolctl import threadpool_info, threadpool_limits
@@ -120,7 +120,7 @@ def main(external_path: Path, common_path: Path, output: Path):
               "runner_sha256": sha256(Path(__file__).read_bytes()).hexdigest(),
               "external_sha256": sha256(external_bytes).hexdigest(),
               "common_sha256": sha256(common_bytes).hexdigest(),
-              "imported_anysolver": str(Path(anysolver.__file__).resolve()),
+              "imported_anyfesolver": str(Path(anyfesolver.__file__).resolve()),
               "cases": [], "failure": None,
               "limitations": ("Nonroot supported edge actions on one native "
                               "shell; strong external versus weak native "

@@ -8,28 +8,28 @@ import math
 import numpy as np
 import pytest
 
-from anysolver.material_curves import (
+from anyfesolver.material_curves import (
     DNVC208MaterialCurve,
     LinearHardeningCurve,
     PiecewiseLinearCurve,
     PowerLawHardeningCurve,
 )
-from anysolver.materials import Hill48Yield
-from anysolver.arc_length import ArcLengthControl, solve_static_arc_length
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.elements import create_element
-from anysolver.fe_core import FEModel
-from anysolver.nonlinear_state import ShellStateBatch, ShellStateLayout
-from anysolver.nonlinear_static import solve_static_nonlinear
-from anysolver.plasticity import (
+from anyfesolver.materials import Hill48Yield
+from anyfesolver.arc_length import ArcLengthControl, solve_static_arc_length
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.elements import create_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.nonlinear_state import ShellStateBatch, ShellStateLayout
+from anyfesolver.nonlinear_static import solve_static_nonlinear
+from anyfesolver.plasticity import (
     PlaneStressConvergenceError,
     _hill48_plane_stress_metric,
     _hill48_reference_flow,
     _hill48_return_map_core,
     hill48_plane_stress_return_map,
 )
-from anysolver import vectorized_hill48
-from anysolver.vectorized_hill48 import (
+from anyfesolver import vectorized_hill48
+from anyfesolver.vectorized_hill48 import (
     hill48_vectorized_diagnostics,
     pack_hill48_curve,
     reset_hill48_vectorized_diagnostics,

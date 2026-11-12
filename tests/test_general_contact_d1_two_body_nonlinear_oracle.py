@@ -12,9 +12,8 @@ import numpy as np
 
 def test_clipping_signature_distinguishes_equal_vertex_counts_with_different_edges():
     root = Path(__file__).resolve().parents[1]
-    sys.path.insert(0, str(root / "docs" / "d1_review_support"))
-    from d1_two_body_current_skin_quadrature import overlap_incidence
-    from d1_two_body_reference_oracle import _clip
+    sys.path.insert(0, str(root / "tests" / "fixtures"))
+    from d1_current_skin import overlap_incidence, _clip
 
     source = np.array(((0., 0.), (1., 0.), (1., 1.), (0., 1.)))
     lower_left = np.array(((0., 0.), (0.2, 0.), (0., 0.2)))
@@ -28,18 +27,20 @@ def test_clipping_signature_distinguishes_equal_vertex_counts_with_different_edg
             != overlap_incidence(source, upper_right, second))
 
 
-def test_saved_slide_matches_independent_current_contact_kkt():
+def test_saved_slide_matches_independent_current_contact_kkt(tmp_path):
     root = Path(__file__).resolve().parents[1]
     environment = os.environ.copy()
     environment["PYTHONPATH"] = os.pathsep.join((
-        str(root / "src"), str(root), str(root / "docs" / "d1_review_support"),
+        str(root / "src"), str(root / "packages/results/src"), str(root),
     ))
     completed = subprocess.run(
-        [sys.executable, str(root / "docs" / "d1_review_support"
-                                   / "d1_two_body_nonlinear_kkt_compare.py")],
+        [sys.executable, str(root / "tests" / "fixtures"
+                                   / "d1_nonlinear_kkt.py")],
         cwd=root, env=environment, capture_output=True, text=True,
-        check=True, timeout=120,
+        check=False, timeout=120,
     )
+    assert completed.returncode == 0, completed.stderr
+    (tmp_path / "d1_kkt_comparison.json").write_text(completed.stdout, encoding="utf-8")
     result = json.loads(completed.stdout)
     assert result["status"] == "development_independent_contact_nonlinear_kkt"
     assert result["active_pressure_modes"] == [3, 8]
@@ -79,14 +80,15 @@ def test_active_contact_work_is_exactly_independent_of_control_dofs():
     root = Path(__file__).resolve().parents[1]
     environment = os.environ.copy()
     environment["PYTHONPATH"] = os.pathsep.join((
-        str(root / "src"), str(root), str(root / "docs" / "d1_review_support"),
+        str(root / "src"), str(root / "packages/results/src"), str(root),
     ))
     completed = subprocess.run(
-        [sys.executable, str(root / "docs" / "d1_review_support"
-                                   / "d1_two_body_control_reaction_route_probe.py")],
+        [sys.executable, str(root / "tests" / "fixtures"
+                                   / "d1_control_reaction.py")],
         cwd=root, env=environment, capture_output=True, text=True,
-        check=True, timeout=120,
+        check=False, timeout=120,
     )
+    assert completed.returncode == 0, completed.stderr
     result = json.loads(completed.stdout)
     assert result["status"] == "development_control_reaction_route_probe"
     assert result["active_pressure_modes"] == [3, 8]
@@ -110,12 +112,12 @@ def test_active_contact_work_is_exactly_independent_of_control_dofs():
     assert result["external_control_n"] == [0.0, 0.0]
 
 
-@pytest.mark.parametrize("script", ["d1_two_body_nonlinear_kkt_compare.py", "d1_two_body_displacement_compare.py"])
+@pytest.mark.parametrize("script", ["tests/fixtures/d1_nonlinear_kkt.py", "docs/d1_review_support/d1_two_body_displacement_compare.py"])
 def test_oracle_source_identity_does_not_attribute_an_enclosing_checkout(monkeypatch,tmp_path,script):
     # Extract this metadata-only helper without running the nonlinear fixture.
     # Its negative cases protect exported/installed-source provenance.
     import ast
-    source=Path(__file__).resolve().parents[1]/'docs/d1_review_support'/script
+    source=Path(__file__).resolve().parents[1]/script
     tree=ast.parse(source.read_text(encoding='utf-8'))
     node=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='_checkout_commit')
     namespace=dict(Path=Path,subprocess=subprocess)

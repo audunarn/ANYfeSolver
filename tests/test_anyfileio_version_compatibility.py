@@ -19,8 +19,8 @@ from packaging.utils import canonicalize_name
 from packaging.version import Version
 
 
-EXPECTED_REQUIREMENT = "ANYfileio>=0.3.2,<0.4"
-EXPECTED_SPECIFIER = SpecifierSet(">=0.3.2,<0.4")
+EXPECTED_REQUIREMENT = "ANYfileio>=0.3.3,<0.4"
+EXPECTED_SPECIFIER = SpecifierSet(">=0.3.3,<0.4")
 RELEVANT_PACKAGES = {
     "anymaterial",
     "anygeometry",
@@ -54,7 +54,7 @@ def _source_fileio_requirements() -> list[str]:
 
 
 def _installed_fileio_requirements() -> list[str]:
-    requirements = metadata.requires("ANYsolver") or []
+    requirements = metadata.requires("ANYfeSolver") or []
     return [
         item
         for item in requirements
@@ -116,7 +116,7 @@ def _source_ledgers() -> tuple[dict[str, str], dict[str, str]] | None:
     versions = json.loads(raw_versions)
     roots = json.loads(raw_roots)
     expected = {
-        "anysolver",
+        "anyfesolver",
         "anymaterial",
         "anygeometry",
         "anymesher",
@@ -165,9 +165,9 @@ def _assert_graph(
             )
             edges.add((source, target))
     required_edges = {
-        ("anysolver", "anymaterial"),
-        ("anysolver", "anymesher"),
-        ("anysolver", "anyfileio"),
+        ("anyfesolver", "anymaterial"),
+        ("anyfesolver", "anymesher"),
+        ("anyfesolver", "anyfileio"),
         ("anymesher", "anygeometry"),
     }
     assert required_edges <= edges
@@ -176,22 +176,22 @@ def _assert_graph(
 
 def _assert_complete_source_graphs(roots: dict[str, str]) -> None:
     archives = Path(roots["anymaterial"]).resolve().parents[1]
-    solver_root = Path(roots["anysolver"]).resolve().parent
+    solver_root = Path(roots["anyfesolver"]).resolve().parent
     cells = {
         "coordinated": (
             {
-                "anysolver": solver_root,
+                "anyfesolver": solver_root,
                 "anymaterial": archives / "material-current",
                 "anygeometry": archives / "geometry-current",
                 "anymesher": archives / "mesh-current",
                 "anyfileio": archives / "fileio-current",
             },
             {
-                "anysolver": "0.4.7",
+                "anyfesolver": "0.5.0",
                 "anymaterial": "0.2.0",
                 "anygeometry": "0.4.3",
                 "anymesher": "0.5.0",
-                "anyfileio": "0.3.2",
+                "anyfileio": "0.3.3",
             },
         ),
     }
@@ -216,18 +216,18 @@ def probe_anyfileio_public_contract(
     import anygeometry
     import anymaterial
     import anymesher
-    import anysolver
-    from anysolver import external_references
+    import anyfesolver
+    from anyfesolver import external_references
 
     modules = {
-        "ANYsolver": anysolver,
+        "ANYfeSolver": anyfesolver,
         "ANYmaterial": anymaterial,
         "ANYgeometry": anygeometry,
         "ANYmesher": anymesher,
         "ANYfileio": anyfileio,
     }
     expected_variables = {
-        "ANYsolver": "EXPECTED_ANYSOLVER_VERSION",
+        "ANYfeSolver": "EXPECTED_ANYSOLVER_VERSION",
         "ANYmaterial": "EXPECTED_ANYMATERIAL_VERSION",
         "ANYgeometry": "EXPECTED_ANYGEOMETRY_VERSION",
         "ANYmesher": "EXPECTED_ANYMESHER_VERSION",
@@ -262,9 +262,9 @@ def probe_anyfileio_public_contract(
         "merge_results",
     )
     assert all(hasattr(anyfileio, name) for name in symbols)
-    assert anysolver.SesamFemDocument is anyfileio.SesamFemDocument
-    assert anysolver.FemRawRecord is anyfileio.FemRawRecord
-    assert anysolver.CalculixParsedResults is anyfileio.CalculixParsedResults
+    assert anyfesolver.SesamFemDocument is anyfileio.SesamFemDocument
+    assert anyfesolver.FemRawRecord is anyfileio.FemRawRecord
+    assert anyfesolver.CalculixParsedResults is anyfileio.CalculixParsedResults
     assert external_references.parse_calculix_frd is anyfileio.parse_frd
     assert external_references.parse_calculix_dat is anyfileio.parse_dat
     assert external_references.merge_calculix_results is anyfileio.merge_results
@@ -290,8 +290,8 @@ def probe_anyfileio_public_contract(
     return {
         "anyfileio_version": anyfileio.__version__,
         "anyfileio_origin": str(origin),
-        "anysolver_version": anysolver.__version__,
-        "anysolver_origin": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_version": anyfesolver.__version__,
+        "anyfesolver_origin": str(Path(anyfesolver.__file__).resolve()),
         "anymaterial_version": anymaterial.__version__,
         "anymaterial_origin": str(Path(anymaterial.__file__).resolve()),
         "anygeometry_version": anygeometry.__version__,
@@ -304,11 +304,16 @@ def probe_anyfileio_public_contract(
 
 
 def test_source_declares_exact_anyfileio_compatibility_range() -> None:
-    assert _source_fileio_requirements() == [EXPECTED_REQUIREMENT]
+    requirement, = _source_fileio_requirements()
+    assert requirement == EXPECTED_REQUIREMENT
+    supported = Requirement(requirement).specifier
+    assert Version("0.3.3") in supported
+    assert Version("0.3.2") not in supported
+    assert Version("0.4.0") not in supported
 
 
 def test_fileio_requirement_accepts_canonicalized_specifier_order() -> None:
-    _assert_expected_fileio_requirement("ANYfileio<0.4,>=0.3.2")
+    _assert_expected_fileio_requirement("ANYfileio<0.4,>=0.3.3")
 
 
 def test_current_source_origins_and_complete_graphs() -> None:
@@ -323,10 +328,10 @@ def test_current_source_origins_and_complete_graphs() -> None:
     import anygeometry
     import anymaterial
     import anymesher
-    import anysolver
+    import anyfesolver
 
     modules = {
-        "anysolver": anysolver,
+        "anyfesolver": anyfesolver,
         "anymaterial": anymaterial,
         "anygeometry": anygeometry,
         "anymesher": anymesher,
@@ -337,7 +342,7 @@ def test_current_source_origins_and_complete_graphs() -> None:
     _assert_complete_source_graphs(roots)
 
 
-def test_anyfileio_public_contract_used_by_anysolver(tmp_path: Path) -> None:
+def test_anyfileio_public_contract_used_by_anyfesolver(tmp_path: Path) -> None:
     result = probe_anyfileio_public_contract(
         metadata_mode="source", temporary_root=tmp_path
     )
@@ -360,7 +365,7 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
         "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33",
     }
     combined = ci + publish
-    assert set(re.findall(r"(?m)^\s*- uses: (\S+)\s*$", combined)) == action_refs
+    assert set(re.findall(r"(?m)^\s*(?:- )?uses: (\S+)\s*$", combined)) == action_refs
 
     ci_header, ci_jobs = ci.split("jobs:\n", maxsplit=1)
     assert ci_header == (
@@ -377,17 +382,32 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
         "numba",
         "pardiso",
     ]
-    publish_header, publish_jobs = publish.split("jobs:\n", maxsplit=1)
-    assert publish_header == (
-        "name: Publish\n\non:\n  workflow_dispatch:\n  release:\n"
-        "    types: [published]\n\n"
+    # The 0.5.0 publish workflow is a two-project (ANYfeSolver-results then
+    # ANYfeSolver) pipeline: validate -> gates -> one build -> TestPyPI -> PyPI.
+    publish_header, publish_jobs = publish.split("\njobs:\n", maxsplit=1)
+    assert publish_header.startswith("name: Publish\n")
+    assert (
+        "\non:\n  workflow_dispatch:\n  release:\n    types: [published]\n"
+        in publish_header
     )
+    assert "\npermissions:\n  contents: read\n" in publish_header
+    assert "cancel-in-progress: false" in publish_header
+    for line in (
+        "  RELEASE_TAG: v0.5.0\n",
+        '  SOLVER_VERSION: "0.5.0"\n',
+        '  RESULTS_VERSION: "2.2.0"\n',
+    ):
+        assert line in publish_header, line
     assert re.findall(r"(?m)^  ([a-z0-9-]+):\n", publish_jobs) == [
+        "validate",
         "license-gate",
         "dependency-gate",
         "build",
         "testpypi",
+        "testpypi-solver",
+        "stage",
         "pypi",
+        "pypi-solver",
     ]
 
     ci_hashes = set(re.findall(r"\b[0-9a-f]{40}\b", ci))
@@ -399,10 +419,10 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
         "27e428188a891705288fef82bab0b166e330aff2",
         "91846898b03fa02b029abde82508eddb981efdc0",
         "2ccef378c3efb4ba3a9957b9ab896ac8fc454b9d",
-        "db73950018e1c87dab0ca618c25c965030ba08ce",
+        "fb11ea83656b427485f48fca9f7306c32658a672",
         "ebbe0e3b500a3f0cfcc62059c3dac4b0ac178b6c",
         "b6f7cf466865b1c4c34b8e5511ace97d00290f6c",
-        "32f3bb65e3843d6fd7af6c4fdf76ce472a7f6555",
+        "ea165f8d65b6e75b540449e92b4886f43607fa02",
         "06f3276d9207376316502aca651c3455db984104",
     }
     assert set(re.findall(r"\b[0-9a-f]{40}\b", publish)) == {
@@ -431,12 +451,12 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
     )
 
     def action_sequence(block: str) -> list[str]:
-        return re.findall(r"(?m)^      - uses: (\S+)\s*$", block)
+        return re.findall(r"(?m)^(?:      - |        )uses: (\S+)\s*$", block)
 
     assert action_sequence(job_block(ci, "license")) == [checkout_ref, setup_ref]
     assert action_sequence(job_block(ci, "resolver")) == [checkout_ref, setup_ref]
     pytest_block = job_block(ci, "pytest")
-    assert action_sequence(pytest_block) == [checkout_ref] * 5 + [setup_ref, checkout_ref]
+    assert action_sequence(pytest_block) == [checkout_ref] * 5 + [setup_ref, checkout_ref, upload_ref]
     solid_condition = "        if: matrix.shard-index == 0 && matrix.subshard-index == 0\n"
     assert pytest_block.count(solid_condition) == 2
     solid_checkout = (
@@ -458,6 +478,10 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
         assert action_sequence(job_block(ci, name)) == [checkout_ref] * 5 + [
             setup_ref
         ]
+    assert action_sequence(job_block(publish, "validate")) == [
+        checkout_ref,
+        setup_ref,
+    ]
     assert action_sequence(job_block(publish, "license-gate")) == [
         checkout_ref,
         setup_ref,
@@ -467,24 +491,33 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
         checkout_ref,
         setup_ref,
         upload_ref,
-        upload_ref,
     ]
     build_block = job_block(publish, "build")
-    assert build_block.index('python scripts/verify_release_047.py') < build_block.index(upload_ref)
-    assert '--wheel dist/anysolver-0.4.7-py3-none-any.whl' in build_block
-    assert '--sdist dist/anysolver-0.4.7.tar.gz' in build_block
-    assert 'name: release-047-gate' in build_block
-    assert action_sequence(job_block(publish, "testpypi")) == [
-        download_ref,
-        publish_ref,
-    ]
-    assert action_sequence(job_block(publish, "pypi")) == [
-        download_ref,
-        publish_ref,
-    ]
+    assert build_block.index("python scripts/verify_release_050.py") < build_block.index(
+        upload_ref
+    )
+    for argument in (
+        "--solver-wheel dist/solver/anyfesolver-${SOLVER_VERSION}-py3-none-any.whl",
+        "--solver-sdist dist/solver/anyfesolver-${SOLVER_VERSION}.tar.gz",
+        "--results-wheel dist/results/anyfesolver_results-${RESULTS_VERSION}-py3-none-any.whl",
+        "--results-sdist dist/results/anyfesolver_results-${RESULTS_VERSION}.tar.gz",
+        "--expected-commit",
+        "--output release-050-gate.json",
+        "python -m build --outdir dist/results packages/results",
+        "python -m build --outdir dist/solver .",
+        "sha256sum results/* solver/*",
+    ):
+        assert argument in build_block, argument
+    assert "name: release-050-distributions" in build_block
+    for stage in ("testpypi", "testpypi-solver", "pypi", "pypi-solver"):
+        assert action_sequence(job_block(publish, stage)) == [
+            checkout_ref,
+            download_ref,
+            publish_ref,
+        ], stage
 
     checkout_pattern = re.compile(
-        rf"(?m)^      - uses: {re.escape(checkout_ref)}\n"
+        rf"(?m)^(?:      - |        )uses: {re.escape(checkout_ref)}\n"
         r"        with:\n"
         r"          repository: (\S+)\n"
         r"          ref: (.+)\n"
@@ -509,7 +542,7 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
         ),
         (
             "audunarn/ANYfileIO",
-            "db73950018e1c87dab0ca618c25c965030ba08ce",
+            "fb11ea83656b427485f48fca9f7306c32658a672",
             ".ecosystem/ANYfileIO",
         ),
     ]
@@ -555,7 +588,7 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
         current_checkouts[0],
         ("audunarn/ANYgeometry", "ebbe0e3b500a3f0cfcc62059c3dac4b0ac178b6c", ".ecosystem/ANYgeometry"),
         ("audunarn/ANYmesh", "b6f7cf466865b1c4c34b8e5511ace97d00290f6c", ".ecosystem/ANYmesh"),
-        ("audunarn/ANYfileIO", "32f3bb65e3843d6fd7af6c4fdf76ce472a7f6555", ".ecosystem/ANYfileIO"),
+        ("audunarn/ANYfileIO", "fb11ea83656b427485f48fca9f7306c32658a672", ".ecosystem/ANYfileIO"),
     ]
     assert checkout_pattern.findall(job_block(ci, "pytest")) == development_checkouts
     for name in ("wheel", "numba", "pardiso"):
@@ -631,25 +664,25 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
             '            anygeometry-version: "0.4.2"',
             "            anygeometry-ref: dd954f088a4cb95e267280cc4777b09e16232bd9",
             "            anygeometry-install: .ecosystem/ANYgeometry",
-            '            anyfileio-version: "0.3.2"',
-            "            anyfileio-ref: db73950018e1c87dab0ca618c25c965030ba08ce",
-            "            anyfileio-install: ANYfileio==0.3.2",
+            '            anyfileio-version: "0.3.3"',
+            "            anyfileio-ref: fb11ea83656b427485f48fca9f7306c32658a672",
+            "            anyfileio-install: ANYfileio==0.3.3",
             '          - anymesher-version: "0.5.0"',
             "            anymesher-ref: 2ccef378c3efb4ba3a9957b9ab896ac8fc454b9d",
             "            anymesher-install: ANYmesher==0.5.0",
             '            anygeometry-version: "0.4.3"',
             "            anygeometry-ref: 91846898b03fa02b029abde82508eddb981efdc0",
             "            anygeometry-install: ANYgeometry==0.4.3",
-            '            anyfileio-version: "0.3.2"',
-            "            anyfileio-ref: db73950018e1c87dab0ca618c25c965030ba08ce",
-            "            anyfileio-install: ANYfileio==0.3.2",
+            '            anyfileio-version: "0.3.3"',
+            "            anyfileio-ref: fb11ea83656b427485f48fca9f7306c32658a672",
+            "            anyfileio-install: ANYfileio==0.3.3",
         )
     )
     assert matrix_rows(fileio_job) == "\n".join(
         (
-            '          - anyfileio-version: "0.3.2"',
-            "            anyfileio-ref: db73950018e1c87dab0ca618c25c965030ba08ce",
-            "            anyfileio-install: ANYfileio==0.3.2",
+            '          - anyfileio-version: "0.3.3"',
+            "            anyfileio-ref: fb11ea83656b427485f48fca9f7306c32658a672",
+            "            anyfileio-install: ANYfileio==0.3.3",
             '            anymesher-version: "0.5.0"',
             "            anymesher-ref: 2ccef378c3efb4ba3a9957b9ab896ac8fc454b9d",
             "            anymesher-install: ANYmesher==0.5.0",
@@ -674,7 +707,7 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
 
     assert probe_environment(mesh_job) == "\n".join(
         (
-            '          EXPECTED_ANYSOLVER_VERSION: "0.4.7"',
+            '          EXPECTED_ANYSOLVER_VERSION: "0.5.0"',
             '          EXPECTED_ANYMATERIAL_VERSION: "0.2.0"',
             "          EXPECTED_ANYMESHER_VERSION: ${{ matrix.anymesher-version }}",
             "          EXPECTED_ANYGEOMETRY_VERSION: ${{ matrix.anygeometry-version }}",
@@ -684,7 +717,7 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
     )
     assert probe_environment(fileio_job) == "\n".join(
         (
-            '          EXPECTED_ANYSOLVER_VERSION: "0.4.7"',
+            '          EXPECTED_ANYSOLVER_VERSION: "0.5.0"',
             '          EXPECTED_ANYMATERIAL_VERSION: "0.2.0"',
             "          EXPECTED_ANYFILEIO_VERSION: ${{ matrix.anyfileio-version }}",
             "          EXPECTED_ANYMESHER_VERSION: ${{ matrix.anymesher-version }}",
@@ -698,8 +731,8 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
     ):
         assert mesh_job.count(value) == 1
         assert fileio_job.count(value) == 1
-    assert mesh_job.count("db73950018e1c87dab0ca618c25c965030ba08ce") == 2
-    assert fileio_job.count("db73950018e1c87dab0ca618c25c965030ba08ce") == 1
+    assert mesh_job.count("fb11ea83656b427485f48fca9f7306c32658a672") == 2
+    assert fileio_job.count("fb11ea83656b427485f48fca9f7306c32658a672") == 1
     for value in (
         "27e428188a891705288fef82bab0b166e330aff2",
         "dd954f088a4cb95e267280cc4777b09e16232bd9",
@@ -720,69 +753,166 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
         assert separator
         return preamble
 
-    assert job_preamble(job_block(publish, "dependency-gate")) == (
-        "  dependency-gate:\n"
-        "    name: Verify production sibling releases\n"
-        "    runs-on: ubuntu-latest\n"
+    def preamble_keys(block: str) -> dict[str, str]:
+        """Top-level job keys (indent 4) with their inline value."""
+        return {
+            key: value.strip()
+            for key, value in re.findall(
+                r"(?m)^    ([a-z][a-z-]*):(.*)$", job_preamble(block)
+            )
+        }
+
+    def nested_lines(block: str, key: str) -> list[str]:
+        match = re.search(
+            rf"(?m)^    {key}:\n((?:^      [^\n]*\n)+)", job_preamble(block)
+        )
+        assert match is not None, key
+        return match.group(1).splitlines()
+
+    expected_pre = {
+        "validate": {"runs-on": "ubuntu-latest"},
+        "license-gate": {"needs": "validate", "runs-on": "ubuntu-latest"},
+        "dependency-gate": {"needs": "validate", "runs-on": "ubuntu-latest"},
+        "build": {
+            "needs": "[validate, dependency-gate, license-gate]",
+            "runs-on": "ubuntu-latest",
+        },
+    }
+    for name, expected in expected_pre.items():
+        actual = preamble_keys(job_block(publish, name))
+        for key, value in expected.items():
+            assert actual.get(key) == value, (name, key, actual)
+        if name == "build":
+            assert actual["if"] == "github.event_name == 'workflow_dispatch'"
+        else:
+            assert "if" not in actual, name
+        assert "environment" not in actual, name
+    assert preamble_keys(job_block(publish, "dependency-gate")).get("name") == (
+        "Verify production sibling releases"
     )
-    assert job_preamble(job_block(publish, "build")) == (
-        "  build:\n"
-        "    needs: [dependency-gate, license-gate]\n"
-        "    runs-on: ubuntu-latest\n"
-    )
-    assert job_preamble(job_block(publish, "testpypi")) == (
-        "  testpypi:\n"
-        "    if: github.event_name == 'workflow_dispatch'\n"
-        "    needs: build\n"
-        "    runs-on: ubuntu-latest\n"
-        "    environment:\n"
-        "      name: testpypi\n"
-        "      url: https://test.pypi.org/p/ANYsolver\n"
-        "    permissions:\n"
-        "      id-token: write\n"
-    )
-    assert job_preamble(job_block(publish, "pypi")) == (
-        "  pypi:\n"
-        "    if: github.event_name == 'release'\n"
-        "    needs: build\n"
-        "    runs-on: ubuntu-latest\n"
-        "    environment:\n"
-        "      name: pypi\n"
-        "      url: https://pypi.org/p/ANYsolver\n"
-        "    permissions:\n"
-        "      id-token: write\n"
-    )
+
+    # Workflow_dispatch only stages to TestPyPI; production promotion happens
+    # only on a published release, behind the protected environment, after
+    # TestPyPI served the identical digests.
+    testpypi_pre = preamble_keys(job_block(publish, "testpypi"))
+    assert testpypi_pre["needs"] == "[validate, build]"
+    assert testpypi_pre["runs-on"] == "ubuntu-latest"
+    assert testpypi_pre["if"] == "github.event_name == 'workflow_dispatch'"
+    assert nested_lines(job_block(publish, "testpypi"), "environment") == [
+        "      name: testpypi",
+        "      url: https://test.pypi.org/p/ANYfeSolver",
+    ]
+    pypi_pre = preamble_keys(job_block(publish, "pypi"))
+    assert pypi_pre["if"] == "github.event_name == 'release'"
+    assert pypi_pre["needs"] == "[validate, license-gate, dependency-gate, stage]"
+    assert pypi_pre["runs-on"] == "ubuntu-latest"
+    assert nested_lines(job_block(publish, "pypi"), "environment") == [
+        "      name: pypi",
+        "      url: https://pypi.org/p/ANYfeSolver",
+    ]
 
     dependency_job = job_block(publish, "dependency-gate")
     assert "TARGET_INDEX_URL" not in dependency_job
     assert "--index-url https://pypi.org/simple" in dependency_job
-    testpypi_job = job_block(publish, "testpypi")
-    pypi_job = job_block(publish, "pypi")
+    for index_job in ("testpypi", "pypi"):
+        results = job_block(publish, index_job)
+        solver = job_block(publish, index_job + "-solver")
+        assert preamble_keys(solver)["needs"] == f"[validate, {index_job}]"
+        assert "environment:" not in solver
+        assert "packages-dir: plan/results/" in results and "packages-dir: plan/solver/" not in results
+        assert "packages-dir: plan/solver/" in solver and "packages-dir: plan/results/" not in solver
+    testpypi_job = job_block(publish, "testpypi") + job_block(publish, "testpypi-solver")
+    pypi_job = job_block(publish, "pypi") + job_block(publish, "pypi-solver")
+    # One legacy-endpoint override per project upload step, TestPyPI only.
     assert testpypi_job.count(
         "repository-url: https://test.pypi.org/legacy/"
-    ) == 1
+    ) == 2
     assert "repository-url:" not in pypi_job
-    assert publish.count("repository-url:") == 1
+    assert publish.count("repository-url:") == 2
 
-    permission_bodies: list[str] = []
-    for name in ("dependency-gate", "build", "testpypi", "pypi"):
-        block = job_block(publish, name)
-        match = re.search(
-            r"(?m)^    permissions:\n((?:^      [^\n]*\n)+)", block
+    # Results first, then the solver, per index; nothing is overwritten.
+    for job, index in ((testpypi_job, "https://test.pypi.org"), (pypi_job, "https://pypi.org")):
+        results_plan = job.index(
+            f'--index {index} --name ANYfeSolver-results --version "$RESULTS_VERSION"'
         )
-        if match is not None:
-            permission_bodies.append(match.group(1))
-    assert permission_bodies == ["      id-token: write\n"] * 2
-    assert "permissions:" not in job_block(publish, "dependency-gate")
-    assert "permissions:" not in job_block(publish, "build")
+        solver_plan = job.index(
+            f'--index {index} --name ANYfeSolver --version "$SOLVER_VERSION"'
+        )
+        assert results_plan < solver_plan
+        assert "packages-dir: plan/results/" in job
+        assert "packages-dir: plan/solver/" in job
+        assert job.index("packages-dir: plan/results/") < job.index(
+            "packages-dir: plan/solver/"
+        )
+        assert "--require-complete" in job
+        assert "sha256sum -c ../SHA256SUMS" in job
+        assert "skip-existing" not in job
+        assert "--missing-dir plan/results" in job
+        assert "--missing-dir plan/solver" in job
+    assert (
+        "--index https://test.pypi.org --name ANYfeSolver-results"
+        in pypi_job
+    ), "PyPI promotion must require TestPyPI to serve the identical digests"
+
+    # Least privilege: workflow read-only; only validate adds actions: read and
+    # only the four package upload jobs add id-token: write.
+    def job_permissions(name: str) -> list[str] | None:
+        match = re.search(
+            r"(?m)^    permissions:\n((?:^      [^\n]*\n)+)",
+            job_block(publish, name),
+        )
+        return None if match is None else match.group(1).splitlines()
+
+    assert job_permissions("validate") == [
+        "      contents: read",
+        "      actions: read",
+    ]
+    assert job_permissions("stage") == job_permissions("validate")
+    assert job_permissions("testpypi") == ["      contents: read", "      id-token: write"]
+    for name in ("pypi", "testpypi-solver", "pypi-solver"):
+        assert job_permissions(name) == ["      contents: read", "      id-token: write"]
+    for name in ("license-gate", "dependency-gate", "build"):
+        assert job_permissions(name) is None, name
+        assert "permissions:" not in job_block(publish, name)
+    assert "id-token" not in job_block(publish, "validate")
+
+    # The validate job binds the tag, versions, main ancestry and trusted CI.
+    validate_block = job_block(publish, "validate")
+    for fragment in (
+        'ANYfeSolver", os.environ.get("SOLVER_VERSION", "0.5.0")',
+        'ANYfeSolver-results", os.environ.get("RESULTS_VERSION", "2.2.0")',
+        "git merge-base --is-ancestor",
+        "actions/workflows/ci.yml/runs?head_sha=",
+        'run["head_branch"] == "main"',
+    ):
+        assert fragment in validate_block, fragment
+
     assert "SIBLINGS" not in ci
     assert "git+https://" not in ci
     assert ci.count("python -m pip check") == 8
+    # The CI resolver builds the same-checkout results wheel with the solver
+    # wheel and resolves the exact sibling graph.
+    resolver_block = job_block(ci, "resolver")
+    assert "./packages/results" in resolver_block
+    for pin in (
+        "ANYmaterial==0.2.0",
+        "ANYgeometry==0.4.3",
+        "ANYmesher==0.5.0",
+        "ANYfileio==0.3.3",
+    ):
+        assert pin in resolver_block, pin
     assert '"ANYmaterial==0.2.0"' in publish
     assert '"ANYgeometry==0.4.3"' in publish
     assert '"ANYmesher==0.5.0"' in publish
-    assert '"ANYfileio==0.3.2"' in publish
+    assert '"ANYfileio==0.3.3"' in publish
     assert "pip install --dry-run --only-binary=:all:" in publish
+    for pin in (
+        "ANYmaterial==0.2.0",
+        "ANYgeometry==0.4.3",
+        "ANYmesher==0.5.0",
+        "ANYfileio==0.3.3",
+    ):
+        assert pin in build_block, pin
 
 
 def _main() -> int:

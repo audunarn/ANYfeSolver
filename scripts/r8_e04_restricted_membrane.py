@@ -75,7 +75,7 @@ def fixture_signature():
 def native_definition():
     import numpy as np
     from anymaterial import DNVC208MaterialCurve
-    from anysolver import b3_ge, stiffened_shell as ss
+    from anyfesolver import b3_ge, stiffened_shell as ss
     iy, iz, torsion = rectangle()
     section = b3_ge.EllipsoidalGeneralizedSection(
         np.diag((E * AREA, 5 / 6 * G * AREA, 5 / 6 * G * AREA,
@@ -191,7 +191,7 @@ def elastic_control(row):
 
 def solve_native(output):
     import numpy as np
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
     definition = native_definition()
     owner = ss.create_analysis(definition=definition)
     records = []
@@ -374,10 +374,10 @@ def runtime_identity(record, route, opensees_site=None):
     if route == 'native':
         import scipy
         import scipy.linalg
-        import anysolver
+        import anyfesolver
         import anymaterial
         import numba
-        import_paths.update(scipy=scipy.__file__, anysolver=anysolver.__file__,
+        import_paths.update(scipy=scipy.__file__, anyfesolver=anyfesolver.__file__,
                             anymaterial=anymaterial.__file__, numba=numba.__file__)
         record.update(numba_disable_jit=bool(numba.config.DISABLE_JIT),
                       numba_threads=numba.get_num_threads())

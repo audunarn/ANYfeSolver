@@ -6,11 +6,11 @@ import json
 import numpy as np
 import pytest
 
-from anysolver._stiffened_shell_displacement_adaptive import (
+from anyfesolver._stiffened_shell_displacement_adaptive import (
     Context, MAGIC, EVENT_MAGIC, EVENT_POLICY, encode, decode,
     direction_hash, validate_progress)
-from anysolver._stiffened_shell_displacement_increment import DisplacementIncrementState
-from anysolver._stiffened_shell_increment_control import AdaptiveIncrementControl
+from anyfesolver._stiffened_shell_displacement_increment import DisplacementIncrementState
+from anyfesolver._stiffened_shell_increment_control import AdaptiveIncrementControl
 
 
 def state():

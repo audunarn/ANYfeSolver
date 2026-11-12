@@ -3,18 +3,18 @@ from hashlib import sha256
 import json
 import numpy as np
 import pytest
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern,_ACTIVE
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_native_generalized_program import solve_distributed_model,_PROGRAM,_Program,model_identity
-from anysolver._ge_beam3_native_generalized_restart import LoadPoint,encode_checkpoint,decode_checkpoint,capture_solver_state
-from anysolver._ge_beam3_native_generalized_recovery import recover_native_fields
-from anysolver._ge_beam3_p5_seeded.core import canonical,sha
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern,_ACTIVE
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_native_generalized_program import solve_distributed_model,_PROGRAM,_Program,model_identity
+from anyfesolver._ge_beam3_native_generalized_restart import LoadPoint,encode_checkpoint,decode_checkpoint,capture_solver_state
+from anyfesolver._ge_beam3_native_generalized_recovery import recover_native_fields
+from anyfesolver._ge_beam3_p5_seeded.core import canonical,sha
 from test_ge_beam3_native_generalized import problem
 from test_ge_beam3_curved_contrast_probe import make_curved
 from test_ge_beam3_generalized_ellipsoid_section import section
-from anysolver.fe_core import FEModel
-from anysolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
-from anysolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
+from anyfesolver.fe_core import FEModel
+from anyfesolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
+from anyfesolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
 from test_ge_beam3_schur_line_program import save
 
 CASES=('straight-elastic','curved-plastic','connected-plastic')
@@ -156,8 +156,8 @@ def test_resealed_mutations(saved,mutation,tmp_path):
 
 @pytest.mark.parametrize('mutation',['duplicate','nonfinite','noncanonical','external-hash','wrong-constant','support'])
 def test_authority_before_solver(saved,mutation,monkeypatch,tmp_path):
-    import anysolver.nonlinear_static as solver
-    from anysolver.boundary import BoundaryCondition
+    import anyfesolver.nonlinear_static as solver
+    from anyfesolver.boundary import BoundaryCondition
     case,_,load,_,raw,_=saved;model=make(case);kwargs={}
     if mutation=='duplicate':raw=raw.replace(b'{',b'{"schema":"duplicate",',1)
     elif mutation=='nonfinite':raw=raw.replace(b'"parameter":0.0',b'"parameter":NaN',1)
@@ -189,8 +189,8 @@ def test_owned_capture_and_active_chain_binding(saved,tmp_path):
 
 
 def test_strict_hash_schema_deadline_and_count(saved,monkeypatch,tmp_path):
-    import anysolver._ge_beam3_native_generalized_restart as module
-    from anysolver._ge_beam3_native_line_restart import decode_checkpoint as decode_line
+    import anyfesolver._ge_beam3_native_generalized_restart as module
+    from anyfesolver._ge_beam3_native_line_restart import decode_checkpoint as decode_line
     case,_,load,_,raw,_=saved;model=make(case)
     with pytest.raises(ValueError):decode_line(model,raw,expected_sha256=sha256(raw).hexdigest())
     with pytest.raises(ValueError):solve_distributed_model(model,load,initial_checkpoint=raw)
@@ -205,9 +205,9 @@ def test_strict_hash_schema_deadline_and_count(saved,monkeypatch,tmp_path):
 
 
 def test_general_factorization_and_closed_direct_entry(saved,monkeypatch,tmp_path):
-    from anysolver.boundary import LoadCase
-    import anysolver.nonlinear_static as solver
-    from anysolver.linalg import MatrixClass
+    from anyfesolver.boundary import LoadCase
+    import anyfesolver.nonlinear_static as solver
+    from anyfesolver.linalg import MatrixClass
     case,_,load,_,_,prefix=saved;model=make(case);kinds=[];original=solver.factorize
     def record(matrix,kind,*args,**kwargs):
         if str(kwargs.get('signature','')).startswith('nonlinear.static_newton'):kinds.append(kind.value)

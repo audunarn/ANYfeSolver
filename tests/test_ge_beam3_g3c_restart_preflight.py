@@ -73,7 +73,7 @@ class PreflightTests(unittest.TestCase):
                     self.assertEqual(result.epoch,0)
                     self.assertEqual(result.fixture_id,graph)
         self.assertNotIn('numpy',sys.modules)
-        self.assertNotIn('anysolver',sys.modules)
+        self.assertNotIn('anyfesolver',sys.modules)
 
     def test_external_digest_canonical_and_byte_bounds(self):
         raw = p.canonical(syntax_packet())

@@ -81,7 +81,7 @@ def test_checker_imports_no_production_or_runner() -> None:
             imports.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module:
             imports.append(node.module)
-    assert not any(name == "anysolver" or name.startswith("anysolver.") for name in imports)
+    assert not any(name == "anyfesolver" or name.startswith("anyfesolver.") for name in imports)
     assert not any("v6v_activation_gap_audit" in name for name in imports)
 
 
@@ -116,7 +116,7 @@ def test_strict_loader_rejects_duplicate_and_nonfinite(tmp_path: Path) -> None:
 
 
 def test_defaults_and_anymesh_boundary_remain_unchanged() -> None:
-    source = (ROOT / "src/anysolver/elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src/anyfesolver/elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source
     runner = RUNNER.read_text(encoding="utf-8")

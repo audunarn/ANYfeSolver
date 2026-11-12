@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver.assembly import (
+from anyfesolver.assembly import (
     _orthonormalize_columns,
     assemble_mass_matrix,
     assemble_system,
@@ -11,15 +11,15 @@ from anysolver.assembly import (
     reconstruct_full_solution,
     solve_linear,
 )
-from anysolver.boundary import FixedSupport, LoadCase
-from anysolver.elements import (
+from anyfesolver.boundary import FixedSupport, LoadCase
+from anyfesolver.elements import (
     BeamElement,
     CoupledBeamShellElement,
     ShellElement,
     create_shell_element,
 )
-from anysolver.fe_core import FEModel
-from anysolver.mesh_gen import StiffenerCrossSection, generate_beam_mesh
+from anyfesolver.fe_core import FEModel
+from anyfesolver.mesh_gen import StiffenerCrossSection, generate_beam_mesh
 
 
 def _steel_model(name="model"):

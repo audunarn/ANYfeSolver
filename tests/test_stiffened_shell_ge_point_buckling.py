@@ -10,14 +10,14 @@ import pytest
 from scipy.linalg import eig
 from scipy.sparse.linalg import ArpackNoConvergence
 
-from anysolver import stiffened_shell as public
-from anysolver import _stiffened_shell_ge_point_buckling as buckling
-from anysolver._stiffened_shell_ge_experimental import ExperimentalGEAnalysis, NodalAction, FixedCoordinate
-from anysolver._stiffened_shell_ge_finite_experimental import _position_pair
-from anysolver._ge_beam3_variational_shell import deformation
-from anysolver._ge_beam3_pose_joint import _exp_terms
-from anysolver._ge_beam3_mixed_ad import Jet2, constant_matrix, matmul, matvec, transpose, so3_exp, so3_log
-from anysolver.control import CancellationToken
+from anyfesolver import stiffened_shell as public
+from anyfesolver import _stiffened_shell_ge_point_buckling as buckling
+from anyfesolver._stiffened_shell_ge_experimental import ExperimentalGEAnalysis, NodalAction, FixedCoordinate
+from anyfesolver._stiffened_shell_ge_finite_experimental import _position_pair
+from anyfesolver._ge_beam3_variational_shell import deformation
+from anyfesolver._ge_beam3_pose_joint import _exp_terms
+from anyfesolver._ge_beam3_mixed_ad import Jet2, constant_matrix, matmul, matvec, transpose, so3_exp, so3_log
+from anyfesolver.control import CancellationToken
 from test_stiffened_shell_ge_experimental import _panel
 
 

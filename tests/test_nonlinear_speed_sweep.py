@@ -4,7 +4,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver import nonlinear_static as ns
+from anyfesolver import nonlinear_static as ns
 from test_nonlinear_static_armijo import _spring_model, _armijo_settings
 
 

@@ -19,9 +19,9 @@ import time
 import numpy as np
 from threadpoolctl import threadpool_info, threadpool_limits
 
-from anysolver.corotational import corotational_element_response
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
+from anyfesolver.corotational import corotational_element_response
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
 from scripts._b3_e4_f03_e4_trial_panel import FlatE4TrialPanel
 from scripts._b3_e4_f03_shell_finite_pose_candidate import reference_nodes
 from scripts._b3_e4_f03_shell_spatial_linear_port import physical_shell_stiffness

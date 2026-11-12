@@ -37,7 +37,7 @@ def test_geometry_only_scope_is_explicit():
 
 
 @pytest.mark.parametrize('path',[
-    'src/anysolver/_ge_beam3_arc_geometry.py',
+    'src/anyfesolver/_ge_beam3_arc_geometry.py',
     'tests/test_ge_beam3_arc_geometry.py',
     'docs/reference_cases/ge_beam3_curved_p5_continuation_probe.py',
 ])

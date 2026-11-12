@@ -7,10 +7,10 @@ import json
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-from anysolver._ge_beam3_mixed_ad import Jet2, constant_matrix, matmul, matvec, so3_exp, so3_log, transpose
-from anysolver._ge_beam3_pose_joint import _exp_terms
-from anysolver._ge_beam3_variational_shell import rotation_jets
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+from anyfesolver._ge_beam3_mixed_ad import Jet2, constant_matrix, matmul, matvec, so3_exp, so3_log, transpose
+from anyfesolver._ge_beam3_pose_joint import _exp_terms
+from anyfesolver._ge_beam3_variational_shell import rotation_jets
 
 
 COUNT = 57

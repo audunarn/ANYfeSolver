@@ -5,9 +5,9 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver.dynamics import TransientConfig
-from anysolver.general_contact.transient import ContactTransientSolverControls,solve_transient_contact
-from anysolver.nonlinear_restart import analysis_configuration_fingerprint
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.general_contact.transient import ContactTransientSolverControls,solve_transient_contact
+from anyfesolver.nonlinear_restart import analysis_configuration_fingerprint
 from test_general_contact_transient_plane import _guided_plate
 from test_general_contact_transient_q4_plastic import (CONTROLS as PLASTIC_CONTROLS,
     run as plastic_run,physical,scalar_reference)
@@ -66,8 +66,8 @@ def test_plane_event_budget_exhaustion_is_explicit_and_profile_is_opt_in():
 
 
 def test_failed_endpoint_query_counts_and_cutback_preserves_equilibrium(monkeypatch):
-    import anysolver.general_contact.plane_newmark_events as events
-    from anysolver.general_contact.event_subdivision import EventNeedsCutback
+    import anyfesolver.general_contact.plane_newmark_events as events
+    from anyfesolver.general_contact.event_subdivision import EventNeedsCutback
     original=events.localize_endpoint_event
     attempts=0
     failed=False
@@ -98,10 +98,10 @@ def test_arbitrary_end_truncation_cannot_emit_event_checkpoint(end):
 
 
 def test_cancellation_in_event_family_after_yield_preserves_reusable_model(monkeypatch):
-    from anysolver.control import CancellationToken,SolveCancelled
-    from anysolver.general_contact.core import active_contact_manager
-    import anysolver.general_contact.q4_material_checkpoint as codec
-    import anysolver.general_contact.plane_newmark_events as events
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.general_contact.core import active_contact_manager
+    import anyfesolver.general_contact.q4_material_checkpoint as codec
+    import anyfesolver.general_contact.plane_newmark_events as events
     from test_general_contact_transient_q4_plastic import fixture
     model,_,_,modes,definition=fixture()
     controls=replace(PLASTIC_CONTROLS,q4_plane_event_subdivision_dev=True)

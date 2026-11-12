@@ -39,7 +39,7 @@ def expected():
         correction_modify=['scripts/ge_beam3_g3c_rehearsal_mutations.py','tests/test_ge_beam3_g3c_rehearsal_mutations_static.py'],
         implementation_add=['scripts/ge_beam3_g3c_rehearsal_bridge.py','scripts/run_ge_beam3_g3c_rehearsal_consumer.py',
                             'tests/test_ge_beam3_g3c_rehearsal_consumer_static.py','docs/GE_BEAM3_G3C_REHEARSAL_CONSUMER_IMPLEMENTATION.md'],
-        source_schemas={k:dict(path='src/anysolver/'+v[0],constant=v[1],literal=v[2],fingerprint=dict(bytes=v[3],sha256=v[4])) for k,v in SOURCES.items()},
+        source_schemas={k:dict(path='src/anyfesolver/'+v[0],constant=v[1],literal=v[2],fingerprint=dict(bytes=v[3],sha256=v[4])) for k,v in SOURCES.items()},
         hypothetical=dict(member='predecessor_G3c',literal='GE_BEAM3_G3C_MIXED_ELASTIC_RESTART_V1',
                           disposition='HYPOTHETICAL_NOT_A_PREVIOUSLY_ACCEPTED_IMPORT_FORMAT'),
         ri03_assessment_sha256='273b8280600150db176916399f3f0f738d890263455df1cd3382e52b037c62ed',

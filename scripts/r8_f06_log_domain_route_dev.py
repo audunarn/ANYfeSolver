@@ -15,13 +15,13 @@ def coefficient_oracle(high,low=0.,*,decimal=False):
         return (f,first,second) if decimal else tuple(float(v) for v in (f,first,second))
 
 def definition():
-    from anysolver._stiffened_shell_ge_experimental import PROFILE,LinearDefinition,ShellPanel,PointConnection,FixedCoordinate
-    from anysolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-    from anysolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
-    from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-    from anysolver._stiffened_shell_f06_increment_arithmetic import POLICY
-    from anysolver._stiffened_shell_q4_algorithmic_pullback import POLICY as Q4_POLICY
+    from anyfesolver._stiffened_shell_ge_experimental import PROFILE,LinearDefinition,ShellPanel,PointConnection,FixedCoordinate
+    from anyfesolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+    from anyfesolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
+    from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+    from anyfesolver._stiffened_shell_f06_increment_arithmetic import POLICY
+    from anyfesolver._stiffened_shell_q4_algorithmic_pullback import POLICY as Q4_POLICY
     section=EllipsoidalGeneralizedSection(np.diag((1e4,4e3,4e3,100.,100.,100.)),np.eye(6),2.,1000.)
     ref=CenteredCurvedBeam3ReferenceGeometry(np.array([[0.,-.5,.1],[.5,-.5,.1],[1.,-.5,.1]]),np.tile(np.eye(3),(3,1,1)))
     element=NativeGeneralizedStaticElement(1,(101,102,103),ref,section,order=4,arithmetic_policy=POLICY)
@@ -32,15 +32,15 @@ def definition():
         tuple(FixedCoordinate('shell',n,k) for n in (1,4) for k in range(6)),q4_pullback_policy=Q4_POLICY)
 
 def actions():
-    from anysolver._stiffened_shell_ge_experimental import NodalAction
+    from anyfesolver._stiffened_shell_ge_experimental import NodalAction
     return (NodalAction('beam',103,(0.,0.,10.,0.,0.,0.)),)
 
 def public_route(out):
-    from anysolver import stiffened_shell as ss
-    from anysolver.control import CancellationToken,SolveCancelled
-    from anysolver._stiffened_shell_beam_history import arrays
-    from anysolver._ge_beam3_p5_seeded.core import canonical
-    import anysolver._stiffened_shell_f06_increment_arithmetic as arithmetic
+    from anyfesolver import stiffened_shell as ss
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    from anyfesolver._stiffened_shell_beam_history import arrays
+    from anyfesolver._ge_beam3_p5_seeded.core import canonical
+    import anyfesolver._stiffened_shell_f06_increment_arithmetic as arithmetic
     out=Path(out);owner=ss.create_analysis(definition=definition());calls=[];original=arithmetic.full_log_coefficients
     def capture(c):
         calls.append(c.scalar());return original(c)
@@ -61,9 +61,9 @@ def public_route(out):
         assert immediate[2]<=1e-8 and immediate[3]<=1e-9
         raw=owner.checkpoint();(out/'accepted-active.bin').write_bytes(raw)
         # New schema is binary-only; failed fresh restore must not publish state.
-        from anysolver._stiffened_shell_ge_checkpoint_binary import SCHEMAS,decode_compensated,encode_compensated,decode,encode
-        from anysolver._stiffened_shell_beam_history import shapes
-        from anysolver._stiffened_shell_f06_increment_arithmetic import Pair
+        from anyfesolver._stiffened_shell_ge_checkpoint_binary import SCHEMAS,decode_compensated,encode_compensated,decode,encode
+        from anyfesolver._stiffened_shell_beam_history import shapes
+        from anyfesolver._stiffened_shell_f06_increment_arithmetic import Pair
         corrections_shapes=tuple((n,getattr(state,n).shape) for n in ('q_low','frames_low','cells_low','resultants_low'))
         inner,corrections=decode_compensated(raw,owner._identity,corrections_shapes)
         base_shapes=tuple((n,v.shape) for n,v in (('q',state.q),('frames',state.frames),('cells',state.cells),
@@ -125,7 +125,7 @@ def public_route(out):
         with __import__('pytest').raises(SolveCancelled):owner.solve(actions(),(.82,),cancellation_token=cancel)
         assert cancel.visits==2 and owner.checkpoint()==after_update
         # A deliberately bounded rejected increment preserves the accepted prefix.
-        from anysolver._stiffened_shell_increment_control import FiniteIncrementFailure
+        from anyfesolver._stiffened_shell_increment_control import FiniteIncrementFailure
         with __import__('pytest').raises(FiniteIncrementFailure) as rejected:
             owner.solve(actions(),(1.2,),max_iterations=1,max_backtracks=0)
         assert rejected.value.attempt.status=='rejected' and rejected.value.attempt.accepted_from==.81

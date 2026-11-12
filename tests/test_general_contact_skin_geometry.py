@@ -3,10 +3,10 @@ import numpy as np
 import pytest
 from dataclasses import replace
 
-from anysolver import ContactSkinGeometryError, recover_general_contact_shell_skins
+from anyfesolver import ContactSkinGeometryError, recover_general_contact_shell_skins
 from test_general_contact_q4_s3_patch_static import _case
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver import ContactDefinition, ContactSurface, create_shell_element
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver import ContactDefinition, ContactSurface, create_shell_element
 
 
 def _pose(model):

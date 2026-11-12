@@ -4,12 +4,12 @@ from pathlib import Path
 import json
 import numpy as np
 import pytest
-from anysolver._ge_beam3_retained_generalized_state import Context,Program
-from anysolver._ge_beam3_retained_generalized_program import solve
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_p5_seeded.core import canonical,sha
-from anysolver.control import CancellationToken
+from anyfesolver._ge_beam3_retained_generalized_state import Context,Program
+from anyfesolver._ge_beam3_retained_generalized_program import solve
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_p5_seeded.core import canonical,sha
+from anyfesolver.control import CancellationToken
 from test_ge_beam3_generalized_slenderness_diagnostic import make
 from test_ge_beam3_native_generalized_restart import make as plastic_model,pattern as plastic_load
 from test_ge_beam3_schur_line_program import save

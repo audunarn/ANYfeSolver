@@ -6,13 +6,13 @@ from pathlib import Path
 from unittest.mock import patch
 import numpy as np
 import pytest
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel, Material
-from anysolver._ge_beam3_g1_element import ElasticElement
-from anysolver._ge_beam3_g1_elastic import ElasticSection, canonical
-from anysolver._ge_beam3_g1_operator import ElasticOperator
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
-from anysolver._ge_beam3_g3b_reference import B2TranslationReferenceProblem, POLICY
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel, Material
+from anyfesolver._ge_beam3_g1_element import ElasticElement
+from anyfesolver._ge_beam3_g1_elastic import ElasticSection, canonical
+from anyfesolver._ge_beam3_g1_operator import ElasticOperator
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+from anyfesolver._ge_beam3_g3b_reference import B2TranslationReferenceProblem, POLICY
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = json.loads((ROOT/'docs/reference_cases/ge_beam3_g3_graph_fixtures_v1.json').read_text())
@@ -183,25 +183,25 @@ def test_additive_scope_and_immutable_parent_authority():
     import subprocess
     parent = 'ebd3b203e4df72186bd82b2f6d7e6609e18685c6'
     git = ['git', '-c', 'safe.directory='+ROOT.as_posix()]
-    allowed = {'src/anysolver/_ge_beam3_g3b_reference.py', 'tests/test_ge_beam3_g3b_mb2.py',
+    allowed = {'src/anyfesolver/_ge_beam3_g3b_reference.py', 'tests/test_ge_beam3_g3b_mb2.py',
                'scripts/run_ge_beam3_g3b.py', 'docs/GE_BEAM3_G3B_M_B2_DEVELOPMENT.md',
                'docs/reference_cases/ge_beam3_g3b_mb2_development_v1.json',
                'tests/test_ge_beam3_g3b_mb3.py', 'docs/GE_BEAM3_G3B_M_B3_DEVELOPMENT.md',
                'docs/reference_cases/ge_beam3_g3b_mb3_development_v1.json',
-               'src/anysolver/_ge_beam3_g3b_q4_reference.py', 'tests/test_ge_beam3_g3b_mq4.py',
+               'src/anyfesolver/_ge_beam3_g3b_q4_reference.py', 'tests/test_ge_beam3_g3b_mq4.py',
                'docs/GE_BEAM3_G3B_M_Q4_DEVELOPMENT.md',
                'docs/reference_cases/ge_beam3_g3b_mq4_development_v1.json',
-               'src/anysolver/_ge_beam3_g3b_s3_reference.py', 'tests/test_ge_beam3_g3b_ms3.py',
+               'src/anyfesolver/_ge_beam3_g3b_s3_reference.py', 'tests/test_ge_beam3_g3b_ms3.py',
                'docs/GE_BEAM3_G3B_M_S3_DEVELOPMENT.md',
                'docs/reference_cases/ge_beam3_g3b_ms3_development_v1.json',
-               'src/anysolver/_ge_beam3_g3b_weighted_reference.py','tests/test_ge_beam3_g3b_weighted.py',
+               'src/anyfesolver/_ge_beam3_g3b_weighted_reference.py','tests/test_ge_beam3_g3b_weighted.py',
                'docs/GE_BEAM3_G3B_WEIGHTED_DEVELOPMENT.md','docs/reference_cases/ge_beam3_g3b_weighted_development_v1.json'}
     allowed.update(["tests/test_ge_beam3_g3b_transport.py","docs/GE_BEAM3_G3B_TRANSPORT_DEVELOPMENT.md","docs/reference_cases/ge_beam3_g3b_transport_development_v1.json"])
-    allowed.update(["src/anysolver/_ge_beam3_g3b_owner.py","tests/test_ge_beam3_g3b_owner.py","docs/GE_BEAM3_G3B_OWNER_CONTRACT.md","docs/reference_cases/ge_beam3_g3b_owner_development_v1.json"])
+    allowed.update(["src/anyfesolver/_ge_beam3_g3b_owner.py","tests/test_ge_beam3_g3b_owner.py","docs/GE_BEAM3_G3B_OWNER_CONTRACT.md","docs/reference_cases/ge_beam3_g3b_owner_development_v1.json"])
     allowed.update(["docs/GE_BEAM3_G3B_ENTRY_SAFETY_STATUS.md","docs/reference_cases/ge_beam3_g3b_confirmation_inventory_v2.json"])
     allowed.update(["scripts/confirm_ge_beam3_g3b.py","scripts/ge_beam3_g3b_environment.py","tests/test_ge_beam3_g3b_confirmation_runner.py","docs/GE_BEAM3_G3B_CONFIRMATION_RUNNER_STATUS.md"])
     allowed.update(["scripts/ge_beam3_g3b_confirmation_authority.py","tests/test_ge_beam3_g3b_confirmation_authority.py","docs/GE_BEAM3_G3B_FORMAL_CONFIRMATION_CONTRACT.md","docs/reference_cases/ge_beam3_g3b_confirmation_inventory_v1.json"])
-    allowed.update(["docs/GE_BEAM3_G3B_LOCAL_REVIEW_STATUS.md","docs/reference_cases/ge_beam3_g3b_local_safety_review_v1.json","src/anysolver/_ge_beam3_g3b_result_schema.py","tests/test_ge_beam3_g3b_owner_corrections.py","docs/GE_BEAM3_G3B_OWNER_CORRECTIONS.md"])
+    allowed.update(["docs/GE_BEAM3_G3B_LOCAL_REVIEW_STATUS.md","docs/reference_cases/ge_beam3_g3b_local_safety_review_v1.json","src/anyfesolver/_ge_beam3_g3b_result_schema.py","tests/test_ge_beam3_g3b_owner_corrections.py","docs/GE_BEAM3_G3B_OWNER_CORRECTIONS.md"])
     diff = subprocess.check_output(git+['diff', '--name-status', parent, '--'], cwd=ROOT, timeout=20).decode()
     for line in diff.splitlines():
         status, name = line.split('\t'); assert status == 'A' and name in allowed
@@ -211,4 +211,4 @@ def test_additive_scope_and_immutable_parent_authority():
     for binding in contract['source_bindings']+contract['text_bindings']:
         raw = (ROOT/binding['path']).read_bytes().replace(b'\r\n', b'\n')
         assert len(raw) == binding['bytes'] and hashlib.sha256(raw).hexdigest() == binding['sha256']
-    assert 'g3b' not in (ROOT/'src/anysolver/__init__.py').read_text()
+    assert 'g3b' not in (ROOT/'src/anyfesolver/__init__.py').read_text()

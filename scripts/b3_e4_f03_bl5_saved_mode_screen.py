@@ -11,14 +11,14 @@ import json
 from pathlib import Path
 import subprocess
 
-import anysolver
+import anyfesolver
 import numpy as np
 from threadpoolctl import threadpool_info, threadpool_limits
 
-from anysolver._stiffened_shell_bl5_local_experimental import (
+from anyfesolver._stiffened_shell_bl5_local_experimental import (
     BL5LocalOperator, LAW_ID,
 )
-from anysolver._stiffened_shell_l1_local_experimental import NativeHalfCellPort
+from anyfesolver._stiffened_shell_l1_local_experimental import NativeHalfCellPort
 from scripts.b3_e4_f03_c1_fy_l1_mode_bridge import _recover, _l1_station
 
 
@@ -182,7 +182,7 @@ def analyze(saved):
         "saved_source_git": saved["source_git"],
         "current_source_git": subprocess.check_output(
             ("git", "rev-parse", "HEAD"), text=True).strip(),
-        "imported_anysolver": str(Path(anysolver.__file__).resolve()),
+        "imported_anyfesolver": str(Path(anyfesolver.__file__).resolve()),
         "station_x_m": stations.tolist(),
         "station_weights_m": weights.tolist(),
         "native_bond_halfcell_cuts_m": beam_cuts.tolist(),

@@ -84,7 +84,7 @@ def full_work(model, system, definitions, u, z, production_force, *, progress=No
     """All238 central AND both one-sided work derivatives, both h/orders."""
     def requested_cancel():
         if cancel():
-            from anysolver.control import SolveCancelled
+            from anyfesolver.control import SolveCancelled
             raise SolveCancelled('independent full238 work cancelled')
     requested_cancel()
     labels = coordinate_inventory(model, system)
@@ -155,8 +155,8 @@ def observe_local_moments(system, u):
 
     The independent geometry module never sees these jets or this hook.
     """
-    from anysolver.general_contact import enriched_moment_batch as module
-    from anysolver.general_contact.enriched_nonlinear import NonlinearEnrichedSystem
+    from anyfesolver.general_contact import enriched_moment_batch as module
+    from anyfesolver.general_contact.enriched_nonlinear import NonlinearEnrichedSystem
     require(type(system) is NonlinearEnrichedSystem, 'exact actual nonlinear profile for production comparator')
     caller_code = NonlinearEnrichedSystem.linearize.__code__
     caller_source = Path(inspect.getsourcefile(NonlinearEnrichedSystem.linearize)).resolve()

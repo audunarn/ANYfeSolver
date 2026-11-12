@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from anysolver import PatternCase, prepare_static_response_evaluator, RecoveryConfig, PreparedStaticCapabilityError
+from anyfesolver import PatternCase, prepare_static_response_evaluator, RecoveryConfig, PreparedStaticCapabilityError
 from test_prepared_static_evaluator import _bar, _case
 import prepared_static_response_m16_assessment as assessment
 

@@ -9,9 +9,9 @@ import numpy as np
 from dataclasses import replace
 import pytest
 from scipy.spatial.transform import Rotation
-from anysolver.marine_rigid import RigidBody6D
-from anysolver.marine_link import MechanicalLink6D
-from anysolver.marine_contributions import (
+from anyfesolver.marine_rigid import RigidBody6D
+from anyfesolver.marine_link import MechanicalLink6D
+from anyfesolver.marine_contributions import (
     API_VERSION, BodyLayout, ChartMove, CommittedHistory, ContributionResult,
     ContributionSet, DryGravityContribution, DynamicContribution,
     HISTORY_CHART, HISTORY_PHYSICAL, MarineContributionsCancelled,

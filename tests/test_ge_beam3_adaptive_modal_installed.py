@@ -88,7 +88,7 @@ def test_adaptive_modal_wheel_two_fresh_processes(tmp_path):
     wheel = candidates[0]
     with zipfile.ZipFile(wheel) as archive:
         for name in ('_ge_beam3_adaptive_arc_program.py', '_ge_beam3_loaded_modal.py'):
-            assert 'anysolver/'+name in archive.namelist()
+            assert 'anyfesolver/'+name in archive.namelist()
         assert not any(name.startswith(('docs/', 'tests/')) for name in archive.namelist())
     environment = tmp_path/'environment'
     command([sys.executable, '-I', '-B', '-m', 'venv', str(environment)], tmp_path, 'venv')

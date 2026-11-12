@@ -6,8 +6,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-import anysolver.e4_pl_s3_element as s3
-from anysolver.e4_pl_s3_state import (
+import anyfesolver.e4_pl_s3_element as s3
+from anyfesolver.e4_pl_s3_state import (
     BUBBLE_CONDITION_LIMIT,
     BUBBLE_FORCE_CONDENSATION_ID,
     BUBBLE_LINE_SEARCH_MIN_FACTOR,
@@ -17,7 +17,7 @@ from anysolver.e4_pl_s3_state import (
     BUBBLE_STEP_TOLERANCE,
     formulation_fingerprint_payload,
 )
-from anysolver.fe_core import Material
+from anyfesolver.fe_core import Material
 from _e4_pl_s3_native_trial import native_trial_for_increment
 
 

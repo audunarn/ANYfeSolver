@@ -17,7 +17,7 @@ driver checks.
 """
 import pytest
 
-from anysolver.control import SolveCancelled
+from anyfesolver.control import SolveCancelled
 
 from test_general_contact_admission_globalization_driver_small_patch import (
     _CancelAt,

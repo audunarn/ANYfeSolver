@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 from scipy import sparse
 
-from anysolver import (
+from anyfesolver import (
     FEModel,
     GeneralizedShellSection,
     Material,
@@ -14,12 +14,12 @@ from anysolver import (
     assemble_stiffness_matrix,
     create_element,
 )
-from anysolver.nonlinear_performance_bootstrap import (
+from anyfesolver.nonlinear_performance_bootstrap import (
     clear_nonlinear_assembly_cache,
     get_nonlinear_assembly_plan,
     install_nonlinear_performance_optimizations,
 )
-from anysolver.nonlinear_performance_batch_c import (
+from anyfesolver.nonlinear_performance_batch_c import (
     assemble_reduced_system,
     build_reduced_assembly_plan,
 )

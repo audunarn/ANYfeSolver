@@ -23,13 +23,13 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tests"))
 
-import anysolver
-from anysolver import corotational
+import anyfesolver
+from anyfesolver import corotational
 from anymaterial import DNVC208MaterialCurve
-from anysolver._stiffened_shell_ge_experimental import (
+from anyfesolver._stiffened_shell_ge_experimental import (
     ExperimentalGEAnalysis,
 )
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
 from test_stiffened_shell_ge_finite_experimental import _actions, _panel
 
 
@@ -70,8 +70,8 @@ def run(step_n: int = 5, max_force_n: int = 50, *,
             return local.reshape(-1), rigid, deformed
 
         corotational._corotational_deformation_state = stable
-    expected = (ROOT / "src" / "anysolver" / "__init__.py").resolve()
-    if Path(anysolver.__file__).resolve() != expected:
+    expected = (ROOT / "src" / "anyfesolver" / "__init__.py").resolve()
+    if Path(anyfesolver.__file__).resolve() != expected:
         raise RuntimeError("step-path probe imported another checkout")
     base = _panel()
     pressure = 20_000.
@@ -186,7 +186,7 @@ def run(step_n: int = 5, max_force_n: int = 50, *,
         "classification": "development load-path discriminator; no F05/G3 acceptance",
         "source_git": subprocess.check_output(
             ("git", "rev-parse", "HEAD"), cwd=ROOT, text=True).strip(),
-        "imported_anysolver": str(expected),
+        "imported_anyfesolver": str(expected),
         "threadpools": threadpool_info(),
         "targets": list(targets),
         "step_n": step_n,

@@ -3,14 +3,14 @@
 import numpy as np
 import pytest
 
-from anysolver import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.overlap import (
+from anyfesolver import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.overlap import (
     current_planar_shell_face, planar_projected_overlap,
 )
-from anysolver.general_contact.q4_skin_work import Q4SkinWorkAdapter
-from anysolver.general_contact.s3_skin_work import S3SkinWorkAdapter
-from anysolver.general_contact.triangle_mortar_energy import MovingS3PrimalMortarPenalty
+from anyfesolver.general_contact.q4_skin_work import Q4SkinWorkAdapter
+from anyfesolver.general_contact.s3_skin_work import S3SkinWorkAdapter
+from anyfesolver.general_contact.triangle_mortar_energy import MovingS3PrimalMortarPenalty
 
 
 def _model():

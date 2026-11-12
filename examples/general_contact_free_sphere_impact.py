@@ -3,12 +3,12 @@ import argparse
 
 import numpy as np
 
-from anysolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, RigidContactBody)
-from anysolver.dynamics import TransientConfig
-from anysolver.elements import BeamElement, QuadraticBeamElement
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.transient import (
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.transient import (
     ContactFreeRigidBody, ContactTransientSolverControls, solve_transient_contact)
 
 

@@ -28,7 +28,7 @@ def child(out,stage):
    '--basetemp',str(out/'pytest-tmp'),'-k','control' if stage=='controls' else 'complete']))
  finally:
   runtime(out,'runtime-after',ROOT/'src')
-  assert not any(n=='anysolver' or n.startswith('anysolver.') for n in sys.modules), 'production import outside saved-data-only authority'
+  assert not any(n=='anyfesolver' or n.startswith('anyfesolver.') for n in sys.modules), 'production import outside saved-data-only authority'
 def run(stage):
  import psutil
  authority=json.loads((DOC/'AUTHORITY.json').read_text());assert authority['status']=='ADOPTED'

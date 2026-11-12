@@ -3,9 +3,9 @@ from dataclasses import replace
 import numpy as np
 import pytest
 from scipy.linalg import eig
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken
-from anysolver import _stiffened_shell_ge_reference_modal as modal
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken
+from anyfesolver import _stiffened_shell_ge_reference_modal as modal
 from examples.stiffened_shell_ge_mixed_reference_modes import definition
 
 
@@ -141,8 +141,8 @@ def test_new_free_boundary_six_rigid_fields(shell,beams):
 
 
 def test_independent_curved_centered_lift_kinetic_work():
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-    from anysolver._stiffened_shell_ge_mixed_modal_mass import native_physical_mass
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+    from anyfesolver._stiffened_shell_ge_mixed_modal_mass import native_physical_mass
     from test_stiffened_shell_ge_reference_modal import _definition as eccentric_definition
     inertia=eccentric_definition().beams[0].instantiate()[1]
     nodes=np.array(((0.,0.,0.),(.5,.2,.1),(1.,0.,0.)))
@@ -228,8 +228,8 @@ def test_actual_single_p0_bl5_support_retains_existing_mechanism_refusal():
 
 
 def test_native_kinetic_only_matches_preserved_evaluator_and_straight_work():
-    from anysolver._ge_beam3_p5_centered.mass import reference_kinetic_factors
-    from anysolver._stiffened_shell_ge_mixed_modal_mass import native_physical_mass
+    from anyfesolver._ge_beam3_p5_centered.mass import reference_kinetic_factors
+    from anyfesolver._stiffened_shell_ge_mixed_modal_mass import native_physical_mass
     from test_stiffened_shell_ge_reference_modal import _definition as eccentric_definition
     owner = ss.create_analysis(definition=eccentric_definition())
     try:

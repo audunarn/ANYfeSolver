@@ -3,11 +3,11 @@ from hashlib import sha256
 import numpy as np
 import pytest
 
-from anysolver import _ge_beam3_analysis_translation_modal as route
-from anysolver import _ge_beam3_retained_translation_modal as ordinary_modal
-from anysolver import _ge_beam3_elastic_seed_modal as seeded_modal
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import _ge_beam3_analysis_translation_modal as route
+from anyfesolver import _ge_beam3_retained_translation_modal as ordinary_modal
+from anyfesolver import _ge_beam3_elastic_seed_modal as seeded_modal
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_ge_beam3_native_analysis import analysis
 from test_ge_beam3_elastic_seed_continuation import seed, model, programme
 from test_ge_beam3_analysis_fibre_translation import analysis as fibre_analysis, program as fibre_program

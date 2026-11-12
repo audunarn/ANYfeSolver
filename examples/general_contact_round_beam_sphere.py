@@ -1,18 +1,18 @@
 """Fixed sphere against a declared round classical B3 centreline.
 
-Run with ANYsolver installed: python examples/general_contact_round_beam_sphere.py
+Run with ANYfeSolver installed: python examples/general_contact_round_beam_sphere.py
 This is a static development example, not C2 engineering acceptance.
 """
 
 import json
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction, ContactSolverSettings,
     ContactSurface, DisplacementControl, LoadCase, RigidContactBody,
     solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.elements import QuadraticBeamElement
-from anysolver.fe_core import FEModel
+from anyfesolver.elements import QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
 
 
 def main() -> None:

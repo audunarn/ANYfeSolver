@@ -5,13 +5,13 @@ import json
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_shell_joint_trial import ShellBeamTrialAssembly
-from anysolver._ge_beam3_retained_generalized_state import Context, Program
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver.corotational import corotational_element_response
+from anyfesolver._ge_beam3_shell_joint_trial import ShellBeamTrialAssembly
+from anyfesolver._ge_beam3_retained_generalized_state import Context, Program
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver.corotational import corotational_element_response
 from test_ge_beam3_native_generalized_modal import make
 
 
@@ -149,7 +149,7 @@ def test_unsupported_shell_and_beam_owner_rejected():
 
 
 def test_genuine_curved_plastic_beam_predecessor_and_rejected_joint_trial(tmp_path):
-    from anysolver import _ge_beam3_retained_nodal_loading as nodal
+    from anyfesolver import _ge_beam3_retained_nodal_loading as nodal
     from test_ge_beam3_native_generalized_restart import make as plastic_model, pattern
     model = plastic_model('curved-plastic')
     p = nodal.Program((.25, .5, 1.), pattern(model), nodal.NodalDeadForces(()))

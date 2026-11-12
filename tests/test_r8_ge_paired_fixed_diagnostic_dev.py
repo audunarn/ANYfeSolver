@@ -23,7 +23,7 @@ def test_source_inner_selection_and_corruption():
 def test_source_outer_cannot_be_fixed_entry():
     with pytest.raises(ValueError,match='pending adaptive'):d.require_fixed_entry(d.OUTER.read_bytes())
     h,_=d.require_fixed_entry(d.INNER.read_bytes());assert h['control_dof']==6 and h['seed_sha256']==d.SEED
-    body=(d.ROOT/'src/anysolver/_stiffened_shell_displacement_control.py').read_text()
+    body=(d.ROOT/'src/anyfesolver/_stiffened_shell_displacement_control.py').read_text()
     assert 'pending adaptive displacement controls must match' in body
 
 @SOURCE

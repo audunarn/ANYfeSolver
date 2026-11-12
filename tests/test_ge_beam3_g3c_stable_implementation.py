@@ -1,4 +1,4 @@
-"""Inert implementation checks; intentionally imports no anysolver/NumPy."""
+"""Inert implementation checks; intentionally imports no anyfesolver/NumPy."""
 import ast
 import copy
 import importlib.util
@@ -20,7 +20,7 @@ class ImplementationTests(unittest.TestCase):
 
     def test_no_numerical_imports_during_preflight(self):
         self.assertNotIn('numpy', sys.modules)
-        self.assertNotIn('anysolver', sys.modules)
+        self.assertNotIn('anyfesolver', sys.modules)
         for path in runner.EXTRA:
             if path.endswith('.py'):
                 ast.parse(mapping.normalized(ROOT/path))

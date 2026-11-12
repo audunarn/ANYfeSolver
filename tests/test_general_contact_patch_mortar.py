@@ -3,11 +3,11 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.moving import (
+from anyfesolver.general_contact.moving import (
     moving_mortar_state, moving_mortar_translation_residual,
 )
-from anysolver.general_contact.overlap import PlanarFace
-from anysolver.general_contact.patch_mortar import MovingPatchMortar, PatchFace
+from anyfesolver.general_contact.overlap import PlanarFace
+from anyfesolver.general_contact.patch_mortar import MovingPatchMortar, PatchFace
 
 
 def _quad(feature, x0, x1, y0=0.0, y1=1.0):

@@ -162,19 +162,19 @@ def test_registration_preparation_is_exclusive_and_launch_free(monkeypatch, tmp_
     source = tmp_path / "source"
     source.mkdir()
     (source / "pyproject.toml").write_text(
-        "[project]\nname = 'ANYsolver'\nversion = '1.0'\n", encoding="ascii",
+        "[project]\nname = 'ANYfeSolver'\nversion = '1.0'\n", encoding="ascii",
     )
     for role, relative in registration.SOURCE_ROLES:
         path = source.joinpath(*relative.split("/"))
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(f"synthetic {role}\n", encoding="ascii")
-    solver_origin = source / "src" / "anysolver" / "__init__.py"
+    solver_origin = source / "src" / "anyfesolver" / "__init__.py"
     solver_origin.parent.mkdir(parents=True)
     solver_origin.write_text("__version__ = '0.4.7'\n", encoding="ascii")
     package_paths = {}
     for name in registration.PACKAGE_NAMES:
-        path = solver_origin if name == "ANYsolver" else tmp_path / f"{name}.py"
-        if name != "ANYsolver":
+        path = solver_origin if name == "ANYfeSolver" else tmp_path / f"{name}.py"
+        if name != "ANYfeSolver":
             path.write_text(f"package {name}\n", encoding="ascii")
         package_paths[name] = path
     hardware = registration.HardwareIdentity(
@@ -200,10 +200,10 @@ def test_registration_preparation_is_exclusive_and_launch_free(monkeypatch, tmp_
                for item in registered.cases)
     with pytest.raises(FileExistsError, match="must be new"):
         coordinator.prepare_registration(source, run_root)
-    (tmp_path / "ANYsolver.py").write_text("external solver\n", encoding="ascii")
+    (tmp_path / "ANYfeSolver.py").write_text("external solver\n", encoding="ascii")
     monkeypatch.setattr(coordinator.child_identity, "observed_package",
                         lambda name: ("1.0", str(tmp_path / f"{name}.py")))
-    with pytest.raises(ValueError, match="candidate ANYsolver origin/version"):
+    with pytest.raises(ValueError, match="candidate ANYfeSolver origin/version"):
         coordinator.prepare_registration(source, tmp_path / "run-external-origin")
     assert not (tmp_path / "run-external-origin").exists()
 

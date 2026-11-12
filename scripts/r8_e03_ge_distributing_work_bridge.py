@@ -167,8 +167,8 @@ def rectangular_bridge(width_m, height_m, thickness_m, *, frame, origin, nx=2, n
 
 def _native_reference(bridge, offset_world):
     """Existing flat-XY local prototype, evaluated at an actual common rigid pose."""
-    from anysolver import _stiffened_shell_distributing_footprint as reference
-    from anysolver._stiffened_shell_distributing_pose import FiniteDistributingPose
+    from anyfesolver import _stiffened_shell_distributing_footprint as reference
+    from anyfesolver._stiffened_shell_distributing_pose import FiniteDistributingPose
 
     if (type(bridge) is not ReferenceBridge
             or getattr(bridge, "_factory_seal", None) is not _FACTORY_KEY
@@ -190,7 +190,7 @@ def _native_reference(bridge, offset_world):
 
 def native_local_evaluation(bridge, offset_world, *, face_delta=None, beam_delta=None):
     """Deferred local oracle only; calls require later separately authorized checks."""
-    from anysolver._ge_beam3_mixed_ad import rotation_exponential
+    from anyfesolver._ge_beam3_mixed_ad import rotation_exponential
 
     pose, offset = _native_reference(bridge, offset_world)
     face = np.zeros_like(bridge.face_samples) if face_delta is None else _array(face_delta, bridge.face_samples.shape)

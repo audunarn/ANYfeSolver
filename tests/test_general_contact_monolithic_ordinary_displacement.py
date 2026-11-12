@@ -6,14 +6,14 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import solve_static_nonlinear
-from anysolver.assembly import build_constraint_transformation
-from anysolver.boundary import BoundaryCondition
-from anysolver.matrix_assembly import assemble_stiffness_matrix
-from anysolver.nonlinear_static import DisplacementControl
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.semismooth import linearize
-from anysolver.general_contact.static_path import (
+from anyfesolver import solve_static_nonlinear
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.boundary import BoundaryCondition
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.nonlinear_static import DisplacementControl
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.semismooth import linearize
+from anyfesolver.general_contact.static_path import (
     ContactPathControl, ContactPathProgram,
     _elastic_displacement_force_predictor, solve_static_contact_path,
 )
@@ -272,7 +272,7 @@ def test_ordinary_displacement_rejects_unphysical_force_scale(monkeypatch):
     model, definition, settings, control = _case()
     # The monolithic route keeps the strict predictor default; the spy
     # observes allow_zero=False while the original refusal is retained.
-    import anysolver.general_contact.static_path as path_driver
+    import anyfesolver.general_contact.static_path as path_driver
     real = path_driver._elastic_displacement_force_predictor
     seen = []
     def spy(*args, **kwargs):

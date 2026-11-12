@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from docs.reference_cases.ge_beam3_decimal_cell_force_audit import audit
 from test_ge_beam3_plastic_cell_conjugate_probe import build
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 
 ARCHIVE = Path('C:/Users/AudunArnesenNyhus/AppData/Local/ANYrelease/ge-beam3-complementary-plastic-development-20260907-9325e35bd701/cell-final-failure')
 

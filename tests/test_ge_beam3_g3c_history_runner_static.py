@@ -67,7 +67,7 @@ class RunnerStaticTests(unittest.TestCase):
         self.assertTrue(job.closed); self.assertEqual(len(failures),1)
         self.assertFalse(failures[0]['terminal_zero_proven'])
         self.assertNotIn('numpy',sys.modules)
-        self.assertNotIn('anysolver',sys.modules)
+        self.assertNotIn('anyfesolver',sys.modules)
 
     def test_prior_smoke_requires_logs_and_actual_completion_evidence(self):
         # Synthetic process receipts only; never offered to a real run.

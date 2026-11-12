@@ -207,7 +207,7 @@ class ObservedAssembly:
     def evaluate(self, label, state, *, cancellation_token=None):
         import numpy as np
         from scipy import sparse
-        from anysolver.control import cancellation_safe_point
+        from anyfesolver.control import cancellation_safe_point
         cancellation_safe_point(cancellation_token, 'paired-tangent.before')
         self.calls += 1
         locals_copy, shell_metadata = [], []
@@ -343,11 +343,11 @@ def branch_smooth(branches, metadata):
 
 def assess(out):
     import numpy as np
-    from anysolver import stiffened_shell as ss
-    from anysolver.control import CancellationToken, SolveCancelled
-    from anysolver._stiffened_shell_displacement_checkpoint import decode_snapshot
-    from anysolver._stiffened_shell_beam_history import arrays as history_arrays
-    from anysolver._stiffened_shell_rotation_charts import physical_frames
+    from anyfesolver import stiffened_shell as ss
+    from anyfesolver.control import CancellationToken, SolveCancelled
+    from anyfesolver._stiffened_shell_displacement_checkpoint import decode_snapshot
+    from anyfesolver._stiffened_shell_beam_history import arrays as history_arrays
+    from anyfesolver._stiffened_shell_rotation_charts import physical_frames
     from scripts.r8_f06_cyclic_material_dev import definition
     assert sha(ACCEPTED) == INPUT_SHA and sha(REBASED) == REBASED_SHA
     owner, chart_owner = ss.create_analysis(definition=definition('coupled')), None
@@ -400,7 +400,7 @@ def assess(out):
         errors = {name: [] for name in groups}
         local_errors = {str(i): [] for i in range(len(locals_base))}
         smooth = branch_smooth(branches, shell_meta)
-        from anysolver._ge_beam3_generalized_static_boundary import spatial_jacobian
+        from anyfesolver._ge_beam3_generalized_static_boundary import spatial_jacobian
         report['local_mapping_exact'] = []
         report['metadata_observability'] = dict(shell_convergence=bool(shell_meta) and all('converged' in row for row in shell_meta),
             shell_analytical_tangent_fallback=bool(shell_meta) and all('fallback_mask' in row for row in shell_meta),
@@ -502,11 +502,11 @@ def assess(out):
                                                                chart_d._state.q[owner._shell_count:]))
         write(out/'assessment.json',report)
         checked(representation_flags)
-        from anysolver._ge_beam3_pose_joint import _exp_terms
+        from anyfesolver._ge_beam3_pose_joint import _exp_terms
         # Same production shell selector as spatial_response; no raw K subtraction.
         exp_terms = _exp_terms
         if owner._distributing_material:
-            from anysolver._ge_beam3_g3c_stable.joint import _exp_terms as exp_terms
+            from anyfesolver._ge_beam3_g3c_stable.joint import _exp_terms as exp_terms
         mapped_direction = direction.copy()
         columns = np.eye(owner._shell_count)
         for j in range(owner._shell_count//6):

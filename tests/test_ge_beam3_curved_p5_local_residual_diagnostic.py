@@ -8,7 +8,7 @@ reviewed acceptance contract, not treat these tests as correctness evidence.
 import numpy as np
 import pytest
 
-from anysolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
+from anyfesolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
 from docs.reference_cases.ge_beam3_curved_p5_algebra_probe import rotation
 from docs.reference_cases.ge_beam3_curved_p5_nonlinear_mixed_probe import NonlinearMixedBeamProbe
 from docs.reference_cases.ge_beam3_curved_p5_section_probe import DirectedHardeningSectionProbe

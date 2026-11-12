@@ -1,24 +1,24 @@
 """Fresh-process warmed source-frozen stiff-plate comparison.
 
-Each invocation loads one complete source overlay before ANYsolver imports,
+Each invocation loads one complete source overlay before ANYfeSolver imports,
 warms it once and measures once. The outer ledger alternates variants by pair.
 """
 from __future__ import annotations
 import argparse,hashlib,importlib.util,json,os,pathlib,platform,sys,time
 p=argparse.ArgumentParser();p.add_argument('--variant',choices=['baseline','candidate'],required=True);p.add_argument('--baseline-dir',type=pathlib.Path,required=True);p.add_argument('--output',type=pathlib.Path,required=True);p.add_argument('--pair',type=int,required=True);a=p.parse_args()
-repo=pathlib.Path(__file__).resolve().parents[1];source=repo/'src/anysolver'
+repo=pathlib.Path(__file__).resolve().parents[1];source=repo/'src/anyfesolver'
 if a.variant=='baseline':
     overlay=a.baseline_dir/'overlay';overlay.mkdir(exist_ok=True)
     for dest,old in [('corotational.py','corotational_before.py'),('_corotational_batch.py','batch_before.py'),('nonlinear_static.py','nonlinear_static_before.py'),('recovery.py','recovery_before.py'),('_plate_stability_continuation.py','stability_before.py')]:
         (overlay/dest).write_bytes((a.baseline_dir/old).read_bytes())
-    spec=importlib.util.spec_from_file_location('anysolver',source/'__init__.py',submodule_search_locations=[str(overlay),str(source)])
-    package=importlib.util.module_from_spec(spec);sys.modules['anysolver']=package;spec.loader.exec_module(package)
+    spec=importlib.util.spec_from_file_location('anyfesolver',source/'__init__.py',submodule_search_locations=[str(overlay),str(source)])
+    package=importlib.util.module_from_spec(spec);sys.modules['anyfesolver']=package;spec.loader.exec_module(package)
 import numpy as np
 import scipy
-import anysolver as fs
-import anysolver.nonlinear_static as ns
-import anysolver.corotational as cr
-import anysolver.recovery as recovery
+import anyfesolver as fs
+import anyfesolver.nonlinear_static as ns
+import anyfesolver.corotational as cr
+import anyfesolver.recovery as recovery
 from threadpoolctl import threadpool_info
 from explore_nonlinear_abuse import plate_model
 

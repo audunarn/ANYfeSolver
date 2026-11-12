@@ -25,8 +25,8 @@ from collections.abc import Callable
 import numpy as np
 import pytest
 
-import anysolver
-import anysolver.e4_pl_s3_element as s3
+import anyfesolver
+import anyfesolver.e4_pl_s3_element as s3
 from _e4_pl_s3_native_trial import native_trial_for_increment
 
 
@@ -423,4 +423,4 @@ def test_directional_value_and_derivative_identities_include_assumed_shear() -> 
 
 def test_private_kernel_is_not_exposed_as_a_supported_api() -> None:
     assert "_native_incremental_strain_jets" not in s3.__all__
-    assert not hasattr(anysolver, "_native_incremental_strain_jets")
+    assert not hasattr(anyfesolver, "_native_incremental_strain_jets")

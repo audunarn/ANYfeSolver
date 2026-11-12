@@ -15,7 +15,7 @@ from scripts.r8_e03_curved_reference import B2, GE, BALANCE_LIMIT, balance_measu
 
 def b2_definition(case):
     validate_case(case)
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
 
     grid, nx = case["grids"]["b2"], case["nx"]
     section = ss.LinearSection.isotropic(
@@ -63,7 +63,7 @@ def ge_definition(case, *, density_kg_m3):
     validate_case(case)
     if type(density_kg_m3) not in (int, float) or not math.isfinite(density_kg_m3) or density_kg_m3 <= 0:
         raise ValueError("explicit positive physical density required; no spectral claim")
-    from anysolver import b3_ge, stiffened_shell as ss
+    from anyfesolver import b3_ge, stiffened_shell as ss
 
     p, e, nu = case["section"], case["young_pa"], case["poisson"]
     shear = e/(2*(1+nu))
@@ -100,7 +100,7 @@ def ge_definition(case, *, density_kg_m3):
 
 def execute_b2(case):
     """Run once only under the caller's separately granted numerical authority."""
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
 
     definition, load, numbering, positions = b2_definition(case)
     owner = ss.create_analysis(definition=definition)

@@ -6,11 +6,11 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import b3_ge, stiffened_shell
-from anysolver._ge_beam3_retained_generalized_state import Mechanical
-from anysolver._stiffened_shell_ge_checkpoint_binary import encode
-from anysolver._stiffened_shell_ge_experimental import FINITE_CHECKPOINT
-from anysolver._stiffened_shell_l1_assembly_experimental import SPACE_A, SPACE_B
+from anyfesolver import b3_ge, stiffened_shell
+from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import encode
+from anyfesolver._stiffened_shell_ge_experimental import FINITE_CHECKPOINT
+from anyfesolver._stiffened_shell_l1_assembly_experimental import SPACE_A, SPACE_B
 
 
 def _definition(space=SPACE_A, *, expected_offset=(0., 0., 0.)):
@@ -538,7 +538,7 @@ def test_bl5_supported_p0_rows_match_dropped_yaw_l1_locally(
     resolution. It does not compare the existing asymmetric L1 spaces or
     establish stability, locking, or physical fidelity of either policy.
     """
-    from anysolver._stiffened_shell_l1_local_experimental import L1LocalOperator
+    from anyfesolver._stiffened_shell_l1_local_experimental import L1LocalOperator
 
     definition = _bl5_nonmatching_definition(shell_edges, span)
     owner = stiffened_shell.create_analysis(definition=definition)

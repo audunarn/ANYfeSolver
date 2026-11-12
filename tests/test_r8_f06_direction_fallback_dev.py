@@ -9,10 +9,10 @@ def test_controls(mode):
  import numpy as np
  from scripts.r8_f06_direction_fallback_dev import INPUTS,write
  from scripts.r8_f06_adaptive_material_dev import cyclic,programme
- from anysolver import stiffened_shell as ss
- from anysolver.control import CancellationToken,SolveCancelled
- from anysolver._stiffened_shell_increment_control import AdaptiveIncrementControl,FiniteIncrementFailure,AdaptiveIncrementExhausted
- from anysolver._stiffened_shell_ge_finite_experimental import _RotationStepTooLarge,BL5TrialDomainError
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver.control import CancellationToken,SolveCancelled
+ from anyfesolver._stiffened_shell_increment_control import AdaptiveIncrementControl,FiniteIncrementFailure,AdaptiveIncrementExhausted
+ from anyfesolver._stiffened_shell_ge_finite_experimental import _RotationStepTooLarge,BL5TrialDomainError
  out=Path(os.environ['F06_FALLBACK_OUTPUT'])/mode;out.mkdir();owner=ss.create_analysis(definition=cyclic.definition('bend-z'))
  try:
   owner.restore(INPUTS['reversed' if mode in ('fixed','budget-zero') else 'pending'].read_bytes());d=owner._finite_driver
@@ -73,9 +73,9 @@ def test_route():
  from dataclasses import asdict
  from scripts.r8_f06_direction_fallback_dev import INPUTS,write,sha
  from scripts.r8_f06_adaptive_material_dev import cyclic,programme,persist_accepted,paired_value
- from anysolver import stiffened_shell as ss
- from anysolver._stiffened_shell_increment_control import AdaptiveIncrementControl,FiniteIncrementFailure
- from anysolver._stiffened_shell_beam_history import arrays as history_arrays
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver._stiffened_shell_increment_control import AdaptiveIncrementControl,FiniteIncrementFailure
+ from anyfesolver._stiffened_shell_beam_history import arrays as history_arrays
  out=Path(os.environ['F06_FALLBACK_OUTPUT']);case=os.environ['F06_FALLBACK_CASE'];target={'pending':2.5,'reversed':2.51}[case]
  owner=ss.create_analysis(definition=cyclic.definition('bend-z'))
  try:

@@ -8,15 +8,15 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_fibre_section import Fibre, FlowCurve, PhysicalFibreSection, canonical
-from anysolver._ge_beam3_g1_elastic import ElasticSection
-from anysolver._ge_beam3_g4a_station_transaction import (
+from anyfesolver._ge_beam3_fibre_section import Fibre, FlowCurve, PhysicalFibreSection, canonical
+from anyfesolver._ge_beam3_g1_elastic import ElasticSection
+from anyfesolver._ge_beam3_g4a_station_transaction import (
     MixedStationTransaction,
     PHYSICAL_FIBRES,
     RESULTANT_ONLY,
     StationDefinition,
 )
-from anysolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
+from anyfesolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
 
 
 ROOT = Path(__file__).resolve().parents[1]

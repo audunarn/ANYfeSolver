@@ -9,7 +9,7 @@ import weakref
 
 import pytest
 
-import anysolver.general_contact.polynomial_roots as roots
+import anyfesolver.general_contact.polynomial_roots as roots
 
 
 @pytest.fixture

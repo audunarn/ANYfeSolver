@@ -156,16 +156,16 @@ def test_successor_binds_exact_base_predecessors_and_defaults() -> None:
     assert authority["q4_mechanics_change_authorized"] is False
     assert authority["historical_evidence_mutation_authorized"] is False
 
-    elements = (ROOT / "src" / "anysolver" / "elements.py").read_text(encoding="utf-8")
+    elements = (ROOT / "src" / "anyfesolver" / "elements.py").read_text(encoding="utf-8")
     q4 = re.search(r'^DEFAULT_Q4_FORMULATION = "([^"]+)"$', elements, re.MULTILINE)
     s3 = re.search(r'^DEFAULT_S3_FORMULATION = "([^"]+)"$', elements, re.MULTILINE)
     assert q4 is not None and q4.group(1) == "e4-pl"
     assert s3 is not None and s3.group(1) == "legacy-s3"
     assert 'FORMULATION_ID = "E4_PL_QUALIFIED_Q4_HYBRID_V2"' in (
-        ROOT / "src" / "anysolver" / "e4_pl_element.py"
+        ROOT / "src" / "anyfesolver" / "e4_pl_element.py"
     ).read_text(encoding="utf-8")
     assert 'FORMULATION_ID = "E4_PL_QUALIFIED_S3_COMPANION_V1"' in (
-        ROOT / "src" / "anysolver" / "e4_pl_s3_state.py"
+        ROOT / "src" / "anyfesolver" / "e4_pl_s3_state.py"
     ).read_text(encoding="utf-8")
 
 

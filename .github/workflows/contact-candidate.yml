@@ -8,26 +8,32 @@ on:
       - scripts/build_static_contact_candidate.py
       - scripts/check_static_contact_candidate.py
       - scripts/contact_candidate_slice2.json
+      - scripts/contact_candidate_050.json
       - tests/test_static_contact_candidate_tools.py
       - docs/GENERAL_CONTACT_STATIC_CANDIDATE.md
-      - src/anysolver/**
+      - src/anyfesolver/**
       - packages/results/pyproject.toml
+      - packages/results/src/**
       - pyproject.toml
-      - examples/**
       - tests/test_general_contact_*.py
+      - tests/test_elastic_sphere_*.py
+      - examples/**
   pull_request:
     paths:
       - .github/workflows/contact-candidate.yml
       - scripts/build_static_contact_candidate.py
       - scripts/check_static_contact_candidate.py
       - scripts/contact_candidate_slice2.json
+      - scripts/contact_candidate_050.json
       - tests/test_static_contact_candidate_tools.py
       - docs/GENERAL_CONTACT_STATIC_CANDIDATE.md
-      - src/anysolver/**
+      - src/anyfesolver/**
       - packages/results/pyproject.toml
+      - packages/results/src/**
       - pyproject.toml
-      - examples/**
       - tests/test_general_contact_*.py
+      - tests/test_elastic_sphere_*.py
+      - examples/**
   workflow_dispatch:
 
 env:
@@ -64,7 +70,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: audunarn/ANYfileIO
-          ref: db73950018e1c87dab0ca618c25c965030ba08ce
+          ref: fb11ea83656b427485f48fca9f7306c32658a672
           path: .ecosystem/ANYfileIO
           persist-credentials: false
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065

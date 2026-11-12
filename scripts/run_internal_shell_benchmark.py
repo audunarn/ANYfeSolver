@@ -12,7 +12,7 @@ SRC = REPO_ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from anysolver import run_simple_supported_shell_convergence, write_internal_shell_convergence_table
+from anyfesolver import run_simple_supported_shell_convergence, write_internal_shell_convergence_table
 
 
 def _parse_divisions(value: str) -> Sequence[int]:

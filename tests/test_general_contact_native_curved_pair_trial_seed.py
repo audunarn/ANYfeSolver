@@ -5,11 +5,11 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver._ge_beam3_p5_seeded.codec import _load
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.control import CancellationToken
-from anysolver.general_contact.native_retained_pair_static import NativeRetainedRoundPairAnalysis
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver._ge_beam3_p5_seeded.codec import _load
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken
+from anyfesolver.general_contact.native_retained_pair_static import NativeRetainedRoundPairAnalysis
 from test_general_contact_native_curved_fibre_pair_static import _curved_owner
 
 

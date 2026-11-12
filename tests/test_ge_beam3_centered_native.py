@@ -5,16 +5,16 @@ from copy import deepcopy
 import numpy as np
 import pytest
 
-from anysolver.fe_core import FEModel
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.nonlinear_static import solve_static_nonlinear
-from anysolver.nonlinear_restart import canonical_checkpoint_json_bytes
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Centered
-from anysolver._ge_beam3_p5_centered import NativeP5BeamElement, DirectedHardeningSection
-from anysolver._ge_beam3_p5_centered.core import canonical, seal
-from anysolver._ge_beam3_p5_centered.committed_modal import prepare, solve_elastic_modes
-from anysolver._ge_beam3_p5_centered.reference_modal import solve as reference_modes
-from anysolver._ge_beam3_p5_centered.mass import reference_kinetic_factors, current_rest_mass
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.nonlinear_static import solve_static_nonlinear
+from anyfesolver.nonlinear_restart import canonical_checkpoint_json_bytes
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Centered
+from anyfesolver._ge_beam3_p5_centered import NativeP5BeamElement, DirectedHardeningSection
+from anyfesolver._ge_beam3_p5_centered.core import canonical, seal
+from anyfesolver._ge_beam3_p5_centered.committed_modal import prepare, solve_elastic_modes
+from anyfesolver._ge_beam3_p5_centered.reference_modal import solve as reference_modes
+from anyfesolver._ge_beam3_p5_centered.mass import reference_kinetic_factors, current_rest_mass
 from test_ge_beam3_curved_p5_nonlinear_mixed_probe import law
 from test_ge_beam3_curved_p5_mass_probe import section_mass
 
@@ -118,7 +118,7 @@ def test_translated_plastic_restart_continues_exactly():
 
 
 def test_reference_evaluator_fingerprint_and_no_legacy_clone_are_enforced():
-    from anysolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry as Old
+    from anyfesolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry as Old
     model,_ = problem(); element = model.mesh.elements[1]
     old = Old(element.core.reference.coordinates,element.core.reference.nodal_triads)
     with pytest.raises(ValueError,match='centered reference'):
@@ -129,7 +129,7 @@ def test_reference_evaluator_fingerprint_and_no_legacy_clone_are_enforced():
 
 
 def test_v2_checkpoint_is_not_accepted_as_centered_v3():
-    from anysolver._ge_beam3_p5_coordinates import NativeP5BeamElement as V2
+    from anyfesolver._ge_beam3_p5_coordinates import NativeP5BeamElement as V2
     model,_ = problem(); element = model.mesh.elements[1]
     prior = V2(1,element.node_ids,element.core.reference,element.core.section)
     old_model = FEModel('v2-not-v3')
@@ -154,8 +154,8 @@ def test_centered_mass_retains_cell_rotations_without_guyan_or_trace_mass():
 
 def test_affine_split_recovery_does_not_amplify_weight_rounding():
     from fractions import Fraction as F
-    from anysolver._ge_beam3_p5_centered.positions import station_position
-    from anysolver._ge_beam3_p5_coordinates.positions import station_position as v2_station
+    from anyfesolver._ge_beam3_p5_centered.positions import station_position
+    from anyfesolver._ge_beam3_p5_coordinates.positions import station_position as v2_station
     points = np.array([[0.,0.,0.],[1.,0.,0.],[2.,0.,0.]])
     t = float((np.polynomial.legendre.leggauss(8)[0][3]+1)/2)
     assert F(1.-t)+F(t) != 1  # The diagnostic requires a genuinely rounded complement.
@@ -173,8 +173,8 @@ def test_affine_split_recovery_does_not_amplify_weight_rounding():
 @pytest.fixture
 def state_contracts(monkeypatch):
     import test_ge_beam3_curved_p5_coordinate_state as previous
-    from anysolver._ge_beam3_p5_centered import codec
-    from anysolver._ge_beam3_p5_centered.positions import rest_mass
+    from anyfesolver._ge_beam3_p5_centered import codec
+    from anyfesolver._ge_beam3_p5_centered.positions import rest_mass
     original = previous.problem
     def make_problem(*,curved=False,plastic=False,cls=NativeP5BeamElement):
         return original(curved=curved,plastic=plastic,cls=cls)
@@ -241,7 +241,7 @@ def test_mutated_reference_coefficients_are_detected_before_native_use():
 
 
 def test_centered_rest_inertia_rejects_finite_velocity_route():
-    from anysolver._ge_beam3_p5_centered.mass import _CenteredRestInertia
+    from anyfesolver._ge_beam3_p5_centered.mass import _CenteredRestInertia
     model,_ = problem(); ref = model.mesh.elements[1].core.reference
     mass = _CenteredRestInertia(ref,section_mass(),order=8)
     velocity = np.zeros(24); velocity[0] = 1.

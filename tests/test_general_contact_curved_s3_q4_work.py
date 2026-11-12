@@ -11,12 +11,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver.corotational import _rotation_right_jacobian, rotation_matrix_from_vector
-from anysolver.general_contact.curved_shell_skin import CurvedShellSkinMap, TOTAL_ROTATION_BOUND_RAD
-from anysolver.general_contact.curved_s3_q4_work import CurvedS3Q4WorkProbe, CurvedContactWorkError
-from anysolver.general_contact.overlap import PlanarFace
-from anysolver.general_contact.q4_target_overlap import q4_target_overlap_integrals
-from anysolver.general_contact.q4_s3_overlap_derivatives import UnsupportedQ4S3Branch
+from anyfesolver.corotational import _rotation_right_jacobian, rotation_matrix_from_vector
+from anyfesolver.general_contact.curved_shell_skin import CurvedShellSkinMap, TOTAL_ROTATION_BOUND_RAD
+from anyfesolver.general_contact.curved_s3_q4_work import CurvedS3Q4WorkProbe, CurvedContactWorkError
+from anyfesolver.general_contact.overlap import PlanarFace
+from anyfesolver.general_contact.q4_target_overlap import q4_target_overlap_integrals
+from anyfesolver.general_contact.q4_s3_overlap_derivatives import UnsupportedQ4S3Branch
 from examples.elastic_sphere_panel_contact_work import (
     prepare_work_case, evaluate_case, first_discriminator, report_contact_work, physical_wrench,
 )
@@ -78,7 +78,7 @@ def test_signs_empty_overlap_and_unresolved_refusal(case, facet, near, monkeypat
     assert np.count_nonzero(empty.source_coordinate_work) == 0
     def fail(*args, **kwargs):
         raise UnsupportedQ4S3Branch("deliberate unresolved clipping branch")
-    monkeypatch.setattr("anysolver.general_contact.curved_s3_q4_work._s3_q4_first_order_work", fail)
+    monkeypatch.setattr("anyfesolver.general_contact.curved_s3_q4_work._s3_q4_first_order_work", fail)
     with pytest.raises(UnsupportedQ4S3Branch, match="unresolved"):
         evaluate_case(case, "near", source_faces=(facet,))
 

@@ -19,14 +19,14 @@ from typing import Any, Optional
 import numpy as np
 import pytest
 
-import anysolver.current_state_tangent as current_state_tangent
-from anysolver import boundary
-from anysolver.boundary import LoadCase
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from anysolver.elements import BeamElement, CoupledBeamShellElement
-from anysolver.element_capabilities import ElementCapabilityError
-from anysolver.fe_core import FEModel, FEMesh
-from anysolver.matrix_assembly import assemble_load_matrix, assemble_load_vector
+import anyfesolver.current_state_tangent as current_state_tangent
+from anyfesolver import boundary
+from anyfesolver.boundary import LoadCase
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+from anyfesolver.elements import BeamElement, CoupledBeamShellElement
+from anyfesolver.element_capabilities import ElementCapabilityError
+from anyfesolver.fe_core import FEModel, FEMesh
+from anyfesolver.matrix_assembly import assemble_load_matrix, assemble_load_vector
 
 _GUARD_ERRORS = (Exception,)
 

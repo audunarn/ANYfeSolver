@@ -28,7 +28,7 @@ def test_roof_reference_geometry_and_measures(size):
     with pytest.raises(ValueError):c.shell_positions.setflags(write=True)
     # The present owner must keep rejecting a curved reference until the local
     # frame/pullback/attachment extension is implemented and verified.
-    from anysolver._stiffened_shell_ge_experimental import _shell_reference,ShellPanel
+    from anyfesolver._stiffened_shell_ge_experimental import _shell_reference,ShellPanel
     panel=ShellPanel(node_ids=tuple(range(1,n+1)),coordinates_m=c.shell_positions,
         q4_elements=tuple(tuple(int(i)+1 for i in q) for q in c.quads),
         young_pa=c.young,poisson=c.poisson,thickness_m=c.thickness,density_kg_m3=1.)
@@ -52,7 +52,7 @@ def test_reference_metric_converges_for_affine_physical_translation():
 
 def test_roof_public_definition_preserves_geometry_and_centroidal_section():
     from docs.reference_cases.stiffened_shell_e04_roof import definition
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
     c=build(4,4);d=definition(c,density_kg_m3=1.)
     assert d.shell_reference_policy==ss.CURVED_Q4_POINT_REFERENCE_V1
     assert len(d.points)==len(c.point_pairs)

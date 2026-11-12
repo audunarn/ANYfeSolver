@@ -5,21 +5,21 @@ import copy
 import numpy as np
 import pytest
 
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.e4_pl_s3_v2d_element import (
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.e4_pl_s3_v2d_element import (
     FORMULATION_ID,
     NativeParityE4PLS3V2DShellElement,
 )
-from anysolver.e4_pl_s3_v2d_state import V2DStateError, canonical_json_bytes
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.material_curves import DNVC208MaterialCurve
-from anysolver.matrix_assembly import (
+from anyfesolver.e4_pl_s3_v2d_state import V2DStateError, canonical_json_bytes
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.material_curves import DNVC208MaterialCurve
+from anyfesolver.matrix_assembly import (
     assemble_external_load_tangent,
     assemble_load_vector,
 )
-from anysolver.nonlinear_static import solve_static_nonlinear
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.nonlinear_static import solve_static_nonlinear
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 E = 210.0e9

@@ -7,9 +7,9 @@ import json
 import numpy as np
 
 import probe_b3_ge_e4_pl_g0_local_sparse_seam as seam
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_retained_fibre_program import solve_force_program
-from anysolver._ge_beam3_retained_generalized_program import solve
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_retained_fibre_program import solve_force_program
+from anyfesolver._ge_beam3_retained_generalized_program import solve
 
 
 def case(kind):

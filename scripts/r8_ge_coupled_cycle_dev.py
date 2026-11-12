@@ -136,7 +136,7 @@ def artifact():
         raise ValueError('exact current source delta adoption required')
     if decision.get('wheel_sha256')!=sha(wheel) or decision.get('manifest_sha256')!=sha(PACKAGE/'snapshot-bindings.json'):
         raise ValueError('changed artifact decision identity')
-    if any(x['path']!='src/anysolver/_stiffened_shell_b2_q4_panel_experimental.py' for x in delta) or not decision.get('independence_justification'):
+    if any(x['path']!='src/anyfesolver/_stiffened_shell_b2_q4_panel_experimental.py' for x in delta) or not decision.get('independence_justification'):
         raise ValueError('GE/current source closure drift')
     return dict(files=len(frozen),wheel_sha256=sha(wheel),manifest_sha256=sha(PACKAGE/'snapshot-bindings.json'),current_source_deltas=delta)
 
@@ -151,7 +151,7 @@ def bindings():
         '_stiffened_shell_point_recovery.py')
     paths=[Path(__file__),ROOT/'tests/test_r8_ge_coupled_cycle_dev.py',ROOT/'tests/conftest.py',ROOT/'examples/r8_ge_coupled_cycle_public_example.py',
         *IDENTITIES,LOADED/'TARGET_ADOPTION.json',PACKAGE/'snapshot-bindings.json',DOC/'PREPARATION.md',DOC/'PROSPECTIVE_PLAN.json']
-    paths+=[ROOT/'scripts'/x for x in helpers]+[ROOT/'src/anysolver'/x for x in products]
+    paths+=[ROOT/'scripts'/x for x in helpers]+[ROOT/'src/anyfesolver'/x for x in products]
     paths += [DOC/x for x in ('CYCLE_ADOPTION.json','CYCLE_ARTIFACT_REUSE_DECISION.json',
         'CYCLE_SOURCE_AUTHORITY.json','CYCLE_INSTALLED_AUTHORITY.json','CYCLE_SLOT_TRANSFER.json')]
     result={p.relative_to(ROOT).as_posix():sha(p) for p in paths}
@@ -305,8 +305,8 @@ def connected(out):
     import numpy as np
     from scripts import r8_f06_paired_active_tangent_dev as atomic
     from scripts.r8_f06_cyclic_material_dev import definition,actions
-    from anysolver import stiffened_shell as ss
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver import stiffened_shell as ss
+    from anyfesolver.control import CancellationToken,SolveCancelled
     adoption=json.loads((DOC/'CYCLE_ADOPTION.json').read_text());require_adoption(adoption)
     for path,digest in IDENTITIES.items():
         if sha(path)!=digest:raise ValueError('changed saved endpoint')

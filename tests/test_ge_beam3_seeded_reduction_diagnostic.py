@@ -1,12 +1,12 @@
 """Diagnostic-only separation of kinetic whitening and strain-factor errors."""
 import numpy as np
 from test_ge_beam3_curved_contrast_probe import make_curved, ROTATION
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_seeded_loaded_modal import prepare
-from anysolver._ge_beam3_seeded_signed_modes import _split
-from anysolver._native_signed_factor_modes import _reduce
-from anysolver._native_relative_reference_factor_spectrum import solve_relative_reference_factor_spectrum
-from anysolver._ge_beam3_p5_centered.mass import reference_kinetic_factors
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_seeded_loaded_modal import prepare
+from anyfesolver._ge_beam3_seeded_signed_modes import _split
+from anyfesolver._native_signed_factor_modes import _reduce
+from anyfesolver._native_relative_reference_factor_spectrum import solve_relative_reference_factor_spectrum
+from anyfesolver._ge_beam3_p5_centered.mass import reference_kinetic_factors
 
 
 def test_capture_reference_factor_reduction(tmp_path):

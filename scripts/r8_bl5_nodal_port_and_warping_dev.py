@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT))
 
-import anysolver
+import anyfesolver
 import numpy as np
 from scripts import r8_bl5_two_sided_port_response_dev as v9
 
@@ -113,7 +113,7 @@ def saved_warping(model, elements, side, saved_v7, saved_q, full_index):
 
 
 def main(output):
-    import anysolver._stiffened_shell_ge_experimental as ge_source
+    import anyfesolver._stiffened_shell_ge_experimental as ge_source
     model = v9.weak.specimen()
     _, elements = v9.weak.assemble_body(model)
     response = {}
@@ -138,10 +138,10 @@ def main(output):
                for side in ("left","right")}
     sources = {name:dict(path=str(Path(module.__file__).resolve()),
                          sha256=sha(module.__file__)) for name,module in (
-        ("anysolver",anysolver),("ge_compiler",ge_source),
+        ("anyfesolver",anyfesolver),("ge_compiler",ge_source),
         ("v9",v9),("native_fixture",v9.native),("solid_fixture",v9.solid),
         ("weak_fixture",v9.weak))}
-    for name in ("anysolver","ge_compiler"):
+    for name in ("anyfesolver","ge_compiler"):
         if not Path(sources[name]["path"]).is_relative_to(ROOT / "src"):
             raise ValueError("solver module imported outside bound worktree")
     result = dict(identity=IDENTITY,

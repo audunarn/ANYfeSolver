@@ -5,25 +5,25 @@ from typing import Any
 import numpy as np
 import pytest
 
-from anysolver.assembly import solve_nonlinear
-from anysolver.boundary import LoadCase
-from anysolver.corotational import (
+from anyfesolver.assembly import solve_nonlinear
+from anyfesolver.boundary import LoadCase
+from anyfesolver.corotational import (
     corotational_element_response,
     validate_corotational_scope,
 )
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from anysolver.elements import ShellElement
-from anysolver.fe_core import FEModel
-from anysolver.nonlinear_static import (
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+from anyfesolver.elements import ShellElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.nonlinear_static import (
     ShellInitialField,
     _prepare_initial_states,
     _state_has_initial_field,
 )
-from anysolver.nonlinear_performance import (
+from anyfesolver.nonlinear_performance import (
     _state_has_initial_fields as _performance_state_has_initial_fields,
 )
-from anysolver.nonlinear import solve_nonlinear_load_stepping
-from anysolver.nonlinear_state import StateTransactionError
+from anyfesolver.nonlinear import solve_nonlinear_load_stepping
+from anyfesolver.nonlinear_state import StateTransactionError
 
 
 _TRIANGLE = (
@@ -110,7 +110,7 @@ def test_prepare_initial_states_passes_model_and_field_identity_atomically_to_ho
         )
 
     monkeypatch.setattr(
-        "anysolver.elements.validate_initial_field_state",
+        "anyfesolver.elements.validate_initial_field_state",
         record_validation,
     )
     states, provenance = _prepare_initial_states(

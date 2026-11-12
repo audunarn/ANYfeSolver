@@ -2,11 +2,11 @@
 from dataclasses import replace
 import numpy as np
 import pytest
-from anysolver import stiffened_shell
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
-from anysolver._stiffened_shell_rotation_charts import owned_anchors, physical_frames
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import stiffened_shell
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver._stiffened_shell_rotation_charts import owned_anchors, physical_frames
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_stiffened_shell_l1_assembly_experimental import _bl5_nonmatching_definition
 
 
@@ -123,7 +123,7 @@ def test_line_rejection_preserves_accepted_prefix_and_new_schema_is_required(mon
         owner.solve(_action(),targets=(1.,),max_iterations=1)
     assert owner._generation==generation and owner.checkpoint()==saved
     import json
-    from anysolver._stiffened_shell_ge_checkpoint_binary import decode,encode,SCHEMAS
+    from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode,encode,SCHEMAS
     kind,gen,arrays=decode(saved,owner._identity,lambda _,g:tuple(
         (k,v.shape) for k,v in {"q":owner._finite_driver._state.q,
          "frames":owner._finite_driver._state.frames,"cells":owner._finite_driver._state.cells,
@@ -141,7 +141,7 @@ def test_line_rejection_preserves_accepted_prefix_and_new_schema_is_required(mon
 
 
 def test_finite_line_adaptive_cancel_restore_and_resume(monkeypatch):
-    import anysolver._stiffened_shell_ge_finite_experimental as finite
+    import anyfesolver._stiffened_shell_ge_finite_experimental as finite
     definition=_model(); owner=stiffened_shell.create_analysis(definition=definition)
     original=finite.cancellation_safe_point; token=CancellationToken()
     control=stiffened_shell.AdaptiveIncrementControl(2,8)
@@ -163,7 +163,7 @@ def test_finite_line_adaptive_cancel_restore_and_resume(monkeypatch):
 
 
 def test_typed_line_domain_failure_backtracks_but_programming_error_propagates(monkeypatch):
-    from anysolver._stiffened_shell_bl5_local_experimental import BL5LocalOperator,BL5TrialDomainError
+    from anyfesolver._stiffened_shell_bl5_local_experimental import BL5LocalOperator,BL5TrialDomainError
     original=BL5LocalOperator.evaluate_spatial; rejected=[]
     def candidate_failure(self,total,frames,state,multiplier):
         if not rejected and np.any(multiplier):
@@ -185,7 +185,7 @@ def test_typed_line_domain_failure_backtracks_but_programming_error_propagates(m
 
 
 def test_cancel_line_before_publish_keeps_fresh_owner(monkeypatch):
-    import anysolver._stiffened_shell_ge_finite_experimental as finite
+    import anyfesolver._stiffened_shell_ge_finite_experimental as finite
     owner=stiffened_shell.create_analysis(definition=_model()); token=CancellationToken()
     original=finite.cancellation_safe_point
     def cancel(value,stage):

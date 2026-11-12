@@ -9,7 +9,7 @@ Finite steps, plasticity, spectra and non-nodal load wrappers are not admitted.
 import json
 
 import numpy as np
-from anysolver import b3_ge, stiffened_shell as ss
+from anyfesolver import b3_ge, stiffened_shell as ss
 
 
 def definition():

@@ -7,8 +7,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
 import test_general_contact_event_subdivision as events  # noqa: E402
-from anysolver.dynamics import TransientConfig  # noqa: E402
-from anysolver.general_contact import transient as driver  # noqa: E402
+from anyfesolver.dynamics import TransientConfig  # noqa: E402
+from anyfesolver.general_contact import transient as driver  # noqa: E402
 
 
 def _tilted(stop=.012):

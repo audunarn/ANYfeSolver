@@ -7,10 +7,10 @@ import sys
 import numpy as np
 import pytest
 
-from anysolver import LoadCase, RecoveryConfig, prepare_static_evaluator, prepare_static_response_evaluator
-from anysolver.prepared_static import _plain_deepcopy
-from anysolver.prepared_static_loads import load_packet_storage_bytes
-from anysolver.static_batch import StaticCase
+from anyfesolver import LoadCase, RecoveryConfig, prepare_static_evaluator, prepare_static_response_evaluator
+from anyfesolver.prepared_static import _plain_deepcopy
+from anyfesolver.prepared_static_loads import load_packet_storage_bytes
+from anyfesolver.static_batch import StaticCase
 import prepared_static_response_m16_assessment  # noqa: F401  (adds scripts/ to sys.path)
 from benchmark_static_batches import mixed_free_model
 from test_prepared_static_response_m26 import _grid_model
@@ -133,7 +133,7 @@ def test_plain_deepcopy_tuple_rechecks_the_memo_after_its_items():
 # --------------------------------------------------------------------------- packet storage
 
 def _reference_storage(case):  # pre-M31 walk
-    from anysolver.boundary import _exact_load_case_instance_namespace
+    from anyfesolver.boundary import _exact_load_case_instance_namespace
     if case.load_case is None:
         return 256
     state = _exact_load_case_instance_namespace(case.load_case)

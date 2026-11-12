@@ -48,8 +48,8 @@ def test_source_native_producer_does_not_import_failed_mechanics() -> None:
             imports.update(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module:
             imports.add(node.module)
-    assert "anysolver.e4_pl_s3_element" not in imports
-    assert "anysolver.e4_pl_s3_v2_element" not in imports
+    assert "anyfesolver.e4_pl_s3_element" not in imports
+    assert "anyfesolver.e4_pl_s3_v2_element" not in imports
     assert "e4_pl_s3_v2_flat_funnel_producer" not in imports
 
 
@@ -115,7 +115,7 @@ def test_two_bounded_cycles_are_byte_identical_and_stop_at_local_gate(tmp_path: 
 
 
 def test_production_boundary_remains_static() -> None:
-    source = (ROOT / "src" / "anysolver" / "elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src" / "anyfesolver" / "elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source
     assert not any(path.is_file() for path in (ROOT / "src").rglob("*v3a*"))

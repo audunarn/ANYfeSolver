@@ -5,14 +5,14 @@ from dataclasses import replace
 import numpy as np
 from scipy import sparse
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactPathControl, ContactPathProgram,
     DisplacementControl, LoadCase, NonlinearConvergenceSettings,
     solve_static_nonlinear,
     validate_general_contact,
 )
-from anysolver.general_contact.s3_patch_augmented import MovingS3PatchProjectedNormal
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_patch_augmented import MovingS3PatchProjectedNormal
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 from test_general_contact_q4_q4_static import _case
 
 

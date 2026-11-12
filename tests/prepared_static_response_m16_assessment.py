@@ -16,12 +16,12 @@ for extra in (ROOT / 'tests', ROOT / 'scripts'):
     if str(extra) not in sys.path:
         sys.path.insert(0, str(extra))
 
-from anysolver import PatternCase, RecoveryConfig, prepare_static_response_evaluator
-from anysolver.prepared_static import PreparedStaticEvaluator
-from anysolver.prepared_static_envelopes import _numeric_fields
-from anysolver.prepared_static_recovery import (_recover_owned_local, _derived_measure,
+from anyfesolver import PatternCase, RecoveryConfig, prepare_static_response_evaluator
+from anyfesolver.prepared_static import PreparedStaticEvaluator
+from anyfesolver.prepared_static_envelopes import _numeric_fields
+from anyfesolver.prepared_static_recovery import (_recover_owned_local, _derived_measure,
     owned_recovery_scope, constraint_force_diagnostics, _array_value)
-from anysolver.prepared_static_response import _library_schema, _library_vector
+from anyfesolver.prepared_static_response import _library_schema, _library_vector
 
 # Frozen M16 criteria constants.
 UNIT_ROUNDOFF = 2.0 ** -53
@@ -90,7 +90,7 @@ def _canonical_reference(record, requested):
 
 def _combined_load_case(patterns, coefficients, name, baseline=None):
     """M20: one native original-time LoadCase equal in exact arithmetic to F0 + sum c_j F_j."""
-    from anysolver import LoadCase
+    from anyfesolver import LoadCase
     terms = ([] if baseline is None else [(baseline, 1.0)]) + [(patterns[key], float(value))
                                                                 for key, value in coefficients.items()]
     made = LoadCase(name)
@@ -242,8 +242,8 @@ def assess(label, model, patterns, coefficient_sets, *, recovery, envelope=None,
                 packets.append(block.case_results[j])
                 u_cases.append(np.asarray(block.displacements[:, j], dtype=float))
         # Native and route loads per case, evaluated before the recovery scope.
-        from anysolver.prepared_static_loads import evaluate_load_vector
-        from anysolver.prepared_static_vectorized import c7_ratio
+        from anyfesolver.prepared_static_loads import evaluate_load_vector
+        from anyfesolver.prepared_static_vectorized import c7_ratio
         abs_stiffness = abs(snapshot.stiffness)
         loads_by_case = []
         with owned_recovery_scope(tuple(snapshot.load_maps.pressure_recipes.values())):
@@ -509,7 +509,7 @@ def holdout_a3(stress_execution='certified_library', native_loads=False, route_o
 
 
 def holdout_a4(stress_execution='certified_library', route_options=None):
-    from anysolver import BoundaryCondition, LoadCase
+    from anyfesolver import BoundaryCondition, LoadCase
     from test_prepared_static_evaluator import _bar, _case
     model = _bar(False)
     model.add_boundary_condition(BoundaryCondition('left', [1], {'ux': 0.001, 'uy': 0., 'uz': 0., 'rx': 0., 'ry': 0., 'rz': 0.}))

@@ -30,11 +30,11 @@ line is a distinct route and remains frictionless.
 
 ## Public entrypoints
 
-All entrypoints live in the `anysolver.general_contact` package and load
+All entrypoints live in the `anyfesolver.general_contact` package and load
 lazily; ordinary no-contact solves never import the contact kernel.
 
 ```python
-from anysolver.general_contact import (
+from anyfesolver.general_contact import (
     ContactDefinition, ContactInteraction, ContactSurface,
     ContactSolverSettings, ContactPathControl, ContactPathProgram,
     S3SlidingFrictionSettings,
@@ -66,16 +66,16 @@ settings.
 Two supported routes:
 
 1. **Current candidate bundle** (recommended for evaluation):
-   `C:/ANYworkspaceWork/contact-incremental-delivery-20261020/slice5/ANYsolver-contact-candidate-20261020-s5.zip`
+   `C:/ANYworkspaceWork/contact-incremental-delivery-20261020/slice5/ANYfeSolver-contact-candidate-20261020-s5.zip`
    (expected slice-5 bundle; its paired-host CI and final artifact identity are
    recorded in the slice-5 delivery receipt once published).
    The extracted bundle ROOT contains `examples/` and a `wheelhouse/` with
-   the six pure-Python private wheels (ANYsolver, ANYresults, ANYmaterial,
+   the six pure-Python private wheels (ANYfeSolver, ANYresults, ANYmaterial,
    ANYgeometry, ANYmesher, ANYfileio). From the bundle ROOT, in a fresh
    virtual environment:
 
    ```text
-   python -m pip install --find-links wheelhouse -r requirements-tested.txt "ANYsolver[general-contact]==0.4.7+contact.candidate.20261020.s5" "ANYsolver-results==2.1.1" "ANYmaterial==0.2.0" "ANYgeometry[planar]==0.4.3" "ANYmesher==0.5.0" "ANYfileio==0.3.2"
+   python -m pip install --find-links wheelhouse -r requirements-tested.txt "ANYfeSolver[general-contact]==0.5.0+contact.candidate.20261111.s7" "ANYfeSolver-results==2.2.0" "ANYmaterial==0.2.0" "ANYgeometry[planar]==0.4.3" "ANYmesher==0.5.0" "ANYfileio==0.3.3"
    ```
 
    Numeric and Shapely dependencies resolve normally from their usual

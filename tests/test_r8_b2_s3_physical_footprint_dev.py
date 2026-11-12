@@ -3,8 +3,8 @@ from dataclasses import replace
 import os
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as api
-from anysolver.control import CancellationToken
+from anyfesolver import stiffened_shell as api
+from anyfesolver.control import CancellationToken
 from test_r8_b2_physical_footprint_static_foundation_dev import (
     definition as q4_definition, case_definition as q4_case, independent_rows,
     oracle, verify, load, SELECT, save)
@@ -143,7 +143,7 @@ def test_patch_admission_owned_inputs_and_legacy_policy():
 def test_spectral_refusal_cancellation_close(monkeypatch):
     d=definition();owner=api.create_analysis(definition=d)
     def forbidden(*a,**k):raise AssertionError('Q4 chart helper entered for S3 physical family')
-    import anysolver._stiffened_shell_b2_physical_rigid_footprint as physical
+    import anyfesolver._stiffened_shell_b2_physical_rigid_footprint as physical
     monkeypatch.setattr(physical,'q4_exp_director_chart_correction',forbidden)
     try:
         assert not owner.physical_footprint_buckling_capabilities.eligible
@@ -185,8 +185,8 @@ def test_connected_s3_q4_cell_union_patch():
 
 @pytest.mark.parametrize('polarity',(-1,1))
 def test_native_polarity_rotated_frame_reversed_winding(polarity):
-    from anysolver.fe_core import FEModel
-    from anysolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
+    from anyfesolver.fe_core import FEModel
+    from anyfesolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
     model=FEModel('independent-native-director')
     for i,x in enumerate(((0.,0.,0.),(0.,0.,1.),(0.,1.,0.)),1):model.add_node(i,*x)
     model.add_material('mat',1000.,.3)

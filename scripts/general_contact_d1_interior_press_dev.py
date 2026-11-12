@@ -14,9 +14,9 @@ import json
 from pathlib import Path
 import time
 
-import anysolver
+import anyfesolver
 import numpy as np
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactPathControl, ContactPathNodalForce,
     ContactPathProgram, solve_static_nonlinear, validate_general_contact,
 )
@@ -271,7 +271,7 @@ def main(output: Path, *, force_n: float, reference_slope: float,
     if output.exists():
         raise FileExistsError(output)
     started = time.perf_counter()
-    contact_directory = Path(anysolver.__file__).resolve().parent / "general_contact"
+    contact_directory = Path(anyfesolver.__file__).resolve().parent / "general_contact"
     changed_kernel_identity = {
         name: hashlib.sha256((contact_directory / name).read_bytes()).hexdigest()
         for name in ("d1_interior_profile.py", "q4_overlap_local_bound.py",
@@ -315,7 +315,7 @@ def main(output: Path, *, force_n: float, reference_slope: float,
     swept_fractions = []
     original_admissible_fraction = None
     if capture_swept_failure or record_swept_fractions:
-        from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+        from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 
         original_admissible_fraction = (
             GeneralS3PatchManager.admissible_step_fraction)
@@ -366,7 +366,7 @@ def main(output: Path, *, force_n: float, reference_slope: float,
         })
     payload = {
         "candidate": "d1_interior_free_rotation_press_development",
-        "anysolver_module": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_module": str(Path(anyfesolver.__file__).resolve()),
         "changed_kernel_sha256": changed_kernel_identity,
         "capability_profile": report.profile,
         "source_q4_faces": source_columns * source_rows,
@@ -425,10 +425,10 @@ def main(output: Path, *, force_n: float, reference_slope: float,
         payload["restart_source"] = (
             str(restart_checkpoint_path) if restart_checkpoint_path else None)
     if capture_swept_failure:
-        from anysolver.general_contact.q4_overlap_local_bound import (
+        from anyfesolver.general_contact.q4_overlap_local_bound import (
             overlap_local_swept_lower,
         )
-        from anysolver.general_contact.s3_pair_static import _normal_controls
+        from anyfesolver.general_contact.s3_pair_static import _normal_controls
         from examples.general_contact_d1_interior_controls_dev import (
             _independent_projected_gap_bound,
         )
@@ -696,8 +696,8 @@ def radial_structure_check(output: Path, linear_record: Path):
     """Check the actual nonlinear structural owner against the guided operator."""
     if output.exists():
         raise FileExistsError(output)
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
-    from anysolver.nonlinear_static import (_prepare_initial_states,
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.nonlinear_static import (_prepare_initial_states,
         _prepare_qualified_q4_states_for_nonlinear_solve,
         _activate_nonlinear_state_storage, _assemble_nonlinear_system,
         _discard_nonlinear_state_candidate)
@@ -745,7 +745,7 @@ def radial_preflight(output: Path, *, target_cells=4, target_right_x_m=1.3):
     report = validate_general_contact(model, definition, settings)
     if not report.valid:
         raise ValueError(f"radial fixture rejected: {report.issues}")
-    record.update(status="development_radial_preflight", anysolver_module=str(Path(anysolver.__file__).resolve()),
+    record.update(status="development_radial_preflight", anyfesolver_module=str(Path(anyfesolver.__file__).resolve()),
                   total_dofs=model.mesh.dof_manager.total_dofs,
                   source_faces=len(definition.surfaces[0].element_ids),
                   target_faces=len(definition.surfaces[1].element_ids),
@@ -765,9 +765,9 @@ def radial_linear_discriminator(output: Path, *, target_cells=4,
     if output.exists():
         raise FileExistsError(output)
     from scipy import linalg, optimize
-    from anysolver.assembly import build_constraint_transformation
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
-    from docs.d1_review_support.d1_two_body_reference_oracle import independent_gap_work
+    from anyfesolver.assembly import build_constraint_transformation
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+    from scripts.d1_reference_gap_work import independent_gap_work
     started = time.perf_counter()
     model, definition, settings, program, reference, record = build_radial_guided_case(
         target_cells=target_cells, target_right_x_m=target_right_x_m)
@@ -833,7 +833,7 @@ def radial_linear_discriminator(output: Path, *, target_cells=4,
 def radial_swept_profile(output: Path, saved_path: Path):
     """One saved full-path certificate, with flushed scalar cost traces."""
     from functools import wraps
-    from anysolver.general_contact import s3_patch_static as owner
+    from anyfesolver.general_contact import s3_patch_static as owner
     if output.exists():
         raise FileExistsError(output)
     saved = json.loads(saved_path.read_text(encoding="utf-8"))
@@ -843,7 +843,7 @@ def radial_swept_profile(output: Path, saved_path: Path):
     pose = np.asarray(saved["steps"][-1]["displacements"])
     counters, originals = {}, []
     started = time.perf_counter()
-    print(json.dumps(dict(event="preparation_begin", imported_source=anysolver.__file__)), flush=True)
+    print(json.dumps(dict(event="preparation_begin", imported_source=anyfesolver.__file__)), flush=True)
     manager = owner.GeneralS3PatchManager(model, definition, settings)
     print(json.dumps(dict(event="preparation_end", elapsed_seconds=time.perf_counter()-started)), flush=True)
 
@@ -885,11 +885,11 @@ def radial_candidate_profile(output: Path, saved_path: Path):
     import cProfile
     import pstats
     from functools import wraps
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.semismooth import linearize
-    from anysolver.general_contact import s3_patch_augmented as augmented
-    from anysolver.general_contact.s3_patch_mortar_energy import MovingS3PatchPrimalMortarPenalty
-    from anysolver.general_contact.q4_source_mortar_energy import MovingQ4PrimalMortarPenalty
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.semismooth import linearize
+    from anyfesolver.general_contact import s3_patch_augmented as augmented
+    from anyfesolver.general_contact.s3_patch_mortar_energy import MovingS3PatchPrimalMortarPenalty
+    from anyfesolver.general_contact.q4_source_mortar_energy import MovingQ4PrimalMortarPenalty
     if output.exists() or output.with_suffix(".pstats").exists():
         raise FileExistsError(output)
     saved = json.loads(saved_path.read_text())
@@ -944,7 +944,7 @@ def radial_candidate_profile(output: Path, saved_path: Path):
             input_sha256=hashlib.sha256(saved_path.read_bytes()).hexdigest(),
             runner_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
             changed_kernel_sha256={path.name: hashlib.sha256(path.read_bytes()).hexdigest()
-                for path in (Path(anysolver.__file__).parent / "general_contact").glob("*.py")},
+                for path in (Path(anyfesolver.__file__).parent / "general_contact").glob("*.py")},
             scope="one profiled residual at saved independent linear pose; no route speed claim")
         output.write_text(json.dumps(record, indent=2, default=_json_default), encoding="utf-8")
 
@@ -954,14 +954,14 @@ def radial_wrench_check(output: Path, saved_path: Path):
     if output.exists():
         raise FileExistsError(output)
     from scipy import linalg
-    from anysolver.assembly import build_constraint_transformation
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
-    from anysolver.nonlinear_static import (_prepare_initial_states,
+    from anyfesolver.assembly import build_constraint_transformation
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.nonlinear_static import (_prepare_initial_states,
         _prepare_qualified_q4_states_for_nonlinear_solve,
         _activate_nonlinear_state_storage, _assemble_nonlinear_system,
         _discard_nonlinear_state_candidate)
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.semismooth import linearize
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.semismooth import linearize
     from docs.d1_review_support.d1_guided_reaction_wrench import guided_wrench_diagnostics
     saved = json.loads(saved_path.read_text())
     poses, history = saved.get("accepted_pose_displacements", ()), saved.get("history", ())
@@ -1045,8 +1045,8 @@ def radial_source_bin_check(output: Path, saved_path: Path):
     if output.exists():
         raise FileExistsError(output)
     from dataclasses import asdict
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from docs.d1_review_support.d1_radial_source_bin_work import check_guided_source_bins
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from scripts.d1_radial_source_bin_work import check_guided_source_bins
     from docs.d1_review_support.d1_radial_reference_observables import uniform_disk_pressure_observables
     from docs.d1_review_support.d1_radial_bin_assessment import assess_physical_source_bins
     started = time.perf_counter()
@@ -1055,7 +1055,7 @@ def radial_source_bin_check(output: Path, saved_path: Path):
             or len(saved.get("accepted_pose_displacements", ())) != 2):
         raise ValueError("physical bins require the completed two-step radial fixture")
     for name, expected in saved["changed_kernel_sha256"].items():
-        path = Path(anysolver.__file__).parent / "general_contact" / name
+        path = Path(anyfesolver.__file__).parent / "general_contact" / name
         if hashlib.sha256(path.read_bytes()).hexdigest() != expected:
             raise ValueError(f"saved-pose contact source changed: {name}")
     model, definition, settings, _program, reference, record = build_radial_guided_case(
@@ -1067,7 +1067,7 @@ def radial_source_bin_check(output: Path, saved_path: Path):
         * np.asarray(certificate["reference_support_m2"]), strict=True))
     record.update(status="development_saved_physical_source_bins",
         input_sha256=hashlib.sha256(saved_path.read_bytes()).hexdigest(),
-        anysolver_module=str(Path(anysolver.__file__).resolve()),
+        anyfesolver_module=str(Path(anyfesolver.__file__).resolve()),
         quadrature_tolerance_n=reference.force_n*1e-8, maximum_triangles=14144)
     try:
         manager = GeneralS3PatchManager(model, definition, settings)
@@ -1116,12 +1116,12 @@ def radial_solve(output: Path, *, target_cells=4, target_right_x_m=1.3):
     started = time.perf_counter()
     model, definition, settings, program, reference, record = build_radial_guided_case(
         target_cells=target_cells, target_right_x_m=target_right_x_m)
-    record.update(anysolver_module=str(Path(anysolver.__file__).resolve()),
+    record.update(anyfesolver_module=str(Path(anyfesolver.__file__).resolve()),
         changed_kernel_sha256={path.name: hashlib.sha256(path.read_bytes()).hexdigest()
-            for path in (Path(anysolver.__file__).parent / "general_contact").glob("*.py")},
+            for path in (Path(anyfesolver.__file__).parent / "general_contact").glob("*.py")},
         runner_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest())
     try:
-        from docs.d1_review_support.d1_radial_scalar_trace import radial_solver_trace
+        from scripts.d1_radial_scalar_trace import radial_solver_trace
         trace_path = output.with_suffix('.trace.jsonl')
         record['scalar_trace'] = str(trace_path)
         with radial_solver_trace(trace_path):
@@ -1249,7 +1249,7 @@ def replay_captured_sweep(capture: Path, output: Path):
         target_left_edge_motion=saved.get("target_left_edge_motion", False),
         shared_edge_tie=saved["shared_edge_tie"],
     )
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     from examples.general_contact_d1_interior_controls_dev import (
         _independent_projected_gap_bound,
     )
@@ -1305,7 +1305,7 @@ def saved_rotation_probe(saved_path: Path, output: Path) -> None:
     """Read-only contact-work probe at a saved accepted development pose."""
     if output.exists():
         raise FileExistsError(output)
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 
     saved = json.loads(saved_path.read_text(encoding="utf-8"))
     if (saved["status"] != "completed" or saved["accepted_steps"] != 2

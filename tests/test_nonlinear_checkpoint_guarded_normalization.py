@@ -3,7 +3,7 @@
 import pytest
 import numpy as np
 
-from anysolver.nonlinear_restart import _normalize_json
+from anyfesolver.nonlinear_restart import _normalize_json
 
 
 def test_custom_sequence_iteration_is_guarded_after_observation():
@@ -141,7 +141,7 @@ def test_object_array_keeps_effectful_member_boundary():
 
 
 def test_explicit_array_cast_is_inert_only_for_exact_native_same_dtype():
-    from anysolver.nonlinear_restart import _inert_array_conversion
+    from anyfesolver.nonlinear_restart import _inert_array_conversion
     for dtype in (np.float64, np.int64):
         assert _inert_array_conversion(np.ones(3, dtype=dtype), np.asarray, dtype)
     assert not _inert_array_conversion(np.ones(3, dtype=np.float32), np.asarray, np.float64)
@@ -155,7 +155,7 @@ def test_explicit_array_cast_is_inert_only_for_exact_native_same_dtype():
 
 def test_custom_numpy_module_lookup_is_not_an_inert_observation(monkeypatch):
     from types import ModuleType
-    from anysolver import nonlinear_restart as restart
+    from anyfesolver import nonlinear_restart as restart
     class CustomModule(ModuleType):
         def __getattribute__(self, name):
             return super().__getattribute__(name)
@@ -167,7 +167,7 @@ def test_custom_numpy_module_lookup_is_not_an_inert_observation(monkeypatch):
 
 def test_restoring_module_getter_cannot_hide_its_observation(monkeypatch):
     from types import ModuleType
-    from anysolver import nonlinear_restart as restart
+    from anyfesolver import nonlinear_restart as restart
     observed = []
     class CustomModule(ModuleType):
         def __getattribute__(self, name):
@@ -189,7 +189,7 @@ def test_restoring_module_getter_cannot_hide_its_observation(monkeypatch):
 @pytest.mark.parametrize("attribute", ["asarray", "integer", "float64"])
 def test_restoring_module_property_cannot_hide_its_observation(monkeypatch, attribute):
     from types import ModuleType
-    from anysolver import nonlinear_restart as restart
+    from anyfesolver import nonlinear_restart as restart
     observed = []
     class CustomModule(ModuleType):
         pass
@@ -217,7 +217,7 @@ def test_restoring_module_property_cannot_hide_its_observation(monkeypatch, attr
 
 def test_custom_module_metaclass_descriptor_is_rejected_without_observation(monkeypatch):
     from types import ModuleType
-    from anysolver import nonlinear_restart as restart
+    from anyfesolver import nonlinear_restart as restart
     observed = []
     class Meta(type):
         @property
@@ -235,7 +235,7 @@ def test_custom_module_metaclass_descriptor_is_rejected_without_observation(monk
 
 def test_module_getattribute_descriptor_is_rejected_without_observation():
     from types import ModuleType
-    from anysolver import nonlinear_restart as restart
+    from anyfesolver import nonlinear_restart as restart
     observed = []
     class Descriptor:
         def __get__(self, instance, owner):

@@ -78,11 +78,11 @@ def test_preserved_arch_assessment(origin, tmp_path):
     import numpy as np
     from test_ge_beam3_schur_line_program import save
     from test_ge_beam3_uniform_arch_sixteen import make, SECTION
-    from anysolver._ge_beam3_native_arc import ArcProgram
-    from anysolver._ge_beam3_native_arc_adaptive import AdaptiveArcProgram, decode_checkpoint, wrap_checkpoint
-    from anysolver._ge_beam3_native_arc_source import TranslationArcSource
-    from anysolver._ge_beam3_native_history_profile import HISTORY8M, load
-    from anysolver._ge_beam3_native_generalized_recovery import recover_native_fields
+    from anyfesolver._ge_beam3_native_arc import ArcProgram
+    from anyfesolver._ge_beam3_native_arc_adaptive import AdaptiveArcProgram, decode_checkpoint, wrap_checkpoint
+    from anyfesolver._ge_beam3_native_arc_source import TranslationArcSource
+    from anyfesolver._ge_beam3_native_history_profile import HISTORY8M, load
+    from anyfesolver._ge_beam3_native_generalized_recovery import recover_native_fields
     from docs.reference_cases.ge_beam3_native_control_slope import accepted_slope
     from docs.reference_cases.ge_beam3_uniform_arch_reference import solve as continuum
     from docs.reference_cases.ge_beam3_uniform_arch_fields import fields

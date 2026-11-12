@@ -7,9 +7,9 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver import ArcLengthControl, LoadCase, solve_static_arc_length
-from anysolver.matrix_assembly import assemble_stiffness_matrix
-from anysolver.general_contact.runtime import active_contact_manager
+from anyfesolver import ArcLengthControl, LoadCase, solve_static_arc_length
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.general_contact.runtime import active_contact_manager
 from examples.general_contact_arc_length_affine import build
 from s3_von_karman_oracle import model_triangle_von_karman
 
@@ -118,8 +118,8 @@ def _wrench(model, pose, residual, factor, contact):
 
 
 def test_active_preload_to_open_reverse_arc_complete_restart(monkeypatch):
-    arc = importlib.import_module('anysolver.arc_length')
-    static = importlib.import_module('anysolver.nonlinear_static')
+    arc = importlib.import_module('anyfesolver.arc_length')
+    static = importlib.import_module('anyfesolver.nonlinear_static')
     actual_arc, actual_static = arc._support_reaction_resultants_from_forces, static._support_reaction_resultants
     arc_rows, preload_rows = [], []
     def capture_arc(model, internal, constant, proportional, factor, **kwargs):
@@ -139,7 +139,7 @@ def test_active_preload_to_open_reverse_arc_complete_restart(monkeypatch):
         Path(output).with_name('accepted_full.checkpoint').write_bytes(full.restart_checkpoint_bytes())
     model, *_ = _case()
     ids, oracle = _reference(model)
-    from anysolver.general_contact import transient_results_archive as codec
+    from anyfesolver.general_contact import transient_results_archive as codec
     base = codec._decode(full.to_restart_checkpoint()['path_state']['contact_state']['base'],
                          codec._Budget(codec.MAX_BYTES), {})
     previous = base['displacements'].copy()

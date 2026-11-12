@@ -4,12 +4,12 @@ import json
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_native_analysis import NativeBeamAnalysis
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver import _ge_beam3_analysis_fibre_translation as route
-from anysolver.control import CancellationToken
+from anyfesolver._ge_beam3_native_analysis import NativeBeamAnalysis
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver._ge_beam3_native_fibre_static_element import NativeFibreStaticElement
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver import _ge_beam3_analysis_fibre_translation as route
+from anyfesolver.control import CancellationToken
 from test_ge_beam3_retained_fibre import make_model
 from test_ge_beam3_retained_fibre_control import program
 

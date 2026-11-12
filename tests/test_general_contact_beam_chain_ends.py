@@ -7,12 +7,12 @@ import numpy as np
 import pytest
 from scipy.optimize import root
 
-from anysolver import (BoundaryCondition,ContactDefinition,ContactInteraction,
+from anyfesolver import (BoundaryCondition,ContactDefinition,ContactInteraction,
     ContactSurface,ContactSolverSettings,LoadCase,DisplacementControl,
     solve_static_nonlinear,validate_general_contact,report_general_contact_capability)
-from anysolver.elements import BeamElement,QuadraticBeamElement
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.beam_chain_ends import BeamChainEndManager,PROFILE
+from anyfesolver.elements import BeamElement,QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.beam_chain_ends import BeamChainEndManager,PROFILE
 
 
 def bars(cells=2,other=None):
@@ -212,7 +212,7 @@ def test_nonphysical_selected_cut_and_nonreciprocal_cap_pairs_fail_explicitly():
 
 def test_nearest_path_hidden_distinct_partner_switch_and_unrepresented_cut():
     from fractions import Fraction as F
-    from anysolver.general_contact.beam_chain_end_geometry import (
+    from anyfesolver.general_contact.beam_chain_end_geometry import (
         nearest_endpoint_feature,admissible_chain_endpoint_path)
     targets=(((F(-1,100),-1,0),(F(-1,100),1,0)),
              ((F(1,100),-1,0),(F(1,100),1,0)))
@@ -254,7 +254,7 @@ def test_swept_activation_rejects_nonreciprocal_cap_features():
 
 @pytest.mark.parametrize('cancel',(False,True))
 def test_actual_two_chain_candidate_exception_or_cancel_keeps_origin_and_restart(cancel,monkeypatch):
-    from anysolver import CancellationToken,SolveCancelled
+    from anyfesolver import CancellationToken,SolveCancelled
     model,definition,settings,load,_=bars(2,2)
     args=dict(contact=definition,contact_settings=settings,num_steps=4,max_iterations=25,
         tolerance=1e-10,emit_restart_checkpoint=True)

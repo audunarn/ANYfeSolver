@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.q4_source_overlap import q4_source_overlap_integrals
-from anysolver.general_contact.q4_source_mortar_energy import MovingQ4PrimalMortarPenalty
+from anyfesolver.general_contact.q4_source_overlap import q4_source_overlap_integrals
+from anyfesolver.general_contact.q4_source_mortar_energy import MovingQ4PrimalMortarPenalty
 
 
 def _faces():

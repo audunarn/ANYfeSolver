@@ -54,7 +54,7 @@ def test_independent_checker_imports_no_production_or_producer() -> None:
             imports.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module:
             imports.append(node.module)
-    assert not any(name == "anysolver" or name.startswith("anysolver.") for name in imports)
+    assert not any(name == "anyfesolver" or name.startswith("anyfesolver.") for name in imports)
     assert "e4_pl_s3_v5i_r1_diagnosis_producer" not in imports
 
 
@@ -78,7 +78,7 @@ def test_pair_subspace_formula_and_terminal_precedence() -> None:
 
 def test_bounds_and_defaults_are_preserved() -> None:
     coordinator = _load("_v5i_r1_coordinator_bounds", COORDINATOR)
-    source = (ROOT / "src/anysolver/elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src/anyfesolver/elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source
     assert coordinator.CHILD_TIMEOUT_SECONDS == 600

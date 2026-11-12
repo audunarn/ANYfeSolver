@@ -13,7 +13,7 @@ from pathlib import Path
 import sys
 import warnings
 
-import anysolver
+import anyfesolver
 import numpy as np
 import scipy
 from scipy import sparse
@@ -113,10 +113,10 @@ def _solve(primal: sparse.csr_matrix, residual: np.ndarray,
 
 def run() -> dict:
     expected_package = (Path(__file__).resolve().parents[1]
-                        /"src"/"anysolver").resolve()
-    actual_package = Path(anysolver.__file__).resolve().parent
+                        /"src"/"anyfesolver").resolve()
+    actual_package = Path(anyfesolver.__file__).resolve().parent
     if actual_package != expected_package:
-        raise RuntimeError("bounded loaded screen imported another ANYsolver checkout")
+        raise RuntimeError("bounded loaded screen imported another ANYfeSolver checkout")
     xs, ys = local_grid(2, transverse_cells=4)
     beam = build(12, z_offset=.0675,
                  torsion_constant=square_torsion_constant(),
@@ -210,7 +210,7 @@ def run() -> dict:
         "classification": "private same-primal provisional-P0 loaded discriminator",
         "scope": "Q4 35 mm C1 E4/native retained generalized B3, two loads",
         "qualification": "development only; F03 and G0B remain open",
-        "anysolver_import_path": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_import_path": str(Path(anyfesolver.__file__).resolve()),
         "python_version": sys.version.split()[0],
         "numpy_version": np.__version__,
         "scipy_version": scipy.__version__,

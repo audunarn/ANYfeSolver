@@ -38,7 +38,7 @@ def test_improper_or_outside_chart_rotation_rejects(matrix):
 def test_audit_imports_no_mechanics_or_reference_solver():
     tree=ast.parse(inspect.getsource(audit))
     modules=[n.module for n in ast.walk(tree) if isinstance(n,ast.ImportFrom)]
-    assert not any('anysolver' in n or 'moment_reference' in n for n in modules)
+    assert not any('anyfesolver' in n or 'moment_reference' in n for n in modules)
     assert not any(isinstance(n,ast.Call) and isinstance(n.func,ast.Attribute) and n.func.attr in ('solve','solve_force_program') for n in ast.walk(tree))
 
 

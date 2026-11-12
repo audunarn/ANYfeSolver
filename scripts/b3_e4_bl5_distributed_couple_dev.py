@@ -8,9 +8,9 @@ import json
 import numpy as np
 from threadpoolctl import threadpool_info
 import numba
-import anysolver
-from anysolver import stiffened_shell
-from anysolver._ge_beam3_retained_generalized_state import Mechanical
+import anyfesolver
+from anyfesolver import stiffened_shell
+from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
 from test_stiffened_shell_l1_assembly_experimental import _bl5_joint_mesh_definition
 
 
@@ -119,7 +119,7 @@ def main(output, case="mz"):
     root_normal_reaction = float(result.reactions[shell_count+5])
     assert root_normal_reaction == 0.
     output.write_text(json.dumps(dict(status="PASSED_DEVELOPMENT_ONLY", source_sha256=sha256(
-        Path(__file__).read_bytes()).hexdigest(), imported_anysolver=anysolver.__file__, threads=pools,
+        Path(__file__).read_bytes()).hexdigest(), imported_anyfesolver=anyfesolver.__file__, threads=pools,
         jit_disabled=bool(numba.config.DISABLE_JIT), case=case, load=LOADS[case],
         shell_edges=16, beam_halfcells=16,
         multiplier_rows=owner._C.shape[0], model_identity=owner.preflight()["identity"],

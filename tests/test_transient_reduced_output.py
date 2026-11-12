@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from anysolver import AnalysisSession, BoundaryCondition, FixedSupport, LoadCase
-from anysolver.dynamics import TransientConfig, solve_transient_newmark
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
-from anysolver.recovery import RecoveryConfig
+from anyfesolver import AnalysisSession, BoundaryCondition, FixedSupport, LoadCase
+from anyfesolver.dynamics import TransientConfig, solve_transient_newmark
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.recovery import RecoveryConfig
 
 
 def _model_and_load() -> tuple[FEModel, LoadCase]:

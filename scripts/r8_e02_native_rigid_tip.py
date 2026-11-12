@@ -1,6 +1,6 @@
 """Restricted E02 development comparison; no scientific acceptance adjudication.
 
-Use an installed ANYsolver. A free unloaded beam stub supplies the public
+Use an installed ANYfeSolver. A free unloaded beam stub supplies the public
 footprint pose port, not a second load path. The rigid patch occupies x>=.8
 on a flat isotropic panel. Fz/Mx/My test the out-of-plane physical sector;
 neither six-channel continuum equivalence nor normal-spin physics is claimed.
@@ -56,9 +56,9 @@ def main():
     import numpy as np
     from scipy import sparse
     from threadpoolctl import threadpool_info
-    from anysolver import b3_ge, stiffened_shell as api
-    import anysolver
-    assert Path(anysolver.__file__).resolve().is_relative_to(args.site.resolve())
+    from anyfesolver import b3_ge, stiffened_shell as api
+    import anyfesolver
+    assert Path(anyfesolver.__file__).resolve().is_relative_to(args.site.resolve())
     pools = threadpool_info()
     if any(p.get("num_threads") != 1 for p in pools):
         raise RuntimeError("effective numerical pools must use one thread")
@@ -203,7 +203,7 @@ def main():
                           port_origin_m=origin, young_pa=e, poisson=nu),
             nodes=nodes, cells=cells, patch_cells=patch, patch_nodes=patch_nodes, root_nodes=root,
             loads=LOADS, source_runner_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-            installed_anysolver=str(anysolver.__file__), numerical_pools=pools,
+            installed_anyfesolver=str(anyfesolver.__file__), numerical_pools=pools,
             runtime_seconds=time.monotonic()-started, results=results)
         with (args.output/'result.json').open('x') as f:
             json.dump(manifest, f, indent=2); f.write('\n')

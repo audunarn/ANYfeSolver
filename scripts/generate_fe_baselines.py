@@ -11,7 +11,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from anysolver.baselines import DEFAULT_BASELINE_PATH, write_baseline
+from anyfesolver.baselines import DEFAULT_BASELINE_PATH, write_baseline
 
 
 def main() -> int:

@@ -9,12 +9,12 @@ import math
 import numpy as np
 import pytest
 from scipy.optimize import brentq
-from anysolver import (ContactDefinition,ContactInteraction,ContactSolverSettings,ContactSurface,
+from anyfesolver import (ContactDefinition,ContactInteraction,ContactSolverSettings,ContactSurface,
     RigidCappedCylinder,BoundaryCondition,LoadCase,DisplacementControl,solve_static_nonlinear,
     validate_general_contact)
-from anysolver.elements import BeamElement,QuadraticBeamElement
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.capped_cylinder import (CappedCylinderBeamManager,PROFILE_END_CAPS,
+from anyfesolver.elements import BeamElement,QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.capped_cylinder import (CappedCylinderBeamManager,PROFILE_END_CAPS,
     _cap_orientation_range,_frame,_controls,_end_geometry_controls,_point_gap_sign)
 from test_general_contact_capped_cylinder import _oracle
 
@@ -102,8 +102,8 @@ def test_physical_end_and_b3_midpoint_junction_ownership(quadratic,reverse):
     manager=CappedCylinderBeamManager(model,definition,settings)
     assert set(manager.endpoints)=={3 if quadratic else 2}
     # The same topology correction applies to the existing plane owner.
-    from anysolver import RigidContactBody
-    from anysolver.general_contact.beam_plane import _BeamPlaneManager
+    from anyfesolver import RigidContactBody
+    from anyfesolver.general_contact.beam_plane import _BeamPlaneManager
     plane=replace(definition,rigid_bodies=(RigidContactBody('obstacle','plane',(.1,0.,0.),(1.,0.,0.)),))
     plane_manager=_BeamPlaneManager(model,plane,settings)
     assert set(plane_manager.endpoints)==set(manager.endpoints)
@@ -122,7 +122,7 @@ def test_endpoint_law_and_restart_identity_are_explicit():
     assert len(contract['physical_endpoints'])==2
     old=CappedCylinderBeamManager(model,_without_caps(definition),settings).restart_contract()
     assert 'end_cap_geometry_revision' not in old
-    from anysolver import report_general_contact_capability
+    from anyfesolver import report_general_contact_capability
     capability=report_general_contact_capability(model,definition,settings)
     assert capability.implemented and capability.validation.profile==PROFILE_END_CAPS
     assert not capability.tested and not capability.independently_accepted
@@ -308,23 +308,23 @@ def test_public_endpoint_example_and_installed_no_contact_compatibility():
     # This child follows the effective source/installed runtime, unlike the
     # historical lazy-import test whose child explicitly requests source.
     import subprocess,sys
-    import anysolver
-    root=str(Path(anysolver.__file__).resolve().parent)
+    import anyfesolver
+    root=str(Path(anyfesolver.__file__).resolve().parent)
     environment=os.environ.copy()
     environment['PYTHONPATH']=os.pathsep.join(
         (str(Path(root).parent),environment.get('PYTHONPATH','')))
     command='''import sys
 from pathlib import Path
-import anysolver
-assert Path(anysolver.__file__).resolve().is_relative_to(Path(sys.argv[1]))
-from anysolver.boundary import LoadCase
-from anysolver.mesh_gen import generate_beam_mesh
+import anyfesolver
+assert Path(anyfesolver.__file__).resolve().is_relative_to(Path(sys.argv[1]))
+from anyfesolver.boundary import LoadCase
+from anyfesolver.mesh_gen import generate_beam_mesh
 model=generate_beam_mesh(1.,num_divisions=1)
 load=LoadCase('axial');load.add_nodal_load(2,[10.,0.,0.,0.,0.,0.])
-result=anysolver.solve_static_nonlinear(model,load,num_steps=1,max_iterations=5)
+result=anyfesolver.solve_static_nonlinear(model,load,num_steps=1,max_iterations=5)
 assert result.status=='completed',result.failure_reason
-assert not any(n in sys.modules for n in ('anysolver.general_contact.capped_cylinder',
-    'anysolver.general_contact.beam_plane','anysolver.general_contact.beam_end_topology'))
+assert not any(n in sys.modules for n in ('anyfesolver.general_contact.capped_cylinder',
+    'anyfesolver.general_contact.beam_plane','anyfesolver.general_contact.beam_end_topology'))
 '''
     process=subprocess.run([sys.executable,'-c',command,root],env=environment,
                            capture_output=True,text=True,timeout=30)

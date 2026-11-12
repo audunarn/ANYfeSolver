@@ -10,9 +10,9 @@ from pathlib import Path
 import numpy as np
 
 from scripts.b3_e4_e01_native_point_refinement_screen import definition
-from anysolver import _stiffened_shell_ge_experimental as ge
-from anysolver._stiffened_shell_ge_experimental import NodalAction
-from anysolver.stiffened_shell import create_analysis
+from anyfesolver import _stiffened_shell_ge_experimental as ge
+from anyfesolver._stiffened_shell_ge_experimental import NodalAction
+from anyfesolver.stiffened_shell import create_analysis
 
 
 def main(output: Path):

@@ -2,11 +2,11 @@
 
 import numpy as np
 
-from anysolver import solve_static_nonlinear
-from anysolver.nonlinear_static import _assemble_nonlinear_system
-from anysolver.general_contact.core import suspend_contact
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.semismooth import (
+from anyfesolver import solve_static_nonlinear
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver.general_contact.core import suspend_contact
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.semismooth import (
     linearize, raw_certificate, reference_nodal_support,
 )
 from scripts.general_contact_d1_mixed_mesh_jet2_schur_press import build_case

@@ -3,11 +3,11 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.q4_s3_overlap_derivatives import (
+from anyfesolver.general_contact.q4_s3_overlap_derivatives import (
     UnsupportedQ4S3Branch,
     q4_s3_overlap_derivatives,
 )
-from anysolver.general_contact.q4_source_overlap import q4_source_overlap_integrals
+from anyfesolver.general_contact.q4_source_overlap import q4_source_overlap_integrals
 
 
 REFERENCE = np.array([[0.35, 0.1, 0.055], [0.6, 0.1, 0.055],

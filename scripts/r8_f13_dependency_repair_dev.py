@@ -14,7 +14,7 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 DOC = ROOT / 'docs/agent_plans/development/r8-f13-static-feasibility-v5-20261009'
 EVIDENCE = ROOT / '.development/r8-f13-dependency-repair-20261009'
-PRODUCT = 'anysolver/_stiffened_shell_b2_q4_panel_experimental.py'
+PRODUCT = 'anyfesolver/_stiffened_shell_b2_q4_panel_experimental.py'
 
 def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
@@ -78,14 +78,14 @@ def capture(site, out):
     from scipy import sparse
     from threadpoolctl import threadpool_info
     from types import SimpleNamespace
-    from anysolver import stiffened_shell as api
-    from anysolver import _stiffened_shell_b2_q4_panel_experimental as module
-    from anysolver.control import CancellationToken
+    from anyfesolver import stiffened_shell as api
+    from anyfesolver import _stiffened_shell_b2_q4_panel_experimental as module
+    from anyfesolver.control import CancellationToken
     spec=importlib.util.spec_from_file_location('f13_frozen_ownership',ROOT/'.development/r8-f13-static-feasibility-v5-20261009/runner.py')
     frozen=importlib.util.module_from_spec(spec);spec.loader.exec_module(frozen)
     inputs=json.loads((DOC/'inputs-v5.json').read_text())
     ctx=SimpleNamespace(inputs=inputs,np=np,sparse=sparse,api=api,module=module,Token=CancellationToken)
-    imports={name:str(Path(m.__file__).resolve()) for name,m in sys.modules.items() if name.startswith('anysolver') and getattr(m,'__file__',None)}
+    imports={name:str(Path(m.__file__).resolve()) for name,m in sys.modules.items() if name.startswith('anyfesolver') and getattr(m,'__file__',None)}
     assert all(Path(p).is_relative_to(Path(site).resolve()) for p in imports.values())
     runtime=dict(affinity=psutil.Process().cpu_affinity(),optimization=sys.flags.optimize,jit=os.environ.get('NUMBA_DISABLE_JIT'),pools=threadpool_info(),imports=imports,import_sha256={n:sha(p) for n,p in imports.items()},input_sha256=sha(DOC/'inputs-v5.json'),frozen_runner_sha256=sha(frozen.__file__))
     assert runtime['affinity']==[0] and runtime['optimization']==0 and runtime['jit']=='1'

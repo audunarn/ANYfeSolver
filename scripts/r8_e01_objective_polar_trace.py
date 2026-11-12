@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from anysolver._ge_beam3_mixed_ad import (
+from anyfesolver._ge_beam3_mixed_ad import (
     Jet2, RotationDomainError, constant_matrix, dot, matmul, matvec,
     rotation_exponential, so3_exp, so3_log, sqrt, transpose,
 )

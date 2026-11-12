@@ -15,14 +15,14 @@ import subprocess
 import numpy as np
 from scipy import linalg
 
-import anysolver
+import anyfesolver
 
-from anysolver import solve_static_nonlinear
-from anysolver.assembly import build_constraint_transformation
-from anysolver.general_contact.core import contact_scope, suspend_contact
-from anysolver.general_contact.semismooth import linearize
-from anysolver.matrix_assembly import assemble_stiffness_matrix
-from anysolver.nonlinear_static import _prepare_initial_states
+from anyfesolver import solve_static_nonlinear
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.general_contact.core import contact_scope, suspend_contact
+from anyfesolver.general_contact.semismooth import linearize
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.nonlinear_static import _prepare_initial_states
 from examples.general_contact_free_target_cycle_dev import build_case
 from scripts.general_contact_d1_distributed_coupled_tangent_probe import _assemble
 from scripts.general_contact_d1_distributed_tangent_probe import _branches
@@ -169,7 +169,7 @@ def _pressure_cone_preflight(model, definition, settings, program, result,
         "scope": "saved guided four-Q4/two-free-S3 slide and recontact only",
         "source_commit": subprocess.check_output(
             ("git", "rev-parse", "HEAD"), text=True).strip(),
-        "anysolver_module": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_module": str(Path(anyfesolver.__file__).resolve()),
         "probe_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "records": records,
     }

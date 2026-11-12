@@ -5,10 +5,10 @@ import os
 import sys
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver._ge_beam3_retained_generalized_state import Mechanical
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._ge_beam3_pose_joint import _exp_terms
+from anyfesolver import stiffened_shell as ss
+from anyfesolver._ge_beam3_retained_generalized_state import Mechanical
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._ge_beam3_pose_joint import _exp_terms
 from scripts import r8_bl5_matched_native_reference as tool
 
 
@@ -22,12 +22,12 @@ def owner():
 def test_actual_installed_runtime():
     if 'ANYSOLVER_MATCHED_INSTALLED' not in os.environ:
         pytest.skip('ANYSOLVER_MATCHED_INSTALLED installed-runtime binding absent')
-    import anysolver, numba
+    import anyfesolver, numba
     from threadpoolctl import threadpool_info
     expected=Path(os.environ['ANYSOLVER_MATCHED_INSTALLED']).resolve()
-    assert Path(anysolver.__file__).resolve().is_relative_to(expected)
+    assert Path(anyfesolver.__file__).resolve().is_relative_to(expected)
     assert all(Path(m.__file__).resolve().is_relative_to(expected) for n,m in sys.modules.items()
-        if n.startswith('anysolver.') and getattr(m,'__file__',None))
+        if n.startswith('anyfesolver.') and getattr(m,'__file__',None))
     assert numba.config.DISABLE_JIT and numba.get_num_threads()==1
     assert all(p['num_threads']==1 for p in threadpool_info())
 
@@ -158,8 +158,8 @@ def test_free_normal_spin_and_independent_supported_transverse_shear(owner):
     for native,eg,*_ in tool.global_correspondence(owner,shear,model,field):
         np.testing.assert_allclose(native,0.,atol=1e-15); np.testing.assert_allclose(eg,0.,atol=1e-15)
     # Actual retained compensated chord, not a normal-reconstructed director.
-    from anysolver import _ge_beam3_mixed_ad as ad
-    from anysolver._ge_beam3_p5.compensated import compensated_strain
+    from anyfesolver import _ge_beam3_mixed_ad as ad
+    from anyfesolver._ge_beam3_p5.compensated import compensated_strain
     for element,*_ in owner._beam_parts:
         ref=element.operator.reference.coordinates; current=ref.copy(); current[:,2]+=.2*ref[:,0]
         jets=[ad.Jet2.constant(0.,36) for _ in range(36)]

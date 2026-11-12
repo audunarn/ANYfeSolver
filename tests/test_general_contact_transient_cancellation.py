@@ -3,10 +3,10 @@
 import numpy as np
 import pytest
 
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver import TransientConfig, solve_transient_contact
-import anysolver.general_contact.transient as driver
-from anysolver.general_contact.core import active_contact_manager, _PlanarQ4PlaneManager
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver import TransientConfig, solve_transient_contact
+import anyfesolver.general_contact.transient as driver
+from anyfesolver.general_contact.core import active_contact_manager, _PlanarQ4PlaneManager
 from test_general_contact_transient_plane import _guided_plate, _constant_q4_load
 
 

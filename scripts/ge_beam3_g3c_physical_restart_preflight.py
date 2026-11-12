@@ -1,7 +1,7 @@
 """Inert private restart preflight. Passing is NOT proof of a numerical state.
 
 The reviewed coordinator must validate its complete source/environment lease
-before calling this module. No anysolver package or numerical library is loaded.
+before calling this module. No anyfesolver package or numerical library is loaded.
 Returned bytes remain untrusted commitments until genuine owner replay succeeds.
 """
 from dataclasses import dataclass
@@ -20,9 +20,9 @@ REVIEW = 'docs/reference_cases/ge_beam3_g3c_physical_owner_contract_review_v1.js
 REVIEW_SHA = '47829c5c1c896ed2eb28131ffedadd25cc83bc5bed79bc2517cfe308f7dc8988'
 PHYSICAL_CONTRACT = 'docs/GE_BEAM3_G3C_PHYSICAL_MIXED_OWNER_CONTRACT.md'
 PHYSICAL_CONTRACT_SHA = 'f6638863e6e222c795e980194c9a71cf42eb83bdcba6af2a8c409164ad4d957b'
-PHYSICAL_AUTHORITY = 'src/anysolver/_ge_beam3_g3c_physical_authority.py'
+PHYSICAL_AUTHORITY = 'src/anyfesolver/_ge_beam3_g3c_physical_authority.py'
 PHYSICAL_AUTHORITY_SHA = '5f81cff14bd67857f62bbb1fa8ae61ee2148c00bd745fbfd456ba572835e3896'
-DEFINITION = 'src/anysolver/_ge_beam3_g3c_definition.py'
+DEFINITION = 'src/anyfesolver/_ge_beam3_g3c_definition.py'
 DEFINITION_SHA = '4b46b870fec010e3378df83c374d763f858d8f25820c14f9704dc6f0a656f0c2'
 MAP_SHA = PHYSICAL_CONTRACT_SHA
 HEX = re.compile('[0-9a-f]{64}')
@@ -80,7 +80,7 @@ def authorities():
         or review['reviewer'].get('independent') is not True or review['scope'].get('contract_sha256')!=PHYSICAL_CONTRACT_SHA):
         raise ValueError('unaccepted restart design')
     # This fixed hash-bound file is itself standard-library-only. Loading it
-    # directly avoids anysolver.__init__ and all numerical/package imports.
+    # directly avoids anyfesolver.__init__ and all numerical/package imports.
     raw = bound(ROOT/DEFINITION, DEFINITION_SHA)
     module = ModuleType('_g3c_inert_definition')
     module.__file__ = str(ROOT/DEFINITION)

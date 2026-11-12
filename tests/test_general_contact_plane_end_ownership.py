@@ -6,8 +6,8 @@ import json
 import numpy as np
 import pytest
 from scipy.optimize import brentq
-from anysolver import BoundaryCondition,LoadCase,solve_static_nonlinear
-from anysolver.general_contact.beam_plane import _BeamPlaneManager
+from anyfesolver import BoundaryCondition,LoadCase,solve_static_nonlinear
+from anyfesolver.general_contact.beam_plane import _BeamPlaneManager
 from test_general_contact_beam_plane import _model
 
 

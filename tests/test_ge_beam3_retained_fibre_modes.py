@@ -5,11 +5,11 @@ import numpy as np
 import pytest
 from scipy.linalg import eigh
 
-import anysolver._ge_beam3_retained_fibre_modes as native
-from anysolver._ge_beam3_retained_fibre_program import solve_force_program
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_station_resultant_cell import mul, tr, solve, ident
-from anysolver.control import CancellationToken, SolveCancelled
+import anyfesolver._ge_beam3_retained_fibre_modes as native
+from anyfesolver._ge_beam3_retained_fibre_program import solve_force_program
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_station_resultant_cell import mul, tr, solve, ident
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_ge_beam3_retained_fibre import make_model
 from test_ge_beam3_retained_fibre_state import program
 
@@ -131,10 +131,10 @@ def test_final_publication_guard(accepted, monkeypatch, incident):
 
 
 def test_rebuilt_loaded_general_rotation_covariance(accepted, tmp_path):
-    from anysolver._ge_beam3_p5.algebra import rotation
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
-    from anysolver._ge_beam3_retained_fibre_element import NativeRetainedFibreElement
-    from anysolver._ge_beam3_seeded_load_program import ForceProgram
+    from anyfesolver._ge_beam3_p5.algebra import rotation
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+    from anyfesolver._ge_beam3_retained_fibre_element import NativeRetainedFibreElement
+    from anyfesolver._ge_beam3_seeded_load_program import ForceProgram
     contrast, model, p, value, inertias = accepted
     transform = rotation([.4, -.3, .2]); other = make_model(contrast)
     for node in other.mesh.nodes.values():

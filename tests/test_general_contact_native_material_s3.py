@@ -10,19 +10,19 @@ from scipy.integrate import quad
 from scipy.optimize import brentq
 from scipy.spatial.transform import Rotation
 from numpy.testing import assert_allclose
-from anysolver import create_shell_element
-from anysolver.boundary import BoundaryCondition,FixedSupport
-from anysolver.fe_core import FEModel
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_retained_nodal_loading import NodalDeadForces,Program
-from anysolver.general_contact.native_material_s3 import (
+from anyfesolver import create_shell_element
+from anyfesolver.boundary import BoundaryCondition,FixedSupport
+from anyfesolver.fe_core import FEModel
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_retained_nodal_loading import NodalDeadForces,Program
+from anyfesolver.general_contact.native_material_s3 import (
     NativeMaterialS3Patch,NativeRetainedMaterialS3Work,PROFILE)
-from anysolver.general_contact.native_retained_s3_static import NativeRetainedRoundS3Analysis
-from anysolver.general_contact.native_surface_normal import StraightNormalIntegrationSettings
-from anysolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
-from anysolver.general_contact.s3_skin_work import S3SkinWorkAdapter
+from anyfesolver.general_contact.native_retained_s3_static import NativeRetainedRoundS3Analysis
+from anyfesolver.general_contact.native_surface_normal import StraightNormalIntegrationSettings
+from anyfesolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
+from anyfesolver.general_contact.s3_skin_work import S3SkinWorkAdapter
 from test_ge_beam3_native_generalized_modal import make
 
 
@@ -42,7 +42,7 @@ def _two_analysis(**kwargs):
 
 
 def test_multiple_material_facets_complete_work_and_retained_response():
-    from anysolver.general_contact.native_multi_s3_static import MATERIAL_MULTIPATCH_PROFILE
+    from anyfesolver.general_contact.native_multi_s3_static import MATERIAL_MULTIPATCH_PROFILE
     owner=_two_analysis(facets=2,targets=(.25,.5,.75,1.));n=owner.context.count
     assert n==84 and owner.shell_stiffness.shape==(36,36) and len(owner.pairs)==3
     step=np.zeros(n)
@@ -169,7 +169,7 @@ def test_two_material_contact_independent_work_before_structural_globalization(u
 
 
 def test_two_native_material_patches_shared_deformable_target():
-    from anysolver.general_contact.native_multi_s3_static import MATERIAL_PROFILE
+    from anyfesolver.general_contact.native_multi_s3_static import MATERIAL_PROFILE
     owner=_two_analysis(targets=(.25,.5,.75,1.));run=owner.solve()
     assert run.status=='completed',run.failure
     assert run.profile==MATERIAL_PROFILE and owner.context.count==84
@@ -243,8 +243,8 @@ def test_second_material_patch_hidden_rotation_uses_its_own_retained_block():
 
 
 def test_material_multi_profile_explicit_activation_and_rejects_mixed_or_legacy_controller():
-    from anysolver.general_contact import create_native_contact_analysis,NativeS3ContactPair
-    from anysolver.general_contact.native_activation_static import NativeActivationMultiS3Analysis,NativeContactActivationSettings
+    from anyfesolver.general_contact import create_native_contact_analysis,NativeS3ContactPair
+    from anyfesolver.general_contact.native_activation_static import NativeActivationMultiS3Analysis,NativeContactActivationSettings
     from test_general_contact_native_retained_s3_static import _analysis as legacy
     owner=_two_analysis(targets=(.5,1.));args=(tuple(NativeBeamDefinition(raw) for raw in owner.native._definitions),
         tuple(owner.native.model.boundary_conditions),owner.program,owner.shell_model)
@@ -262,8 +262,8 @@ def test_material_multi_profile_explicit_activation_and_rejects_mixed_or_legacy_
 @pytest.mark.parametrize('cancel',(False,True))
 def test_two_material_owner_staging_and_incompatible_restart(cancel):
     from dataclasses import replace
-    from anysolver.control import CancellationToken
-    from anysolver.general_contact import create_native_contact_analysis
+    from anyfesolver.control import CancellationToken
+    from anyfesolver.general_contact import create_native_contact_analysis
     first=_two_analysis(targets=(.25,.5,.75,1.)).solve(stop_after=1)
     assert first.status=='paused',first.failure
     owner=_two_analysis(targets=(.25,.5,.75,1.));checkpoint=owner._checkpoint;token=CancellationToken()
@@ -317,8 +317,8 @@ def _analysis(*,force=-.005,targets=(.5,1.),stiffness=1e6,radius=.05,
     native,_,inertias=make(False,clamped=True,coupled=False)
     element=native.mesh.elements[1]
     if native_yield!=1e6:
-        from anysolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
-        from anysolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
+        from anyfesolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
+        from anyfesolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
         law=EllipsoidalGeneralizedSection(element.section.elastic,element.section.metric,native_yield,
             element.section.hardening)
         element=NativeGeneralizedStaticElement(1,(1,2,3),element.operator.reference,law,order=4)
@@ -375,7 +375,7 @@ def test_material_skin_rejects_unadmitted_negative_director_polarity():
 
 
 def _accumulated(history):
-    from anysolver._ge_beam3_p5_seeded.core import canonical
+    from anyfesolver._ge_beam3_p5_seeded.core import canonical
     def values(value):
         if isinstance(value,dict):
             if 'accumulated' in value:return [sum(value['accumulated'])]
@@ -387,7 +387,7 @@ def _accumulated(history):
 
 @pytest.mark.parametrize('stiffness',(1e6,1e7))
 def test_yielding_fixture_failure_preserves_last_accepted_state(stiffness):
-    from anysolver._ge_beam3_p5_seeded.core import canonical
+    from anyfesolver._ge_beam3_p5_seeded.core import canonical
     kwargs=dict(targets=(.25,.5,.75,1.),native_yield=1e-5,stiffness=stiffness)
     owner=_analysis(**kwargs);run=owner.solve()
     assert run.status=='failed' and 'line-search/gap limit' in run.failure
@@ -422,7 +422,7 @@ def test_yielding_fixture_failure_preserves_last_accepted_state(stiffness):
 
 
 def test_plastic_branch_complete_owner_tangent_and_disposable_history():
-    from anysolver._ge_beam3_p5_seeded.core import canonical
+    from anyfesolver._ge_beam3_p5_seeded.core import canonical
     owner=_analysis(native_yield=1e-5,shell_z=-.05001)
     origins=owner.initial.native_histories;captured=canonical(origins)
     step=np.zeros(42);step[8]=-2e-5;step[14]=-3e-5
@@ -452,7 +452,7 @@ def test_plastic_branch_complete_owner_tangent_and_disposable_history():
 
 
 def test_bounded_plastic_unload_reload_history_and_split_restart():
-    from anysolver._ge_beam3_p5_seeded.core import canonical
+    from anyfesolver._ge_beam3_p5_seeded.core import canonical
     kwargs=dict(targets=(.25,.5,.75,0.,.25,.5,.75),native_yield=1e-5,stiffness=1e6)
     owner=_analysis(**kwargs);run=owner.solve()
     output=os.environ.get('CONTACT_MATERIAL_PLASTIC_RECORD')
@@ -650,7 +650,7 @@ def test_fixed_nodes_hidden_rotational_gap_requires_material_radius_bound():
     g0,r0=query(start);g1,r1=query(end)
     assert g0>0. and g1>0. and query(owner.context.advance(start,.5*step[:42]))[0]>0.
     assert query(owner.context.advance(start,.25*step[:42]))[0]<-owner.gap_tolerance
-    from anysolver.general_contact.native_s3_swept import native_s3_swept_admissible
+    from anyfesolver.general_contact.native_s3_swept import native_s3_swept_admissible
     # Reproduce the zero-motion bound defect in an isolated helper call.
     assert native_s3_swept_admissible(owner.context,owner.contact,0,owner.gap_tolerance,128,
         owner._recoverable_trial_error,start,u,step,end,u,g0,g1,r0,r1,
@@ -673,7 +673,7 @@ def test_hidden_rotation_crosses_finite_target_edge_with_open_normal_gap():
 
 def test_reference_orientation_hidden_inversion_is_not_start_normal_admission():
     from types import SimpleNamespace as NS
-    from anysolver.general_contact.native_s3_swept import native_s3_swept_admissible
+    from anyfesolver.general_contact.native_s3_swept import native_s3_swept_admissible
     first=np.array(((0.,0.,0.),(0.,1.,0.),(-3/16,0.,1.)))
     last=np.array(((0.,0.,0.),(1.,1.,0.),(13/16,1.,1.)))
     def cross(t):
@@ -698,8 +698,8 @@ def test_reference_orientation_hidden_inversion_is_not_start_normal_admission():
 
 
 def test_normal_material_owner_rejects_existing_friction_bridge():
-    from anysolver.general_contact.native_surface_contributor import NativeS3MaterialContributor
-    from anysolver.general_contact.native_surface_s3_friction import NativeS3MaterialPointFriction
+    from anyfesolver.general_contact.native_surface_contributor import NativeS3MaterialContributor
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialPointFriction
     from test_general_contact_native_retained_s3_static import _analysis as legacy
     owner=_analysis();work=owner.contact
     pair=NativeS3MaterialPointFriction(work.contact.rule.samples[0].station,work.target,
@@ -716,7 +716,7 @@ def test_normal_material_owner_rejects_existing_friction_bridge():
 
 @pytest.mark.parametrize('cancel',(False,True))
 def test_staging_failure_preserves_native_and_deformable_shell_prefix(cancel):
-    from anysolver.control import CancellationToken
+    from anyfesolver.control import CancellationToken
     first=_analysis().solve(stop_after=1);assert first.status=='paused',first.failure
     owner=_analysis();checkpoint=owner._checkpoint;token=CancellationToken()
     def staged(records):

@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver.corotational import rotation_matrix_from_vector
+from anyfesolver.corotational import rotation_matrix_from_vector
 from scripts._b3_e4_f03_native_fixture import build
 from scripts._b3_e4_f03_native_spatial_port import NativeHalfCellSpatialPort
 from scripts.b3_e4_f03_l1_native_connection_probe import (

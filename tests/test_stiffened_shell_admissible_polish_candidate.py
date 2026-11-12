@@ -9,8 +9,8 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver.control import SolveCancelled
-from anysolver import _stiffened_shell_ge_finite_experimental as finite
+from anyfesolver.control import SolveCancelled
+from anyfesolver import _stiffened_shell_ge_finite_experimental as finite
 
 
 def _driver(monkeypatch, responses, *, selected=True):
@@ -114,7 +114,7 @@ def test_worst_work_publishes_inside_the_replay_ceiling(monkeypatch):
     # budget. The bounded reserve stops the last optional improvement and
     # publishes the re-verified retained state exactly at the controller
     # replay ceiling; the exact counters replay cleanly.
-    from anysolver._stiffened_shell_increment_control import (
+    from anyfesolver._stiffened_shell_increment_control import (
         AdaptiveIncrementControl, _AdaptiveState, validate_control)
     max_iterations, max_backtracks = 2, 1
     driver, seen, published = _driver(monkeypatch, [
@@ -171,7 +171,7 @@ def test_private_checkpoint_identity_does_not_change_default(monkeypatch):
 
 @pytest.mark.parametrize('staged,adaptive', [(False, False), (True, True)])
 def test_selected_real_owner_checkpoint_round_trip_and_atomic_refusal(request, staged, adaptive):
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
     from test_stiffened_shell_native_plastic_chart import definition, programme
 
     model = definition()

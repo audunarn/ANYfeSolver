@@ -7,9 +7,9 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import FEModel, create_shell_element
-from anysolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
-from anysolver.matrix_assembly import AssemblyError, assemble_stiffness_matrix
+from anyfesolver import FEModel, create_shell_element
+from anyfesolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
+from anyfesolver.matrix_assembly import AssemblyError, assemble_stiffness_matrix
 
 
 def model():

@@ -12,7 +12,7 @@ import json
 from math import fsum
 from pathlib import Path
 
-import anysolver
+import anyfesolver
 import numpy as np
 from threadpoolctl import threadpool_info, threadpool_limits
 
@@ -42,8 +42,8 @@ def _density(saved: dict, segment: int) -> np.ndarray:
 
 
 def evaluate(saved: dict, source_path: Path) -> dict:
-    expected = (Path(__file__).resolve().parents[1] / "src" / "anysolver").resolve()
-    actual = Path(anysolver.__file__).resolve().parent
+    expected = (Path(__file__).resolve().parents[1] / "src" / "anyfesolver").resolve()
+    actual = Path(anyfesolver.__file__).resolve().parent
     if actual != expected:
         raise RuntimeError("saved-mode screen imported another checkout")
     xs, ys, _shell, _physical, beam, _line, qs, qb = _recover(saved)
@@ -147,7 +147,7 @@ def evaluate(saved: dict, source_path: Path) -> dict:
         "saved_mode_sha256": sha256(source_path.read_bytes()).hexdigest(),
         "saved_mode_source_git": saved["source_git"],
         "historical_mean_row_action_work": historical_work,
-        "imported_anysolver": str(actual),
+        "imported_anyfesolver": str(actual),
         "shell_grid_nodes": len(xs)*len(ys),
         "native_beam_halfcells": len(beam.context.elements)*2,
         "bond_segments": patch.segment_count,

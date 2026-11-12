@@ -278,7 +278,7 @@ def test_harness_is_standard_library_planning_only() -> None:
         "pathlib",
         "typing",
     }
-    assert "anysolver" not in imports
+    assert "anyfesolver" not in imports
     assert "numpy" not in imports
     assert "scipy" not in imports
     assert "sympy" not in imports
@@ -334,7 +334,7 @@ def test_registered_contract_rejects_every_previously_unchecked_authority_mutati
     del changed()["candidate"]["flat_candidate_id"]
     changed()["candidate"]["final_formulation_id"] = "MUTATED"
     changed()["candidate"]["v1_fallback_forbidden"] = False
-    changed()["frozen_inputs"]["anysolver_base"]["commit"] = "0" * 40
+    changed()["frozen_inputs"]["anyfesolver_base"]["commit"] = "0" * 40
     changed()["frozen_inputs"]["historical_qv9"]["v1_nogo_result_sha256"] = "0" * 64
     changed()["phase_funnel"]["4A"]["masks"] = ["dispersed"]
     changed()["phase_funnel"]["4B"]["levels"] = [20, 40]

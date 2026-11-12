@@ -2,11 +2,11 @@
 from importlib.util import find_spec
 import numpy as np
 import pytest
-from anysolver import (BoundaryCondition,FixedSupport,LoadCase,PatternCase,RecoveryConfig,ResourceConfig,
+from anyfesolver import (BoundaryCondition,FixedSupport,LoadCase,PatternCase,RecoveryConfig,ResourceConfig,
     PreparedStaticCapabilityError,prepare_static_response_evaluator,export_recovery_capsule,export_recovery_capsule_to_sink)
-from anysolver.fe_core import FEModel
-from anysolver.elements import BeamElement
-from anysolver.prepared_static_numeric import NumericCase
+from anyfesolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement
+from anyfesolver.prepared_static_numeric import NumericCase
 from test_result_capsule_numeric import assert_identical
 from test_result_capsule_replay import capsule_component
 
@@ -91,7 +91,7 @@ def test_opt_in_is_restricted_to_library():
 def test_opt_in_probe_collector_never_admits_other_failures(monkeypatch,failure):
     # This private classifier test uses controlled records only to discriminate
     # refusal branches; it supplies no source evaluator/certification authority.
-    import anysolver.prepared_static_response as response
+    import anyfesolver.prepared_static_response as response
     primitives=('axial_stress','bending_stress_y','bending_stress_z','shear_stress_y','shear_stress_z','torsional_stress')
     zero={name:np.float64(0.) for name in primitives};zero.update(von_mises=np.float64(0.),tag='fixed')
     schema=response._library_schema(7,zero)
@@ -124,7 +124,7 @@ def test_callback_mutation_refuses_normal_archive_publication(tmp_path,monkeypat
     if find_spec("anypost") is None:
         pytest.importorskip("anypost")
     import anypost
-    import anysolver.prepared_static_response as response
+    import anyfesolver.prepared_static_response as response
     path=tmp_path/'existing.h5';previous=b'previous destination preserved';path.write_bytes(previous)
     with prepare(False,numerical_affinity_fallback=True) as evaluator:
         class CallerSink:
@@ -152,8 +152,8 @@ def test_callback_mutation_refuses_normal_archive_publication(tmp_path,monkeypat
 
 @pytest.mark.parametrize('execution',['auto','records'])
 def test_native_cancel_is_outside_owned_scope_and_no_valid_archive(tmp_path,execution):
-    from anysolver import SolveCancelled
-    from anysolver.prepared_static_recovery import _OWNED_RECOVERY_SCOPE
+    from anyfesolver import SolveCancelled
+    from anyfesolver.prepared_static_recovery import _OWNED_RECOVERY_SCOPE
     if find_spec("anypost") is None:
         pytest.importorskip("anypost")
     import anypost
@@ -177,7 +177,7 @@ def test_public_cancel_never_replaces_previous_destination(tmp_path,execution,at
     if find_spec("anypost") is None:
         pytest.importorskip("anypost")
     import anypost
-    from anysolver import CancellationToken,SolveCancelled
+    from anyfesolver import CancellationToken,SolveCancelled
     token=CancellationToken();path=tmp_path/'previous.h5';path.write_bytes(b'previous')
     with prepare(False,numerical_affinity_fallback=True) as evaluator:
         native=anypost.ArchiveSink(path)
@@ -204,7 +204,7 @@ def test_public_cancel_never_replaces_previous_destination(tmp_path,execution,at
 
 @pytest.mark.parametrize('execution',['auto','records'])
 def test_memory_export_observes_its_token_not_preparation_token(execution):
-    from anysolver import CancellationToken,SolveCancelled
+    from anyfesolver import CancellationToken,SolveCancelled
     prep=CancellationToken();export=CancellationToken()
     with prepare(False,numerical_affinity_fallback=True,cancellation_token=prep) as evaluator:
         prep.cancel('preparation token is not retained')
@@ -219,7 +219,7 @@ def test_export_token_cannot_mutate_response_authority(tmp_path):
     if find_spec("anypost") is None:
         pytest.importorskip("anypost")
     import anypost
-    from anysolver.prepared_static_recovery import _OWNED_RECOVERY_SCOPE
+    from anyfesolver.prepared_static_recovery import _OWNED_RECOVERY_SCOPE
     with prepare(False,numerical_affinity_fallback=True) as evaluator:
         class Token:
             def raise_if_cancelled(self,stage):
@@ -256,7 +256,7 @@ def test_actual_unrelated_shell_basis_survives_beam_native_namespace():
 
 
 def test_native_metadata_and_numeric_workspace_obey_resource_policy(tmp_path):
-    from anysolver.recovery import ResourcePolicyError
+    from anyfesolver.recovery import ResourcePolicyError
     if find_spec("anypost") is None:
         pytest.importorskip("anypost")
     import anypost
@@ -273,8 +273,8 @@ def test_source_principal_refusal_and_public_extreme_certification_refusal(tmp_p
     if find_spec("anypost") is None:
         pytest.importorskip("anypost")
     import anypost,json
-    from anysolver.prepared_static_numeric import source_fields
-    from anysolver.prepared_static_loads import PreparedStaticError
+    from anyfesolver.prepared_static_numeric import source_fields
+    from anyfesolver.prepared_static_loads import PreparedStaticError
     from test_result_capsule_export import _rotated_shell_model
     from test_prepared_static_evaluator import _shell_case
     names=('membrane_xx','membrane_yy','membrane_xy','bending_xx','bending_yy','bending_xy','shear_xz','shear_yz')
@@ -332,7 +332,7 @@ def test_actual_archive_sink_native_complete_rows_roundtrip(tmp_path,mixed):
 
 
 def test_conditional_equivalent_namespace_is_stored_when_vm_is_stored():
-    from anysolver.result_capsule import _CapsuleExport
+    from anyfesolver.result_capsule import _CapsuleExport
     with prepare(True,numerical_affinity_fallback=True) as evaluator:
         export=_CapsuleExport(evaluator,[PatternCase('a',{})],model_identity='m',mesh_identity='s')
         # Private descriptor discriminator, not admission of a partial-input
@@ -348,7 +348,7 @@ def test_conditional_equivalent_namespace_is_stored_when_vm_is_stored():
 
 
 def test_native_mapping_detached_and_accounting_is_conservative():
-    from anysolver.prepared_static_response import _library_storage_bytes
+    from anyfesolver.prepared_static_response import _library_storage_bytes
     with prepare(False,numerical_affinity_fallback=True) as evaluator:
         native=evaluator._native_affinity_fallbacks[4808]
         mapping=evaluator._snapshot.recovery_compilation.elements[4808].dof_mapping
@@ -426,9 +426,9 @@ def test_public_export_mixed_batch_two_auto_records_and_actual_native_work(selec
 
 
 def test_missing_native_selected_field_chains_typed_helper_refusal():
-    from anysolver.prepared_static_numeric import prepare_numeric_plan,recover_numeric_cases
-    from anysolver.prepared_static_response import _native_affinity_record
-    from anysolver.prepared_static_loads import PreparedStaticError
+    from anyfesolver.prepared_static_numeric import prepare_numeric_plan,recover_numeric_cases
+    from anyfesolver.prepared_static_response import _native_affinity_record
+    from anyfesolver.prepared_static_loads import PreparedStaticError
     with prepare(False,numerical_affinity_fallback=True) as evaluator:
         snapshot=evaluator._snapshot
         plan=prepare_numeric_plan(snapshot,evaluator._element_library,evaluator._recovery,evaluator._native_affinity_fallbacks)

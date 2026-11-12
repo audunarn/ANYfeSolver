@@ -2,10 +2,10 @@
 from dataclasses import replace
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_ge_distributed_load import decode_checkpoint, encode_checkpoint
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_ge_distributed_load import decode_checkpoint, encode_checkpoint
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
 from test_stiffened_shell_ge_experimental import _panel
 
 
@@ -22,7 +22,7 @@ def load(a, force=(0.,0.,-100.), couple=(3.,5.,2.)):
 
 def test_compiled_stage_density_scatter_reuses_geometry(request,monkeypatch):
     from types import SimpleNamespace
-    import anysolver._stiffened_shell_native_distributed_load as native
+    import anyfesolver._stiffened_shell_native_distributed_load as native
     a=owner(request);context=load(a).compile(a)
     state=SimpleNamespace(q=np.zeros(context.count),
         cells=np.tile(np.eye(3),(context.beam_count,2,1,1)))
@@ -123,7 +123,7 @@ def test_finite_balance_atomic_rejection_cancel_chart_restart(request,monkeypatc
 
 
 def test_global_load_derivative_has_no_couple_chart_skew(request):
-    from anysolver._ge_beam3_p5.algebra import rotation
+    from anyfesolver._ge_beam3_p5.algebra import rotation
     a=owner(request);driver=FinitePointDriver(a)
     pattern,_=driver._prepare_load(load(a),(.1,))
     with pytest.raises(ValueError):driver._prepare_load(load(a,couple=(3.,5.,3.)),(.1,))
@@ -173,8 +173,8 @@ def test_physical_fibre_and_mixed_cancelled_prefix(request,mixed):
 
 
 def test_nonsequential_ids_partial_loading_independent_scatter(request):
-    from anysolver import b3_ge
-    from anysolver._stiffened_shell_native_distributed_load import compile_native_distributed
+    from anyfesolver import b3_ge
+    from anyfesolver._stiffened_shell_native_distributed_load import compile_native_distributed
     base=_panel();beams=[]
     for old,newid in zip(base.beams,(71,13)):
         element,inertia=old.instantiate();ref=element.operator.reference

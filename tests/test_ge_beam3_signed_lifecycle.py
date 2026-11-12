@@ -31,7 +31,7 @@ def test_cancellation_mutations(kind):
 
 def test_exact_preserved_positive_inputs_and_owner():
     for name,(_,digest) in p.POSITIVES.items():assert sha256(p.positive(name)).hexdigest()==digest
-    assert sha256((p.ROOT/'src/anysolver/_ge_beam3_elastic_seed_continuation.py').read_bytes()).hexdigest()==p.OWNER_SHA
+    assert sha256((p.ROOT/'src/anyfesolver/_ge_beam3_elastic_seed_continuation.py').read_bytes()).hexdigest()==p.OWNER_SHA
 
 def test_changed_manifest(tmp_path):
     (tmp_path/'manifest.json').write_bytes(b'{}\n')

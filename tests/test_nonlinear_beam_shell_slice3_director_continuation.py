@@ -14,9 +14,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver import DisplacementControl, solve_static_nonlinear
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver.mesh_gen import InterpolatedBeamShellMPCElement
+from anyfesolver import DisplacementControl, solve_static_nonlinear
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver.mesh_gen import InterpolatedBeamShellMPCElement
 
 
 _spec = importlib.util.spec_from_file_location(
@@ -89,7 +89,7 @@ def test_director_cancelled_same_model_and_inputs_still_deliver(monkeypatch):
     before_u, before_states = u.copy(), copy.deepcopy(states)
     token = CancellationToken()
     events, snapshots = [], []
-    import anysolver.nonlinear_static as ns
+    import anyfesolver.nonlinear_static as ns
     real_snapshot = ns._increment_snapshot
 
     def observe(*args, **kwargs):
@@ -158,8 +158,8 @@ def test_director_incompatible_restart_refused_without_input_mutation():
 def test_director_stopped_negative_run_excludes_rejected_history(monkeypatch):
     """Deliberately insufficient1/1 controls are a separate negative test."""
     import inspect
-    import anysolver.nonlinear_static as ns
-    import anysolver.nonlinear_performance as performance
+    import anyfesolver.nonlinear_static as ns
+    import anyfesolver.nonlinear_performance as performance
 
     half = base._half_case('interp')
     model,load,probe,grid = _build('interp')

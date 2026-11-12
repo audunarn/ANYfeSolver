@@ -2,7 +2,7 @@
 
 Covers the frozen case histories, the exact per-case selected-response digest,
 and the driver-side equivalent backend-operation instrumentation used when the
-measured checkout predates ``anysolver.linalg.backend_operation_counts``.
+measured checkout predates ``anyfesolver.linalg.backend_operation_counts``.
 """
 import importlib.util
 import math
@@ -77,7 +77,7 @@ class StubFactorization:
 
 
 def stub_linalg():
-    module = types.ModuleType('stub_anysolver_linalg')
+    module = types.ModuleType('stub_anyfesolver_linalg')
     module._pardiso_full_factorize = lambda solver, prepared: None
     module._new_pypardiso_solver = lambda *, mtype: StubPardisoSolver()
     module._PardisoFactorization = StubFactorization

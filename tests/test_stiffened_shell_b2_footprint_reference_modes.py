@@ -12,11 +12,11 @@ import pytest
 from scipy import linalg, sparse
 from scipy.sparse.linalg import ArpackNoConvergence
 
-from anysolver import stiffened_shell as api
-from anysolver.control import CancellationToken
-from anysolver._b2_f10_f11_point_attachment import compile_reference_point
-from anysolver._stiffened_shell_physical_q4_mass import physical_mass
-import anysolver._stiffened_shell_b2_q4_panel_experimental as modal_owner
+from anyfesolver import stiffened_shell as api
+from anyfesolver.control import CancellationToken
+from anyfesolver._b2_f10_f11_point_attachment import compile_reference_point
+from anyfesolver._stiffened_shell_physical_q4_mass import physical_mass
+import anyfesolver._stiffened_shell_b2_q4_panel_experimental as modal_owner
 from test_stiffened_shell_b2_nodal_rigid_footprint import (
     _definition as _static_definition, _independent, _load, _owner,
 )

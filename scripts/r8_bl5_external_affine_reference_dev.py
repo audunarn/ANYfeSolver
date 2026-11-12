@@ -574,7 +574,7 @@ def main(site, output, case, *, nx=16, support_count=8, basis=BASIS):
         "thread_scope": "Environment requests only; effective external OpenSees threads unresolved; no resource-qualified claim."}
     try:
         refinement, p0, frozen, service, reference = services()
-        if any(name == "anysolver" or name.startswith("anysolver.") for name in sys.modules):
+        if any(name == "anyfesolver" or name.startswith("anyfesolver.") for name in sys.modules):
             raise ValueError("independent external runner must not import product modules")
         model = refinement.geometry(nx, reference)
         model["support_count"] = support_count  # Explicit endpoints i/ns; eight remains the default.

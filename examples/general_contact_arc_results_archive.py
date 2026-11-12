@@ -1,6 +1,6 @@
 """Public affine/preload arc producer and bounded inert data consumer."""
 from examples.general_contact_arc_length_affine import analysis as solve
-from anysolver.general_contact import read_arc_contact_results
+from anyfesolver.general_contact import read_arc_contact_results
 
 
 def analysis():

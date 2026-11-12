@@ -4,10 +4,10 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import BoundaryCondition, LoadCase
-from anysolver.dynamics import TransientConfig
-from anysolver.general_contact.core import active_contact_manager
-from anysolver.general_contact.transient import (
+from anyfesolver import BoundaryCondition, LoadCase
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.general_contact.core import active_contact_manager
+from anyfesolver.general_contact.transient import (
     ContactNodalLoadHistory,ContactTransientSolverControls,solve_transient_contact,
 )
 from test_general_contact_beam_plane import _model
@@ -167,9 +167,9 @@ def test_deformable_b3_partial_impact_retains_rotary_motion_and_normal_momentum(
 
 @pytest.mark.parametrize('cancel',[False,True])
 def test_beam_path_failure_or_cancellation_preserves_commit_boundary(monkeypatch,cancel):
-    import anysolver.general_contact.transient as driver
-    import anysolver.general_contact.beam_temporal_bounds as geometry
-    from anysolver.control import CancellationToken, SolveCancelled
+    import anyfesolver.general_contact.transient as driver
+    import anyfesolver.general_contact.beam_temporal_bounds as geometry
+    from anyfesolver.control import CancellationToken, SolveCancelled
     token = CancellationToken()
     commits,calls = [],[]
     commit,bounds = driver.commit_state_candidate,geometry.beam_hermite_gap_bounds

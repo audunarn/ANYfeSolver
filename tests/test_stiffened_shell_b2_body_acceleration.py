@@ -5,10 +5,10 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver import stiffened_shell as api
-from anysolver.control import CancellationToken
-from anysolver._stiffened_shell_b2_q4_panel_experimental import ExperimentalB2Q4PanelError
-from anysolver._b2_physical_flexibility_linear import RepresentabilityError
+from anyfesolver import stiffened_shell as api
+from anyfesolver.control import CancellationToken
+from anyfesolver._stiffened_shell_b2_q4_panel_experimental import ExperimentalB2Q4PanelError
+from anyfesolver._b2_physical_flexibility_linear import RepresentabilityError
 from test_stiffened_shell_b2_mixed_panel_experimental import _definition
 
 

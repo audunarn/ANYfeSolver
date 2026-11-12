@@ -6,14 +6,14 @@ import numpy as np
 import pytest
 from numpy.polynomial.legendre import leggauss
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactSolverSettings, ContactSurface, LoadCase, create_shell_element,
     solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.patch_sliding import _RestrictedSlidingPatchFEManager
-from anysolver.nonlinear_static import _assemble_nonlinear_system_unchecked
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.patch_sliding import _RestrictedSlidingPatchFEManager
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system_unchecked
 
 
 @pytest.fixture(scope="module")

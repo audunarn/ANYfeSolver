@@ -1,6 +1,6 @@
 """Declared Q4 skin and two fixed tools compiled once for ordinary static solve."""
-from anysolver import BoundaryCondition,FEModel,LoadCase,create_shell_element,solve_static_nonlinear
-from anysolver.general_contact import (ContactSurface,RigidContactBody,ContactSolverSettings,
+from anyfesolver import BoundaryCondition,FEModel,LoadCase,create_shell_element,solve_static_nonlinear
+from anyfesolver.general_contact import (ContactSurface,RigidContactBody,ContactSolverSettings,
     AutomaticContactParticipant,AutomaticContactDefaults,AutomaticContactDomain,
     resolve_automatic_contact_domain,verify_automatic_contact_resolution)
 
@@ -37,7 +37,7 @@ def build_shell_pair(*,deformable_target=True):
     The geometry, material, 50 um gap and penalty stiffness follow the
     admitted Q4/S3 path example. One target translation is free by default.
     """
-    from anysolver import ContactPathControl,ContactPathProgram
+    from anyfesolver import ContactPathControl,ContactPathProgram
     model=FEModel('declared-automatic-q4-s3-path')
     model.add_material('elastic',1e5,.3,density=1.)
     points=((.1,.1,.055),(1.1,.1,.055),(1.1,1.1,.055),(.1,1.1,.055),
@@ -86,7 +86,7 @@ def build_projected_shell_pair(*,lifecycle=False,path_predictor='none',sliding=F
     press, then separates and recontacts at that lateral position. It requires
     the explicit development predictor; other source ux remain unknowns.
     """
-    from anysolver import ContactPathControl,ContactPathProgram
+    from anyfesolver import ContactPathControl,ContactPathProgram
     if sliding and path_predictor!='control_projection_dev':
         raise ValueError('sliding example requires explicit control_projection_dev')
     model=FEModel('declared-automatic-refined-projected-q4-s3')

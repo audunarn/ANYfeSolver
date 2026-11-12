@@ -13,8 +13,8 @@ import pytest
 from scipy import sparse
 
 from examples.general_contact_s3_friction_physical_path import build_case,solve_case
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.s3_sliding_friction import S3SlidingFrictionManager,S3SlidingFrictionSettings
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_sliding_friction import S3SlidingFrictionManager,S3SlidingFrictionSettings
 
 STAGE=os.environ.get('FRICTION_STAGE','unit')
 EVIDENCE=Path(os.environ.get('AUTOMATIC_WORKFLOW_EVIDENCE','.'))
@@ -47,7 +47,7 @@ def wrench(model,u,residual):
 
 @pytest.mark.skipif(STAGE!='unit',reason='separate bounded stage')
 def test_canonical_material_work_and_whole_path():
-    from anysolver.general_contact.s3_friction_coverage import full_coverage
+    from anyfesolver.general_contact.s3_friction_coverage import full_coverage
     results=[];reference=None
     for ps,pt in ((1,1),(1,-1),(-1,1),(-1,-1)):
         case=build_case(ps,pt);m=case[0];owner=manager(case)
@@ -114,7 +114,7 @@ def test_canonical_material_work_and_whole_path():
 
 
 def physical_gates(case,result,restart=None):
-    from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
     m=case[0];owner=manager(case);rows=[]
     if restart:owner.restore(restart['path_state']['friction_state'],np.asarray(restart['displacements']))
     for snap in result.snapshots:
@@ -218,9 +218,9 @@ def test_default_contract_and_refusal_atomicity(monkeypatch):
     monkeypatch.setattr(owner,'_work',lambda *a,**k: (_ for _ in ()).throw(RuntimeError('trial exception')))
     with pytest.raises(RuntimeError,match='trial exception'):owner.prepare_commit(np.asarray(before['displacement']))
     assert owner.checkpoint_state()==before
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.control import CancellationToken,SolveCancelled
     token=CancellationToken();token.cancel('physical friction precancel')
-    from anysolver import solve_static_nonlinear
+    from anyfesolver import solve_static_nonlinear
     m,d,s,f,p=build_case();model_before=repr(m)
     with pytest.raises(SolveCancelled):solve_static_nonlinear(m,contact=d,contact_settings=s,contact_friction=f,contact_path_program=p,cancellation_token=token)
     assert repr(m)==model_before
@@ -231,8 +231,8 @@ def test_default_contract_and_refusal_atomicity(monkeypatch):
     with pytest.raises(ValueError):solve_case(build_case(),restart=tamper)
     # Exact friction subtype envelope must refuse before a material assembly.
     from test_general_contact_s3_friction_static import _case
-    import anysolver.nonlinear_static as driver
-    import anysolver.general_contact.static_path as path_driver
+    import anyfesolver.nonlinear_static as driver
+    import anyfesolver.general_contact.static_path as path_driver
     sentinel=lambda *a,**k: (_ for _ in ()).throw(AssertionError('material allocated'))
     monkeypatch.setattr(driver,'_assemble_nonlinear_system',sentinel)
     monkeypatch.setattr(path_driver,'_assemble_nonlinear_system',sentinel)
@@ -246,10 +246,10 @@ def test_default_contract_and_refusal_atomicity(monkeypatch):
 
 @pytest.mark.skipif(STAGE!='rollback',reason='separate bounded stage')
 def test_public_trial_exception_and_inflight_cancellation(monkeypatch):
-    from anysolver.control import CancellationToken,SolveCancelled
-    from anysolver.general_contact.runtime import active_contact_manager
-    import anysolver.general_contact.s3_friction_static as factory
-    import anysolver.nonlinear_static as driver
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.general_contact.runtime import active_contact_manager
+    import anyfesolver.general_contact.s3_friction_static as factory
+    import anyfesolver.nonlinear_static as driver
     prefix=json.loads((EVIDENCE/'active-prefix.json').read_text())['checkpoint']
     immutable=copy.deepcopy(prefix);expected=prefix['path_state']['friction_state']
     normalize=lambda x:json.loads(json.dumps(x))
@@ -287,9 +287,9 @@ def test_public_trial_exception_and_inflight_cancellation(monkeypatch):
             normal_multipliers_unchanged=True,context_restored=True,checkpoint_unchanged=True,
             declared_model_unchanged=True))
     # Public unsafe seed: no material trial or accepted contact/history commit.
-    from anysolver.general_contact import ContactPathProgram
+    from anyfesolver.general_contact import ContactPathProgram
     m,d,s,f,p=build_case();bad=ContactPathProgram(p.controls,((0.,0.),(2.,-.015005)),1)
-    import anysolver.general_contact.static_path as path_driver
+    import anyfesolver.general_contact.static_path as path_driver
     rejected_owners=[];before=repr(m);context=active_contact_manager()
     def capture_rejected(*a):
         owner=original_factory(*a);rejected_owners.append(owner);return owner
@@ -315,7 +315,7 @@ def test_uncancelled_sliding_friction_reports_zero_reaction_predictor(monkeypatc
     # verifies the projected-profile zero allowance, checks its finite
     # nonnegative result and returns zero; the solve completes with the zero
     # reporting diagnostic and the expected step-one contact-activation branch.
-    import anysolver.general_contact.static_path as path_driver
+    import anyfesolver.general_contact.static_path as path_driver
     real = path_driver._elastic_displacement_force_predictor
     seen = []
     def spy(*args, **kwargs):

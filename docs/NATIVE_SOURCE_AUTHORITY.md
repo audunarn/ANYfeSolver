@@ -9,8 +9,9 @@ unsupported Python/platform combinations retain the complete Python guard.
 `ANYSOLVER_NATIVE_GUARD=python` selects the literal guard at process startup.
 
 The native plan owns only original expected facts. Every existing native safe
-point still checks all 18 class records and 1274 helper records plus the matcher
-bootstrap. Class/MRO namespace order, callable metadata, globals, closures,
+point checks all 18 class records and, in the CPython 3.11 Windows inventory,
+1,304 helper records plus the matcher bootstrap. MRO order, class members in
+name order, callable metadata, globals, closures,
 empty cells and the exact integer generation-counter exception retain their
 literal meaning. Comparison memos and current grammar inspection are discarded
 after each guard. Unknown grammar or any predicate mismatch runs the complete

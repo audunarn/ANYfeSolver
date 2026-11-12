@@ -8,8 +8,8 @@ import pytest
     reason='archived baseline input AUTOMATIC_WORKFLOW_EVIDENCE/full-baseline-1.json absent: saved-candidate replay requires the original evidence root')
 def test_saved_candidate_profile():
     from examples.general_contact_automatic_q4_pair import build
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.q4_q4_overlap_derivatives import q4_q4_overlap_derivatives
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.q4_q4_overlap_derivatives import q4_q4_overlap_derivatives
     model,domain,settings,resolution,path=build()
     manager=GeneralS3PatchManager(model,resolution.definition,settings)
     root=Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])
@@ -29,12 +29,12 @@ def test_saved_candidate_profile():
     reason='archived baseline inputs AUTOMATIC_WORKFLOW_EVIDENCE install.json/outputs/full-baseline-1.json absent: baseline-peer parity replay requires the original evidence root')
 def test_smooth_parity_and_real_both_body_work(monkeypatch):
     import importlib.util,sys
-    from anysolver.general_contact import q4_q4_overlap_derivatives as current
+    from anyfesolver.general_contact import q4_q4_overlap_derivatives as current
     raw=Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE']).parent
     install=json.loads((raw/'install.json').read_text())
     module_name='_measured_cost_baseline'
-    spec=importlib.util.spec_from_file_location(module_name,Path(install['site'])/'anysolver/general_contact/q4_q4_overlap_derivatives.py')
-    baseline=importlib.util.module_from_spec(spec);baseline.__package__='anysolver.general_contact';sys.modules[module_name]=baseline;spec.loader.exec_module(baseline)
+    spec=importlib.util.spec_from_file_location(module_name,Path(install['site'])/'anyfesolver/general_contact/q4_q4_overlap_derivatives.py')
+    baseline=importlib.util.module_from_spec(spec);baseline.__package__='anyfesolver.general_contact';sys.modules[module_name]=baseline;spec.loader.exec_module(baseline)
     from examples.general_contact_automatic_q4_pair import build
     model,domain,settings,resolution,path=build()
     controls=dict(area_tolerance=settings.q4_source_area_tolerance,weighted_gap_tolerance=settings.q4_source_weighted_gap_tolerance,maximum_triangles=512,support_gradient_tolerance=settings.q4_source_support_gradient_tolerance,support_hessian_tolerance=settings.q4_source_support_hessian_tolerance,weighted_gap_gradient_tolerance=settings.q4_source_weighted_gap_gradient_tolerance,weighted_gap_hessian_tolerance=settings.q4_source_weighted_gap_hessian_tolerance)
@@ -57,7 +57,7 @@ def test_smooth_parity_and_real_both_body_work(monkeypatch):
         assert old.branch_signature==new.branch_signature and old.integration_triangles==new.integration_triangles
         assert abs(old.overlap_area-new.overlap_area)<=1e-13
         report.append(dict(case=name,scaled_errors=errors,integration_triangles=new.integration_triangles,branch_equal=True))
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     manager=GeneralS3PatchManager(model,resolution.definition,settings)
     pose=np.array(json.loads((raw/'outputs/full-baseline-1.json').read_text())['displacements'])
     optimized=current.q4_q4_overlap_derivatives
@@ -76,8 +76,8 @@ def test_smooth_parity_and_real_both_body_work(monkeypatch):
 
 
 def test_actual_q4_backend_scope_and_legacy_dispatch(monkeypatch):
-    import anysolver.general_contact.q4_s3_overlap_derivatives as helper
-    from anysolver.general_contact.q4_q4_overlap_derivatives import q4_q4_overlap_derivatives
+    import anyfesolver.general_contact.q4_s3_overlap_derivatives as helper
+    from anyfesolver.general_contact.q4_q4_overlap_derivatives import q4_q4_overlap_derivatives
     calls=[]
     def compiled21(av,ag,ah,bv,bg,bh):
         assert ag.shape[1]==bg.shape[1]==21,'24-coordinate Q4 route reached compiled backend'

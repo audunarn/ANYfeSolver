@@ -6,13 +6,13 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     ContactSolverSettings, solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.general_contact.augmentation import (
+from anyfesolver.general_contact.augmentation import (
     ProjectedAugmentationSecant, propose_active_set_pivot,
 )
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 from examples.general_contact_refined_q4_s3_mixed_path import make_case
 
 

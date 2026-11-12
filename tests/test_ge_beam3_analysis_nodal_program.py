@@ -6,9 +6,9 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import _ge_beam3_analysis_nodal_program as route
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import _ge_beam3_analysis_nodal_program as route
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_ge_beam3_native_analysis import analysis
 from test_ge_beam3_native_generalized_modal import make
 from test_ge_beam3_native_fibre_static_element import problem as fibre_problem

@@ -1,6 +1,6 @@
 """Audit and display the actual ANYfem SESAM import; neither solver is run.
 
-Run from any directory with the ANYsolver development Python environment.
+Run from any directory with the ANYfeSolver development Python environment.
 By default this inspects the retained FEM used in the comparison. Pass --fem
 to inspect another file, including the live GeniE export. Outputs are an
 interactive, self-contained 3D HTML model and a JSON runtime audit.
@@ -24,7 +24,7 @@ def main() -> int:
     parser.add_argument('--open', action='store_true', help='Open the interactive model in your browser')
     args = parser.parse_args()
     # Use the checked-out ecosystem source rather than older installed packages.
-    for name in ('ANYfem', 'ANYsolver', 'ANYfileIO', 'ANYgeometry', 'ANYmesh', 'ANYmaterial'):
+    for name in ('ANYfem', 'ANYfeSolver', 'ANYfileIO', 'ANYgeometry', 'ANYmesh', 'ANYmaterial'):
         source = repo.parent / name / 'src'
         if source.is_dir():
             sys.path.insert(0, str(source))
@@ -32,7 +32,7 @@ def main() -> int:
     import numpy as np
     import plotly.graph_objects as go
     from anyfem.io.sesam import import_sesam
-    from anysolver.elements import BeamElement
+    from anyfesolver.elements import BeamElement
 
     fem = args.fem.resolve(strict=True)
     imported = import_sesam(fem, strict=True)
@@ -98,7 +98,7 @@ def main() -> int:
     centers, arms = np.array(centers), np.array(arms)
     fig.add_trace(go.Scatter3d(x=centers[:,0],y=centers[:,1],z=centers[:,2],mode='lines',line=dict(color='#713d12',width=3),name='Solver beam centroid lines'))
     fig.add_trace(go.Scatter3d(x=arms[:,0],y=arms[:,1],z=arms[:,2],mode='lines',line=dict(color='#555555',width=2,dash='dash'),name='System-node to centroid offsets'))
-    modules = {name: str(Path(importlib.import_module(name).__file__).resolve()) for name in ('anyfem.io.sesam','anysolver.sesam_fem.importer','anysolver.elements','anyfileio.sesam.document')}
+    modules = {name: str(Path(importlib.import_module(name).__file__).resolve()) for name in ('anyfem.io.sesam','anyfesolver.sesam_fem.importer','anyfesolver.elements','anyfileio.sesam.document')}
     checks_pass = all(a['web_perpendicular_to_plate'] and a['rectangular_flatbar_properties_match'] for a in audit)
     record = dict(source_fem=str(fem), source_sha256=hashlib.sha256(imported.source_contents).hexdigest(), route='anyfem.io.sesam.import_sesam(strict=True) -> imported.fe_model', loaded_modules=modules, shell_count=len(shells), beam_count=len(beams), diagnostics=[str(d) for d in imported.diagnostics], upright_flatbar_checks_pass=checks_pass, beams=audit, limitation='Import/orientation audit only; no numerical solve or result acceptance. Solid flatbars are a display reconstruction from effective beam axes and section dimensions. Shells displayed at their midsurfaces.')
     (output/'beam_audit.json').write_text(json.dumps(record,indent=2),encoding='utf-8')

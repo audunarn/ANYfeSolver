@@ -5,8 +5,8 @@ import json
 import numpy as np
 import pytest
 from anymaterial import DNVC208MaterialCurve
-from anysolver import stiffened_shell as ss
-from anysolver._stiffened_shell_beam_history import arrays as native_history_arrays
+from anyfesolver import stiffened_shell as ss
+from anyfesolver._stiffened_shell_beam_history import arrays as native_history_arrays
 from test_stiffened_shell_bl5_material import model, make
 from test_stiffened_shell_bl5_finite import _action
 
@@ -103,8 +103,8 @@ def test_yielded_bl5_actual_update_tangent_in_all_row_families(request, record_p
 
 
 def _coupled_history_roundtrip(request,monkeypatch,tmp_path,basis,*,reversal):
-    from anysolver.control import CancellationToken,SolveCancelled
-    from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
     definition=coupled(basis, simultaneous_yield_fixture=True);a=make(request,definition)
     assert "shell J2 plastic" not in a.capabilities["excluded"]
     programme=ss.StagedDeadLoadProgramme(a.preflight()["identity"],

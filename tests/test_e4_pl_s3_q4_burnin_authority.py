@@ -31,9 +31,9 @@ ATTEMPT_5_CONTRACT_SHA256 = (
     "519b24c97f7a3953457922aa08514efd59e5aacfc26843c1765988e79cc1842c"
 )
 RESOURCE_MANAGER = Path(r"C:\Github\.resource-manager")
-FINAL_FREEZE = Path(r"C:\Github\ANYsolver\.perf2-worktrees\s3-e4-pl-final-freeze")
+FINAL_FREEZE = Path(r"C:\Github\ANYfeSolver\.perf2-worktrees\s3-e4-pl-final-freeze")
 ANYFEM_FREEZE = Path(
-    r"C:\Github\ANYsolver\.perf2-worktrees\anyfem-e4-pl-default-routing"
+    r"C:\Github\ANYfeSolver\.perf2-worktrees\anyfem-e4-pl-default-routing"
 )
 CORRECTION_OUTPUT_ROOT = Path(
     r"C:\Users\AudunArnesenNyhus\AppData\Local\ANYrelease\s3-q4-final-freeze-correction-22"
@@ -254,30 +254,30 @@ INITIAL_PATHS = [
     "docs/reference_cases/e4_pl_s3_mixed_mesh_qualification_contract.json",
     "docs/reference_cases/e4_pl_s3_mixed_mesh_smoke_input.json",
     "scripts/run_e4_pl_burnin_gate.py",
-    "src/anysolver/__init__.py",
-    "src/anysolver/_qualified_authority_epoch.py",
-    "src/anysolver/algebraic_dynamics.py",
-    "src/anysolver/arc_length.py",
-    "src/anysolver/assembly.py",
-    "src/anysolver/boundary.py",
-    "src/anysolver/buckling.py",
-    "src/anysolver/current_state_tangent.py",
-    "src/anysolver/dynamics.py",
-    "src/anysolver/e4_pl_element.py",
-    "src/anysolver/e4_pl_s3_element.py",
-    "src/anysolver/e4_pl_s3_state.py",
-    "src/anysolver/elements.py",
-    "src/anysolver/fe_core.py",
-    "src/anysolver/matrix_assembly.py",
-    "src/anysolver/modal.py",
-    "src/anysolver/nonlinear_performance.py",
-    "src/anysolver/nonlinear_restart.py",
-    "src/anysolver/nonlinear_state.py",
-    "src/anysolver/nonlinear_static.py",
-    "src/anysolver/recovery.py",
-    "src/anysolver/recovery_batches.py",
-    "src/anysolver/s3_reference_batch.py",
-    "src/anysolver/shell_sections.py",
+    "src/anyfesolver/__init__.py",
+    "src/anyfesolver/_qualified_authority_epoch.py",
+    "src/anyfesolver/algebraic_dynamics.py",
+    "src/anyfesolver/arc_length.py",
+    "src/anyfesolver/assembly.py",
+    "src/anyfesolver/boundary.py",
+    "src/anyfesolver/buckling.py",
+    "src/anyfesolver/current_state_tangent.py",
+    "src/anyfesolver/dynamics.py",
+    "src/anyfesolver/e4_pl_element.py",
+    "src/anyfesolver/e4_pl_s3_element.py",
+    "src/anyfesolver/e4_pl_s3_state.py",
+    "src/anyfesolver/elements.py",
+    "src/anyfesolver/fe_core.py",
+    "src/anyfesolver/matrix_assembly.py",
+    "src/anyfesolver/modal.py",
+    "src/anyfesolver/nonlinear_performance.py",
+    "src/anyfesolver/nonlinear_restart.py",
+    "src/anyfesolver/nonlinear_state.py",
+    "src/anyfesolver/nonlinear_static.py",
+    "src/anyfesolver/recovery.py",
+    "src/anyfesolver/recovery_batches.py",
+    "src/anyfesolver/s3_reference_batch.py",
+    "src/anyfesolver/shell_sections.py",
     "tests/test_e4_pl_burnin.py",
     "tests/test_e4_pl_component_snapshot_integrity.py",
     "tests/test_e4_pl_current_state_input_ownership.py",
@@ -326,17 +326,17 @@ REJECTED_PATHS = [
     "docs/reference_cases/e4_pl_s3_q4_cycle1_rejected_resource_status.json",
 ]
 CORRECTION_PATHS = [
-    "src/anysolver/current_state_tangent.py",
-    "src/anysolver/recovery.py",
-    "src/anysolver/s4_validity.py",
+    "src/anyfesolver/current_state_tangent.py",
+    "src/anyfesolver/recovery.py",
+    "src/anyfesolver/s4_validity.py",
     "tests/test_e4_pl_guarded_observations.py",
     "tests/test_material_history_recovery.py",
     "tests/test_nonlinear_static_state_lifecycle.py",
     "tests/test_production_validation.py",
 ]
 RUNTIME_EFFICIENCY_CORRECTION_PATHS = [
-    "src/anysolver/matrix_assembly.py",
-    "src/anysolver/nonlinear_static.py",
+    "src/anyfesolver/matrix_assembly.py",
+    "src/anyfesolver/nonlinear_static.py",
     "tests/test_e4_pl_orchestrator_operation_lease.py",
     "tests/test_qualified_mutation_epoch.py",
 ]
@@ -1072,7 +1072,7 @@ def test_contract_is_canonical_and_binds_all_local_inputs() -> None:
                 "src/anyfileio/__pycache__/cad.cpython-313.pyc",
             ],
             "repository": (
-                r"C:\Github\ANYsolver\.perf2-worktrees\s3-q4-anyfileio-9b1e5ad"
+                r"C:\Github\ANYfeSolver\.perf2-worktrees\s3-q4-anyfileio-9b1e5ad"
             ),
         },
         "lane": "quick",
@@ -2007,9 +2007,9 @@ def test_candidate_chain_and_authority_extent_are_exact() -> None:
         (
             contract["candidate_chain"]["recovery_efficiency_correction"],
             [
-                "src/anysolver/assembly.py",
-                "src/anysolver/matrix_assembly.py",
-                "src/anysolver/recovery_batches.py",
+                "src/anyfesolver/assembly.py",
+                "src/anyfesolver/matrix_assembly.py",
+                "src/anyfesolver/recovery_batches.py",
                 "tests/test_qualified_mutation_epoch.py",
             ],
         ),
@@ -2020,17 +2020,17 @@ def test_candidate_chain_and_authority_extent_are_exact() -> None:
         (
             contract["candidate_chain"]["prestress_efficiency_correction"],
             [
-                "src/anysolver/buckling.py",
-                "src/anysolver/matrix_assembly.py",
-                "src/anysolver/modal.py",
+                "src/anyfesolver/buckling.py",
+                "src/anyfesolver/matrix_assembly.py",
+                "src/anyfesolver/modal.py",
                 "tests/test_e4_pl_s3_prestressed_modal_buckling.py",
             ],
         ),
         (
             contract["candidate_chain"]["mixed_prestress_efficiency_correction"],
             [
-                "src/anysolver/matrix_assembly.py",
-                "src/anysolver/modal.py",
+                "src/anyfesolver/matrix_assembly.py",
+                "src/anyfesolver/modal.py",
                 "tests/test_e4_pl_s3_prestressed_modal_buckling.py",
             ],
         ),
@@ -2515,7 +2515,7 @@ def test_functional_wave_is_exact_staged_parallel_and_hard_bounded() -> None:
         "FINAL_RESULT_VALIDATION",
     ]
     assert contract["execution"]["clean_status_scope"] == [
-        "ANYsolver",
+        "ANYfeSolver",
         "ANYfem",
         "ANYfileIO",
         "ANYgeometry",
@@ -4077,7 +4077,7 @@ def test_v18_shard_environment_discards_barrier_and_inner_wave_controls(
     monkeypatch.setenv("PYTHONPATH", "")
     roots = {
         name: tmp_path / name
-        for name in ("ANYmesh", "ANYgeometry", "ANYmaterial", "ANYfileIO", "ANYsolver")
+        for name in ("ANYmesh", "ANYgeometry", "ANYmaterial", "ANYfileIO", "ANYfeSolver")
     }
     monkeypatch.setattr(gate, "_local_roots", lambda: dict(roots))
     monkeypatch.setattr(gate, "_write_source_metadata_overlay", lambda *_args: None)
@@ -5435,7 +5435,7 @@ def test_failed_acquisition_job_close_prevents_request_consumption(
     monkeypatch.setattr(
         process_runner.burnin,
         "external_repository_paths",
-        lambda _contract: {"ANYsolver": candidate},
+        lambda _contract: {"ANYfeSolver": candidate},
     )
     monkeypatch.setattr(process_runner, "_manager_paths", lambda _contract: manager)
     monkeypatch.setattr(
@@ -6572,7 +6572,7 @@ def test_resource_state_machine_order_and_finalizer_prefixes_are_frozen(
     assert scope_iteration < complete_clean_probe < named_repository < candidate_authority
 
     # Canonical JSON sorts repository keys, while the frozen clean-status scope
-    # deliberately starts with ANYsolver. Runtime verification must therefore
+    # deliberately starts with ANYfeSolver. Runtime verification must therefore
     # select repositories by scope name instead of trusting mapping insertion order.
     scope = contract["execution"]["clean_status_scope"]
     repository_root = tmp_path / "repositories"
@@ -6585,7 +6585,7 @@ def test_resource_state_machine_order_and_finalizer_prefixes_are_frozen(
     assert list(canonical_repositories) != scope
 
     clean_probes: list[Path] = []
-    monkeypatch.setattr(process_runner, "ROOT", canonical_repositories["ANYsolver"])
+    monkeypatch.setattr(process_runner, "ROOT", canonical_repositories["ANYfeSolver"])
     monkeypatch.setattr(process_runner, "_verify_local_runner_inputs", lambda _contract: None)
     monkeypatch.setattr(
         process_runner.burnin,
@@ -6623,7 +6623,7 @@ def test_resource_state_machine_order_and_finalizer_prefixes_are_frozen(
 
     monkeypatch.setattr(process_runner.burnin, "_git", sibling_git)
     candidate, siblings, head, tree = process_runner._verify_repositories(contract)
-    assert candidate == canonical_repositories["ANYsolver"]
+    assert candidate == canonical_repositories["ANYfeSolver"]
     assert siblings == {
         name: canonical_repositories[name] for name in contract["sibling_authority"]
     }
@@ -7176,7 +7176,7 @@ def test_package_artifacts_are_revalidated_before_approval_and_consumption(
     candidate = {"commit": "a" * 40, "tree": "b" * 40}
     package = _valid_package_result(contract)
     expected_sources = {
-        "ANYsolver": candidate,
+        "ANYfeSolver": candidate,
         **{
             name: authority
             for name, authority in contract["sibling_authority"].items()
@@ -7186,7 +7186,7 @@ def test_package_artifacts_are_revalidated_before_approval_and_consumption(
     for name, authority in expected_sources.items():
         package["sources"][name]["commit"] = authority["commit"]
         package["sources"][name]["tree"] = authority["tree"]
-    package["wheels"]["ANYsolver"] = {
+    package["wheels"]["ANYfeSolver"] = {
         "bytes": len(wheel_bytes),
         "filename": wheel_path.name,
         "sha256": hashlib.sha256(wheel_bytes).hexdigest(),

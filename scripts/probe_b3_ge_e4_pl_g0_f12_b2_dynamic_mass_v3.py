@@ -131,8 +131,8 @@ def evaluate():
               all(c["scaled_eigen_equation_residual"] < 1e-8 and
                   c["minimum_reduced_mass_eigenvalue"] > 0 for c in cases))
     sources = [Path(__file__), Path(previous.__file__),
-        Path("src/anysolver/_b2_physical_flexibility_linear.py"),
-        Path("src/anysolver/_b2_physical_linear_definition.py")]
+        Path("src/anyfesolver/_b2_physical_flexibility_linear.py"),
+        Path("src/anyfesolver/_b2_physical_linear_definition.py")]
     return {"classification": "bounded F12 high-precision continuum comparison, not spectral admission",
             "question": "Does the B2 static-trace mass converge to a separately derived Timoshenko continuum frequency?",
             "reference_method": "60-digit Decimal conforming monomial w/theta Ritz energies and inverse iteration",

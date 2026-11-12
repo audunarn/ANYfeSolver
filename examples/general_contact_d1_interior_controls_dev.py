@@ -1,6 +1,6 @@
 """Development example: bounded nonmatching Q4/S3 contact under both controls.
 
-Run against an installed ANYsolver package. This example is implemented and
+Run against an installed ANYfeSolver package. This example is implemented and
 locally tested; D1 scientific acceptance and release remain open.
 """
 
@@ -13,14 +13,14 @@ from pathlib import Path
 
 import numpy as np
 
-import anysolver
-from anysolver import (
+import anyfesolver
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactPathControl, ContactPathNodalForce, ContactPathProgram,
     ContactSolverSettings, ContactSurface, create_shell_element,
     solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.fe_core import FEModel
+from anyfesolver.fe_core import FEModel
 
 
 def build_model():
@@ -356,7 +356,7 @@ def run():
         "split_restart_verified": True,
         "restart_maximum_displacement_difference_m": displacement_error,
         "restart_maximum_contact_force_difference_n": force_error,
-        "anysolver_module": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_module": str(Path(anyfesolver.__file__).resolve()),
         "steps": records,
     }
 

@@ -5,13 +5,13 @@ import math
 import numpy as np
 import pytest
 from scipy.integrate import quad
-from anysolver.marine_equilibrium import (elastic_catenary, initialize_mooring_catenaries,
+from anyfesolver.marine_equilibrium import (elastic_catenary, initialize_mooring_catenaries,
     solve_mooring_equilibrium, MooringStaticSpec, MooringEquilibriumError)
-from anysolver.marine_mooring import (MooringLine, MooringLineAssembler, MooringNodeState,
+from anyfesolver.marine_mooring import (MooringLine, MooringLineAssembler, MooringNodeState,
     FixedEndpoint as Anchor, DynamicLineNodeEndpoint as Node,
     RigidBodyAttachmentEndpoint as Fairlead)
-from anysolver.marine_seabed import SeabedContact
-from anysolver.marine_rigid import RigidBody6D
+from anyfesolver.marine_seabed import SeabedContact
+from anyfesolver.marine_rigid import RigidBody6D
 
 
 def model_case(count=8, *, contact=False, current=False, body=False):
@@ -179,7 +179,7 @@ def test_failure_and_cancellation_return_only_accepted_stages_without_mutation()
 
 
 def test_unrepresentable_contact_merit_retains_residual_route(monkeypatch):
-    import anysolver.marine_equilibrium as equilibrium
+    import anyfesolver.marine_equilibrium as equilibrium
     model,states=model_case(contact=True)
     def overflow(*args):
         raise OverflowError('injected unrepresentable potential summation')

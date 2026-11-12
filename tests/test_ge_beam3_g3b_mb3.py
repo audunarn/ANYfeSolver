@@ -6,13 +6,13 @@ from pathlib import Path
 from unittest.mock import patch
 import numpy as np
 import pytest
-from anysolver.elements import QuadraticBeamElement
-from anysolver.fe_core import FEModel, Material
-from anysolver._ge_beam3_g1_element import ElasticElement
-from anysolver._ge_beam3_g1_elastic import ElasticSection, canonical
-from anysolver._ge_beam3_g1_operator import ElasticOperator
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
-from anysolver._ge_beam3_g3b_reference import B3TranslationReferenceProblem, B3_POLICY
+from anyfesolver.elements import QuadraticBeamElement
+from anyfesolver.fe_core import FEModel, Material
+from anyfesolver._ge_beam3_g1_element import ElasticElement
+from anyfesolver._ge_beam3_g1_elastic import ElasticSection, canonical
+from anyfesolver._ge_beam3_g1_operator import ElasticOperator
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry as Reference
+from anyfesolver._ge_beam3_g3b_reference import B3TranslationReferenceProblem, B3_POLICY
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = json.loads((ROOT/'docs/reference_cases/ge_beam3_g3_graph_fixtures_v1.json').read_text())
@@ -108,8 +108,8 @@ def test_mb3_reference_kkt_smoke():
 
 @pytest.mark.parametrize('case', ['midpoint', 'curved', 'eccentricity', 'generalized', 'b2_type', 'subclass', 'null_policy', 'b2_policy'])
 def test_b3_specific_admission_precedes_both_operators(case):
-    from anysolver.elements import BeamElement
-    from anysolver._ge_beam3_g3b_reference import POLICY
+    from anyfesolver.elements import BeamElement
+    from anyfesolver._ge_beam3_g3b_reference import POLICY
     native, legacy, material, kw = parts()
     problem = B3TranslationReferenceProblem
     if case == 'midpoint': kw['nodes'][202][0] += 1e-9
@@ -135,7 +135,7 @@ def test_b3_specific_capture_mutations(case):
     elif case == 'eccentricity': p.legacy.eccentricity[0] = .01
     elif case == 'generalized': p.legacy.generalized_section = object()
     elif case == 'family':
-        from anysolver._ge_beam3_g3b_reference import B2TranslationReferenceProblem
+        from anyfesolver._ge_beam3_g3b_reference import B2TranslationReferenceProblem
         p.__class__ = B2TranslationReferenceProblem
     elif case == 'nullspace': p.T = p.T*.5
     else: p.J = p.J*.5
@@ -231,26 +231,26 @@ def test_successor_extent_preserves_mechanics_and_historical_records():
     parent = '5da2a9c6efad7feb6a573196f3791b7872717bbe'
     git = ['git', '-c', 'safe.directory='+ROOT.as_posix()]
     allowed = {
-        'src/anysolver/_ge_beam3_g3b_reference.py': 'M',
+        'src/anyfesolver/_ge_beam3_g3b_reference.py': 'M',
         'scripts/run_ge_beam3_g3b.py': 'M',
         'tests/test_ge_beam3_g3b_mb2.py': 'M',
         'tests/test_ge_beam3_g3b_mb3.py': 'A',
         'docs/GE_BEAM3_G3B_M_B3_DEVELOPMENT.md': 'A',
         'docs/reference_cases/ge_beam3_g3b_mb3_development_v1.json': 'A',
-        'src/anysolver/_ge_beam3_g3b_q4_reference.py': 'A', 'tests/test_ge_beam3_g3b_mq4.py': 'A',
+        'src/anyfesolver/_ge_beam3_g3b_q4_reference.py': 'A', 'tests/test_ge_beam3_g3b_mq4.py': 'A',
         'docs/GE_BEAM3_G3B_M_Q4_DEVELOPMENT.md': 'A',
         'docs/reference_cases/ge_beam3_g3b_mq4_development_v1.json': 'A',
-        'src/anysolver/_ge_beam3_g3b_s3_reference.py': 'A', 'tests/test_ge_beam3_g3b_ms3.py': 'A',
+        'src/anyfesolver/_ge_beam3_g3b_s3_reference.py': 'A', 'tests/test_ge_beam3_g3b_ms3.py': 'A',
         'docs/GE_BEAM3_G3B_M_S3_DEVELOPMENT.md': 'A',
         'docs/reference_cases/ge_beam3_g3b_ms3_development_v1.json': 'A',
-        'src/anysolver/_ge_beam3_g3b_weighted_reference.py':'A','tests/test_ge_beam3_g3b_weighted.py':'A',
+        'src/anyfesolver/_ge_beam3_g3b_weighted_reference.py':'A','tests/test_ge_beam3_g3b_weighted.py':'A',
         'docs/GE_BEAM3_G3B_WEIGHTED_DEVELOPMENT.md':'A','docs/reference_cases/ge_beam3_g3b_weighted_development_v1.json':'A'}
     allowed.update({p:'A' for p in ["tests/test_ge_beam3_g3b_transport.py","docs/GE_BEAM3_G3B_TRANSPORT_DEVELOPMENT.md","docs/reference_cases/ge_beam3_g3b_transport_development_v1.json"]})
-    allowed.update({p:'A' for p in ["src/anysolver/_ge_beam3_g3b_owner.py","tests/test_ge_beam3_g3b_owner.py","docs/GE_BEAM3_G3B_OWNER_CONTRACT.md","docs/reference_cases/ge_beam3_g3b_owner_development_v1.json"]})
+    allowed.update({p:'A' for p in ["src/anyfesolver/_ge_beam3_g3b_owner.py","tests/test_ge_beam3_g3b_owner.py","docs/GE_BEAM3_G3B_OWNER_CONTRACT.md","docs/reference_cases/ge_beam3_g3b_owner_development_v1.json"]})
     allowed.update({p:"A" for p in ["docs/GE_BEAM3_G3B_ENTRY_SAFETY_STATUS.md","docs/reference_cases/ge_beam3_g3b_confirmation_inventory_v2.json"]})
     allowed.update({p:"A" for p in ["scripts/confirm_ge_beam3_g3b.py","scripts/ge_beam3_g3b_environment.py","tests/test_ge_beam3_g3b_confirmation_runner.py","docs/GE_BEAM3_G3B_CONFIRMATION_RUNNER_STATUS.md"]})
     allowed.update({p:"A" for p in ["scripts/ge_beam3_g3b_confirmation_authority.py","tests/test_ge_beam3_g3b_confirmation_authority.py","docs/GE_BEAM3_G3B_FORMAL_CONFIRMATION_CONTRACT.md","docs/reference_cases/ge_beam3_g3b_confirmation_inventory_v1.json"]})
-    allowed.update({p:"A" for p in ["docs/GE_BEAM3_G3B_LOCAL_REVIEW_STATUS.md","docs/reference_cases/ge_beam3_g3b_local_safety_review_v1.json","src/anysolver/_ge_beam3_g3b_result_schema.py","tests/test_ge_beam3_g3b_owner_corrections.py","docs/GE_BEAM3_G3B_OWNER_CORRECTIONS.md"]})
+    allowed.update({p:"A" for p in ["docs/GE_BEAM3_G3B_LOCAL_REVIEW_STATUS.md","docs/reference_cases/ge_beam3_g3b_local_safety_review_v1.json","src/anyfesolver/_ge_beam3_g3b_result_schema.py","tests/test_ge_beam3_g3b_owner_corrections.py","docs/GE_BEAM3_G3B_OWNER_CORRECTIONS.md"]})
     diff = subprocess.check_output(git+['diff', '--name-status', parent, '--'], cwd=ROOT, timeout=20).decode()
     for line in diff.splitlines():
         status, path = line.split('\t'); assert allowed.get(path) == status

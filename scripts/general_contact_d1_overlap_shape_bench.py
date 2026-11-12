@@ -10,7 +10,7 @@ from time import perf_counter
 
 import numpy as np
 
-from anysolver.general_contact.overlap import (
+from anyfesolver.general_contact.overlap import (
     PlanarFace, _q4_shape, planar_projected_overlap,
 )
 

@@ -10,7 +10,7 @@ import json
 import time
 from pathlib import Path
 
-import anysolver
+import anyfesolver
 import numpy as np
 from scipy import linalg
 from threadpoolctl import threadpool_info
@@ -115,12 +115,12 @@ def screen(full_x_cells: int, transverse_cells: int) -> dict:
 
 
 if __name__ == "__main__":
-    expected = (Path(__file__).resolve().parents[1] / "src" / "anysolver").resolve()
-    actual = Path(anysolver.__file__).resolve().parent
+    expected = (Path(__file__).resolve().parents[1] / "src" / "anyfesolver").resolve()
+    actual = Path(anyfesolver.__file__).resolve().parent
     if actual != expected:
-        raise RuntimeError("six-channel screen imported another ANYsolver checkout")
+        raise RuntimeError("six-channel screen imported another ANYfeSolver checkout")
     print(json.dumps({"kind": "environment", "threadpools": threadpool_info(),
-                      "imported_anysolver": str(actual)}), flush=True)
+                      "imported_anyfesolver": str(actual)}), flush=True)
     for nx, ny in ((8, 2), (16, 4)):
         print(json.dumps({"kind": "six_channel_work_screen", **screen(nx, ny)}),
               flush=True)

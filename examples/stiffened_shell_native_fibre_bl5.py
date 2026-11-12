@@ -3,7 +3,7 @@ from dataclasses import replace
 import argparse
 import json
 import numpy as np
-from anysolver import b3_ge, stiffened_shell as ss
+from anyfesolver import b3_ge, stiffened_shell as ss
 
 
 def definition(family='biaxial', beams='mixed', basis='p0', yield_stress=1e20, shell='q4'):

@@ -2,7 +2,7 @@
 from fractions import Fraction as F
 import numpy as np
 import pytest
-from anysolver._dyadic_bilinear import reassemble_exact_binary64 as reassemble
+from anyfesolver._dyadic_bilinear import reassemble_exact_binary64 as reassemble
 
 
 def dot(a,b): return sum((x*y for x,y in zip(a,b)),F())

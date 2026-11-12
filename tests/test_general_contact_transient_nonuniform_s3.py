@@ -12,12 +12,12 @@ import os
 import runpy
 import numpy as np
 import pytest
-from anysolver import ContactTransientSolverControls, TransientConfig, solve_transient_contact
-from anysolver.assembly import assemble_mass_matrix
-from anysolver.matrix_assembly import assemble_stiffness_matrix
-from anysolver.general_contact.runtime import active_contact_manager
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.nonlinear_restart import analysis_configuration_fingerprint, model_configuration_fingerprint
+from anyfesolver import ContactTransientSolverControls, TransientConfig, solve_transient_contact
+from anyfesolver.assembly import assemble_mass_matrix
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.general_contact.runtime import active_contact_manager
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.nonlinear_restart import analysis_configuration_fingerprint, model_configuration_fingerprint
 
 example = runpy.run_path(str(Path(__file__).parents[1]/'examples/general_contact_nonuniform_s3_impact_dev.py'))
 MASS, B, SUPPORT, KN, GAP = (example[key] for key in ('MASS','B','SUPPORT','KN','GAP'))
@@ -221,7 +221,7 @@ def test_nonuniform_default_and_unrepresented_source_motion_rejected():
 
 @pytest.mark.parametrize('failure',('cancel','exception'))
 def test_nonuniform_rejected_candidate_cleans_owner_without_partial_checkpoint(monkeypatch,failure):
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.control import CancellationToken,SolveCancelled
     model,definition,modes = example['build_model']()
     fingerprint = model_configuration_fingerprint(model)
     token = CancellationToken(); calls = 0
@@ -249,7 +249,7 @@ def test_nonuniform_rejected_candidate_cleans_owner_without_partial_checkpoint(m
 
 
 def test_unresolved_physical_sweep_cuts_back_before_acceptance(monkeypatch):
-    from anysolver.general_contact import shell_pair_hermite_sweep as module
+    from anyfesolver.general_contact import shell_pair_hermite_sweep as module
     original = module.shell_pair_hermite_lower
     calls = 0
     def bounded_failure(*args,**kwargs):
@@ -270,8 +270,8 @@ def test_unresolved_physical_sweep_cuts_back_before_acceptance(monkeypatch):
 
 
 def test_cancellation_inside_physical_sweep_restores_owner(monkeypatch):
-    from anysolver.control import CancellationToken,SolveCancelled
-    from anysolver.general_contact import shell_pair_hermite_sweep as module
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.general_contact import shell_pair_hermite_sweep as module
     model,definition,modes = example['build_model']()
     fingerprint = model_configuration_fingerprint(model)
     token = CancellationToken()

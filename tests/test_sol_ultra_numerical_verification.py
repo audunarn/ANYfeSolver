@@ -18,7 +18,7 @@ SCRIPT = ROOT / "scripts" / "verify_sol_ultra_numerics.py"
 @pytest.fixture(scope="module")
 def harness():
     spec = importlib.util.spec_from_file_location(
-        "anysolver_sol_ultra_verification_harness",
+        "anyfesolver_sol_ultra_verification_harness",
         SCRIPT,
     )
     assert spec is not None and spec.loader is not None

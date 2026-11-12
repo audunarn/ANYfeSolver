@@ -7,11 +7,11 @@ import numpy as np
 import pytest
 from scipy.integrate import quad
 from scipy.optimize import root
-from anysolver import (BoundaryCondition, LoadCase, DisplacementControl, CancellationToken,
+from anyfesolver import (BoundaryCondition, LoadCase, DisplacementControl, CancellationToken,
     SolveCancelled, solve_static_nonlinear, validate_general_contact)
-from anysolver.elements import BeamElement, QuadraticBeamElement
-from anysolver.general_contact.beam_hemisphere_s3_support import hemisphere_s3_work
-from anysolver.general_contact.deformable_beam_s3_caps import DeformableBeamS3CapManager, PROFILE
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver.general_contact.beam_hemisphere_s3_support import hemisphere_s3_work
+from anyfesolver.general_contact.deformable_beam_s3_caps import DeformableBeamS3CapManager, PROFILE
 from test_general_contact_deformable_beam_s3_static import fixture as line_fixture, constraints
 from test_general_contact_deformable_beam_s3_static import independent_contact_gradient as line_oracle
 from test_general_contact_hemisphere_plane import scalar_gap
@@ -153,7 +153,7 @@ def coupled_fixture():
 
 
 def test_actual_deforming_target_coupled_force_displacement_oracle_and_restart():
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
     model,definition,settings,load=coupled_fixture()
     common=dict(contact=definition,contact_settings=settings,num_steps=4,max_iterations=25,
         tolerance=1e-10,emit_restart_checkpoint=True)
@@ -281,7 +281,7 @@ def test_true_material_ends_and_explicit_admission():
 
 def test_runnable_moving_skin_example_and_unaccepted_capability():
     from examples.general_contact_deformable_s3_caps import run, build
-    from anysolver import report_general_contact_capability
+    from anyfesolver import report_general_contact_capability
     result=run();assert result.status=='completed'
     assert result.info['general_contact']['profile']==PROFILE
     model,definition,settings,_=build()

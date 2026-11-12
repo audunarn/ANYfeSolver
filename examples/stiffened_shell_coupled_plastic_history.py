@@ -10,7 +10,7 @@ import math
 
 import numpy as np
 from anymaterial import DNVC208MaterialCurve
-from anysolver import b3_ge, stiffened_shell as ss
+from anyfesolver import b3_ge, stiffened_shell as ss
 
 
 OPTIONS = dict(max_iterations=20, max_backtracks=12)

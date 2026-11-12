@@ -7,14 +7,14 @@ from math import factorial
 import numpy as np
 import pytest
 
-from anysolver.e4_pl_s3_element import (
+from anyfesolver.e4_pl_s3_element import (
     MASS_MOMENT_ID,
     TRIANGLE_QUADRATURE,
     QualifiedE4PLS3ShellElement,
     _analytic_mass_moments,
 )
-from anysolver.fe_core import FEMesh, Material
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.fe_core import FEMesh, Material
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 def _mesh(nodes: np.ndarray) -> FEMesh:

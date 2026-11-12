@@ -4,7 +4,7 @@ import warnings
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_mixed_ad import Jet2
+from anyfesolver._ge_beam3_mixed_ad import Jet2
 
 
 def _generic_product(left, right):

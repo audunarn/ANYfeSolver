@@ -6,7 +6,7 @@ This exercises lifecycle and control, not engineering capacity qualification.
 from pathlib import Path
 from math import fsum
 import argparse,json
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from stiffened_shell_coupled_plastic_history import definition,OPTIONS
 
 

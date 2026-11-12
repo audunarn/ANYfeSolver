@@ -14,19 +14,19 @@ import math
 import numpy as np
 import pytest
 
-from anysolver import (ContactRequestIdentityError, LoadCase,
+from anyfesolver import (ContactRequestIdentityError, LoadCase,
                        identify_general_contact_request)
-from anysolver.general_contact import validate_general_contact
-from anysolver.general_contact import s3_patch_static
-from anysolver.general_contact.core import _contact_settings_contract
-from anysolver.general_contact.q4_overlap_local_bound import (
+from anyfesolver.general_contact import validate_general_contact
+from anyfesolver.general_contact import s3_patch_static
+from anyfesolver.general_contact.core import _contact_settings_contract
+from anyfesolver.general_contact.q4_overlap_local_bound import (
     _divide_positive,
     overlap_violating_point_witness,
 )
-from anysolver.general_contact.request_identity import (
+from anyfesolver.general_contact.request_identity import (
     verify_general_contact_request,
 )
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
 from scripts.general_contact_d1_interior_press_dev import build_interior_press
 from test_general_contact_q4_s3_patch_static import _case
 

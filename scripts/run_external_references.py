@@ -11,7 +11,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from anysolver.external_references import (
+from anyfesolver.external_references import (
     DEFAULT_CALCULIX_RUN_PATH,
     DEFAULT_EXTERNAL_REFERENCE_PATH,
     write_external_reference_report,

@@ -10,8 +10,8 @@ import sys
 import tempfile
 from pathlib import Path
 
-from anysolver import BoundaryCondition, FEModel, create_shell_element, solve_static_nonlinear
-from anysolver.general_contact import (ContactDefinition, ContactInteraction,
+from anyfesolver import BoundaryCondition, FEModel, create_shell_element, solve_static_nonlinear
+from anyfesolver.general_contact import (ContactDefinition, ContactInteraction,
     ContactSurface, ContactSolverSettings, ContactPathControl, ContactPathProgram,
     S3SlidingFrictionSettings)
 

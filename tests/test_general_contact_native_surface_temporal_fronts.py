@@ -4,11 +4,11 @@ from dataclasses import replace
 import numpy as np
 import pytest
 from scipy.optimize import brentq
-from anysolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
-from anysolver.general_contact.native_surface_front import (StationaryAngularCover,PreparedStationaryBand,
+from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
+from anyfesolver.general_contact.native_surface_front import (StationaryAngularCover,PreparedStationaryBand,
     IsolatedStationaryFront,stationary_front_angular_cover,prepare_stationary_band,
     stationary_front_partition_prepared,prepared_front_open_interval)
-from anysolver.general_contact.native_surface_support import SupportIntervalBudget
+from anyfesolver.general_contact.native_surface_support import SupportIntervalBudget
 from test_general_contact_native_surface_support import _field
 from test_general_contact_native_surface_local_fronts import _mixed
 
@@ -91,7 +91,7 @@ def test_saved_local_front_coefficient_discriminator(tmp_path):
     import json,os
     from pathlib import Path
     from dataclasses import asdict
-    from anysolver.general_contact.native_surface_front import axial_contact_front,stationary_front_slab
+    from anyfesolver.general_contact.native_surface_front import axial_contact_front,stationary_front_slab
     from test_general_contact_native_surface_local_fronts import _saved_local_front_field
     field,_,_=_saved_local_front_field();rows=[]
     for index in range(len(field.segments)):
@@ -116,7 +116,7 @@ def test_saved_local_front_coefficient_discriminator(tmp_path):
 @pytest.mark.parametrize('rate',[0.,1e-4])
 def test_component_roundoff_preserves_rate_scale_and_decimal_product_errors(rate):
     from decimal import Decimal,localcontext
-    from anysolver.general_contact.native_surface_front import _front_coefficient_roundoff
+    from anyfesolver.general_contact.native_surface_front import _front_coefficient_roundoff
     # Independent scalar cross/dot analogue with two moving orthogonal edges.
     # Perturb their absolute positions and velocities before evaluating products.
     with localcontext() as context:
@@ -142,7 +142,7 @@ def test_component_roundoff_preserves_rate_scale_and_decimal_product_errors(rate
 
 
 def test_endpoint_angular_partition_encloses_analytic_boundary_without_dropping_bands():
-    from anysolver.general_contact.native_surface_front_boundary import stationary_endpoint_angular_partition
+    from anyfesolver.general_contact.native_surface_front_boundary import stationary_endpoint_angular_partition
     field=_mixed(rotation=.8);angles=field.patch.rule.definition['angle_range']
     result=stationary_endpoint_angular_partition(field,0,angles,budget=SupportIntervalBudget(16))
     # Independent plane/round-section path: N at final time is a positive
@@ -158,7 +158,7 @@ def test_endpoint_angular_partition_encloses_analytic_boundary_without_dropping_
 
 
 def test_endpoint_angular_partition_retains_degenerate_and_tangent_polynomials():
-    from anysolver.general_contact.native_surface_front_boundary import _polynomial_guards
+    from anyfesolver.general_contact.native_surface_front_boundary import _polynomial_guards
     assert _polynomial_guards((0.,0.,0.),0.,0.,1.)==((0.,1.),)
     assert _polynomial_guards((-1.,1.,0.),1e-12,0.,1.)==((0.,1.),)
     assert not _polynomial_guards((2.,1.,0.),1e-12,0.,1.)
@@ -171,7 +171,7 @@ def test_endpoint_angular_partition_retains_degenerate_and_tangent_polynomials()
 def test_near_tangent_simple_guards_contain_all_bounded_coefficient_perturbations():
     from itertools import product
     from math import acos,atan2
-    from anysolver.general_contact.native_surface_front_boundary import _polynomial_guards
+    from anyfesolver.general_contact.native_surface_front_boundary import _polynomial_guards
     coefficients=(-1.+1e-5,1.,0.);error=1e-7
     guards=_polynomial_guards(coefficients,error,-.1,.1)
     assert len(guards)==2 and all(a<b for a,b in guards)
@@ -188,8 +188,8 @@ def test_saved_endpoint_angular_partition_records_both_captured_transitions(tmp_
     import json,os
     from pathlib import Path
     from dataclasses import asdict
-    from anysolver.general_contact.native_surface_front_boundary import stationary_endpoint_angular_partition
-    from anysolver.general_contact.native_surface_front import axial_contact_front
+    from anyfesolver.general_contact.native_surface_front_boundary import stationary_endpoint_angular_partition
+    from anyfesolver.general_contact.native_surface_front import axial_contact_front
     from test_general_contact_native_surface_local_fronts import _saved_local_front_field
     field,_,_=_saved_local_front_field();angles=field.patch.rule.definition['angle_range']
     result=stationary_endpoint_angular_partition(field,1,angles,budget=SupportIntervalBudget(16))
@@ -219,7 +219,7 @@ def test_saved_endpoint_angular_partition_records_both_captured_transitions(tmp_
 def test_saved_regular_angular_bands_have_complete_zero_one_zero_branch_covers(tmp_path):
     import json,os
     from pathlib import Path
-    from anysolver.general_contact.native_surface_front_boundary import stationary_endpoint_angular_partition
+    from anyfesolver.general_contact.native_surface_front_boundary import stationary_endpoint_angular_partition
     from test_general_contact_native_surface_local_fronts import _saved_local_front_field
     field,_,_=_saved_local_front_field();angles=field.patch.rule.definition['angle_range']
     budget=SupportIntervalBudget(128)
@@ -241,7 +241,7 @@ def test_saved_regular_angular_bands_have_complete_zero_one_zero_branch_covers(t
 
 
 def test_variable_endpoint_branch_prepared_extrema_match_analytic_clamped_motion():
-    from anysolver.general_contact.native_surface_front_boundary import stationary_endpoint_angular_partition
+    from anyfesolver.general_contact.native_surface_front_boundary import stationary_endpoint_angular_partition
     field=_mixed(rotation=.8);angles=field.patch.rule.definition['angle_range'];budget=SupportIntervalBudget(128)
     endpoints=stationary_endpoint_angular_partition(field,0,angles,budget=budget)
     cover=stationary_front_angular_cover(field,0,0,angles,budget=budget,
@@ -271,7 +271,7 @@ def test_variable_endpoint_branch_prepared_extrema_match_analytic_clamped_motion
 def test_saved_all_angular_bands_keep_bounded_potential_extrema(tmp_path):
     import json,os
     from pathlib import Path
-    from anysolver.general_contact.native_surface_front_boundary import stationary_endpoint_angular_partition
+    from anyfesolver.general_contact.native_surface_front_boundary import stationary_endpoint_angular_partition
     from test_general_contact_native_surface_local_fronts import _saved_local_front_field
     field,_,_=_saved_local_front_field();angles=field.patch.rule.definition['angle_range']
     budget=SupportIntervalBudget(128)
@@ -295,7 +295,7 @@ def test_saved_all_angular_bands_keep_bounded_potential_extrema(tmp_path):
 
 
 def test_strict_clamp_uses_certified_derivative_sign_when_rounded_magnitudes_reverse(monkeypatch):
-    import anysolver.general_contact.native_surface_front as front
+    import anyfesolver.general_contact.native_surface_front as front
     field=_mixed(rotation=.8);angles=field.patch.rule.definition['angle_range'];e=1e-12
     cover=StationaryAngularCover(field.identity,0,0,angles,((0.,1.),),
         xi_bounds=(-.8,-.2),front_components=((0.,1.,1.,1.),),variable_branches=(True,))

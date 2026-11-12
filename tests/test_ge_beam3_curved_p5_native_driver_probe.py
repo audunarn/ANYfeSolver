@@ -6,13 +6,13 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver.fe_core import FEModel
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.nonlinear_static import solve_static_nonlinear, _assemble_nonlinear_system, NonlinearConvergenceSettings
-from anysolver.nonlinear_state import NonlinearStateStore, StateTransactionError, create_model_native_rotation_store
-from anysolver._native_rotation_state import NativeRotationValidationError
-from anysolver._native_material_protocol import NativeMaterialValidator, NativeMaterialContext
-from anysolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
+from anyfesolver.fe_core import FEModel
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.nonlinear_static import solve_static_nonlinear, _assemble_nonlinear_system, NonlinearConvergenceSettings
+from anyfesolver.nonlinear_state import NonlinearStateStore, StateTransactionError, create_model_native_rotation_store
+from anyfesolver._native_rotation_state import NativeRotationValidationError
+from anyfesolver._native_material_protocol import NativeMaterialValidator, NativeMaterialContext
+from anyfesolver.ge_beam3_curved_reference import CurvedBeam3ReferenceGeometry
 from docs.reference_cases.ge_beam3_curved_p5_native_driver_probe import DriverP5Element
 from docs.reference_cases.ge_beam3_curved_p5_native_material_probe import NativeMaterialError, canonical, seal
 from docs.reference_cases.ge_beam3_curved_p5_algebra_probe import reference_hessians

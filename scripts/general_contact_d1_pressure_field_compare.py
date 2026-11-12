@@ -2,7 +2,7 @@
 
 This read-only development diagnostic uses exact tensor-product two-point
 quadrature for the squared difference of piecewise bilinear fields. It does not
-call ANYsolver contact geometry, constitutive code, or acceptance machinery.
+call ANYfeSolver contact geometry, constitutive code, or acceptance machinery.
 """
 
 from __future__ import annotations

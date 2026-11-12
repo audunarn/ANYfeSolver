@@ -37,7 +37,7 @@ def test_bound_source_hashes_and_private_runtime_import_boundary():
                 if isinstance(node, ast.Import): imports = [a.name for a in node.names]
                 elif isinstance(node, ast.ImportFrom): imports = [node.module]
                 else: continue
-                assert all(name.split('.')[0] in sys.stdlib_module_names | {'anysolver', 'numpy'} for name in imports)
+                assert all(name.split('.')[0] in sys.stdlib_module_names | {'anyfesolver', 'numpy'} for name in imports)
 
 
 def test_exact_external_archive_inventories_and_deterministic_outputs():

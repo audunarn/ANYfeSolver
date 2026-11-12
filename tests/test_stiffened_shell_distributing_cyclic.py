@@ -5,10 +5,10 @@ from math import fsum
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_increment_control import encode_control, _AdaptiveState
-from anysolver._stiffened_shell_ge_checkpoint_binary import decode, encode
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_increment_control import encode_control, _AdaptiveState
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode, encode
 from test_stiffened_shell_ge_distributing_material import definition as base_definition, actions
 
 HISTORY = (.25, .5, .75, 1., .75, .5, .25, 0., -.25, -.5, -.75, -1., -.5, 0., .5, 1.)
@@ -59,7 +59,7 @@ def test_actual_load_unload_reverse_and_zero_checkpoint_continue(coupled):
             # Reuse this bounded fixture's validated metadata only to recover
             # its exact arrays for canonical tampering, not production decode.
             import json
-            from anysolver._stiffened_shell_ge_checkpoint_binary import MAGIC
+            from anyfesolver._stiffened_shell_ge_checkpoint_binary import MAGIC
             start = len(MAGIC)+4
             size = int.from_bytes(raw[len(MAGIC):start], "little")
             header = json.loads(raw[start:start+size])

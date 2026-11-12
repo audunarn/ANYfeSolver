@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.beam_curve_pair import (
+from anyfesolver.general_contact.beam_curve_pair import (
     b3_distance_jet, closest_on_b3,
 )
 

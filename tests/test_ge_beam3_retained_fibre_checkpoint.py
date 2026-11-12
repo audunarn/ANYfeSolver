@@ -60,7 +60,7 @@ def test_native_runtime_has_no_research_or_legacy_beam_mechanics_dependency():
         assert not any(name.startswith(('docs.', 'tests.')) for name in imports)
         names = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
         assert not names & {'QuadraticBeamElement', 'RetainedPlasticOperator', 'RetainedElasticOperator'}
-    tree = ast.parse((ROOT/'src/anysolver/_ge_beam3_retained_fibre_state.py').read_text())
+    tree = ast.parse((ROOT/'src/anyfesolver/_ge_beam3_retained_fibre_state.py').read_text())
     layout = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == 'Layout')
     reused = [node.value.attr for node in layout.body if isinstance(node, ast.Assign)
               and isinstance(node.value, ast.Attribute) and isinstance(node.value.value, ast.Name)

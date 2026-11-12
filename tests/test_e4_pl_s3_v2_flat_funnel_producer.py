@@ -50,9 +50,9 @@ def _plan(tmp_path: Path) -> tuple[Path, dict[str, object]]:
 
 
 def _tiny_q4_model() -> tuple[object, dict[int, str]]:
-    from anysolver.boundary import LoadCase
-    from anysolver.elements import create_shell_element
-    from anysolver.fe_core import FEModel
+    from anyfesolver.boundary import LoadCase
+    from anyfesolver.elements import create_shell_element
+    from anyfesolver.fe_core import FEModel
 
     level = 2
     model = FEModel("tiny-phase4a-q4")
@@ -105,8 +105,8 @@ def _tiny_q4_model() -> tuple[object, dict[int, str]]:
 
 
 def _tiny_mixed_model() -> tuple[object, list[object], object]:
-    from anysolver.elements import create_shell_element
-    from anysolver.fe_core import FEModel
+    from anyfesolver.elements import create_shell_element
+    from anyfesolver.fe_core import FEModel
 
     model = FEModel("tiny-phase4a-qualified-q4-v2a")
     model.add_material(
@@ -851,7 +851,7 @@ def test_candidate_archive_must_exactly_match_extracted_source(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     candidate = tmp_path / "candidate-source"
-    package = candidate / "src" / "anysolver"
+    package = candidate / "src" / "anyfesolver"
     package.mkdir(parents=True)
     source = b'FORMULATION = "S3_V2A"\n'
     (package / "__init__.py").write_bytes(source)
@@ -861,11 +861,11 @@ def test_candidate_archive_must_exactly_match_extracted_source(
     generator.write_bytes(generator_source)
     archive = tmp_path / "candidate-source.tar"
     with tarfile.open(archive, mode="w:") as bundle:
-        for name in ("src", "src/anysolver", "docs", "docs/reference_cases"):
+        for name in ("src", "src/anyfesolver", "docs", "docs/reference_cases"):
             directory = tarfile.TarInfo(name)
             directory.type = tarfile.DIRTYPE
             bundle.addfile(directory)
-        member = tarfile.TarInfo("src/anysolver/__init__.py")
+        member = tarfile.TarInfo("src/anyfesolver/__init__.py")
         member.size = len(source)
         bundle.addfile(member, io.BytesIO(source))
         member = tarfile.TarInfo(

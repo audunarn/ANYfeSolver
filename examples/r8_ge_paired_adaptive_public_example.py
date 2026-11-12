@@ -1,6 +1,6 @@
 """Public paired signed load/unload/reload example; caller supplies limits."""
 def continue_cycle(owner,loads,*,force_seed_sha256,increment_control,cancellation_token=None,on_accepted=None):
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
     if type(increment_control) is not ss.AdaptiveIncrementControl or increment_control!=ss.AdaptiveIncrementControl(4,96):
         raise ValueError('this prepared programme requires root-adopted4cutbacks/96total attempts')
     target=0.028578804694929322

@@ -2,7 +2,7 @@
 
 --render emits the proposed binding to stdout; it never creates authority files.
 --check checks the canonical binding, source identities and planning-only extent.
-Neither mode imports ANYsolver or executes mechanics.
+Neither mode imports ANYfeSolver or executes mechanics.
 """
 
 import argparse
@@ -29,18 +29,18 @@ SOURCES = (
     "docs/reference_cases/ge_beam3_legacy_parity_inventory_v1.json",
     "docs/GE_BEAM3_NATIVE_WORKFLOWS.md",
     "docs/GE_BEAM3_DELIVERY_STATUS.md",
-    "src/anysolver/elements.py",
-    "src/anysolver/assembly.py",
-    "src/anysolver/constraint_audit.py",
-    "src/anysolver/beam_sections.py",
-    "src/anysolver/_native_rotation_state.py",
-    "src/anysolver/_native_material_protocol.py",
-    "src/anysolver/_ge_beam3_native_definition.py",
-    "src/anysolver/_ge_beam3_native_analysis.py",
-    "src/anysolver/_ge_beam3_native_generalized_element.py",
-    "src/anysolver/_ge_beam3_native_fibre_static_element.py",
-    "src/anysolver/_ge_beam3_native_generalized_restart.py",
-    "src/anysolver/_ge_beam3_native_fibre_restart.py",
+    "src/anyfesolver/elements.py",
+    "src/anyfesolver/assembly.py",
+    "src/anyfesolver/constraint_audit.py",
+    "src/anyfesolver/beam_sections.py",
+    "src/anyfesolver/_native_rotation_state.py",
+    "src/anyfesolver/_native_material_protocol.py",
+    "src/anyfesolver/_ge_beam3_native_definition.py",
+    "src/anyfesolver/_ge_beam3_native_analysis.py",
+    "src/anyfesolver/_ge_beam3_native_generalized_element.py",
+    "src/anyfesolver/_ge_beam3_native_fibre_static_element.py",
+    "src/anyfesolver/_ge_beam3_native_generalized_restart.py",
+    "src/anyfesolver/_ge_beam3_native_fibre_restart.py",
     "scripts/release_043_runtime.json",
 )
 

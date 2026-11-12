@@ -5,20 +5,20 @@ import itertools
 import numpy as np
 import pytest
 
-from anysolver import FEModel, QualifiedE4PLS3ShellElement
-from anysolver.buckling import solve_eigenvalue_buckling
-from anysolver.e4_pl_s3_element import (
+from anyfesolver import FEModel, QualifiedE4PLS3ShellElement
+from anyfesolver.buckling import solve_eigenvalue_buckling
+from anyfesolver.e4_pl_s3_element import (
     GEOMETRIC_STIFFNESS_POLICY_ID,
     HOMOGENEOUS_ELASTIC_STRESS_PROFILE_ID,
     PHYSICAL_EXTERNAL_INDICES,
     REFERENCE_ELASTIC_BUBBLE_LINEARIZATION_ID,
     TRIANGLE_QUADRATURE,
 )
-from anysolver.element_capabilities import ElementCapabilityError
-from anysolver.fe_core import FEMesh, Material
-from anysolver.matrix_assembly import assemble_geometric_stiffness_matrix
-from anysolver.nonlinear import solve_nonlinear_load_stepping
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.element_capabilities import ElementCapabilityError
+from anyfesolver.fe_core import FEMesh, Material
+from anyfesolver.matrix_assembly import assemble_geometric_stiffness_matrix
+from anyfesolver.nonlinear import solve_nonlinear_load_stepping
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 OWNER_NORMAL = np.asarray((0.0, 0.0, 1.0))

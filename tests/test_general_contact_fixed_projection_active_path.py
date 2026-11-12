@@ -5,8 +5,8 @@ import os
 import numpy as np
 import pytest
 
-from anysolver import solve_static_nonlinear, validate_general_contact
-from anysolver.general_contact.s3_patch_static import (
+from anyfesolver import solve_static_nonlinear, validate_general_contact
+from anyfesolver.general_contact.s3_patch_static import (
     REFINED_Q4_S3_GRAPH_AUGMENTED_PROFILE,
 )
 from examples.general_contact_fixed_projection_skew import (

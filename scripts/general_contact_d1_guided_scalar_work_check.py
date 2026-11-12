@@ -4,9 +4,9 @@ import json
 
 import numpy as np
 
-from anysolver import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
 
 
 def scalar_work(dx: float, dy: float, rigidity: float) -> np.ndarray:

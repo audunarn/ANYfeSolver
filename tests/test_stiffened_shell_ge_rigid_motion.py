@@ -7,8 +7,8 @@ import pytest
 from scipy.spatial.transform import Rotation
 from anymaterial import DNVC208MaterialCurve
 
-from anysolver._stiffened_shell_ge_experimental import ExperimentalGEAnalysis
-from anysolver._stiffened_shell_ge_finite_experimental import (
+from anyfesolver._stiffened_shell_ge_experimental import ExperimentalGEAnalysis
+from anyfesolver._stiffened_shell_ge_finite_experimental import (
     FinitePointDriver, _State, _position_pair,
 )
 

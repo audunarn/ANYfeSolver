@@ -268,12 +268,12 @@ def write_record(output, *, controls=False):
     output = Path(output)
     if output.exists():
         raise ValueError("unique output path required to preserve evidence")
-    paths = [Path(__file__), ROOT / "src/anysolver/_ge_beam3_retained_generalized.py",
-             ROOT / "src/anysolver/_ge_beam3_generalized_static_boundary.py",
-             ROOT / "src/anysolver/_stiffened_shell_l1_local_experimental.py",
-             ROOT / "src/anysolver/_stiffened_shell_bl5_local_experimental.py",
-             ROOT / "src/anysolver/_stiffened_shell_l1_assembly_experimental.py",
-             ROOT / "src/anysolver/e4_pl_element.py"]
+    paths = [Path(__file__), ROOT / "src/anyfesolver/_ge_beam3_retained_generalized.py",
+             ROOT / "src/anyfesolver/_ge_beam3_generalized_static_boundary.py",
+             ROOT / "src/anyfesolver/_stiffened_shell_l1_local_experimental.py",
+             ROOT / "src/anyfesolver/_stiffened_shell_bl5_local_experimental.py",
+             ROOT / "src/anyfesolver/_stiffened_shell_l1_assembly_experimental.py",
+             ROOT / "src/anyfesolver/e4_pl_element.py"]
     record = {"contract": prospective_contract(),
               "head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
               "source_sha256": {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths},

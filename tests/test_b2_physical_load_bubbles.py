@@ -4,10 +4,10 @@ from dataclasses import FrozenInstanceError
 import numpy as np
 import pytest
 
-from anysolver._b2_physical_flexibility_linear import (
+from anyfesolver._b2_physical_flexibility_linear import (
     LinearOperator, LinearSection, RepresentabilityError,
 )
-from anysolver._b2_physical_load_bubbles import FixedEndLoadBubbleMaps
+from anyfesolver._b2_physical_load_bubbles import FixedEndLoadBubbleMaps
 
 
 def _section(coupled=False):

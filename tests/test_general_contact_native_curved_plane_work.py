@@ -9,10 +9,10 @@ from scipy.spatial.transform import Rotation
 from scipy.integrate import quad
 from numpy.polynomial.legendre import leggauss
 
-from anysolver.general_contact.native_curved_geometry import curved_patch_geometry_control
-from anysolver.general_contact.native_curved_plane_work import NativeCurvedMaterialPlaneWork
-from anysolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
-from anysolver.general_contact.native_surface_normal import StraightNormalIntegrationSettings
+from anyfesolver.general_contact.native_curved_geometry import curved_patch_geometry_control
+from anyfesolver.general_contact.native_curved_plane_work import NativeCurvedMaterialPlaneWork
+from anyfesolver.general_contact.native_surface_quadrature import NativeRoundSurfaceRule
+from anyfesolver.general_contact.native_surface_normal import StraightNormalIntegrationSettings
 from test_general_contact_native_retained_station import _reference
 from test_general_contact_native_surface_bounds import _independent_point
 
@@ -247,7 +247,7 @@ def test_curved_broad_contact_cannot_hide_second_thin_axial_pocket():
 
 
 def test_curved_uniform_active_minimum_does_not_hide_angular_endpoint_crossing():
-    from anysolver.general_contact.native_curved_plane_work import _rectangle_support
+    from anyfesolver.general_contact.native_curved_plane_work import _rectangle_support
     ref=_reference(False);radius=.03;epsilon=1e-8
     rule=NativeRoundSurfaceRule(7,ref,radius,xi_range=(1e-8,.9),
         angle_range=(0.,np.pi),axial_order=1,angular_order=1)
@@ -265,7 +265,7 @@ def test_curved_uniform_active_minimum_does_not_hide_angular_endpoint_crossing()
 
 
 def test_curved_partial_scalar_field_large_tangential_origin_invariance():
-    from anysolver.general_contact.native_curved_plane_work import _station_field
+    from anyfesolver.general_contact.native_curved_plane_work import _station_field
     normal=np.array((1.,-1.,0.))/np.sqrt(2.)
     high=np.tile((1.011,1.,0.),(3,1));low=np.zeros((3,3))
     first=_station_field(high,low,0,.5,np.zeros(3),np.eye(3),np.eye(3),.03,
@@ -354,8 +354,8 @@ def test_curved_axial_front_reference_area_complete_work():
 
 
 def test_curved_reference_second_bound_against_independent_planar_twist_derivatives():
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-    from anysolver.general_contact.native_curved_geometry import (
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+    from anyfesolver.general_contact.native_curved_geometry import (
         _reference_second_bound,_reference_unclipped_interval)
     Kz=np.array(((0.,-1.,0.),(1.,0.,0.),(0.,0.,0.)))
     Kx=np.array(((0.,0.,0.),(0.,0.,-1.),(0.,1.,0.)))
@@ -380,10 +380,10 @@ def test_curved_reference_second_bound_against_independent_planar_twist_derivati
 
 
 def test_curved_exact_binary_curvature_literal_cancellation_regression():
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-    from anysolver.general_contact.native_curved_geometry import (
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+    from anyfesolver.general_contact.native_curved_geometry import (
         _reference_curvature_coefficients,_reference_curvature_norm,_reference_second_bound)
-    from anysolver.general_contact.native_curved_plane_work import (
+    from anyfesolver.general_contact.native_curved_plane_work import (
         _projected_center_derivative,_projected_center_second)
     x=np.array((9007199254740991.,9007199254740994.,9007199254740996.))
     assert x[0]-2*x[1]+x[2]==0.  # Literal defect in the discarded arithmetic.
@@ -404,7 +404,7 @@ def test_curved_exact_binary_curvature_literal_cancellation_regression():
 
 
 def test_projected_gap_literal_origin_counterexample_and_resolution_guard():
-    from anysolver.general_contact.native_curved_plane_work import _projected_gap
+    from anyfesolver.general_contact.native_curved_plane_work import _projected_gap
     n=np.array((1.,-1.,0.))/np.sqrt(2.)
     p=np.tile(np.array((1.011,.961,0.)),(3,1))
     arm=-.03*n
@@ -427,8 +427,8 @@ def test_curved_reference_measure_underflow_fails_explicitly():
 
 
 def test_whole_orientation_rejects_between_sample_inversion():
-    from anysolver.general_contact.native_surface_quadrature import surface_geometry
-    from anysolver.general_contact.native_retained_station import NativeRetainedRoundStation
+    from anyfesolver.general_contact.native_surface_quadrature import surface_geometry
+    from anyfesolver.general_contact.native_retained_station import NativeRetainedRoundStation
     ref=_reference(True)
     rule=NativeRoundSurfaceRule(7,ref,1e-4,xi_range=(-.95,-.05),angle_range=(.2,5.8),
         axial_order=1,angular_order=1)
@@ -463,8 +463,8 @@ def test_curved_work_common_rigid_transform_and_numerical_limits():
 
 
 def test_curved_reference_derivative_interval_bound_with_twist():
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-    from anysolver.general_contact.native_curved_geometry import _reference_norm_bounds
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+    from anyfesolver.general_contact.native_curved_geometry import _reference_norm_bounds
     base=_reference(True);frames=base.nodal_triads.copy()
     for i,roll in enumerate((.1,.4,-.2)):
         frames[i]=frames[i]@Rotation.from_rotvec((roll,0.,0.)).as_matrix()
@@ -480,7 +480,7 @@ def test_curved_reference_derivative_interval_bound_with_twist():
 
 
 def test_twisted_curved_material_reference_measure_and_work():
-    from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+    from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
     law,p,low,U=_case()
     frames=law.reference.nodal_triads.copy()
     for i,roll in enumerate((.1,.4,-.2)):

@@ -6,11 +6,11 @@ import copy
 import numpy as np
 import pytest
 
-from anysolver import solve_static_nonlinear
-from anysolver.control import SolveCancelled
-from anysolver.general_contact import semismooth_path
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.nonlinear_restart import _checkpoint_without_hash, _sha256
+from anyfesolver import solve_static_nonlinear
+from anyfesolver.control import SolveCancelled
+from anyfesolver.general_contact import semismooth_path
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.nonlinear_restart import _checkpoint_without_hash, _sha256
 from scripts.general_contact_d1_mixed_mesh_jet2_schur_press import build_case
 
 

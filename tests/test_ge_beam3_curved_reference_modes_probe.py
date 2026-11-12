@@ -48,7 +48,7 @@ def test_frozen_and_higher_kinetic_rules_are_not_conflated(monkeypatch):
     import numpy as np
     from docs.reference_cases import ge_beam3_curved_reference_modes as comparison
     from docs.reference_cases import ge_beam3_curved_moment_fixture as fixture
-    from anysolver._ge_beam3_lifted_kinetic_factor import current_lifted_kinetic_factor
+    from anyfesolver._ge_beam3_lifted_kinetic_factor import current_lifted_kinetic_factor
     if not comparison.REFERENCE_PATH.is_file(): pytest.skip('Preserved development reference not installed')
     def forbidden(*args,**kwargs): raise AssertionError('reference solve must not be rerun')
     monkeypatch.setattr(comparison.ritz,'solve',forbidden)

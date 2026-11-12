@@ -5,11 +5,11 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any, Dict
 
-from anysolver.corotational_performance import note_dense_consistent_rotation
-from anysolver.nonlinear_analysis_diagnostics import (
+from anyfesolver.corotational_performance import note_dense_consistent_rotation
+from anyfesolver.nonlinear_analysis_diagnostics import (
     capture_nonlinear_analysis_diagnostics,
 )
-from anysolver.vectorized_hill48 import record_hill48_execution
+from anyfesolver.vectorized_hill48 import record_hill48_execution
 
 
 @dataclass

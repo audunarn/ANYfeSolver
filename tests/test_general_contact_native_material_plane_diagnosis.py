@@ -43,7 +43,7 @@ def test_capture_coupled_gap_merit_and_work_map_discriminator():
     path=os.environ.get('CONTACT_MATERIAL_DIAGNOSIS_RECORD')
     assert path and records
     # JSON-safe native canonical payload, including full failed state for review.
-    from anysolver._ge_beam3_p5_seeded.core import canonical
+    from anyfesolver._ge_beam3_p5_seeded.core import canonical
     Path(path).write_bytes(canonical(dict(scope='diagnosis, not accepted equilibrium',
         status=run.status,failure=run.failure,accepted_targets=run.accepted.completed_targets,
         gap_tolerance_m=owner.gap_tolerance,fd_errors=fd_errors,records=records,swept=swept)))

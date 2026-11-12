@@ -7,9 +7,9 @@ rotation-chart Jacobians and the existing consistent corotational owner.
 from dataclasses import replace
 import math
 import numpy as np
-from anysolver import BoundaryCondition, solve_static_nonlinear
-from anysolver.general_contact import resolve_automatic_contact_domain
-from anysolver.general_contact.static_path import (
+from anyfesolver import BoundaryCondition, solve_static_nonlinear
+from anyfesolver.general_contact import resolve_automatic_contact_domain
+from anyfesolver.general_contact.static_path import (
     ContactPathControl, ContactPathNodalForce, ContactPathProgram,
 )
 from examples.general_contact_q4_pair_monolithic_cycle import build as base

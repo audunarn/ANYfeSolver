@@ -12,7 +12,7 @@ SRC = REPO_ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from anysolver import CylinderBenchmarkConfig, run_cylindrical_shell_benchmark
+from anyfesolver import CylinderBenchmarkConfig, run_cylindrical_shell_benchmark
 
 
 def main() -> int:

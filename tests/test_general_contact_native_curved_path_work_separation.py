@@ -1,7 +1,7 @@
 """Curved path checks own geometry; equilibrium owns endpoint integration."""
 import numpy as np
 import pytest
-from anysolver.control import CancellationToken,SolveCancelled
+from anyfesolver.control import CancellationToken,SolveCancelled
 from test_general_contact_native_curved_s3_static import _analysis
 
 def test_curved_zero_path_uses_complete_geometry_control_not_force_quadrature(monkeypatch):
@@ -42,7 +42,7 @@ def test_equilibrium_still_requires_endpoint_integration_and_path_guards(monkeyp
 
 
 def test_authoritative_caller_endpoint_matches_certified_path(monkeypatch):
-    from anysolver.general_contact.native_surface_path import material_path_pose
+    from anyfesolver.general_contact.native_surface_path import material_path_pose
     owner=_analysis(physical_fibres=True,plastic_fibres=True)
     start=owner.initial.mechanical;u=owner.initial.shell_displacement;work=owner.pairs[0].work
     step=np.zeros(owner.context.count+len(u));step[8]=1e-6;step[14]=2e-6

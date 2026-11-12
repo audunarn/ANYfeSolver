@@ -6,19 +6,19 @@ from typing import Any
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     FEModel,
     QualifiedE4PLShellElement,
     solve_eigenvalue_buckling,
     solve_free_vibration,
 )
-from anysolver.boundary import FixedSupport
-from anysolver.current_state_tangent import (
+from anyfesolver.boundary import FixedSupport
+from anyfesolver.current_state_tangent import (
     COMMITTED_CURRENT_TANGENT_INPUT_OWNERSHIP_POLICY_ID,
     assemble_committed_current_tangent_components,
     validate_committed_current_tangent_inputs,
 )
-from anysolver.element_capabilities import ElementCapabilityError
+from anyfesolver.element_capabilities import ElementCapabilityError
 
 
 class _SingleItemsMapping(Mapping[Any, Any]):

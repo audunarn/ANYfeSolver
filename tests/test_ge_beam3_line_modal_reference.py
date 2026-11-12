@@ -73,6 +73,6 @@ def test_reference_imports_no_producer_or_native_recovery():
     for node in ast.walk(tree):
         if isinstance(node,ast.Import): imports.extend(x.name for x in node.names)
         if isinstance(node,ast.ImportFrom): imports.append(node.module)
-    assert not any(x.startswith(('anysolver','tests')) for x in imports)
+    assert not any(x.startswith(('anyfesolver','tests')) for x in imports)
     assert set(x for x in imports if x.startswith('docs.'))=={
         'docs.reference_cases.ge_beam3_dead_line_reference','docs.reference_cases.ge_beam3_loaded_ritz_reference'}

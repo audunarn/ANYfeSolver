@@ -7,8 +7,8 @@ pytestmark=pytest.mark.skipif('F06_FIBRE_OUTPUT' not in os.environ,reason='bound
 def test_legacy_definition_and_policy():
  import numpy as np
  from scripts.r8_f06_fibre_log_domain_dev import element
- from anysolver._ge_beam3_native_definition import NativeBeamDefinition,SCHEMA,COMPENSATED_SCHEMA
- from anysolver._ge_beam3_retained_fibre import RetainedFibreOperator
+ from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition,SCHEMA,COMPENSATED_SCHEMA
+ from anyfesolver._ge_beam3_retained_fibre import RetainedFibreOperator
  for paired,schema in ((False,SCHEMA),(True,COMPENSATED_SCHEMA)):
   e=element(paired=paired);d=NativeBeamDefinition.capture(e,np.eye(6))
   assert json.loads(d.raw)['schema']==schema
@@ -58,8 +58,8 @@ def test_active_paired_resultant_law_and_recovery():
 def test_active_spatial_derivative():
  import numpy as np
  from scripts.r8_f06_fibre_log_domain_dev import element
- from anysolver._stiffened_shell_f06_increment_arithmetic import updated_rotation,Pair
- from anysolver._ge_beam3_generalized_static_boundary import spatial_jacobian
+ from anyfesolver._stiffened_shell_f06_increment_arithmetic import updated_rotation,Pair
+ from anyfesolver._ge_beam3_generalized_static_boundary import spatial_jacobian
  e=element();op=e.operator;x=op.reference.coordinates.copy();xl=np.zeros_like(x)
  q=np.tile(np.eye(3),(3,1,1));ql=np.zeros_like(q);u=np.tile(np.eye(3),(2,1,1));ul=np.zeros_like(u)
  for i in range(3):q[i],ql[i]=updated_rotation(q[i],ql[i],np.array([0.,.03*i,.01*i]))
@@ -84,13 +84,13 @@ def test_active_spatial_derivative():
 def test_public_active_fibre_lifecycle():
  import numpy as np
  from scripts.r8_f06_fibre_log_domain_dev import definition,actions,DOC
- from anysolver import stiffened_shell as ss
- from anysolver.control import CancellationToken,SolveCancelled
- from anysolver._ge_beam3_p5_seeded.core import canonical
- from anysolver._stiffened_shell_beam_history import shapes
- from anysolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,encode_compensated,decode,encode,SCHEMAS
- from anysolver._stiffened_shell_f06_increment_arithmetic import Pair
- import anysolver._stiffened_shell_f06_increment_arithmetic as arithmetic
+ from anyfesolver import stiffened_shell as ss
+ from anyfesolver.control import CancellationToken,SolveCancelled
+ from anyfesolver._ge_beam3_p5_seeded.core import canonical
+ from anyfesolver._stiffened_shell_beam_history import shapes
+ from anyfesolver._stiffened_shell_ge_checkpoint_binary import decode_compensated,encode_compensated,decode,encode,SCHEMAS
+ from anyfesolver._stiffened_shell_f06_increment_arithmetic import Pair
+ import anyfesolver._stiffened_shell_f06_increment_arithmetic as arithmetic
  out=Path(os.environ['F06_FIBRE_OUTPUT']);owner=ss.create_analysis(definition=definition())
  calls=[];original=arithmetic.full_log_coefficients
  def capture(c):calls.append(c.scalar());return original(c)
@@ -166,7 +166,7 @@ def test_public_active_fibre_lifecycle():
   cancel=Cancel()
   with pytest.raises(SolveCancelled):owner.solve(actions(),(.42,),cancellation_token=cancel)
   assert cancel.visits==2 and owner.checkpoint()==after
-  from anysolver._stiffened_shell_increment_control import FiniteIncrementFailure
+  from anyfesolver._stiffened_shell_increment_control import FiniteIncrementFailure
   with pytest.raises(FiniteIncrementFailure):owner.solve(actions(),(1.2,),max_iterations=1,max_backtracks=0)
   assert owner.checkpoint()==after
   write=dict(status='PASS',family='axial',prefix_reused=prefix,ordinary_calls=len(calls),minimum_cosine=min(calls),

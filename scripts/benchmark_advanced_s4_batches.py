@@ -17,7 +17,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from anysolver import (  # noqa: E402
+from anyfesolver import (  # noqa: E402
     FEModel,
     GeneralizedShellSection,
     Material,
@@ -25,7 +25,7 @@ from anysolver import (  # noqa: E402
     assemble_stiffness_matrix,
     create_element,
 )
-from anysolver.nonlinear_performance_bootstrap import (  # noqa: E402
+from anyfesolver.nonlinear_performance_bootstrap import (  # noqa: E402
     clear_nonlinear_assembly_cache,
     get_nonlinear_assembly_plan,
     install_nonlinear_performance_optimizations,
@@ -225,7 +225,7 @@ def main() -> None:
     parser.add_argument("--repeats", type=int, default=5)
     args = parser.parse_args()
     result = {
-        "schema": "anysolver.advanced_s4_batch_benchmark",
+        "schema": "anyfesolver.advanced_s4_batch_benchmark",
         "nx": int(args.nx),
         "ny": int(args.ny),
         "repeats": int(args.repeats),

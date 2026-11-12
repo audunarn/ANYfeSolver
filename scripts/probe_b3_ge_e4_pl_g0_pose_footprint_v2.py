@@ -7,7 +7,7 @@ import json
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from anysolver._ge_beam3_pose_joint import _exp_terms
+from anyfesolver._ge_beam3_pose_joint import _exp_terms
 
 import probe_b3_ge_e4_pl_g0_pose_footprint as prior
 

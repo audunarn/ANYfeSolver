@@ -91,8 +91,8 @@ def native_checks(previous,current):
 
 def test_physical_family_work():
     import numpy as np
-    from anysolver._ge_beam3_g3c_physical_owner import MixedGraphOwner,recovery_witness
-    from anysolver._ge_beam3_g3c_stable.operator import schur
+    from anyfesolver._ge_beam3_g3c_physical_owner import MixedGraphOwner,recovery_witness
+    from anyfesolver._ge_beam3_g3c_stable.operator import schur
     graph,variant=selected();owner=MixedGraphOwner(graph,variant)
     before=json.loads(owner.snapshot_bytes())['state']
     for command in history.commands('NONE',.01)[:2]:
@@ -153,14 +153,14 @@ def directional(owner,command):
 
 
 def test_physical_directional():
-    from anysolver._ge_beam3_g3c_physical_owner import MixedGraphOwner
+    from anyfesolver._ge_beam3_g3c_physical_owner import MixedGraphOwner
     owner=MixedGraphOwner(*selected())
     record('directional',errors=directional(owner,history.commands('NONE',.01)[0]))
 
 
 def test_physical_atomicity():
     import pytest
-    from anysolver._ge_beam3_g3c_physical_owner import MixedGraphOwner
+    from anyfesolver._ge_beam3_g3c_physical_owner import MixedGraphOwner
     _,source=history.packet.authorities();graph,variant=selected()
     expanded=source.expand_inert(graph,variant)[1]
     last=next(e['id'] for e in reversed(expanded['graph']['elements']) if e['family']!='NATIVE')
@@ -176,7 +176,7 @@ def test_physical_atomicity():
 
 def test_physical_token_and_definition_guards():
     import pytest
-    from anysolver._ge_beam3_g3c_physical_owner import MixedGraphOwner
+    from anyfesolver._ge_beam3_g3c_physical_owner import MixedGraphOwner
     for kind in ('nonce','definition','initial','reentry'):
         owner=MixedGraphOwner(*selected());before=owner._published
         def mutate(stage):
@@ -227,7 +227,7 @@ def independent_constraints(owner,total,qa,mu,W=None,translation=None):
 
 def test_physical_independent_joint_work_transport():
     import numpy as np
-    from anysolver._ge_beam3_g3c_physical_owner import MixedGraphOwner
+    from anyfesolver._ge_beam3_g3c_physical_owner import MixedGraphOwner
     graph,variant=selected();owner=MixedGraphOwner(graph,variant);n=owner.size
     state=json.loads(owner._published.state);qa=np.asarray(state['rotations']);u=np.linspace(-.012,.009,n);mu=np.resize([.3,-.2,.1,.25,-.15,.4],len(state['multipliers']))
     expected=independent_constraints(owner,u,qa,mu);actual=owner._constraints(u,qa,mu,None)
@@ -264,7 +264,7 @@ def test_physical_observation_and_cache_guards():
     import pytest
     import threading
     from unittest.mock import patch
-    from anysolver import _ge_beam3_g3c_physical_owner as mechanics
+    from anyfesolver import _ge_beam3_g3c_physical_owner as mechanics
     Owner=mechanics.MixedGraphOwner;graph,variant=selected();owner=Owner(graph,variant)
     state=json.loads(owner._published.state);u=np.zeros(owner.size);mu=np.zeros(len(state['multipliers']));command=history.commands('NONE',.01)[0]
     baseline=owner.trial(u,mu,dict(command));before=owner._published
@@ -334,7 +334,7 @@ def test_physical_recovery_witness_guards():
     import numpy as np
     import pytest
     from dataclasses import replace
-    from anysolver import _ge_beam3_g3c_physical_owner as mechanics
+    from anyfesolver import _ge_beam3_g3c_physical_owner as mechanics
     owner=mechanics.MixedGraphOwner(*selected());state=json.loads(owner._published.state)
     trial=owner.trial(np.linspace(-.001,.002,owner.size),np.zeros(len(state['multipliers'])),history.commands('NONE',.01)[0])
     candidate=json.loads(trial['candidate']);count=0

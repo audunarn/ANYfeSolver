@@ -152,8 +152,8 @@ tests/test_r8_bl5_density_subspace_dev.py -text
 scripts/r8_bl5_density_reference_dev.py -text
 tests/test_r8_bl5_density_reference_dev.py -text
 .qualification/b3-ge-e4-pl/r8-bl5-projected-assessment-dev-20261003-v1/density-reference/** -text
-src/anysolver/_stiffened_shell_b2_q4_panel_experimental.py -text
-src/anysolver/stiffened_shell.py -text
+src/anyfesolver/_stiffened_shell_b2_q4_panel_experimental.py -text
+src/anyfesolver/stiffened_shell.py -text
 tests/test_stiffened_shell_b2_free_reference_modes.py -text
 tests/test_stiffened_shell_b2_mixed_reference_modes.py -text
 docs/agent_plans/development/r8-b2-free-reference-modes-20261004/** -text
@@ -172,19 +172,19 @@ tests/test_r8_bl5_regional_action_dev.py -text
 scripts/r8_bl5_positive_part_gram_dev.py -text
 tests/test_r8_bl5_positive_part_gram_dev.py -text
 .qualification/b3-ge-e4-pl/r8-bl5-projected-assessment-dev-20261003-v1/positive-part-gram/** -text
-src/anysolver/_stiffened_shell_distributing_footprint.py -text
+src/anyfesolver/_stiffened_shell_distributing_footprint.py -text
 tests/test_stiffened_shell_distributing_footprint.py -text
 docs/agent_plans/development/r8-distributing-reference-linear-20261004/** -text
 .qualification/b3-ge-e4-pl/r8-distributing-reference-linear-dev-20261004-v1/** -text
-src/anysolver/_stiffened_shell_ge_distributing_reference.py -text
+src/anyfesolver/_stiffened_shell_ge_distributing_reference.py -text
 tests/test_stiffened_shell_ge_distributing_reference.py -text
 .qualification/b3-ge-e4-pl/r8-distributing-ge-reference-dev-20261004-v1/** -text
-src/anysolver/_stiffened_shell_ge_experimental.py -text
-src/anysolver/stiffened_shell.py -text
-src/anysolver/_stiffened_shell_ge_body_load.py -text
-src/anysolver/_stiffened_shell_ge_distributed_load.py -text
-src/anysolver/_stiffened_shell_ge_pressure_load.py -text
-src/anysolver/_stiffened_shell_ge_reference_modal.py -text
+src/anyfesolver/_stiffened_shell_ge_experimental.py -text
+src/anyfesolver/stiffened_shell.py -text
+src/anyfesolver/_stiffened_shell_ge_body_load.py -text
+src/anyfesolver/_stiffened_shell_ge_distributed_load.py -text
+src/anyfesolver/_stiffened_shell_ge_pressure_load.py -text
+src/anyfesolver/_stiffened_shell_ge_reference_modal.py -text
 tests/test_stiffened_shell_ge_distributing_owner.py -text
 examples/stiffened_shell_ge_distributing_reference.py -text
 .qualification/b3-ge-e4-pl/r8-distributing-ge-owner-dev-20261004-v1/** -text
@@ -199,15 +199,15 @@ tests/test_r8_e02_distributing_feasibility.py -text
 # Immutable external fixed-width outputs and failed logs retain their whitespace.
 .qualification/b3-ge-e4-pl/r8-e02-distributing-area-feasibility-dev-20261004-v1/** -text -whitespace
 .qualification/b3-ge-e4-pl/r8-distributing-multihost-dev-20261004-v1/** -text -whitespace
-src/anysolver/_stiffened_shell_distributing_pose.py -text
+src/anyfesolver/_stiffened_shell_distributing_pose.py -text
 tests/test_stiffened_shell_distributing_pose.py -text
 .qualification/b3-ge-e4-pl/r8-distributing-finite-pose-dev-20261004-v1/** -text -whitespace
 
-src/anysolver/_stiffened_shell_ge_distributing_finite.py -text
+src/anyfesolver/_stiffened_shell_ge_distributing_finite.py -text
 tests/test_stiffened_shell_ge_distributing_finite.py -text
 
 # Final tested finite owner and raw development evidence retain exact bytes.
-src/anysolver/_stiffened_shell_ge_checkpoint_binary.py -text
+src/anyfesolver/_stiffened_shell_ge_checkpoint_binary.py -text
 tests/test_stiffened_shell_ge_distributing_finite_public.py -text
 examples/stiffened_shell_ge_distributing_finite.py -text
 docs/agent_plans/development/r8-distributing-reference-linear-20261004/active-before-public-finite-owner-20261004.md -text
@@ -218,16 +218,16 @@ tests/test_r8_e02_distributing_thickness.py -text
 scripts/r8_e02_distributing_my.py -text
 tests/test_r8_e02_distributing_my.py -text
 .qualification/b3-ge-e4-pl/r8-distributing-my-dev-20261004-v1/** -text -whitespace
-src/anysolver/_stiffened_shell_ge_finite_experimental.py -text
+src/anyfesolver/_stiffened_shell_ge_finite_experimental.py -text
 tests/test_stiffened_shell_ge_distributing_material.py -text
 examples/stiffened_shell_ge_distributing_material.py -text
 .qualification/b3-ge-e4-pl/r8-distributing-material-dev-20261004-v1/** -text -whitespace
 
-src/anysolver/_ge_beam3_variational_shell.py -text
+src/anyfesolver/_ge_beam3_variational_shell.py -text
 
-src/anysolver/_stiffened_shell_algorithmic_pullback.py -text
+src/anyfesolver/_stiffened_shell_algorithmic_pullback.py -text
 
-src/anysolver/_stiffened_shell_q4_algorithmic_pullback.py -text
+src/anyfesolver/_stiffened_shell_q4_algorithmic_pullback.py -text
 
 tests/test_stiffened_shell_material_rotation_numerics.py -text
 
@@ -236,7 +236,7 @@ tests/data/stiffened_shell_material_pre_stable_rotation.bin -text
 scripts/r8_e02_double_output.py -text
 tests/test_r8_e02_double_output.py -text
 .qualification/b3-ge-e4-pl/r8-e02-double-output-dev-20261004-v1/** -text -whitespace
-src/anysolver/_stiffened_shell_increment_control.py -text
+src/anyfesolver/_stiffened_shell_increment_control.py -text
 tests/test_stiffened_shell_accepted_observer_experimental.py -text
 tests/test_stiffened_shell_distributing_adaptive.py -text
 .qualification/b3-ge-e4-pl/r8-distributing-adaptive-dev-20261004-v1/** -text -whitespace
@@ -256,7 +256,7 @@ tests/test_stiffened_shell_native_plastic_chart.py -text
 .qualification/b3-ge-e4-pl/r8-native-plastic-chart-dev-20261004-v1/** -text -whitespace
 .qualification/b3-ge-e4-pl/r8-native-coupled-chart-dev-20261004-v1/** -text -whitespace
 .qualification/b3-ge-e4-pl/r8-point-zero-reference-dev-20261004-v1/** -text -whitespace
-src/anysolver/_stiffened_shell_staged_load_experimental.py -text
+src/anyfesolver/_stiffened_shell_staged_load_experimental.py -text
 tests/test_stiffened_shell_staged_load_owner_experimental.py -text
 tests/test_stiffened_shell_staged_zero_reference.py -text
 examples/stiffened_shell_ge_point_zero_unload.py -text
@@ -265,10 +265,10 @@ docs/agent_plans/B3_GE_E4_PL_ACTIVE_STATE.md -text
 docs/agent_plans/B3_GE_E4_PL_REVISION_8_GOAL.md -text
 docs/agent_plans/B3_GE_E4_PL_REVISION_8_PLAN.md -text
 .qualification/b3-ge-e4-pl/r8-native-point-displacement-dev-20261004-v1/** -text -whitespace
-src/anysolver/_stiffened_shell_affine_endpoint.py -text
-src/anysolver/_stiffened_shell_displacement_checkpoint.py -text
-src/anysolver/_stiffened_shell_displacement_control.py -text
-src/anysolver/_stiffened_shell_displacement_corrector.py -text
+src/anyfesolver/_stiffened_shell_affine_endpoint.py -text
+src/anyfesolver/_stiffened_shell_displacement_checkpoint.py -text
+src/anyfesolver/_stiffened_shell_displacement_control.py -text
+src/anyfesolver/_stiffened_shell_displacement_corrector.py -text
 tests/test_stiffened_shell_native_point_displacement.py -text
 examples/stiffened_shell_ge_point_displacement.py -text
 docs/stiffened_shell_native_displacement_development.md -text
@@ -280,8 +280,8 @@ examples/stiffened_shell_native_coupled_displacement.py -text
 tests/test_stiffened_shell_native_s3_displacement.py -text
 tests/test_stiffened_shell_native_s3_displacement_admission.py -text
 examples/stiffened_shell_native_s3_displacement.py -text
-src/anysolver/_stiffened_shell_ge_checkpoint_binary.py -text
-src/anysolver/_stiffened_shell_ge_experimental.py -text
+src/anyfesolver/_stiffened_shell_ge_checkpoint_binary.py -text
+src/anyfesolver/_stiffened_shell_ge_experimental.py -text
 .qualification/b3-ge-e4-pl/r8-native-s3-displacement-dev-20261005-v1/** -text -whitespace
 
 tests/test_stiffened_shell_native_fibre_s3_displacement.py -text
@@ -299,7 +299,7 @@ tests/test_stiffened_shell_native_mixed_j2_displacement_snapshot.py -text
 tests/data/native_mixed_j2_displacement/** -text
 .qualification/b3-ge-e4-pl/r8-native-mixed-j2-displacement-diagnosis-20261005-v1/** -text -whitespace
 
-src/anysolver/_stiffened_shell_displacement_adaptive.py -text
+src/anyfesolver/_stiffened_shell_displacement_adaptive.py -text
 tests/test_stiffened_shell_native_displacement_adaptive.py -text
 tests/test_stiffened_shell_native_fibre_s3_displacement_identity.py -text
 tests/test_stiffened_shell_native_point_displacement.py -text
@@ -324,10 +324,10 @@ tests/data/native_s3_fibre_history/** -text
 /tests/test_stiffened_shell_native_arc.py -text
 /examples/stiffened_shell_native_arc.py -text
 /.qualification/b3-ge-e4-pl/r8-native-arc-dev-20261005-v1/** -text -whitespace
-/src/anysolver/_stiffened_shell_arc_control.py -text
-/src/anysolver/_stiffened_shell_arc_trial.py -text
-/src/anysolver/_stiffened_shell_arc_checkpoint.py -text
-/src/anysolver/_stiffened_shell_arc_publication.py -text
+/src/anyfesolver/_stiffened_shell_arc_control.py -text
+/src/anyfesolver/_stiffened_shell_arc_trial.py -text
+/src/anyfesolver/_stiffened_shell_arc_checkpoint.py -text
+/src/anyfesolver/_stiffened_shell_arc_publication.py -text
 /docs/stiffened_shell_arc_development.md -text
 
 /tests/test_stiffened_shell_native_arc_progress.py -text
@@ -347,8 +347,8 @@ tests/data/native_s3_fibre_history/** -text
 /docs/agent_plans/history/PRE_CCX_INVERSE_20261005.md -text
 /docs/agent_plans/history/PRE_BL5_BUCKLING_20261005.md -text
 /docs/agent_plans/history/PRE_MIXED_BUCKLING_20261005.md -text
-/src/anysolver/_stiffened_shell_ge_point_buckling.py -text
-/src/anysolver/_stiffened_shell_s3_conservative_buckling.py -text
+/src/anyfesolver/_stiffened_shell_ge_point_buckling.py -text
+/src/anyfesolver/_stiffened_shell_s3_conservative_buckling.py -text
 /tests/test_stiffened_shell_ge_mixed_buckling.py -text
 /examples/stiffened_shell_ge_mixed_buckling.py -text
 /scripts/r8_ge_mixed_buckling_dev.py -text
@@ -373,7 +373,7 @@ tests/data/native_s3_fibre_history/** -text
 
 /.qualification/b3-ge-e4-pl/r8-native-fibre-bl5-dev-20261005-v1/** -text -whitespace
 /docs/agent_plans/history/PRE_NATIVE_BL5_DELIVERY_20261005.md -text
-/src/anysolver/_stiffened_shell_bl5_native_elastic.py -text
+/src/anyfesolver/_stiffened_shell_bl5_native_elastic.py -text
 /tests/test_stiffened_shell_native_fibre_bl5.py -text
 /examples/stiffened_shell_native_fibre_bl5.py -text
 
@@ -404,11 +404,11 @@ tests/data/native_s3_fibre_history/** -text
 /examples/stiffened_shell_native_fibre_bl5_material.py -text whitespace=cr-at-eol
 /tests/test_stiffened_shell_native_fibre_bl5_material.py -text whitespace=cr-at-eol
 /docs/reference_cases/stiffened_shell_native_fibre_bl5_material.md -text whitespace=cr-at-eol
-/src/anysolver/_ge_beam3_fibre_cell.py -text whitespace=cr-at-eol
-/src/anysolver/_ge_beam3_retained_fibre.py -text whitespace=cr-at-eol
+/src/anyfesolver/_ge_beam3_fibre_cell.py -text whitespace=cr-at-eol
+/src/anyfesolver/_ge_beam3_retained_fibre.py -text whitespace=cr-at-eol
 /tests/test_native_fibre_boundary_proposal.py -text whitespace=cr-at-eol
 /docs/agent_plans/history/PRE_J2_UNBLOCK_SHORTENING_20261006.md -text
-/src/anysolver/_stiffened_shell_q4_material_event.py -text whitespace=cr-at-eol
+/src/anyfesolver/_stiffened_shell_q4_material_event.py -text whitespace=cr-at-eol
 /tests/test_q4_native_material_event.py -text whitespace=cr-at-eol
 /.qualification/b3-ge-e4-pl/r8-native-fibre-bl5-displacement-dev-20261006-v1/** -text -whitespace
 /examples/stiffened_shell_native_fibre_bl5_displacement.py -text whitespace=cr-at-eol
@@ -423,11 +423,11 @@ tests/data/native_s3_fibre_history/** -text
 /tests/test_r8_bl5_body_port_twofold_workflow.py -text whitespace=cr-at-eol,-blank-at-eof
 /docs/reference_cases/stiffened_shell_bl5_body_port_twofold_workflow.md -text whitespace=cr-at-eol
 /.qualification/b3-ge-e4-pl/r8-bl5-body-port-twofold-slot-repair-dev-20261006-v1/** -text -whitespace
-/src/anysolver/_stiffened_shell_ge_reference_modal.py -text whitespace=cr-at-eol,-blank-at-eof
-/src/anysolver/_stiffened_shell_ge_experimental.py -text whitespace=cr-at-eol,-blank-at-eof
-/src/anysolver/stiffened_shell.py -text whitespace=cr-at-eol,-blank-at-eof
-/src/anysolver/_stiffened_shell_ge_mixed_modal_mass.py -text whitespace=cr-at-eol,-blank-at-eof
-/src/anysolver/_stiffened_shell_physical_s3_mass.py -text whitespace=cr-at-eol,-blank-at-eof
+/src/anyfesolver/_stiffened_shell_ge_reference_modal.py -text whitespace=cr-at-eol,-blank-at-eof
+/src/anyfesolver/_stiffened_shell_ge_experimental.py -text whitespace=cr-at-eol,-blank-at-eof
+/src/anyfesolver/stiffened_shell.py -text whitespace=cr-at-eol,-blank-at-eof
+/src/anyfesolver/_stiffened_shell_ge_mixed_modal_mass.py -text whitespace=cr-at-eol,-blank-at-eof
+/src/anyfesolver/_stiffened_shell_physical_s3_mass.py -text whitespace=cr-at-eol,-blank-at-eof
 /tests/test_stiffened_shell_ge_mixed_reference_modal.py -text whitespace=cr-at-eol,-blank-at-eof
 /tests/test_stiffened_shell_physical_s3_mass.py -text whitespace=cr-at-eol,-blank-at-eof
 /examples/stiffened_shell_ge_mixed_reference_modes.py -text whitespace=cr-at-eol,-blank-at-eof
@@ -435,14 +435,14 @@ tests/data/native_s3_fibre_history/** -text
 /.qualification/b3-ge-e4-pl/r8-ge-mixed-reference-modal-dev-20261006-v1/** -text -whitespace
 /.qualification/b3-ge-e4-pl/r8-ge-mixed-reference-modal-installed-dev-20261006-v1/** -text -whitespace
 .qualification/b3-ge-e4-pl/r8-b2-reference-buckling-dev-20261006-v1/** -text -whitespace
-/src/anysolver/_stiffened_shell_b2_reference_buckling.py -text whitespace=cr-at-eol,-blank-at-eof
-/src/anysolver/_stiffened_shell_b2_q4_panel_experimental.py -text whitespace=cr-at-eol,-blank-at-eof
+/src/anyfesolver/_stiffened_shell_b2_reference_buckling.py -text whitespace=cr-at-eol,-blank-at-eof
+/src/anyfesolver/_stiffened_shell_b2_q4_panel_experimental.py -text whitespace=cr-at-eol,-blank-at-eof
 /tests/test_stiffened_shell_b2_reference_buckling.py -text whitespace=cr-at-eol,-blank-at-eof
 /examples/stiffened_shell_b2_reference_buckling.py -text whitespace=cr-at-eol,-blank-at-eof
 /docs/reference_cases/stiffened_shell_b2_reference_buckling.md -text whitespace=cr-at-eol,-blank-at-eof
 /.qualification/b3-ge-e4-pl/r8-b2-reference-buckling-installed-dev-20261006-v1/** -text -whitespace
 /.qualification/b3-ge-e4-pl/r8-b2-physical-rigid-footprint-dev-20261006-v1/** -text -whitespace
-/src/anysolver/_stiffened_shell_b2_physical_rigid_footprint.py -text whitespace=cr-at-eol,-blank-at-eof
+/src/anyfesolver/_stiffened_shell_b2_physical_rigid_footprint.py -text whitespace=cr-at-eol,-blank-at-eof
 /tests/test_stiffened_shell_b2_physical_rigid_footprint.py -text whitespace=cr-at-eol,-blank-at-eof
 /examples/stiffened_shell_b2_physical_rigid_footprint.py -text whitespace=cr-at-eol,-blank-at-eof
 /docs/reference_cases/stiffened_shell_b2_physical_rigid_footprint.md -text whitespace=cr-at-eol,-blank-at-eof
@@ -454,9 +454,9 @@ tests/test_stiffened_shell_b2_physical_footprint_batch.py -text whitespace=cr-at
 
 .qualification/b3-ge-e4-pl/r8-b2-physical-footprint-batch-installed-dev-20261006-v1/** -text -whitespace
 
-/src/anysolver/_stiffened_shell_displacement_corrector.py -text whitespace=cr-at-eol,-blank-at-eof
-/src/anysolver/_stiffened_shell_s3_algorithmic_pullback.py -text whitespace=cr-at-eol,-blank-at-eof
-/src/anysolver/_stiffened_shell_s3_material_event.py -text whitespace=cr-at-eol,-blank-at-eof
+/src/anyfesolver/_stiffened_shell_displacement_corrector.py -text whitespace=cr-at-eol,-blank-at-eof
+/src/anyfesolver/_stiffened_shell_s3_algorithmic_pullback.py -text whitespace=cr-at-eol,-blank-at-eof
+/src/anyfesolver/_stiffened_shell_s3_material_event.py -text whitespace=cr-at-eol,-blank-at-eof
 /examples/stiffened_shell_native_fibre_bl5_mixed_j2_displacement.py -text whitespace=cr-at-eol,-blank-at-eof
 /tests/test_native_fibre_bl5_mixed_j2_displacement.py -text whitespace=cr-at-eol,-blank-at-eof
 /docs/stiffened_shell_native_bl5_mixed_j2_development.md -text whitespace=cr-at-eol,-blank-at-eof
@@ -470,7 +470,7 @@ tests/test_stiffened_shell_b2_physical_footprint_batch.py -text whitespace=cr-at
 
 /.qualification/b3-ge-e4-pl/r8-native-material-bl5-arc-dev-20261006-v1/** -text -whitespace
 tests/test_native_material_bl5_arc_same_origin_jacobian.py -text whitespace=cr-at-eol
-src/anysolver/_stiffened_shell_arc_metric.py -text whitespace=cr-at-eol
+src/anyfesolver/_stiffened_shell_arc_metric.py -text whitespace=cr-at-eol
 tests/test_stiffened_shell_native_director_arc_metric.py -text whitespace=cr-at-eol
 examples/stiffened_shell_native_director_arc_metric.py -text whitespace=cr-at-eol
 docs/development/stiffened_shell_native_director_arc_metric.md -text whitespace=cr-at-eol
@@ -506,10 +506,10 @@ docs/d1_review_support/d2_s3_projected_penalty*20260930*.log -text
 docs/d1_review_support/d2_s3_projected_penalty*20260930*.xml -text
 docs/d1_review_support/d2_s3_manufactured*20260930*.json -text
 docs/d1_review_support/d2_s3_manufactured*20260930*.log -text
-src/anysolver/general_contact/core.py text eol=lf
-src/anysolver/general_contact/s3_patch_static.py text eol=lf
-src/anysolver/general_contact/s3_patch_augmented.py text eol=lf
-src/anysolver/general_contact/static_path.py text eol=lf
+src/anyfesolver/general_contact/core.py text eol=lf
+src/anyfesolver/general_contact/s3_patch_static.py text eol=lf
+src/anyfesolver/general_contact/s3_patch_augmented.py text eol=lf
+src/anyfesolver/general_contact/static_path.py text eol=lf
 tests/test_general_contact_s3_projected_penalty.py text eol=lf
 docs/d1_review_support/d2_s3_projected_penalty_coupled_dev.py text eol=lf
 docs/d1_review_support/d2_s3_deformable*20260930*.json -text
@@ -605,11 +605,11 @@ docs/d1_review_support/GENERAL_CONTACT_RESTART_HISTORY_20261001_PART25.md -text 
 
 # Exact opt-in native dynamics integration and API evidence bytes.
 docs/d1_review_support/native_dynamic*_20261001.* -text -whitespace
-src/anysolver/_ge_beam3_centered_finite_inertia.py -text whitespace=cr-at-eol
-src/anysolver/_ge_beam3_dynamic_elastic_state.py -text whitespace=cr-at-eol
-src/anysolver/_ge_beam3_native_midpoint.py -text whitespace=cr-at-eol
-src/anysolver/_ge_beam3_native_dynamic_analysis.py -text whitespace=cr-at-eol
-src/anysolver/ge_beam3_native_dynamics.py -text whitespace=cr-at-eol
+src/anyfesolver/_ge_beam3_centered_finite_inertia.py -text whitespace=cr-at-eol
+src/anyfesolver/_ge_beam3_dynamic_elastic_state.py -text whitespace=cr-at-eol
+src/anyfesolver/_ge_beam3_native_midpoint.py -text whitespace=cr-at-eol
+src/anyfesolver/_ge_beam3_native_dynamic_analysis.py -text whitespace=cr-at-eol
+src/anyfesolver/ge_beam3_native_dynamics.py -text whitespace=cr-at-eol
 examples/native_contact_free_finite_velocity_dev.py -text whitespace=cr-at-eol
 tests/test_native_dynamic_main_example.py -text whitespace=cr-at-eol
 docs/d1_review_support/GENERAL_CONTACT_RESTART_HISTORY_20261001_PART26.md -text -whitespace
@@ -621,7 +621,7 @@ tests/test_general_contact_deformable_b3_s3_static.py -text whitespace=cr-at-eol
 docs/d1_review_support/d3_multiple_beam_sphere_lifecycle*_20261001.* -text -whitespace
 tests/test_general_contact_multiple_beam_sphere_lifecycle.py -text whitespace=cr-at-eol
 
-src/anysolver/_ge_beam3_native_dynamic_restart.py -text whitespace=cr-at-eol
+src/anyfesolver/_ge_beam3_native_dynamic_restart.py -text whitespace=cr-at-eol
 
 tests/test_ge_beam3_native_dynamic_restart.py -text whitespace=cr-at-eol
 
@@ -653,8 +653,8 @@ docs/d1_review_support/anystructure_contact_slice_baseline_20261001.json -text -
 docs/d1_review_support/GENERAL_CONTACT_RESTART_HISTORY_20261001_PART35.md -text -whitespace
 docs/d1_review_support/native_inertia_batch* -text -whitespace
 docs/d1_review_support/native_principal_spin* -text -whitespace
-src/anysolver/_ge_beam3_centered_batched_finite_inertia.py text eol=lf
-src/anysolver/_ge_beam3_centered_finite_inertia.py text eol=lf
+src/anyfesolver/_ge_beam3_centered_batched_finite_inertia.py text eol=lf
+src/anyfesolver/_ge_beam3_centered_finite_inertia.py text eol=lf
 docs/d1_review_support/GENERAL_CONTACT_RESTART_HISTORY_20261001_PART36.md -text -whitespace
 
 docs/d1_review_support/native_finite_spin_temporal_refinement* -text -whitespace
@@ -760,10 +760,10 @@ docs/agent_plans/development/r8-ge-selective-rebase-20261009/** -text -whitespac
 
 .development/r8-ge-coordinate-support-20261009/** -text -whitespace
 docs/agent_plans/development/r8-ge-coordinate-support-20261009/** -text -whitespace
-src/anysolver/_stiffened_shell_coordinate_support.py -text
-src/anysolver/_stiffened_shell_ge_experimental.py -text
-src/anysolver/_stiffened_shell_ge_finite_experimental.py -text
-src/anysolver/stiffened_shell.py -text
+src/anyfesolver/_stiffened_shell_coordinate_support.py -text
+src/anyfesolver/_stiffened_shell_ge_experimental.py -text
+src/anyfesolver/_stiffened_shell_ge_finite_experimental.py -text
+src/anyfesolver/stiffened_shell.py -text
 tests/test_stiffened_shell_ge_coordinate_support.py -text
 tests/test_stiffened_shell_coordinate_support_work_oracle.py -text
 
@@ -810,11 +810,11 @@ tests/test_r8_f03_physical_contract_20261010.py -text
 tests/test_r8_f06_cell_moment_oracle_dev.py -text
 docs/agent_plans/development/r8-f06-compensated-state-20261010/** -text
 docs/agent_plans/development/r8-f03-common-density-20261010/** -text
-src/anysolver/_ge_beam3_generalized_cell.py -text
-src/anysolver/_ge_beam3_native_definition.py -text
-src/anysolver/_ge_beam3_pose_joint.py -text
-src/anysolver/_ge_beam3_retained_generalized.py -text
-src/anysolver/_stiffened_shell_f06_increment_arithmetic.py -text
+src/anyfesolver/_ge_beam3_generalized_cell.py -text
+src/anyfesolver/_ge_beam3_native_definition.py -text
+src/anyfesolver/_ge_beam3_pose_joint.py -text
+src/anyfesolver/_ge_beam3_retained_generalized.py -text
+src/anyfesolver/_stiffened_shell_f06_increment_arithmetic.py -text
 scripts/r8_f06_compensated_state_route_dev.py -text
 scripts/r8_f06_compensated_state_check_dev.py -text
 scripts/r8_f06_compensated_state_checkpoint_repair_check_dev.py -text
@@ -830,7 +830,7 @@ scripts/r8_f06_log_domain_check_dev.py -text
 scripts/r8_b2_original_operator_dev.py -text
 tests/test_r8_f06_log_domain_dev.py -text
 tests/test_r8_b2_original_operator_20261010.py -text
-src/anysolver/_b2_attachment_elimination_dev.py -text
+src/anyfesolver/_b2_attachment_elimination_dev.py -text
 scripts/r8_b2_attachment_elimination_dev.py -text
 scripts/r8_b2_original_operator_prediction_dev.py -text
 scripts/r8_f03_common_density_response_dev.py -text
@@ -840,12 +840,12 @@ tests/test_r8_f03_common_density_response_dev.py -text
 .development/r8-active-state-before-saved-feedback-20261010.md -text
 .development/r8-f07-structural-note-original-bytes/REPORT.md -text
 .development/r8-f07-structural-note-original-bytes/CHECKPOINT.md -text
-src/anysolver/_ge_beam3_native_fibre_static_element.py -text
+src/anyfesolver/_ge_beam3_native_fibre_static_element.py -text
 scripts/r8_f06_fibre_log_domain_dev.py -text
 tests/test_r8_f06_fibre_log_domain_dev.py -text
 docs/agent_plans/development/r8-f06-log-domain-20261010/fibre-v1/** -text
 docs/agent_plans/development/r8-f07-block-descriptor-20261009/finite-supplement-v1/** -text
-src/anysolver/_stiffened_shell_beam_history.py -text
+src/anyfesolver/_stiffened_shell_beam_history.py -text
 scripts/r8_f06_native_material_breadth_dev.py -text
 tests/test_r8_f06_native_material_breadth_dev.py -text
 docs/agent_plans/development/r8-f06-log-domain-20261010/material-breadth-v1/** -text
@@ -937,7 +937,7 @@ scripts/r8_b2_assembly_series_dev.py -text
 tests/test_r8_b2_assembly_series_dev.py -text
 scripts/r8_f06_paired_role_assessment_dev.py -text
 tests/test_r8_f06_paired_role_assessment_dev.py -text
-src/anysolver/_stiffened_shell_b2_assembly_diagnostics.py -text
+src/anyfesolver/_stiffened_shell_b2_assembly_diagnostics.py -text
 docs/agent_plans/development/r8-b2-assembly-metrics-20261010/** -text -whitespace
 docs/agent_plans/development/r8-b2-assembly-series-20261010/** -text -whitespace
 docs/agent_plans/development/r8-b2-coo-scratch-cleanup-20261010/** -text -whitespace
@@ -990,7 +990,7 @@ tests/test_r8_ge_paired_fixed_diagnostic_dev.py -text whitespace=blank-at-eol,-b
 
 docs/agent_plans/development/r8-b2-q4-lifetime-20261010/** -text -whitespace
 
-src/anysolver/e4_pl_element.py -text
+src/anyfesolver/e4_pl_element.py -text
 scripts/r8_b2_q4_lifetime_dev.py -text
 tests/test_r8_b2_q4_lifetime_dev.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
 
@@ -998,11 +998,11 @@ scripts/r8_ge_paired_trial_derivative_dev.py -text
 tests/test_r8_ge_paired_trial_derivative_dev.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
 
 # Preserve frozen Mistral candidate source bytes across checkout.
-src/anysolver/_stiffened_shell_displacement_corrector.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
-src/anysolver/_stiffened_shell_displacement_control.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
-src/anysolver/_stiffened_shell_displacement_adaptive.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
-src/anysolver/_stiffened_shell_ge_experimental.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
-src/anysolver/stiffened_shell.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+src/anyfesolver/_stiffened_shell_displacement_corrector.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+src/anyfesolver/_stiffened_shell_displacement_control.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+src/anyfesolver/_stiffened_shell_displacement_adaptive.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+src/anyfesolver/_stiffened_shell_ge_experimental.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+src/anyfesolver/stiffened_shell.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
 scripts/r8_ge_merit_interpolation_candidate_dev.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
 scripts/r8_ge_merit_interpolation_execution_dev.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
 tests/test_r8_ge_merit_interpolation_candidate_dev.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
@@ -1041,9 +1041,9 @@ tests/data/general_contact_native_curved_pair_lifecycle_press_v1.checkpoint -tex
 tests/data/general_contact_native_curved_pair_lifecycle_press_v1_provenance.json -text
 
 # Preserve exact qualified Q4 dependency, evidence and mutation-oracle bytes.
-src/anysolver/elements.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
-src/anysolver/vectorized_nonlinear.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
-src/anysolver/_compensated_contractions.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+src/anyfesolver/elements.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+src/anyfesolver/vectorized_nonlinear.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+src/anyfesolver/_compensated_contractions.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
 docs/reference_cases/e4_pl_q4_source_binding_20261016.json -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
 tests/test_general_contact_c5_elastic_increment.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
 tests/test_general_contact_c5_numpy_coordinate_admission.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
@@ -1065,7 +1065,12 @@ docs/reference_cases/e4_pl_q4_source_binding_20261019.json -text
 docs/reference_cases/Q4_SOURCE_BINDING_REVIEW_20261019.md text eol=lf
 docs/main-housecleaning-20261019/C5_SCOPED_ACCEPTANCE_20261016.json -text
 # New source-only binding includes the already committed fe_core carrier bytes.
-src/anysolver/fe_core.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
+src/anyfesolver/fe_core.py -text whitespace=blank-at-eol,-blank-at-eof,space-before-tab,cr-at-eol
 
 # One exact candidate configuration is shared by both host checkouts.
 scripts/contact_candidate_slice2.json text eol=lf
+/tests/data/namespace_migration/*.json -text
+/scripts/contact_candidate_050.json text eol=lf
+# Restored original reader-pinned Q4 record: exact CRLF bytes (blob 99b59279...,
+# SHA-256 64B07F...).  Must follow the broad docs/reference_cases/e4_* rule above.
+/docs/reference_cases/e4_pl_q4_source_binding_20261019_as_reviewed.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

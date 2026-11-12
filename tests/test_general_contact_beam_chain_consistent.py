@@ -9,13 +9,13 @@ import numpy as np
 import pytest
 from scipy.integrate import quad
 
-from anysolver import (BoundaryCondition,ContactSolverSettings,DisplacementControl,
+from anyfesolver import (BoundaryCondition,ContactSolverSettings,DisplacementControl,
     LoadCase,solve_static_nonlinear,validate_general_contact)
-from anysolver.general_contact.beam_chain_pair import _BeamChainPairManager,PROFILE_CONSISTENT
-from anysolver.general_contact.beam_chain_consistent import moving_owner_block
-from anysolver.general_contact.beam_chain_consistent import _check_partition_knot,_windows,_roots,_nearest_indices,_coefficients,_rational_geometry
-from anysolver.general_contact.beam_pair import _Segment
-from anysolver.elements import BeamElement
+from anyfesolver.general_contact.beam_chain_pair import _BeamChainPairManager,PROFILE_CONSISTENT
+from anyfesolver.general_contact.beam_chain_consistent import moving_owner_block
+from anyfesolver.general_contact.beam_chain_consistent import _check_partition_knot,_windows,_roots,_nearest_indices,_coefficients,_rational_geometry
+from anyfesolver.general_contact.beam_pair import _Segment
+from anyfesolver.elements import BeamElement
 from test_general_contact_beam_chain_pair import _chains,_closed
 
 
@@ -326,7 +326,7 @@ def test_public_consistent_chain_example(capsys):
 
 
 def test_capability_does_not_admit_development_or_foreign_geometry():
-    from anysolver import RigidContactBody, report_general_contact_capability
+    from anyfesolver import RigidContactBody, report_general_contact_capability
     model,definition,settings=_chains()
     controls=_settings(settings)
     report=report_general_contact_capability(model,definition,controls)

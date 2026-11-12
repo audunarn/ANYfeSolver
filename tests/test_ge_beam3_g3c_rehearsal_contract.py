@@ -52,7 +52,7 @@ class RehearsalContractTests(unittest.TestCase):
         imports.update(a.name for n in ast.walk(tree) if isinstance(n,ast.Import) for a in n.names)
         self.assertEqual(imports, {'hashlib','pathlib','os','subprocess','ge_beam3_g3c_history_contract'})
         self.assertNotIn('numpy',sys.modules)
-        self.assertNotIn('anysolver',sys.modules)
+        self.assertNotIn('anyfesolver',sys.modules)
 
 
 if __name__ == '__main__':

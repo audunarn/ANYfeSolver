@@ -5,7 +5,7 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from docs.d1_review_support.d1_radial_source_bin_work import (
+from scripts.d1_radial_source_bin_work import (
     PhysicalSkinFace, check_guided_source_bins, conversion_bound,
     source_bin_geometry_work, vertical_gap_factor,
 )
@@ -108,7 +108,7 @@ def test_warped_geometry_bins_obey_the_independent_two_sided_conversion_bound():
 
 
 def test_warped_independent_bins_match_production_pair_work_before_assembly():
-    from anysolver.general_contact.s3_patch_mortar_energy import (
+    from anyfesolver.general_contact.s3_patch_mortar_energy import (
         MovingS3PatchPrimalMortarPenalty, S3PatchFace,
     )
     source, target, force = _faces(warped=True)

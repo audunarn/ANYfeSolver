@@ -7,11 +7,11 @@ import numpy as np
 import pytest
 import examples.general_contact_finite_automatic_shell as public
 from examples.general_contact_finite_automatic_shell import build,solve,rigid_pose,report_result
-from anysolver.general_contact.automatic_domain import (AutomaticContactResolution,AutomaticContactDomain,
+from anyfesolver.general_contact.automatic_domain import (AutomaticContactResolution,AutomaticContactDomain,
     AutomaticContactDomainError,resolve_automatic_contact_domain,verify_automatic_contact_resolution)
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.semismooth import linearize,complementarity,reference_nodal_support
-from anysolver.general_contact.finite_v2d_state import COORDINATES,owner_contract,prepare_v2d_states
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.semismooth import linearize,complementarity,reference_nodal_support
+from anyfesolver.general_contact.finite_v2d_state import COORDINATES,owner_contract,prepare_v2d_states
 FREF=MREF=1e-4
 
 def canonical(value):return json.loads(json.dumps(value))
@@ -27,7 +27,7 @@ def emit(name,value):
 def workflow_fresh(root):return json.loads((root/'fresh.json').read_text())
 
 def require_saved_fixture(saved,model,domain,settings,resolution,program):
-    from anysolver.nonlinear_restart import model_configuration_fingerprint
+    from anyfesolver.nonlinear_restart import model_configuration_fingerprint
     public.require_report_identity(saved,model,domain,settings,resolution,program)
     assert saved['status']=='completed'
     assert saved['checkpoint']['model_fingerprint']==model_configuration_fingerprint(model)
@@ -74,7 +74,7 @@ def test_resolution_refuses_tampering_even_resealed(kind):
     with pytest.raises(AutomaticContactDomainError):AutomaticContactResolution.from_dict(value)
 
 def test_existing_nonpositive_node_labels_refused_by_patch_admission():
-    from anysolver import FEModel,create_shell_element
+    from anyfesolver import FEModel,create_shell_element
     original,domain,settings,_,_=build();model=FEModel('integer-label-copy')
     model.add_material('elastic',1e5,.3,density=1.)
     labels={nid:nid-5 for nid in original.mesh.nodes}
@@ -175,7 +175,7 @@ def test_saved_complete_workflow_independent_skin_gap():
 @pytest.mark.skipif(not os.environ.get('FINITE_AUTOMATIC_WORKFLOW'),
     reason='archived workflow input FINITE_AUTOMATIC_WORKFLOW absent: saved-fixture replay requires the original delivery root')
 def test_saved_actual_scaled_equilibrium_wrench_ncp_and_integration():
-    from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
     oracle=get_oracle()
     root=Path(os.environ['FINITE_AUTOMATIC_WORKFLOW']);saved=workflow_fresh(root)
     model,domain,settings,resolution,program=build();definition=resolution.definition;model.apply_boundary_conditions()
@@ -277,11 +277,11 @@ def test_automatic_actual_cancellation_after_material_contact_trial(monkeypatch)
     model,domain,settings,resolution,program=build(saved_domain=prefix['automatic_domain'],saved_resolution=prefix['automatic_resolution']);definition=resolution.definition
     # Cancel only after actual structural/material AND contact trial work.
     # No response values, laws, state coordinates or controls are mocked.
-    from anysolver import CancellationToken,SolveCancelled
+    from anyfesolver import CancellationToken,SolveCancelled
     from examples.general_contact_finite_v2d_pair import json_value
-    import anysolver.general_contact.semismooth_path as increment
-    from anysolver.general_contact.runtime import _ACTIVE_CONTACT
-    from anysolver.nonlinear_restart import model_configuration_fingerprint
+    import anyfesolver.general_contact.semismooth_path as increment
+    from anyfesolver.general_contact.runtime import _ACTIVE_CONTACT
+    from anyfesolver.nonlinear_restart import model_configuration_fingerprint
     token=CancellationToken();captured={};input_bytes=json.dumps(prefix,sort_keys=True)
     before_model=model_configuration_fingerprint(model);before_context=_ACTIVE_CONTACT.get()
     assemble=increment._assemble_nonlinear_system;contact_call=increment.linearize
@@ -411,7 +411,7 @@ def test_paired_checkpoint_refuses_different_fixed_automatic_selection(tmp_path)
     original=Path(os.environ['FINITE_AUTOMATIC_PAIRED_PREFIX'])
     paired=json.loads(original.read_text());before=original.read_bytes()
     model,domain,settings,resolution,program=build()
-    from anysolver.nonlinear_restart import model_configuration_fingerprint
+    from anyfesolver.nonlinear_restart import model_configuration_fingerprint
     assert paired['checkpoint']['model_fingerprint']==model_configuration_fingerprint(model)
     bare=tmp_path/'paired-checkpoint.json';domain_file=tmp_path/'domain.json';selection_file=tmp_path/'selection.json'
     bare.write_text(json.dumps(paired['checkpoint'],allow_nan=False))

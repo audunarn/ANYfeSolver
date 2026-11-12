@@ -103,7 +103,7 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     ContactDefinition,
     ContactInteraction,
@@ -113,31 +113,31 @@ from anysolver import (
     create_shell_element,
     solve_static_nonlinear,
 )
-from anysolver.assembly import build_constraint_transformation
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver.elements import BeamElement, CoupledBeamShellElement
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.core import (
+from anyfesolver.assembly import build_constraint_transformation
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver.elements import BeamElement, CoupledBeamShellElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.core import (
     active_contact_manager,
     contact_scope,
 )
-from anysolver.mesh_gen import InterpolatedBeamShellMPCElement
-from anysolver.nonlinear_performance_bootstrap import (
+from anyfesolver.mesh_gen import InterpolatedBeamShellMPCElement
+from anyfesolver.nonlinear_performance_bootstrap import (
     clear_nonlinear_assembly_cache,
     get_nonlinear_assembly_plan,
     install_nonlinear_performance_optimizations,
 )
-from anysolver.nonlinear_reduced_assembly import (
+from anyfesolver.nonlinear_reduced_assembly import (
     assemble_reduced_system,
     build_reduced_assembly_plan,
 )
-from anysolver.nonlinear_static import (
+from anyfesolver.nonlinear_static import (
     NonlinearLoadProgram,
     NonlinearLoadStage,
     _assemble_nonlinear_system,
 )
-from anysolver.nonlinear_state import NonlinearStateStore
-from anysolver.validation import mpc_constraint_residuals
+from anyfesolver.nonlinear_state import NonlinearStateStore
+from anyfesolver.validation import mpc_constraint_residuals
 
 ATOL = 1.0e-10
 TRANSLATION_SCALE = 1.0
@@ -1093,7 +1093,7 @@ def test_terminal_failure_causes_are_distinct_and_cause_coherent(
     claims completion, and both retain exactly the accepted step.  No
     physical parameter combination is searched.
     """
-    import anysolver.nonlinear_static as nonlinear_static
+    import anyfesolver.nonlinear_static as nonlinear_static
 
     def solve_with_injection(inject_after_accepted_step):
         model, meta = _cantilever("shared")
@@ -1194,7 +1194,7 @@ def test_cancellation_after_accepted_step_preserves_committed_state(
     _reference_model, _reference_meta, reference = _press_reference(route)
     assert reference.status == "completed"
 
-    import anysolver.nonlinear_static as nonlinear_static
+    import anyfesolver.nonlinear_static as nonlinear_static
     original_commit = nonlinear_static._commit_nonlinear_state_candidate
     commits = []
 

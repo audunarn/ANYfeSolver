@@ -3,12 +3,12 @@ import gc
 import types
 import weakref
 import pytest
-from anysolver import boundary, static_batch
+from anyfesolver import boundary, static_batch
 from test_native_guard_cpp import plan, literal
 
 @pytest.fixture
 def native():
-    return pytest.importorskip('anysolver._native_guard')
+    return pytest.importorskip('anyfesolver._native_guard')
 
 @pytest.mark.parametrize('mutation', ['code', 'default', 'closure', 'global', 'alias'])
 def test_admitted_code_still_observes_mutable_facts(native, mutation):

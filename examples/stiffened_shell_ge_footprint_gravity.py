@@ -3,14 +3,14 @@
 The two-shell/two-beam mass definition is shared with the gravity example. The
 beam attaches only through the right shell patch. This intentionally rigid,
 six-channel selected-node connection is not an area weld or distributing pad.
-Run through an installed ANYsolver; this example is not G4 qualification.
+Run through an installed ANYfeSolver; this example is not G4 qualification.
 """
 from contextlib import ExitStack
 from dataclasses import replace
 import json
 
 import numpy as np
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from stiffened_shell_ge_gravity import definition as point_definition
 
 

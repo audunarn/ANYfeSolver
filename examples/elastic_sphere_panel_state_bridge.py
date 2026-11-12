@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver.general_contact.structural_state_bridge import TwoBodyStateBridge
+from anyfesolver.general_contact.structural_state_bridge import TwoBodyStateBridge
 from examples.elastic_sphere_panel_contact_work import prepare_work_case, evaluate_case
 from examples.elastic_sphere_panel_continuation import _model_snapshot, _states_equal
 from examples.elastic_sphere_stiffened_panel import _runtime_identity

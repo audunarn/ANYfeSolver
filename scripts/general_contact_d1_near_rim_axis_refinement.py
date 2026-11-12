@@ -1,6 +1,6 @@
 """Separate x/front and y/rim refinement of the independent D1 Q1 oracle.
 
-This is a source-only development discriminator. It does not run ANYsolver's
+This is a source-only development discriminator. It does not run ANYfeSolver's
 coupled shell model or establish pressure-space qualification by itself.
 """
 

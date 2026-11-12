@@ -92,7 +92,7 @@ class Rehearsal:
                 # Product failures may carry their immutable accepted prefix.
                 partial = getattr(error, 'partial', None)
                 if partial is not None:
-                    from anysolver.marine_mechanical import result_to_dict
+                    from anyfesolver.marine_mechanical import result_to_dict
                     save(path/'accepted-prefix.json', result_to_dict(partial))
         save(path/'record.json', record)
         self.summary()
@@ -111,11 +111,11 @@ class Rehearsal:
              application_replay_inventory=self.c['application_replay_inventory']))
 
     def static(self, record, path, name, segments, *, displacement=None, translation=None, body=False):
-        from anysolver.marine_equilibrium import MooringStaticSpec, solve_mooring_equilibrium
-        from anysolver.marine_mooring import (FixedEndpoint, DynamicLineNodeEndpoint,
+        from anyfesolver.marine_equilibrium import MooringStaticSpec, solve_mooring_equilibrium
+        from anyfesolver.marine_mooring import (FixedEndpoint, DynamicLineNodeEndpoint,
              RigidBodyAttachmentEndpoint, MooringLine, MooringLineAssembler, data_to_dict)
-        from anysolver.marine_rigid import RigidBody6D
-        from anysolver.marine_seabed import SeabedContact
+        from anyfesolver.marine_rigid import RigidBody6D
+        from anyfesolver.marine_seabed import SeabedContact
         inputs = {**self.c['static'], **self.c['static_case_inputs'][name]}
         first, last = np.array(inputs['first'], float), np.array(inputs['last'], float)
         if displacement is not None:
@@ -220,10 +220,10 @@ class Rehearsal:
         self.predicate(record, 'translation_geometry_m', inf(np.array(b['positions'])-np.array(a['positions'])-spec['vector']), spec['position_atol'])
 
     def dynamics(self, record, path, name, dt, damping=None):
-        from anysolver.marine_mooring import FixedEndpoint, DynamicLineNodeEndpoint, MooringNodeState, MooringLine, MooringLineAssembler
-        from anysolver.marine_rigid import RigidBody6D
-        from anysolver.marine_seabed import SeabedContact
-        from anysolver.marine_mechanical import MarineMechanicalModel, MarineMechanicalRunSpec, solve_marine_mechanical, model_to_dict, result_to_dict
+        from anyfesolver.marine_mooring import FixedEndpoint, DynamicLineNodeEndpoint, MooringNodeState, MooringLine, MooringLineAssembler
+        from anyfesolver.marine_rigid import RigidBody6D
+        from anyfesolver.marine_seabed import SeabedContact
+        from anyfesolver.marine_mechanical import MarineMechanicalModel, MarineMechanicalRunSpec, solve_marine_mechanical, model_to_dict, result_to_dict
         common, fixture = self.c['dynamic_fixture'], self.c[name]
         b = RigidBody6D(common['body_id'], common['body_mass'], (0., 0., 0.), np.diag(common['body_inertia_diagonal']))
         state = b.state(position=common['body_position'])
@@ -345,7 +345,7 @@ class Rehearsal:
         record['metrics'] = dict(energy_defect=defect, steps=steps, accepted=len(result.accepted), position_scale=scale)
 
     def point_contact(self, record, path):
-        from anysolver.marine_seabed import SeabedContact, seabed_contact_force
+        from anyfesolver.marine_seabed import SeabedContact, seabed_contact_force
         f = self.c['contact_point_passivity']
         contact = SeabedContact(0., f['pressure_stiffness'], f['pressure_damping'],activation_depth_m=f.get('activation_depth_m'))
         gaps, velocities = np.meshgrid(f['gaps'], f['velocities'])
@@ -369,8 +369,8 @@ class Rehearsal:
     def harmonic(self, record, path, prescribed=False):
         from anyloads.marine import AiryEnvironment, AiryComponent, CurrentProfile
         from anyloads.marine_line import LineHydrodynamics
-        from anysolver.marine_mooring import FixedEndpoint, RigidBodyAttachmentEndpoint, DynamicLineNodeEndpoint, MooringNodeState, MooringLine, MooringLineAssembler
-        from anysolver.marine_rigid import RigidBody6D
+        from anyfesolver.marine_mooring import FixedEndpoint, RigidBodyAttachmentEndpoint, DynamicLineNodeEndpoint, MooringNodeState, MooringLine, MooringLineAssembler
+        from anyfesolver.marine_rigid import RigidBody6D
         f = self.c['harmonic']
         kinematics = self.c['prescribed_kinematics']
         heading = kinematics['heading_degrees'] if prescribed else f['heading_degrees']
@@ -431,8 +431,8 @@ def main():
         parser.error('internal deadline must retain at least five seconds of process reserve')
     args.out.mkdir(parents=True, exist_ok=False)
     packages = {}
-    import anysolver, anyloads
-    for name, module in [('anysolver', anysolver), ('anyloads', anyloads)]:
+    import anyfesolver, anyloads
+    for name, module in [('anyfesolver', anyfesolver), ('anyloads', anyloads)]:
         base = Path(module.__file__).resolve().parent
         if 'site-packages' not in str(base).lower():
             raise RuntimeError(f'{name} must be installed, found {base}')

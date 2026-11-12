@@ -41,27 +41,27 @@ MEASUREMENT_SOURCES = frozenset((
     "tests/test_b3_e4_f06_owned_rebase_v4.py",
     "docs/agent_plans/B3_GE_E4_PL_G0_F06_V4_SCIENTIFIC_CONTRACT_DRAFT.md",
     "scripts/probe_b3_ge_e4_pl_g0_f06_loaded_rebase_v3.py",
-    "src/anysolver/_ge_beam3_shell_joint_state.py",
-    "src/anysolver/_ge_beam3_shell_joint_trial.py",
-    "src/anysolver/_ge_beam3_g3c_local_shell.py",
-    "src/anysolver/_ge_beam3_coupled_beam_subdomain.py",
-    "src/anysolver/_ge_beam3_pose_joint.py",
-    "src/anysolver/_ge_beam3_retained_generalized.py",
-    "src/anysolver/_ge_beam3_retained_generalized_state.py",
-    "src/anysolver/_ge_beam3_retained_generalized_program.py",
-    "src/anysolver/_ge_beam3_native_generalized_element.py",
-    "src/anysolver/_ge_beam3_generalized_ellipsoid_section.py",
-    "src/anysolver/_ge_beam3_generalized_cell.py",
-    "src/anysolver/_ge_beam3_generalized_static_boundary.py",
-    "src/anysolver/_ge_beam3_p5/algebra.py",
-    "src/anysolver/_ge_beam3_p5_seeded/core.py",
-    "src/anysolver/e4_pl_s3_v2d_element.py",
-    "src/anysolver/control.py",
-    "src/anysolver/_native_reference_modal.py",
-    "src/anysolver/_ge_beam3_native_generalized_loading.py",
-    "src/anysolver/_ge_beam3_native_line_loading.py",
-    "src/anysolver/_ge_beam3_centered_reference.py",
-    "src/anysolver/fe_core.py",
+    "src/anyfesolver/_ge_beam3_shell_joint_state.py",
+    "src/anyfesolver/_ge_beam3_shell_joint_trial.py",
+    "src/anyfesolver/_ge_beam3_g3c_local_shell.py",
+    "src/anyfesolver/_ge_beam3_coupled_beam_subdomain.py",
+    "src/anyfesolver/_ge_beam3_pose_joint.py",
+    "src/anyfesolver/_ge_beam3_retained_generalized.py",
+    "src/anyfesolver/_ge_beam3_retained_generalized_state.py",
+    "src/anyfesolver/_ge_beam3_retained_generalized_program.py",
+    "src/anyfesolver/_ge_beam3_native_generalized_element.py",
+    "src/anyfesolver/_ge_beam3_generalized_ellipsoid_section.py",
+    "src/anyfesolver/_ge_beam3_generalized_cell.py",
+    "src/anyfesolver/_ge_beam3_generalized_static_boundary.py",
+    "src/anyfesolver/_ge_beam3_p5/algebra.py",
+    "src/anyfesolver/_ge_beam3_p5_seeded/core.py",
+    "src/anyfesolver/e4_pl_s3_v2d_element.py",
+    "src/anyfesolver/control.py",
+    "src/anyfesolver/_native_reference_modal.py",
+    "src/anyfesolver/_ge_beam3_native_generalized_loading.py",
+    "src/anyfesolver/_ge_beam3_native_line_loading.py",
+    "src/anyfesolver/_ge_beam3_centered_reference.py",
+    "src/anyfesolver/fe_core.py",
 ))
 REQUIRED_SOURCES = MEASUREMENT_SOURCES | frozenset((
     "docs/agent_plans/B3_GE_E4_PL_G0_F06_OWNED_REBASE_V4_PROTOCOL.md",
@@ -124,16 +124,16 @@ def _environment() -> dict:
         sys.path.insert(0, local_src)
     import numpy
     import scipy
-    import anysolver
+    import anyfesolver
     import threadpoolctl
 
-    expected_anysolver = (ROOT / "src/anysolver/__init__.py").resolve()
-    if Path(anysolver.__file__).resolve() != expected_anysolver:
-        raise ValueError("supervisor must import the frozen local ANYsolver")
+    expected_anyfesolver = (ROOT / "src/anyfesolver/__init__.py").resolve()
+    if Path(anyfesolver.__file__).resolve() != expected_anyfesolver:
+        raise ValueError("supervisor must import the frozen local ANYfeSolver")
     return dict(python_executable=str(Path(sys.executable).resolve()),
                 python_version=sys.version.split()[0],
                 numpy_version=numpy.__version__, scipy_version=scipy.__version__,
-                anysolver_import=str(Path(anysolver.__file__).resolve()),
+                anyfesolver_import=str(Path(anyfesolver.__file__).resolve()),
                 psutil_version=psutil.__version__,
                 threadpoolctl_version=threadpoolctl.__version__,
                 pywin32_version=package_version("pywin32"),

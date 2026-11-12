@@ -7,8 +7,8 @@ import json
 from pathlib import Path
 import time
 
-import anysolver
-from anysolver import BoundaryCondition, solve_static_nonlinear, validate_general_contact
+import anyfesolver
+from anyfesolver import BoundaryCondition, solve_static_nonlinear, validate_general_contact
 
 from scripts.general_contact_d1_interior_press_dev import build_interior_press
 from scripts.general_contact_d1_mixed_mesh_jet2_schur_press import _json_default
@@ -51,7 +51,7 @@ def main(output: Path):
     )
     payload = {
         "candidate": "d1_interior_two_dimensional_target_press_development",
-        "anysolver_module": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_module": str(Path(anyfesolver.__file__).resolve()),
         "source_q4_faces": 16,
         "target_s3_faces": 8,
         "force_n": 0.04,

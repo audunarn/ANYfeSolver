@@ -2,7 +2,7 @@
 from dataclasses import replace
 import json
 from anymaterial import DNVC208MaterialCurve
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from examples.stiffened_shell_native_fibre_bl5 import definition as elastic_definition
 
 

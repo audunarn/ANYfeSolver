@@ -5,8 +5,8 @@ from hashlib import sha256
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.general_contact.native_activation_static import NativeContactActivationSettings
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.general_contact.native_activation_static import NativeContactActivationSettings
 from test_general_contact_native_material_s3 import _analysis, _accumulated, _two_analysis
 
 
@@ -100,7 +100,7 @@ def test_yielding_full_load_cycle_and_exact_split_restart():
 
 @pytest.mark.parametrize('cancel',(False,True))
 def test_activation_query_exhaustion_or_cancellation_preserves_virgin_prefix(cancel,monkeypatch):
-    from anysolver.control import CancellationToken
+    from anyfesolver.control import CancellationToken
     owner=_analysis(native_yield=1e-5,stiffness=1e7,
         activation_settings=NativeContactActivationSettings(1e-6,256 if cancel else 1))
     capsule=owner._checkpoint(());before=canonical(owner.initial.native_histories)
@@ -137,9 +137,9 @@ def test_material_radius_hidden_crossing_limits_internal_rotation():
 
 
 def test_multiple_pair_activation_uses_second_retained_block():
-    from anysolver.general_contact import create_native_contact_analysis
+    from anyfesolver.general_contact import create_native_contact_analysis
     base=_two_analysis(targets=(.5,1.))
-    from anysolver._ge_beam3_native_definition import NativeBeamDefinition
+    from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
     owner=create_native_contact_analysis(tuple(NativeBeamDefinition(raw) for raw in base.native._definitions),
         tuple(base.native.model.boundary_conditions),base.program,base.shell_model,base.pairs,
         equilibrium_tolerance=1e-10,activation_settings=NativeContactActivationSettings(1e-6,256))
@@ -176,9 +176,9 @@ def test_activation_budget_must_lie_inside_physical_gap_tolerance(gap):
 
 
 def test_multiple_material_facets_activation_cycle_and_staged_rollback(monkeypatch):
-    from anysolver.general_contact import create_native_contact_analysis
-    from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-    from anysolver.control import CancellationToken
+    from anyfesolver.general_contact import create_native_contact_analysis
+    from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+    from anyfesolver.control import CancellationToken
     base=_two_analysis(facets=2)
     def make():
         return create_native_contact_analysis(tuple(NativeBeamDefinition(raw) for raw in base.native._definitions),

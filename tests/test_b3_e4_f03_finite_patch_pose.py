@@ -5,7 +5,7 @@ import pytest
 from scipy.spatial.transform import Rotation
 from scipy import linalg
 
-from anysolver._ge_beam3_pose_joint import RigidPoseJoint
+from anyfesolver._ge_beam3_pose_joint import RigidPoseJoint
 from scripts._b3_e4_f03_native_fixture import build
 from scripts._b3_e4_f03_native_spatial_port import NativeHalfCellSpatialPort
 from scripts.b3_e4_f03_finite_patch_pose import FlatQ4FiniteSupportPose

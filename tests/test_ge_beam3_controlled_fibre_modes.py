@@ -4,11 +4,11 @@ import json
 import numpy as np
 import pytest
 
-import anysolver._ge_beam3_controlled_fibre_modes as native
-import anysolver._ge_beam3_seeded_fibre_control as control
-from anysolver._ge_beam3_retained_fibre_state import Layout
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.control import CancellationToken, SolveCancelled
+import anyfesolver._ge_beam3_controlled_fibre_modes as native
+import anyfesolver._ge_beam3_seeded_fibre_control as control
+from anyfesolver._ge_beam3_retained_fibre_state import Layout
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken, SolveCancelled
 from test_ge_beam3_retained_fibre_control import make_model, program, arch
 from test_ge_beam3_retained_fibre_modes import dense_reference
 
@@ -72,7 +72,7 @@ def test_control_authority_guards(accepted, incident):
     elif incident == 'policy':
         policy = 'automatic'
     elif incident == 'old_controller':
-        from anysolver._ge_beam3_retained_fibre_control import Context as Old
+        from anyfesolver._ge_beam3_retained_fibre_control import Context as Old
         raw = Old(model, p).checkpoint(()); expected = sha256(raw).hexdigest()
     else:
         token.cancel()

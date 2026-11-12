@@ -115,8 +115,8 @@ def resolve_run(args):
             raise ValueError(f"{name} requires a separate --budget")
         # Windows sandboxes can deny strict realpath on an accessible directory.
         site = Path(installed_site).resolve(strict=False)
-        if not site.is_dir() or not (site / "anysolver/__init__.py").is_file():
-            raise ValueError("installed site must contain an anysolver package")
+        if not site.is_dir() or not (site / "anyfesolver/__init__.py").is_file():
+            raise ValueError("installed site must contain an anyfesolver package")
         budget = Path(budget_arg).resolve()
         if budget == DEFAULT_BUDGET.resolve():
             raise ValueError(f"{name} cannot use the source development budget")
@@ -144,10 +144,10 @@ def resolve_run(args):
 def verify_installed_import_origin(module_file, site):
     """Check the actual child import after Python resolves its module search path."""
     site = Path(site).resolve(strict=False)
-    expected = site / "anysolver"
+    expected = site / "anyfesolver"
     origin = Path(module_file).resolve(strict=False)
     if not (expected / "__init__.py").is_file() or not origin.is_file() or origin.parent != expected:
-        raise RuntimeError(f"anysolver imported outside installed site: {origin}")
+        raise RuntimeError(f"anyfesolver imported outside installed site: {origin}")
     return origin
 
 
@@ -164,15 +164,15 @@ def installed_site_identity(site, *, run_profile="installed_large_dev"):
     wheel_sha = digest(wheel)
     if wheel_sha != expected_sha:
         raise ValueError(f"{run_profile} wheel differs from frozen SHA256")
-    records = sorted(site.glob("anysolver-*.dist-info/RECORD"))
+    records = sorted(site.glob("anyfesolver-*.dist-info/RECORD"))
     if len(records) != 1:
-        raise ValueError("installed site must contain exactly one anysolver wheel RECORD")
+        raise ValueError("installed site must contain exactly one anyfesolver wheel RECORD")
     record_name = f"{records[0].parent.name}/RECORD"
     module_hashes = {}
     product_file_count = 0
     with ZipFile(wheel) as archive:
         for member in archive.namelist():
-            if not member.startswith("anysolver/") or member.endswith("/"):
+            if not member.startswith("anyfesolver/") or member.endswith("/"):
                 continue
             wheel_bytes = archive.read(member)
             try:
@@ -182,7 +182,7 @@ def installed_site_identity(site, *, run_profile="installed_large_dev"):
             if site_bytes != wheel_bytes:
                 raise ValueError(f"installed site differs from frozen wheel: {member}")
             product_file_count += 1
-            name = member.removeprefix("anysolver/")
+            name = member.removeprefix("anyfesolver/")
             if name in INSTALLED_PRODUCT_MODULES:
                 module_hashes[name] = hashlib.sha256(site_bytes).hexdigest()
         wheel_record = archive.read(record_name)
@@ -371,9 +371,9 @@ def verify_installed_child_record(outdir, config, site, identity, *,
         runtime = record["runtime"]
         verify_python_optimization(runtime["python_optimize"])
         verify_installed_runtime(runtime)
-        verify_installed_import_origin(runtime["anysolver_file"], site)
-        if runtime["anysolver_sha256"] != identity["installed_module_sha256"]["__init__.py"]:
-            raise ValueError("installed child imported a different anysolver package")
+        verify_installed_import_origin(runtime["anyfesolver_file"], site)
+        if runtime["anyfesolver_sha256"] != identity["installed_module_sha256"]["__init__.py"]:
+            raise ValueError("installed child imported a different anyfesolver package")
         if run_profile in ("installed_large_refinement_dev", "installed_beam_rich_dev"):
             if record["run_profile"] != run_profile:
                 raise ValueError("refinement child used a different run profile")
@@ -564,7 +564,7 @@ def settings(size, cases):
 def model(config):
     import numpy as np
     from scipy import sparse
-    from anysolver import stiffened_shell as api
+    from anyfesolver import stiffened_shell as api
 
     nx, ny = config["nx"], config["ny"]
     shell_id = lambda x, y: 1 + y * (nx + 1) + x
@@ -745,7 +745,7 @@ def failed_solve_diagnostic(owner, expected_case_id, captured, *, accurate_resid
         unchanged_tolerance=float(equilibrium_tolerance[eq_index]))
     try:
         if accurate_residual is None:
-            from anysolver._stiffened_shell_b2_q4_panel_experimental import (
+            from anyfesolver._stiffened_shell_b2_q4_panel_experimental import (
                 _bounded_accurate_residual as accurate_residual)
         # Recompute the original unscaled production RHS rather than undoing
         # binary64 factor scaling on the captured solver input.
@@ -795,24 +795,24 @@ def child(config, out, *, profile=False, run_profile="source_dev", installed_sit
     import psutil
     import scipy
     import threadpoolctl
-    import anysolver
+    import anyfesolver
     if run_profile in INSTALLED_PROFILES:
         try:
-            origin = verify_installed_import_origin(anysolver.__file__, installed_site)
+            origin = verify_installed_import_origin(anyfesolver.__file__, installed_site)
         except (OSError, RuntimeError, TypeError, ValueError) as exc:
             write_json(out, dict(config=config, status="installed_import_origin_refused",
-                                 anysolver_file=str(anysolver.__file__),
+                                 anyfesolver_file=str(anyfesolver.__file__),
                                  runtime=dict(python_optimize=sys.flags.optimize),
                                  failure_reason=f"{type(exc).__name__}: {exc}"))
             return 1
-    from anysolver import stiffened_shell as api
-    from anysolver import _stiffened_shell_b2_q4_panel_experimental as panel_module
+    from anyfesolver import stiffened_shell as api
+    from anyfesolver import _stiffened_shell_b2_q4_panel_experimental as panel_module
     started = time.perf_counter()
     record = dict(config=config, status="started", phases={},
                   runtime=dict(python=sys.version, python_optimize=sys.flags.optimize,
                     numpy=np.__version__,
-                    scipy=scipy.__version__, anysolver_file=str(Path(anysolver.__file__).resolve()),
-                    anysolver_sha256=digest(anysolver.__file__),
+                    scipy=scipy.__version__, anyfesolver_file=str(Path(anyfesolver.__file__).resolve()),
+                    anyfesolver_sha256=digest(anyfesolver.__file__),
                     thread_env={k: os.environ.get(k) for k in THREAD_ENV},
                     NUMBA_DISABLE_JIT=os.environ.get("NUMBA_DISABLE_JIT"),
                     affinity=psutil.Process().cpu_affinity(),
@@ -820,7 +820,7 @@ def child(config, out, *, profile=False, run_profile="source_dev", installed_sit
     if run_profile in INSTALLED_PROFILES:
         record["run_profile"] = run_profile
         record["installed_site"] = str(Path(installed_site).resolve())
-        record["runtime"]["anysolver_file"] = str(origin)
+        record["runtime"]["anyfesolver_file"] = str(origin)
         try:
             verify_installed_runtime(record["runtime"])
         except RuntimeError as exc:
@@ -966,9 +966,9 @@ def run_parent(args):
     env["NUMBA_DISABLE_JIT"] = "1"
     env["PYTHONOPTIMIZE"] = "0"
     env["PYTHONPATH"] = str(installed_site) if installed_site else str(ROOT / "src") + os.pathsep + str(ROOT)
-    source_paths = [Path(__file__), ROOT / "src/anysolver/stiffened_shell.py",
-                    ROOT / "src/anysolver/_stiffened_shell_b2_q4_panel_experimental.py",
-                    ROOT / "src/anysolver/_stiffened_shell_b2_physical_rigid_footprint.py"]
+    source_paths = [Path(__file__), ROOT / "src/anyfesolver/stiffened_shell.py",
+                    ROOT / "src/anyfesolver/_stiffened_shell_b2_q4_panel_experimental.py",
+                    ROOT / "src/anyfesolver/_stiffened_shell_b2_physical_rigid_footprint.py"]
     command = [sys.executable, str(Path(__file__).resolve()), "--child",
                "--size", args.size, "--cases", str(args.cases),
                "--out", str(outdir / "child.json")]

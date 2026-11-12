@@ -8,14 +8,14 @@ from dataclasses import FrozenInstanceError, replace
 from types import SimpleNamespace
 import numpy as np
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver._ge_beam3_p5.algebra import rotation
-from anysolver._stiffened_shell_arc_metric import (
+from anyfesolver import stiffened_shell as ss
+from anyfesolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._stiffened_shell_arc_metric import (
     NativeDirectorChordMetric, PhysicalChordMetric, ChordDomainError,
     DIRECTOR_METRIC_ID, require_metric_owner, require_director_chart)
-from anysolver._stiffened_shell_arc_trial import path_row
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver, _State
-from anysolver._stiffened_shell_rotation_charts import physical_frames
+from anyfesolver._stiffened_shell_arc_trial import path_row
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver, _State
+from anyfesolver._stiffened_shell_rotation_charts import physical_frames
 
 
 def poses():
@@ -42,7 +42,7 @@ def test_owned_weights_exact_types_and_compiled_admission(monkeypatch):
     for weights,length in (([],1.),([0.],1.),([np.nan],1.),([1.],0.),
                            ([1.],1e-200),([1.],1e200)):
         with pytest.raises(ValueError):NativeDirectorChordMetric(weights,length,1)
-    import anysolver._stiffened_shell_affine_endpoint as endpoint
+    import anyfesolver._stiffened_shell_affine_endpoint as endpoint
     definition=SimpleNamespace(shell_reference_policy='flat',points=(),footprints=(),
         distributing_footprints=(),finite_distributing_footprints=())
     owner=SimpleNamespace(_shell_ids=(1,),_beam_ids=(2,),_definition=definition)
@@ -151,7 +151,7 @@ def test_actual_advance_chart_rows_leave_retained_and_multipliers_unmeasured(pla
     path_row(driver,state,parent,metric,normal)
     np.testing.assert_array_equal(state.q,before_q);np.testing.assert_array_equal(state.frames,before_frames)
     # Pullback uses the actual exp-chart J, rather than treating chart entries as spatial spin.
-    from anysolver._ge_beam3_pose_joint import _exp_terms
+    from anyfesolver._ge_beam3_pose_joint import _exp_terms
     normal_spin=physical_frames(state.q[:6],anchors)[0,:,2]
     drill=np.zeros(38);drill[3:6]=np.linalg.solve(_exp_terms(state.q[3:6])[1],normal_spin)
     assert row@drill==pytest.approx(0.,abs=1e-14)
@@ -197,9 +197,9 @@ def synthetic_corrector(monkeypatch):
     """Actual _advance with a controlled equilibrium/predictor oracle."""
     from threading import RLock
     from scipy import sparse
-    from anysolver import _stiffened_shell_arc_trial as arc
-    from anysolver import _stiffened_shell_arc_checkpoint as checkpoint
-    from anysolver import _stiffened_shell_affine_endpoint as endpoint
+    from anyfesolver import _stiffened_shell_arc_trial as arc
+    from anyfesolver import _stiffened_shell_arc_checkpoint as checkpoint
+    from anyfesolver import _stiffened_shell_affine_endpoint as endpoint
     definition=SimpleNamespace(shell_reference_policy='flat',points=(),footprints=(),
         distributing_footprints=(),finite_distributing_footprints=())
     owner=SimpleNamespace(_shell_ids=(1,),_shell_count=6,_beam_ids=(2,),_beam_parts=(),
@@ -280,11 +280,11 @@ def test_public_director_history_restart_and_atomic_refusals(request,tmp_path,mo
     from examples.stiffened_shell_native_fibre_bl5_mixed_j2_displacement import definition
     from examples.stiffened_shell_native_fibre_bl5_displacement import ACTIONS
     from examples.stiffened_shell_native_material_bl5_arc import arc_control
-    from anysolver.control import CancellationToken,SolveCancelled
-    from anysolver._stiffened_shell_arc_trial import ArcSelectionFailure
-    from anysolver import _stiffened_shell_arc_control as controller
-    from anysolver import _stiffened_shell_arc_publication as publication
-    from anysolver._stiffened_shell_arc_checkpoint import (
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    from anyfesolver._stiffened_shell_arc_trial import ArcSelectionFailure
+    from anyfesolver import _stiffened_shell_arc_control as controller
+    from anyfesolver import _stiffened_shell_arc_publication as publication
+    from anyfesolver._stiffened_shell_arc_checkpoint import (
         decode_snapshot,encode_snapshot,director_policy,metric_from_snapshot,requires_coordinate_progress)
     def capture(owner):
         driver=owner._finite_driver

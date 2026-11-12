@@ -3,17 +3,17 @@ from dataclasses import replace
 from hashlib import sha256
 import json
 
-import anysolver
+import anyfesolver
 import numpy as np
 import pytest
 
-from anysolver.stiffened_shell import (
+from anyfesolver.stiffened_shell import (
     AdaptiveIncrementControl, AdaptiveIncrementExhausted, FiniteIncrementFailure,
     IncrementAttempt, NodalAction,
 )
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
-from anysolver._stiffened_shell_increment_control import decode_control, encode_control, MAGIC
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver._stiffened_shell_increment_control import decode_control, encode_control, MAGIC
 from test_stiffened_shell_ge_physical_fibre_linear import _definition
 
 
@@ -39,8 +39,8 @@ def _bounded_increment(monkeypatch):
 def test_cutbacks_use_committed_origins_and_match_fixed_increment_oracle(monkeypatch):
     observed = _bounded_increment(monkeypatch)
     control = AdaptiveIncrementControl(max_cutbacks=3,max_attempts=12)
-    owner = anysolver.stiffened_shell.create_analysis(definition=_definition())
-    oracle = anysolver.stiffened_shell.create_analysis(definition=_definition())
+    owner = anyfesolver.stiffened_shell.create_analysis(definition=_definition())
+    oracle = anyfesolver.stiffened_shell.create_analysis(definition=_definition())
     try:
         result = owner.solve(ACTIONS,targets=(1.,),increment_control=control)
         assert result.status == 'completed'
@@ -62,11 +62,11 @@ def test_cutbacks_use_committed_origins_and_match_fixed_increment_oracle(monkeyp
 
 def test_cancelled_prefix_restores_pending_cursor_and_chart(monkeypatch):
     _bounded_increment(monkeypatch)
-    import anysolver._stiffened_shell_ge_finite_experimental as finite
+    import anyfesolver._stiffened_shell_ge_finite_experimental as finite
     original = finite.cancellation_safe_point
     token = CancellationToken()
-    owner = anysolver.stiffened_shell.create_analysis(definition=_definition(False,True))
-    resumed = anysolver.stiffened_shell.create_analysis(definition=_definition(False,True))
+    owner = anyfesolver.stiffened_shell.create_analysis(definition=_definition(False,True))
+    resumed = anyfesolver.stiffened_shell.create_analysis(definition=_definition(False,True))
     control = AdaptiveIncrementControl(3,12)
     def cancel(token_value,stage):
         if owner._generation == 1 and stage == 'stiffened-shell.finite.increment':
@@ -92,7 +92,7 @@ def test_cancelled_prefix_restores_pending_cursor_and_chart(monkeypatch):
         header=json.dumps(json.loads(saved[start:start+size]),indent=2).encode()
         noncanonical=MAGIC+len(header).to_bytes(4,'little')+header+saved[start+size:-32]
         noncanonical += sha256(noncanonical).digest()
-        untouched = anysolver.stiffened_shell.create_analysis(definition=_definition(False,True))
+        untouched = anyfesolver.stiffened_shell.create_analysis(definition=_definition(False,True))
         try:
             with pytest.raises(ValueError,match='noncanonical'):
                 untouched.restore(noncanonical)
@@ -107,7 +107,7 @@ def test_cancelled_prefix_restores_pending_cursor_and_chart(monkeypatch):
                           targets=(1.,),increment_control=control)
         assert resumed.checkpoint() == saved
         bad = encode_control(owner._identity,replace(state,cursor=1),inner)
-        untouched = anysolver.stiffened_shell.create_analysis(definition=_definition(False,True))
+        untouched = anyfesolver.stiffened_shell.create_analysis(definition=_definition(False,True))
         try:
             with pytest.raises(ValueError,match='cursor disagrees'):
                 untouched.restore(bad)
@@ -124,7 +124,7 @@ def test_cancelled_prefix_restores_pending_cursor_and_chart(monkeypatch):
 
 def test_exhaustion_is_not_equilibrium(monkeypatch):
     _bounded_increment(monkeypatch)
-    owner = anysolver.stiffened_shell.create_analysis(definition=_definition())
+    owner = anyfesolver.stiffened_shell.create_analysis(definition=_definition())
     try:
         with pytest.raises(AdaptiveIncrementExhausted,match='cutback limit') as caught:
             owner.solve(ACTIONS,targets=(1.,),increment_control=AdaptiveIncrementControl(1,12))
@@ -138,8 +138,8 @@ def test_exhaustion_is_not_equilibrium(monkeypatch):
 
 
 def test_checkpoint_resource_failure_precedes_atomic_publish(monkeypatch):
-    import anysolver._stiffened_shell_increment_control as control_module
-    owner = anysolver.stiffened_shell.create_analysis(definition=_definition())
+    import anyfesolver._stiffened_shell_increment_control as control_module
+    owner = anyfesolver.stiffened_shell.create_analysis(definition=_definition())
     try:
         first = owner.solve(ACTIONS,targets=(.25,))
         saved = owner.checkpoint()
@@ -154,8 +154,8 @@ def test_checkpoint_resource_failure_precedes_atomic_publish(monkeypatch):
 def test_attempt_budget_keeps_durable_prefix_and_is_terminal(monkeypatch):
     _bounded_increment(monkeypatch)
     control = AdaptiveIncrementControl(3,3)
-    owner = anysolver.stiffened_shell.create_analysis(definition=_definition())
-    resumed = anysolver.stiffened_shell.create_analysis(definition=_definition())
+    owner = anyfesolver.stiffened_shell.create_analysis(definition=_definition())
+    resumed = anyfesolver.stiffened_shell.create_analysis(definition=_definition())
     try:
         with pytest.raises(AdaptiveIncrementExhausted,match='attempt limit') as caught:
             owner.solve(ACTIONS,targets=(1.,),increment_control=control)
@@ -171,7 +171,7 @@ def test_attempt_budget_keeps_durable_prefix_and_is_terminal(monkeypatch):
 
 
 def test_cancelled_prepared_controller_snapshot_is_not_published(monkeypatch):
-    import anysolver._stiffened_shell_ge_finite_experimental as finite
+    import anyfesolver._stiffened_shell_ge_finite_experimental as finite
     original = finite.cancellation_safe_point
     token = CancellationToken()
     def cancel(token_value,stage):
@@ -179,7 +179,7 @@ def test_cancelled_prepared_controller_snapshot_is_not_published(monkeypatch):
             token.cancel('prepared checkpoint')
         return original(token_value,stage)
     monkeypatch.setattr(finite,'cancellation_safe_point',cancel)
-    owner = anysolver.stiffened_shell.create_analysis(definition=_definition())
+    owner = anyfesolver.stiffened_shell.create_analysis(definition=_definition())
     try:
         with pytest.raises(SolveCancelled,match='prepared checkpoint'):
             owner.solve(ACTIONS,targets=(.25,),increment_control=AdaptiveIncrementControl(),
@@ -198,7 +198,7 @@ def test_unclassified_errors_are_not_retried(monkeypatch,error):
         calls.append(1)
         raise error
     monkeypatch.setattr(FinitePointDriver,'_solve_fixed',fail)
-    owner = anysolver.stiffened_shell.create_analysis(definition=_definition())
+    owner = anyfesolver.stiffened_shell.create_analysis(definition=_definition())
     try:
         with pytest.raises(type(error)) as caught:
             owner.solve(ACTIONS,increment_control=AdaptiveIncrementControl())

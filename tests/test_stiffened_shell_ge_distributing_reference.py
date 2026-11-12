@@ -14,17 +14,17 @@ import pytest
 from scipy import sparse
 from scipy.sparse import linalg as spla
 
-from anysolver import b3_ge
-from anysolver._b2_physical_linear_batch_dev import _accurate_sparse_residual
-from anysolver._ge_beam3_generalized_static_boundary import spatial_jacobian
-from anysolver._stiffened_shell_b2_nodal_footprint import reference_shell_matrix
-from anysolver._stiffened_shell_distributing_footprint import DistributingFootprintDefinition
-from anysolver._stiffened_shell_ge_distributing_reference import bind_reference
-from anysolver._stiffened_shell_ge_experimental import (
+from anyfesolver import b3_ge
+from anyfesolver._b2_physical_linear_batch_dev import _accurate_sparse_residual
+from anyfesolver._ge_beam3_generalized_static_boundary import spatial_jacobian
+from anyfesolver._stiffened_shell_b2_nodal_footprint import reference_shell_matrix
+from anyfesolver._stiffened_shell_distributing_footprint import DistributingFootprintDefinition
+from anyfesolver._stiffened_shell_ge_distributing_reference import bind_reference
+from anyfesolver._stiffened_shell_ge_experimental import (
     ExperimentalGEAnalysis, FixedCoordinate, PointConnection, Q4_ALGORITHMIC_PULLBACK_V1,
     _linear_equilibrium, _scaled_constraint_gap,
 )
-from anysolver._stiffened_shell_nodal_footprint import NodalRigidFootprint
+from anyfesolver._stiffened_shell_nodal_footprint import NodalRigidFootprint
 from test_stiffened_shell_ge_experimental import _panel
 
 

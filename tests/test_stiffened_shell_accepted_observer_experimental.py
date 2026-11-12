@@ -6,11 +6,11 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
-from anysolver._stiffened_shell_ge_checkpoint_binary import MAGIC as BINARY_MAGIC, decode
-from anysolver._stiffened_shell_increment_control import decode_control
+from anyfesolver import stiffened_shell
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver._stiffened_shell_ge_checkpoint_binary import MAGIC as BINARY_MAGIC, decode
+from anyfesolver._stiffened_shell_increment_control import decode_control
 from test_stiffened_shell_ge_experimental import _panel
 from test_stiffened_shell_ge_finite_experimental import _q4_shell_j2_panel
 

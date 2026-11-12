@@ -26,15 +26,15 @@ from dataclasses import replace
 
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     ContactDefinition, ContactInteraction, ContactSurface,
     validate_general_contact,
 )
-from anysolver.general_contact import static_path
-from anysolver.general_contact.s3_patch_static import (
+from anyfesolver.general_contact import static_path
+from anyfesolver.general_contact.s3_patch_static import (
     REFINED_Q4_S3_OVERLAP_LOCAL_AUGMENTED_PROFILE,
 )
-from anysolver.general_contact.s3_sliding_friction import (
+from anyfesolver.general_contact.s3_sliding_friction import (
     S3MovingNormalFrictionSettings,
 )
 

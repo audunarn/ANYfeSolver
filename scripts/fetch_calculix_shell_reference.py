@@ -21,7 +21,7 @@ import json
 from pathlib import Path
 from urllib.request import urlopen
 
-from anysolver.reference_cases import upstream_calculix_reference_manifest
+from anyfesolver.reference_cases import upstream_calculix_reference_manifest
 
 
 DEFAULT_OUTPUT = Path("tests/reference_cases/calculix_shell_convergence")

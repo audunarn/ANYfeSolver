@@ -5,12 +5,12 @@ from fractions import Fraction as F
 from pathlib import Path
 import numpy as np
 import pytest
-from anysolver import FEModel, BoundaryCondition, create_shell_element
-from anysolver.general_contact import ContactSurface, ContactInteraction, resolve_automatic_contact_domain
-from anysolver.general_contact.static_path import ContactPathControl, ContactPathProgram, ContactPathNodalForce
-from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-from anysolver.general_contact.semismooth import linearize, complementarity, reference_nodal_support
-from anysolver.general_contact.pressure_diagnostics import PressureResponseScales, paired_pressure_response, finite_pressure_pose
+from anyfesolver import FEModel, BoundaryCondition, create_shell_element
+from anyfesolver.general_contact import ContactSurface, ContactInteraction, resolve_automatic_contact_domain
+from anyfesolver.general_contact.static_path import ContactPathControl, ContactPathProgram, ContactPathNodalForce
+from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+from anyfesolver.general_contact.semismooth import linearize, complementarity, reference_nodal_support
+from anyfesolver.general_contact.pressure_diagnostics import PressureResponseScales, paired_pressure_response, finite_pressure_pose
 from examples.general_contact_tilted_relative_sliding import build as base_build, solve, rotation, rigid_pose
 
 ROOT=Path(__file__).parents[1]
@@ -91,7 +91,7 @@ def bind_response(report,k,g,b):
 
 
 def physical_gates(model,settings,res,program,meta,pose):
-    from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
     manager=GeneralS3PatchManager(model,res.definition,settings);free,rows=selectors(model,program)
     q=np.asarray(pose['u']);z=np.asarray(pose['z']);manager.require_finite_deformation(q);skin=manager.finite_skin.pose(q)
     independent=np.array([manager.finite_skin.reference[i]+q[d[:3]]+manager.finite_skin.offsets[i]*prior.decimal_director(q[d[3:]],manager.finite_skin.directors[i]) for i,d in enumerate(manager.finite_skin.dofs)])
@@ -149,7 +149,7 @@ def test_manufactured_paired_and_rectangular_nullspace():
 @pytest.mark.skipif(not BASE.is_file(),
     reason='archived BASE pose run-14.json absent (C:/ANYworkspaceWork/contact_tilted_relative_sliding_20261008/outputs/v3/run-14.json): authenticated sixty-degree paired response requires the saved sha-pinned BASE pose')
 def test_authenticated_base_sixty_degree_paired_response():
-    from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
     assert hashlib.sha256(BASE.read_bytes()).hexdigest()==BASE_SHA
     stored=json.loads(BASE.read_text());model,domain,settings,res,program,meta=fixture();assert res.identity==stored['identity']
     pose=stored['poses'][-1];assert pose['step']==14 and pose['u']==stored['checkpoint']['displacements'] and pose['z']==stored['checkpoint']['path_state']['normal_forces']
@@ -228,13 +228,13 @@ def test_saved_refinement_physical_response_and_modes():
     or not Path('C:/ANYworkspaceWork/contact_tilted_relative_sliding_20261008/current-install.json').is_file(),
     reason='archived base.json diagnostic under AUTOMATIC_WORKFLOW_EVIDENCE, BASE run-14.json, or current-install.json absent: installed saved-matrix consumer requires the saved matrices and install manifest')
 def test_installed_saved_matrix_consumer_and_refusals(monkeypatch):
-    import anysolver
-    import anysolver.nonlinear_static as structural_owner
+    import anyfesolver
+    import anyfesolver.nonlinear_static as structural_owner
     saved=read('base')['diagnostic'];data=saved['matrix_inputs'];moment=np.array(saved['free_dofs'])%6>=3
     current=paired_pressure_response(data['constrained_tangent'],data['gap_chart'],data['force_spin'],saved['support'],moment,scales=SCALES,active_modes=np.isin(np.arange(len(saved['support'])),saved['active_mode_indices']))
     for key in ('force_detection','gap_response','active_gap_response'):
         np.testing.assert_array_equal(current[key]['singular_values'],saved[key]['singular_values'])
-    site=Path(anysolver.__file__).resolve().parent.parent;manifest=json.loads((site.parent/'install.json').read_text())
+    site=Path(anyfesolver.__file__).resolve().parent.parent;manifest=json.loads((site.parent/'install.json').read_text())
     old=json.loads(Path('C:/ANYworkspaceWork/contact_tilted_relative_sliding_20261008/current-install.json').read_text())
     assert all(manifest['payload_sha256'][name]==digest for name,digest in old['payload_sha256'].items())
     model,_,settings,res,program,_=fixture();manager=GeneralS3PatchManager(model,res.definition,settings);free,_=selectors(model,program);pose=json.loads(BASE.read_text())['poses'][-1]

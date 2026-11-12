@@ -207,7 +207,7 @@ if __name__=='__main__':
         load_candidate();bound=bindings(preparation=True);DOC.mkdir(parents=True,exist_ok=True)
         original.write(DOC/'BRANCH_PREPARATION.json',dict(status='PREPARED_NOT_LAUNCHED',bindings=bound,
             unique_basenames=len(bound),uniform_scale=SCALE,stage_caps_s=[20.,60.],budget_s=180.,reserve_s=60.,
-            numerical_imports=[n for n in sys.modules if n.split('.')[0] in ('numpy','scipy','numba','anysolver','pytest')]))
+            numerical_imports=[n for n in sys.modules if n.split('.')[0] in ('numpy','scipy','numba','anyfesolver','pytest')]))
         print(json.dumps(dict(bindings=len(bound),missing=[p for p,v in bound.items() if v is None])))
     elif args.child:
         raise SystemExit(child(Path(args.out),args.stage))

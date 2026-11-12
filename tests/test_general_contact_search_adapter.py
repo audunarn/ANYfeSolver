@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.contact_search import ContactAABBIndex
+from anyfesolver.general_contact.contact_search import ContactAABBIndex
 
 
 def _exhaustive(keys, boxes, window, padding=0.0):

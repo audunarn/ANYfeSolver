@@ -1,7 +1,7 @@
 """Opt-in fine-Q1 Q4/Q4 supported-force bending through ordinary force control."""
 from dataclasses import replace
-from anysolver import solve_static_nonlinear
-from anysolver.general_contact.automatic_domain import resolve_automatic_contact_domain
+from anyfesolver import solve_static_nonlinear
+from anyfesolver.general_contact.automatic_domain import resolve_automatic_contact_domain
 from examples.general_contact_q4_pair_bending import build as bending_build
 
 

@@ -95,7 +95,7 @@ def test_independent_rational_stationarity_checker_passes() -> None:
     assert result["status"] == "PASS"
     assert len(result["content_sha256"]) == 64
     source = CHECKER.read_text(encoding="utf-8")
-    for forbidden in ("anysolver", "numpy", "scipy", "sympy", "ge_beam3_mixed_element"):
+    for forbidden in ("anyfesolver", "numpy", "scipy", "sympy", "ge_beam3_mixed_element"):
         assert f"import {forbidden}" not in source
         assert f"from {forbidden}" not in source
 

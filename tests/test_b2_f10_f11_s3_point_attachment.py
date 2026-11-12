@@ -9,12 +9,12 @@ from scipy.sparse import bmat, csc_matrix
 from scipy.sparse.linalg import spsolve
 from scipy.spatial.transform import Rotation
 
-from anysolver._b2_physical_flexibility_linear import LinearSection
-from anysolver._b2_physical_linear_definition import PhysicalB2Member
-from anysolver._b2_f10_f11_point_attachment import compile_reference_point
-from anysolver._ge_beam3_pose_joint import RigidPoseJoint
-from anysolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from anysolver.fe_core import FEModel
+from anyfesolver._b2_physical_flexibility_linear import LinearSection
+from anyfesolver._b2_physical_linear_definition import PhysicalB2Member
+from anyfesolver._b2_f10_f11_point_attachment import compile_reference_point
+from anyfesolver._ge_beam3_pose_joint import RigidPoseJoint
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
+from anyfesolver.fe_core import FEModel
 
 
 TRIANGLE = np.array(((0., 0., 0.), (1., 0., 0.), (0., 1., 0.)))

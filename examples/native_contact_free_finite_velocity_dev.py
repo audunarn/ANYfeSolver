@@ -4,9 +4,9 @@ Run with the development tree on PYTHONPATH; no old public selector is broadened
 """
 import json
 import numpy as np
-from anysolver.ge_beam3_native import (
+from anyfesolver.ge_beam3_native import (
     define_beam, SELECTOR as DEFINITION_SELECTOR, EllipsoidalGeneralizedSection)
-from anysolver.ge_beam3_native_dynamics import create_analysis, SELECTOR, workflow_provenance
+from anyfesolver.ge_beam3_native_dynamics import create_analysis, SELECTOR, workflow_provenance
 
 
 def build_definition():

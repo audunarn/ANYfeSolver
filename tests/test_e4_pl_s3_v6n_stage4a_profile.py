@@ -69,7 +69,7 @@ def test_profile_bindings_and_registered_timeout_members() -> None:
 
 
 def test_pressure_surface_traversal_uses_captured_constant_time_guard() -> None:
-    source_path = ROOT / "src" / "anysolver" / "matrix_assembly.py"
+    source_path = ROOT / "src" / "anyfesolver" / "matrix_assembly.py"
     source = source_path.read_text(encoding="utf-8")
     function_start = source.index("def _qualified_s3_pressure_surface_records(")
     function_end = source.index("\ndef _assemble_load_vector_under_lease(", function_start)

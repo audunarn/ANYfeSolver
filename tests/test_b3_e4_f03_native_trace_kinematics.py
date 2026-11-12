@@ -8,10 +8,10 @@ import numpy as np
 import pytest
 from scipy import linalg
 
-from anysolver._ge_beam3_generalized_ellipsoid_section import (
+from anyfesolver._ge_beam3_generalized_ellipsoid_section import (
     EllipsoidalGeneralizedSection,
 )
-from anysolver._ge_beam3_retained_generalized import RetainedGeneralizedOperator
+from anyfesolver._ge_beam3_retained_generalized import RetainedGeneralizedOperator
 from scripts._b3_e4_f03_native_fixture import SECTION_DIAGONAL, build
 
 

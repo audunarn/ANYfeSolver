@@ -34,8 +34,8 @@ def test_checker_is_independent_of_v5b_producer_and_production_s3() -> None:
         elif isinstance(node, ast.ImportFrom) and node.module:
             imports.add(node.module)
     assert "e4_pl_s3_v5b_relaxed_screen_producer" not in imports
-    assert "anysolver.e4_pl_s3_element" not in imports
-    assert "anysolver.e4_pl_s3_v2_element" not in imports
+    assert "anyfesolver.e4_pl_s3_element" not in imports
+    assert "anyfesolver.e4_pl_s3_v2_element" not in imports
 
 
 def test_exact_source_relaxation_and_independent_reconstruction() -> None:
@@ -138,7 +138,7 @@ def test_contract_freezes_coverage_bounds_thresholds_and_inputs() -> None:
 
 
 def test_production_boundary_remains_unchanged() -> None:
-    source = (ROOT / "src" / "anysolver" / "elements.py").read_text(encoding="utf-8")
+    source = (ROOT / "src" / "anyfesolver" / "elements.py").read_text(encoding="utf-8")
     assert 'DEFAULT_Q4_FORMULATION = "e4-pl"' in source
     assert 'DEFAULT_S3_FORMULATION = "legacy-s3"' in source
     assert not any(path.is_file() for path in (ROOT / "src").rglob("*v5b*"))

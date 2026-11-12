@@ -3,7 +3,7 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import (ContactTransientSolverControls, ContactNodalLoadHistory,
+from anyfesolver import (ContactTransientSolverControls, ContactNodalLoadHistory,
                        LoadCase, TransientConfig, solve_transient_contact)
 from test_general_contact_transient_plane import _guided_plate, _constant_q4_load
 

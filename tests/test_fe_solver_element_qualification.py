@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     beam_qualification_metrics,
     generate_element_qualification_report,
     q4_q8_convergence_cost_sweep,
@@ -25,8 +25,8 @@ from anysolver import (
     q8r_patch_metric,
     reference_q8_geometries,
 )
-from anysolver.elements import ShellElement
-from anysolver.fe_core import FEModel
+from anyfesolver.elements import ShellElement
+from anyfesolver.fe_core import FEModel
 
 
 def test_q8_free_element_has_six_rigid_modes_for_reference_geometries() -> None:

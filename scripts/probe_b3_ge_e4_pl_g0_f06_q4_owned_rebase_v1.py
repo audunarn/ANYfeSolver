@@ -14,12 +14,12 @@ from __future__ import annotations
 
 import numpy as np
 
-from anysolver.control import cancellation_safe_point
-from anysolver._ge_beam3_g3c_local_shell import deformation
-from anysolver._ge_beam3_pose_joint import _exp_terms
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_shell_joint_state import CoupledShellBeamAnalysis, decode
-from anysolver._native_reference_modal import _owned
+from anyfesolver.control import cancellation_safe_point
+from anyfesolver._ge_beam3_g3c_local_shell import deformation
+from anyfesolver._ge_beam3_pose_joint import _exp_terms
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_shell_joint_state import CoupledShellBeamAnalysis, decode
+from anyfesolver._native_reference_modal import _owned
 
 from scripts.probe_b3_ge_e4_pl_g0_f06_loaded_rebase_v3 import (
     fixture, numeric_state, shell_spatial,

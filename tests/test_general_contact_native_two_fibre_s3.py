@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from test_general_contact_native_curved_s3_static import _analysis
 from test_general_contact_native_fibre_s3 import _independent_material_history
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 
 
 def _owner(two_facets=False):
@@ -61,7 +61,7 @@ def test_two_fibre_beams_shared_target_complete_local_work(two_facets):
     assert sha256(raw).hexdigest()=='98d22bd2aff840df5d7b1034298891b179ed438ec9246a9f76b89445a7a15347'
     source=json.loads(raw)['records'][0];saved=source['mechanical']
     data={key:np.array(value,copy=True) for key,value in owner.initial.mechanical.descriptor().items()}
-    from anysolver._ge_beam3_p5.compensated_coordinates import split_sum
+    from anyfesolver._ge_beam3_p5.compensated_coordinates import split_sum
     for i,nodes in enumerate(owner.context.nodes):
         for local,node in enumerate(nodes):
             for axis in range(3):
@@ -170,6 +170,155 @@ def test_two_fibre_beams_actual_coupled_history_and_restart(two_facets):
         Path(output+'-two-beam.json').write_text(json.dumps(report,indent=2))
 
 
+def _skewed_host_owner(monkeypatch,two_facets):
+    """Owner whose HOST stiffness differs by one bit on every kernel, so the
+    archived identity is reachable only through the fused-arithmetic adoption."""
+    cls=type(_owner(two_facets));original=cls._element_stiffness
+    def skewed(self,element,mesh,material):
+        k=original(self,element,mesh,material)
+        if self._shell_arithmetic=='host_blas':
+            k=np.array(k,copy=True);k[0,0]=np.nextafter(k[0,0],np.inf)
+        return k
+    monkeypatch.setattr(cls,'_element_stiffness',skewed)
+    return _owner(two_facets)
+
+
+def _owner_state(owner):
+    return dict(mode=owner._shell_arithmetic,identity=owner.identity,sha=owner.shell_contract_sha,
+        stiffness=owner.shell_stiffness.copy(),free=owner.shell_free.copy(),fixed=owner.shell_fixed.copy(),
+        counters=(owner.candidate_evaluations,owner.pair_evaluations,owner.contact_reuse_hits,owner.assembly_reuse_hits),
+        failures=list(owner.curved_trial_failures),contact_entry=owner._contact_reuse_entry,
+        assembly_entry=owner._assembly_reuse_entry,construction=owner._construction_contact_entry,
+        initial=owner.initial)
+
+
+def _assert_owner_state(owner,before):
+    after=_owner_state(owner)
+    for key in ('stiffness','free','fixed'):np.testing.assert_array_equal(after.pop(key),before[key])
+    for key in ('mode','identity','sha','counters','failures'):assert after[key]==before[key],key
+    for key in ('contact_entry','assembly_entry','construction','initial'):assert after[key] is before[key],key
+    assert owner._identity()==owner.identity and owner._shell_contract_sha()==owner.shell_contract_sha
+
+
+def test_failed_restore_after_identity_adoption_restores_every_owner_state(monkeypatch):
+    from anyfesolver._ge_beam3_p5_seeded.core import sha
+    fixture=Path(__file__).parent/'data/general_contact_native_fibre_s3_plastic_two_beams_two_patches_v1.checkpoint'
+    raw=fixture.read_bytes();digest=sha256(raw).hexdigest()
+    owner=_skewed_host_owner(monkeypatch,True)
+    assert owner._shell_arithmetic=='host_blas' and owner.identity!=json.loads(raw)['identity']
+    owner._assembly_reuse_entry=('stale-key','stale-value','stale-signature')   # arbitrary disposable cache entry
+    owner._construction_contact_entry=('previous-mode', None, None)
+    before=_owner_state(owner)
+    # Authenticated (resealed, chain-valid) record that the exact replay refuses.
+    value=json.loads(raw);value['records'][0]['contact']['tangent_error_n_per_m']*=1.5
+    body={k:v for k,v in value.items() if k!='checkpoint_sha256'}
+    forged=canonical({**body,'checkpoint_sha256':sha(body)})
+    with owner.context.operation(None),pytest.raises(ValueError,match='replay mismatch'):
+        owner._restore(forged,sha256(forged).hexdigest())
+    _assert_owner_state(owner,before)
+    # An unexpected (non-ValueError) exception during candidate evaluation.
+    def boom(*args,**kwargs):raise RuntimeError('unexpected candidate failure')
+    owner.__dict__['_record']=boom
+    try:
+        with owner.context.operation(None),pytest.raises(RuntimeError,match='unexpected'):
+            owner._restore(raw,digest)
+    finally:del owner.__dict__['_record']
+    _assert_owner_state(owner,before)
+    # The refused attempts left no trace: the same owner now restores exactly,
+    # adopting the fused arithmetic only for the authentic checkpoint.
+    with owner.context.operation(None):
+        restored,records=owner._restore(raw,digest)
+        assert owner._shell_arithmetic=='contact_replay_fused' and owner.identity==json.loads(raw)['identity']
+        assert owner._assembly_reuse_entry is None
+        assert owner._construction_contact_entry is not before['construction']
+        assert owner._construction_contact_entry[1] is owner.initial.contact
+        assert owner._contact_reuse_entry is None
+        assert owner._checkpoint(records)==raw
+
+
+_TWO_PATCHES='general_contact_native_fibre_s3_plastic_two_beams_two_patches_v1.checkpoint'
+
+
+def _resealed(raw,edit):
+    from anyfesolver._ge_beam3_p5_seeded.core import sha
+    value=json.loads(raw);edit(value)
+    body={k:v for k,v in value.items() if k!='checkpoint_sha256'}
+    return canonical({**body,'checkpoint_sha256':sha(body)})
+
+
+def test_fused_arithmetic_refuses_shadowed_stiffness_route_before_any_cache_access(monkeypatch):
+    import inspect
+    import anyfesolver.e4_pl_s3_v2c_element as v2c
+    raw=(Path(__file__).parent/'data'/_TWO_PATCHES).read_bytes();digest=sha256(raw).hexdigest()
+    owner=_skewed_host_owner(monkeypatch,True);before=_owner_state(owner)
+    entries=inspect.getclosurevars(v2c.compute_contact_replay_stiffness_components).nonlocals['entries']
+    cached=dict(entries)
+    element=next(iter(owner.shell_model.mesh.elements.values()));cls=type(element)
+    # Equivalent override: the host (original-dispatch) identity is unchanged, so
+    # only the fused arithmetic can notice that the route is not canonical.
+    element.__dict__['compute_stiffness_matrix']=lambda mesh,material:cls.compute_stiffness_matrix(element,mesh,material)
+    try:
+        with owner.context.operation(None),pytest.raises(ValueError,match='shadowed or replaced'):
+            owner._restore(raw,digest)
+        _assert_owner_state(owner,before)
+        # The V2C fused cache entry independently refuses the receiver first.
+        mesh=owner.shell_model.mesh;material=owner.shell_model.materials[element.material_name]
+        with pytest.raises(v2c.StrictFlatLinearCapabilityError,match='shadows a stiffness route'):
+            v2c.compute_contact_replay_stiffness_components(element,mesh,material)
+        assert dict(entries)==cached
+        with pytest.raises(v2c.StrictFlatLinearCapabilityError,match='exact V2C/V2D'):
+            v2c.compute_contact_replay_stiffness_components(object(),mesh,material)
+        assert dict(entries)==cached
+    finally:del element.__dict__['compute_stiffness_matrix']
+    with owner.context.operation(None):
+        owner._restore(raw,digest)      # canonical route: the same owner adopts and restores
+    assert owner._shell_arithmetic=='contact_replay_fused'
+
+
+def test_unrelated_identity_never_probes_alternate_arithmetic(monkeypatch):
+    raw=(Path(__file__).parent/'data'/_TWO_PATCHES).read_bytes()
+    owner=_skewed_host_owner(monkeypatch,True);before=_owner_state(owner)
+    def forbidden(*args,**kwargs):raise AssertionError('alternate arithmetic probed for an unauthorised identity')
+    owner.__dict__['_probe_shell_arithmetic']=forbidden
+    wrong=_resealed(raw,lambda v:v.update(identity='ab'*32))
+    with owner.context.operation(None),pytest.raises(ValueError,match='binding'):
+        owner._restore(wrong,sha256(wrong).hexdigest())
+    _assert_owner_state(owner,before)
+    archived=json.loads(raw)['identity']
+    assert owner._authorised_alternate_arithmetic(archived)=='contact_replay_fused'
+    assert owner._authorised_alternate_arithmetic('ab'*32) is None
+    assert owner._authorised_alternate_arithmetic(owner._constructed_identity) is None
+    owner.__dict__['_shell_arithmetic']='contact_replay_fused'
+    assert owner._authorised_alternate_arithmetic(owner._constructed_identity)=='host_blas'
+    assert owner._authorised_alternate_arithmetic('ab'*32) is None
+    assert owner._authorised_alternate_arithmetic(archived) is None
+
+
+def test_zero_target_restore_after_arithmetic_switch_rebinds_initial_state(monkeypatch):
+    raw=(Path(__file__).parent/'data'/_TWO_PATCHES).read_bytes()
+    zero=_resealed(raw,lambda v:v.update(completed_targets=0,records=[]))
+    owner=_skewed_host_owner(monkeypatch,True);assert owner._curved_mode
+    before=_owner_state(owner)
+    # A failure after the switch (initial state already rebound) restores the old initial and caches.
+    def boom(*args,**kwargs):raise RuntimeError('unexpected checkpoint failure')
+    owner.__dict__['_checkpoint']=boom
+    try:
+        with owner.context.operation(None),pytest.raises(RuntimeError,match='unexpected'):
+            owner._restore(zero,sha256(zero).hexdigest())
+    finally:del owner.__dict__['_checkpoint']
+    _assert_owner_state(owner,before)
+    with owner.context.operation(None):
+        accepted,records=owner._restore(zero,sha256(zero).hexdigest())
+        assert records==() and owner._shell_arithmetic=='contact_replay_fused'
+        assert accepted is owner.initial and accepted is not before['initial']
+        assert owner._construction_contact_entry[1] is accepted.contact
+        # The returned initial work is exactly what the new arithmetic evaluates now.
+        from anyfesolver.general_contact.native_multi_s3_static import _candidate_work_signature
+        fresh=owner._contact(accepted.mechanical,np.zeros(len(accepted.shell_displacement)))
+        assert _candidate_work_signature(fresh)==_candidate_work_signature(accepted.contact)
+        assert owner._checkpoint(records)==zero
+
+
 @pytest.mark.parametrize('two_facets',(False,True),ids=('one-patch','two-patches'))
 def test_two_fibre_saved_example_cli_recovery(tmp_path,monkeypatch,two_facets):
     import runpy,sys
@@ -232,10 +381,26 @@ def test_two_fibre_saved_example_cli_recovery(tmp_path,monkeypatch,two_facets):
         independent_gap_m=gaps,normalized_force_balance=float(np.linalg.norm(force)/.008),
         normalized_moment_balance=float(np.linalg.norm(moment)/.02),checkpoint_sha256=digest,
         element_ids=[row['element_id'] for row in elements],two_facets=two_facets),indent=2))
+    # Whichever stiffness arithmetic reproduced the recorded identity, the
+    # owner identity is exactly the archived one and the matrices stay consistent.
+    assert owner._shell_arithmetic in ('host_blas','contact_replay_fused')
+    assert owner.identity==json.loads(fixture.read_bytes())['identity']
+    assert owner.shell_contract_sha==owner._shell_contract_sha()
+    np.testing.assert_array_equal(owner.shell_stiffness,owner._shell_contract()[0])
     if two_facets:
         single=Path(__file__).parent/'data/general_contact_native_fibre_s3_plastic_two_beams_v1.checkpoint'
         raw=single.read_bytes()
         with pytest.raises(ValueError,match='binding'):owner._restore(raw,sha256(raw).hexdigest())
+        # A resealed checkpoint with one identity digit changed is refused and
+        # leaves the owner's arithmetic, identity and stiffness untouched.
+        from anyfesolver._ge_beam3_p5_seeded.core import sha
+        mode,identity,stiffness=owner._shell_arithmetic,owner.identity,owner.shell_stiffness.copy()
+        value=json.loads(fixture.read_bytes());body={k:v for k,v in value.items() if k!='checkpoint_sha256'}
+        body['identity']=('0' if body['identity'][0]!='0' else '1')+body['identity'][1:]
+        forged=canonical({**body,'checkpoint_sha256':sha(body)})
+        with pytest.raises(ValueError,match='binding'):owner._restore(forged,sha256(forged).hexdigest())
+        assert (owner._shell_arithmetic,owner.identity)==(mode,identity)
+        np.testing.assert_array_equal(owner.shell_stiffness,stiffness)
 
 
 def _fixture_owner(two_facets):

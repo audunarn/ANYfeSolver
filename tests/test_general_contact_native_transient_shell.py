@@ -5,12 +5,12 @@ from hashlib import sha256
 import json
 import numpy as np
 import pytest
-from anysolver import create_native_transient_shell_analysis, solve_native_transient_shell
-from anysolver._ge_beam3_connected_dynamic import _RetainedMidpointAssembly
-from anysolver._ge_beam3_native_shell_contact import PATH_FAILURE, PROFILE, SHELL_P, SHELL_Z
-from anysolver._ge_beam3_native_transient import NativeTransientError
-from anysolver._ge_beam3_p5_seeded.core import canonical, sha
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver import create_native_transient_shell_analysis, solve_native_transient_shell
+from anyfesolver._ge_beam3_connected_dynamic import _RetainedMidpointAssembly
+from anyfesolver._ge_beam3_native_shell_contact import PATH_FAILURE, PROFILE, SHELL_P, SHELL_Z
+from anyfesolver._ge_beam3_native_transient import NativeTransientError
+from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
+from anyfesolver.control import CancellationToken, SolveCancelled
 from examples.general_contact_native_shell_impact_dev import build, config, run
 
 

@@ -7,13 +7,13 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import b3_ge, stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver import _stiffened_shell_ge_finite_experimental as finite
-from anysolver._stiffened_shell_ge_body_load import admits_owner
-from anysolver._ge_beam3_native_definition import NativeBeamDefinition
-from anysolver._stiffened_shell_rotation_charts import physical_frames
-from anysolver._stiffened_shell_nodal_footprint import CHART_ADMISSION_POLICY
+from anyfesolver import b3_ge, stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver import _stiffened_shell_ge_finite_experimental as finite
+from anyfesolver._stiffened_shell_ge_body_load import admits_owner
+from anyfesolver._ge_beam3_native_definition import NativeBeamDefinition
+from anyfesolver._stiffened_shell_rotation_charts import physical_frames
+from anyfesolver._stiffened_shell_nodal_footprint import CHART_ADMISSION_POLICY
 from test_stiffened_shell_nodal_rigid_footprint import _definition as footprint_definition
 from test_stiffened_shell_native_gravity import inertia
 from test_stiffened_shell_footprint_increment_charts import _histories, _signature

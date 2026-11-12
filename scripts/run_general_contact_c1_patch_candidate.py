@@ -13,12 +13,12 @@ import sys
 import numpy as np
 import scipy
 
-from anysolver import (
+from anyfesolver import (
     ContactDefinition, ContactInteraction, ContactSolverSettings,
     ContactSurface, create_shell_element, validate_general_contact,
 )
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.patch_sliding import _RestrictedSlidingPatchFEManager
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.patch_sliding import _RestrictedSlidingPatchFEManager
 
 
 CONTRACT = Path(__file__).resolve().parents[1] / "docs" / "reference_cases" / "general_contact_c1_patch_candidate_v0.json"

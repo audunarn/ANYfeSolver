@@ -68,22 +68,22 @@ def normalized_function(path, name):
 
 
 def test_native_split_matches_preserved_research_expression_except_checkpoints():
-    assert normalized_function('src/anysolver/_ge_beam3_signed_loaded_modes.py', '_split') == normalized_function(
+    assert normalized_function('src/anyfesolver/_ge_beam3_signed_loaded_modes.py', '_split') == normalized_function(
         'docs/reference_cases/ge_beam3_loaded_factor_split_probe.py', 'split_accepted_elastic_operator')
-    assert normalized_function('src/anysolver/_native_signed_factor_modes.py', '_reduce') == normalized_function(
+    assert normalized_function('src/anyfesolver/_native_signed_factor_modes.py', '_reduce') == normalized_function(
         'docs/reference_cases/ge_beam3_signed_spectrum_probe.py', 'reduce_signed_split')
 
 
 def test_private_source_has_no_research_import_or_public_export():
     names = ('_native_signed_factor_modes', '_ge_beam3_signed_loaded_modes')
     for name in names:
-        tree = ast.parse((ROOT/'src/anysolver'/f'{name}.py').read_text(encoding='utf-8'))
+        tree = ast.parse((ROOT/'src/anyfesolver'/f'{name}.py').read_text(encoding='utf-8'))
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
                 assert not (node.module or '').startswith(('docs', 'tests'))
             if isinstance(node, ast.Import):
                 assert all(not n.name.startswith(('docs', 'tests')) for n in node.names)
-        assert name not in (ROOT/'src/anysolver/__init__.py').read_text(encoding='utf-8')
+        assert name not in (ROOT/'src/anyfesolver/__init__.py').read_text(encoding='utf-8')
 
 
 def test_archive_pairs_and_failed_sources_are_bound():

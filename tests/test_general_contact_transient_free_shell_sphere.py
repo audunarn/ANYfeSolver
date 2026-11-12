@@ -4,13 +4,13 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import (BoundaryCondition,ContactDefinition,ContactSurface,ContactInteraction,
+from anyfesolver import (BoundaryCondition,ContactDefinition,ContactSurface,ContactInteraction,
     ContactSolverSettings,RigidContactBody,FEModel,LoadCase,create_shell_element)
-from anysolver.dynamics import TransientConfig
-from anysolver.general_contact.free_rigid import (ContactFreeRigidBody,_FreeSphereManager,
+from anyfesolver.dynamics import TransientConfig
+from anyfesolver.general_contact.free_rigid import (ContactFreeRigidBody,_FreeSphereManager,
     FREE_SHELL_SPHERE_PROFILE,FREE_SHELL_SPHERE_HISTORY_PROFILE)
-from anysolver.general_contact.sphere import _SphereShellManager
-from anysolver.general_contact.transient import (ContactNodalLoadHistory,
+from anyfesolver.general_contact.sphere import _SphereShellManager
+from anyfesolver.general_contact.transient import (ContactNodalLoadHistory,
     ContactTransientSolverControls,solve_transient_contact)
 
 
@@ -98,8 +98,8 @@ def test_free_shell_sphere_opt_in_and_constraint_admission():
 
 
 def test_selected_side_is_checked_over_entire_path_even_when_sphere_is_distant():
-    from anysolver.general_contact.transient import _free_shell_sphere_path_on_selected_side
-    from anysolver.general_contact.shell_sphere_temporal_bounds import q4_sphere_hermite_gap_bounds
+    from anyfesolver.general_contact.transient import _free_shell_sphere_path_on_selected_side
+    from anyfesolver.general_contact.shell_sphere_temporal_bounds import q4_sphere_hermite_gap_bounds
     model,definition,settings=model_data()
     definition=replace(definition,
         surfaces=(replace(definition.surfaces[0],side='top'),),
@@ -121,15 +121,15 @@ def test_selected_side_is_checked_over_entire_path_even_when_sphere_is_distant()
     v0[2:24:6]=3.;v1[2:24:6]=-3.
     positive,splits=_free_shell_sphere_path_on_selected_side(owner,q,q,v0,v1,1.,128,lambda *_:None)
     assert positive and splits>0
-    from anysolver.general_contact.beam_temporal_bounds import BeamHermiteGapBoundsError
+    from anyfesolver.general_contact.beam_temporal_bounds import BeamHermiteGapBoundsError
     with pytest.raises(BeamHermiteGapBoundsError,match='selected-side'):
         _free_shell_sphere_path_on_selected_side(owner,q,q,v0,v1,1.,0,lambda *_:None)
 
 
 def test_constraint_admission_checks_each_reduced_direction_and_rotated_normal():
     from scipy import sparse
-    from anysolver.assembly import build_constraint_transformation
-    from anysolver.general_contact.transient import _admit_free_shell_coordinates
+    from anyfesolver.assembly import build_constraint_transformation
+    from anyfesolver.general_contact.transient import _admit_free_shell_coordinates
     model,_,_=model_data()
     model.boundary_conditions.clear()
     model.add_boundary_condition(BoundaryCondition('bad',[1,2,3,4],
@@ -342,8 +342,8 @@ def test_coupled_q4_sphere_impact_keeps_both_body_momentum_and_restart(tmp_path)
 
 @pytest.mark.parametrize('cancel',(False,True))
 def test_free_shell_sphere_trial_exception_keeps_definition_and_model_reusable(monkeypatch,cancel):
-    from anysolver.general_contact.core import active_contact_manager
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.general_contact.core import active_contact_manager
+    from anyfesolver.control import CancellationToken,SolveCancelled
     token=CancellationToken()
     model,definition,settings=model_data()
     initial=np.zeros(model.mesh.dof_manager.total_dofs)

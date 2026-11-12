@@ -3,10 +3,10 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
-from anysolver._stiffened_shell_ge_pressure_load import (
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver._stiffened_shell_ge_pressure_load import (
     DIRECTOR_CONFIGURATION, DIRECTOR_LOAD_POLICY, POLICY, VECTOR_EQUILIBRIUM_POLICY, decode_checkpoint,
 )
 from test_stiffened_shell_ge_pressure_owner import owner, balance, load
@@ -101,7 +101,7 @@ def test_q4_rejects_s3_specific_surface(request):
 
 def test_policy_substitution_and_mixed_surface_reporting(request):
     from hashlib import sha256
-    from anysolver._stiffened_shell_ge_pressure_load import MAGIC, _canonical, _json
+    from anyfesolver._stiffened_shell_ge_pressure_load import MAGIC, _canonical, _json
     a = owner(request, 's3')
     action = director_load(a)
     payload = action.to_payload()

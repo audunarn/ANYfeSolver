@@ -10,9 +10,9 @@ from __future__ import annotations
 import argparse,hashlib,json,os,pathlib,platform,time,traceback
 import numpy as np
 from threadpoolctl import threadpool_info
-from anysolver import FEModel,BoundaryCondition,solve_linear,solve_static_nonlinear
-from anysolver.elements import create_shell_element
-from anysolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver import FEModel,BoundaryCondition,solve_linear,solve_static_nonlinear
+from anyfesolver.elements import create_shell_element
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
 
 def plate(target,imperfect=False,divisions=2):
     nside=divisions+1
@@ -45,7 +45,7 @@ def investigate(mode,output,divisions=2,tangent_request="consistent",stability_c
     tangent=tangent_request if kinematics=='corotational' else 'auto'
     result={'mode':mode,'target':target,'kinematics':kinematics,'corotational_tangent':tangent,'fixture':{'mesh':[divisions,divisions],'length':1.,'thickness':.01,'E':210e9,'nu':.3,'left':'all six fixed','right':'uy only prescribed; other DOFs free','other_edges':'free','material':'ideal elastic, no yield limit','imperfection':'.001*sin(pi*x)^2*sin(pi*y)' if imperfect else None},'controls':{'num_steps':4,'max_iterations':25,'tolerance':1e-6,'control':'force','load_case':None,'stability_control':stability_control},'python':platform.python_version(),'numpy':np.__version__,'environment':{k:os.environ.get(k) for k in ['OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','NUMBA_NUM_THREADS']}}
     repo=pathlib.Path(__file__).resolve().parents[1]
-    paths=[pathlib.Path(__file__)]+[repo/'src/anysolver'/n for n in ['nonlinear_static.py','_plate_stability_continuation.py','corotational.py','elements.py','e4_pl_element.py','assembly.py']]
+    paths=[pathlib.Path(__file__)]+[repo/'src/anyfesolver'/n for n in ['nonlinear_static.py','_plate_stability_continuation.py','corotational.py','elements.py','e4_pl_element.py','assembly.py']]
     result['source_hashes']={str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
     def save():output.write_text(json.dumps(result,default=jsonable,indent=2))
     events=[]
@@ -96,7 +96,7 @@ def investigate(mode,output,divisions=2,tangent_request="consistent",stability_c
         result['full_current_position_moment_resultant']=(forces[:,3:]+np.cross(xyz,forces[:,:3])).sum(axis=0)
         result['full_moment_definition']='raw rotational force components plus current-position cross translational force'
         if tangent=='work_conjugate':
-            from anysolver.corotational import spatial_moment_from_rotation_covector
+            from anyfesolver.corotational import spatial_moment_from_rotation_covector
             moments=np.array([spatial_moment_from_rotation_covector(theta,p) for theta,p in zip(r.displacements.reshape(-1,6)[:,3:],forces[:,3:])])
             result['full_spatial_moment_resultant']=(moments+np.cross(xyz,forces[:,:3])).sum(axis=0)
         result['support_moment_definition']='current-position cross support force + constrained rotational reactions; all constrained rotations zero'

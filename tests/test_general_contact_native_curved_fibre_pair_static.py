@@ -39,8 +39,8 @@ def _saved_curved_fixture():
 
 def test_saved_curved_fixture_provisional_provenance_and_response_are_exact():
     """All four-profile record bytes and response fields remain explicitly bound."""
-    from anysolver._ge_beam3_p5_seeded.codec import _load
-    from anysolver._ge_beam3_p5_seeded.core import canonical, sha
+    from anyfesolver._ge_beam3_p5_seeded.codec import _load
+    from anyfesolver._ge_beam3_p5_seeded.core import canonical, sha
     raw, response = _saved_curved_fixture()
     capsule = _load(raw.decode('ascii'))
     assert capsule['completed_targets'] == len(capsule['records']) == 1
@@ -73,7 +73,7 @@ def _curved_owner(line_stiffness=4000.,initial_trial=None):
 
 def test_actual_curved_reference_and_restart_bind_opt_in():
     owner=_curved_owner()
-    from anysolver._ge_beam3_p5_seeded.codec import _load
+    from anyfesolver._ge_beam3_p5_seeded.codec import _load
     frozen,_=_saved_curved_fixture()
     assert owner.identity==_load(frozen.decode())['identity']
     for curve in owner.contact.reference_curves:
@@ -213,7 +213,7 @@ def _normal_enforcement_sensitivity(*,use_saved_trial=False):
     if use_saved_trial:
         # Extract mechanical coordinates only. This is a virgin-origin solve,
         # never restoration of a checkpoint with a different contact law.
-        from anysolver._ge_beam3_p5_seeded.codec import _load
+        from anyfesolver._ge_beam3_p5_seeded.codec import _load
         mechanical=_load(capsule.decode())['records'][-1]['mechanical']
         template=_curved_owner(8000.)
         initial_trial=dict(native_model=template.context.identity,mechanical=mechanical)

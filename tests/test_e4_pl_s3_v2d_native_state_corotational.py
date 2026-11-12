@@ -5,20 +5,20 @@ import copy
 import numpy as np
 import pytest
 
-from anysolver.corotational import (
+from anyfesolver.corotational import (
     corotational_element_response,
     rotation_matrix_from_vector,
 )
-from anysolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
-from anysolver.e4_pl_s3_v2d_state import (
+from anyfesolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
+from anyfesolver.e4_pl_s3_v2d_state import (
     STATE_SCHEMA,
     V2DStateError,
     canonical_json_bytes,
 )
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver.material_curves import DNVC208MaterialCurve
-from anysolver.shell_sections import GeneralizedShellSection
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver.material_curves import DNVC208MaterialCurve
+from anyfesolver.shell_sections import GeneralizedShellSection
 
 
 E = 210.0e9

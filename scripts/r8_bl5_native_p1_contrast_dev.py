@@ -12,13 +12,13 @@ from hashlib import sha256
 import json
 from pathlib import Path
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 import psutil
 from threadpoolctl import threadpool_info
 
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from scripts import r8_bl5_matched_native_reference as native
 from scripts import r8_bl5_saved_local_transfer_dev as transfer
 
@@ -35,7 +35,7 @@ def evaluate(prior_path: Path) -> dict:
             set(prior.get("cases", {})) != {"fy", "mx"}):
         raise ValueError("complete saved P0 Fy/Mx cases required")
     pools = threadpool_info()
-    if (Path(anysolver.__file__).resolve().parent != ROOT / "src" / "anysolver" or
+    if (Path(anyfesolver.__file__).resolve().parent != ROOT / "src" / "anyfesolver" or
             psutil.Process().cpu_affinity() != [0] or numba.config.DISABLE_JIT != 1 or
             numba.get_num_threads() != 1 or not pools or
             any(item["num_threads"] != 1 for item in pools)):
@@ -82,7 +82,7 @@ def evaluate(prior_path: Path) -> dict:
                                   "numba_disable_jit": int(numba.config.DISABLE_JIT),
                                   "numba_threads": int(numba.get_num_threads()),
                                   "threadpools": pools,
-                                  "anysolver_import": str(Path(anysolver.__file__).resolve())},
+                                  "anyfesolver_import": str(Path(anyfesolver.__file__).resolve())},
             "limitations": ["One matched 1:1 coarse native body and two loads only.",
                             "A smaller gap under more constraints is not a stability or physical-fidelity proof.",
                             "External P1 matching and all required ratios/refinements remain open."]}

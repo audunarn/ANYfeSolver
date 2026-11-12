@@ -5,8 +5,8 @@ from math import fsum
 import numpy as np
 import pytest
 
-from anysolver import b3_ge, stiffened_shell as ss
-from anysolver._stiffened_shell_beam_history import arrays as native_history_arrays
+from anyfesolver import b3_ge, stiffened_shell as ss
+from anyfesolver._stiffened_shell_beam_history import arrays as native_history_arrays
 from test_stiffened_shell_distributing_native_material import definition, packed
 
 

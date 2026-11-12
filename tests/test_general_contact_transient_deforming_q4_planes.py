@@ -6,10 +6,10 @@ import runpy
 import numpy as np
 import pytest
 from dataclasses import replace
-from anysolver import TransientConfig,solve_transient_contact
-from anysolver.assembly import assemble_mass_matrix
-from anysolver.general_contact.core import ContactSolverSettings
-from anysolver.general_contact.multiple_shell_planes import MultipleShellPlaneManager
+from anyfesolver import TransientConfig,solve_transient_contact
+from anyfesolver.assembly import assemble_mass_matrix
+from anyfesolver.general_contact.core import ContactSolverSettings
+from anyfesolver.general_contact.multiple_shell_planes import MultipleShellPlaneManager
 
 example=runpy.run_path(str(Path(__file__).parents[1]/'examples/general_contact_deforming_q4_planes_dev.py'))
 H,RHO,E,NU=.05,1.,1.e5,.3
@@ -92,7 +92,7 @@ def test_opposing_physical_skin_work_and_pressure_resolution_before_impact():
 
 def reference(times):
     # Bounded independent Newton solves a strictly convex two-mode discrete work.
-    # No ANYsolver contact/material/geometry/equilibrium calls.
+    # No ANYfeSolver contact/material/geometry/equilibrium calls.
     q=np.zeros(2);v=np.array([.002,.05]);a=np.zeros(2)
     rows=[(q.copy(),v.copy(),a.copy())]
     for left,right in zip(times,times[1:]):

@@ -35,12 +35,12 @@ def main(argv=None):
         import numpy as np
         import scipy
         import numba
-        import anysolver
+        import anyfesolver
         from threadpoolctl import threadpool_info
         from scipy import sparse
-        from anysolver import stiffened_shell as public
-        from anysolver._stiffened_shell_ge_point_buckling import capture
-        status['imports'] = {module.__name__: module.__file__ for module in (np, scipy, numba, anysolver)}
+        from anyfesolver import stiffened_shell as public
+        from anyfesolver._stiffened_shell_ge_point_buckling import capture
+        status['imports'] = {module.__name__: module.__file__ for module in (np, scipy, numba, anyfesolver)}
         status['threadpools'] = threadpool_info()
         status['numba_disable_jit_effective'] = bool(numba.config.DISABLE_JIT)
         if not status['numba_disable_jit_effective'] or any(row['num_threads'] != 1 for row in status['threadpools']):

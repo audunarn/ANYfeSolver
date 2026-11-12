@@ -3,13 +3,13 @@ from hashlib import sha256
 import json
 import numpy as np
 import pytest
-from anysolver._ge_beam3_native_analysis import NativeBeamAnalysis, NativeBeamAnalysisError, NativeBeamWorkflowError
-from anysolver import _ge_beam3_native_definition as codec
-from anysolver import _ge_beam3_analysis_translation as route
-from anysolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
-from anysolver._ge_beam3_precise_geometric_work import POLICY
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.control import CancellationToken
+from anyfesolver._ge_beam3_native_analysis import NativeBeamAnalysis, NativeBeamAnalysisError, NativeBeamWorkflowError
+from anyfesolver import _ge_beam3_native_definition as codec
+from anyfesolver import _ge_beam3_analysis_translation as route
+from anyfesolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
+from anyfesolver._ge_beam3_precise_geometric_work import POLICY
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken
 from test_ge_beam3_native_analysis import analysis, definitions
 from test_ge_beam3_elastic_seed_continuation import seed, model, programme
 from test_ge_beam3_native_generalized_modal import make

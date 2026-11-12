@@ -1,8 +1,8 @@
 """M21: batched staged unit probes for the vectorized affine maps."""
 import numpy as np
-from anysolver import RecoveryConfig, prepare_static_response_evaluator
-from anysolver.prepared_static_recovery import owned_recovery_scope, _recover_owned_local
-from anysolver import prepared_static_vectorized as vector
+from anyfesolver import RecoveryConfig, prepare_static_response_evaluator
+from anyfesolver.prepared_static_recovery import owned_recovery_scope, _recover_owned_local
+from anyfesolver import prepared_static_vectorized as vector
 import prepared_static_response_m16_assessment  # noqa: F401  (adds scripts/ to sys.path)
 from benchmark_static_batches import mixed_free_model, free_cases
 

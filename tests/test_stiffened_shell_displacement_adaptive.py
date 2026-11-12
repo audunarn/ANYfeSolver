@@ -1,7 +1,7 @@
 """Adaptive signed displacement: rejected work and accepted-prefix restart."""
 import pytest
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken,SolveCancelled
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken,SolveCancelled
 from test_stiffened_shell_bl5_coupled_material import coupled
 from test_stiffened_shell_bl5_material import make
 from test_stiffened_shell_bl5_finite import _action
@@ -18,7 +18,7 @@ def test_cutback_cancel_restart_preserves_attempts(request,monkeypatch,policy):
     initial=float(owner._finite_driver._state.q[dof]);targets=(initial*1.01,initial*1.02)
     control=ss.DisplacementControl("beam",105,2,trial_policy=policy);limits=ss.AdaptiveIncrementControl(2,8)
     kw=dict(displacement_control=control,increment_control=limits,max_iterations=20,max_backtracks=12)
-    import anysolver._stiffened_shell_displacement_control as module
+    import anyfesolver._stiffened_shell_displacement_control as module
     original=module.correct;first=True
     def fail_once(driver,**args):
         nonlocal first

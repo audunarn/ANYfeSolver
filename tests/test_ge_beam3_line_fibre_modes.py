@@ -7,11 +7,11 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import _ge_beam3_line_fibre_modes as native
-from anysolver import _ge_beam3_fibre_line_program as control
-from anysolver._ge_beam3_fibre_line_work import ReferenceLineForces
-from anysolver._ge_beam3_seeded_load_program import ForceProgram
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver import _ge_beam3_line_fibre_modes as native
+from anyfesolver import _ge_beam3_fibre_line_program as control
+from anyfesolver._ge_beam3_fibre_line_work import ReferenceLineForces
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from docs.reference_cases import ge_beam3_curved_moment_fixture as fixture
 from docs.reference_cases import ge_beam3_centered_line_load_oracle as oracle
 from test_ge_beam3_retained_fibre_modes import dense_reference
@@ -118,7 +118,7 @@ def test_accepted_plastic_history_has_distinct_frozen_and_algorithmic_policies(t
 
 @pytest.mark.parametrize('mutation',['policy','line','hash','bytes','inertia','inertia_key','coordinate','exact','retained','cancel'])
 def test_load_state_inertia_and_budget_guards(mutation):
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.control import CancellationToken,SolveCancelled
     model,p,line,raw,inertias=case(); policy=native.FROZEN; kw={}; token=CancellationToken()
     if mutation=='policy': policy='AUTO'
     if mutation=='line': line=ReferenceLineForces(((1,.31,-.2,.1),))
@@ -137,7 +137,7 @@ def test_load_state_inertia_and_budget_guards(mutation):
 
 @pytest.mark.parametrize('mutation',['model','load','cancel'])
 def test_final_publication_guard_rejects_changes(mutation,monkeypatch):
-    from anysolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.control import CancellationToken,SolveCancelled
     model,p,line,raw,inertias=case(); token=CancellationToken()
     def changed(*args,**kwargs):
         if mutation=='model': model.mesh.nodes[3].x+=.001
@@ -152,7 +152,7 @@ def test_final_publication_guard_rejects_changes(mutation,monkeypatch):
 
 def test_saved_common_rotation_covariance(tmp_path):
     from test_ge_beam3_fibre_line_program import model
-    from anysolver._ge_beam3_p5.algebra import rotation
+    from anyfesolver._ge_beam3_p5.algebra import rotation
     common=rotation([2.5,-.7,.8]); f=np.array([.03,-.02,.01]); p=ForceProgram((.5,1.),(),max_iterations=24)
     results=[]; folder=ROOT/'ge-beam3-native-line-20260907-065c21d/cycle-a/pytest/test_curved_load_reactions_cov0'
     inputs=(('E','curved.json',17169,'f8837ab5ded0d5aafe5ba1f9a1641800f84a0f2a3c5d66982c7773232ee39081',np.eye(3)),

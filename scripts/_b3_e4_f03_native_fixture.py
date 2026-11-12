@@ -24,17 +24,17 @@ import numpy as np
 from scipy import sparse
 from scipy.spatial.transform import Rotation
 
-from anysolver.boundary import BoundaryCondition
-from anysolver.fe_core import FEModel
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-from anysolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
-from anysolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
-from anysolver._ge_beam3_native_generalized_loading import DistributedPattern
-from anysolver._ge_beam3_native_line_loading import LinePattern
-from anysolver._ge_beam3_retained_generalized_state import Context, Program
-from anysolver._ge_beam3_fibre_line_work import evaluate as line_work
-from anysolver._ge_beam3_generalized_static_boundary import cell_couple_load, spatial_jacobian
-from anysolver._ge_beam3_operator_validation_scope import operator_call
+from anyfesolver.boundary import BoundaryCondition
+from anyfesolver.fe_core import FEModel
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+from anyfesolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection
+from anyfesolver._ge_beam3_native_generalized_element import NativeGeneralizedStaticElement
+from anyfesolver._ge_beam3_native_generalized_loading import DistributedPattern
+from anyfesolver._ge_beam3_native_line_loading import LinePattern
+from anyfesolver._ge_beam3_retained_generalized_state import Context, Program
+from anyfesolver._ge_beam3_fibre_line_work import evaluate as line_work
+from anyfesolver._ge_beam3_generalized_static_boundary import cell_couple_load, spatial_jacobian
+from anyfesolver._ge_beam3_operator_validation_scope import operator_call
 
 
 E = 210e9

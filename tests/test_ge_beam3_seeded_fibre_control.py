@@ -3,10 +3,10 @@ from hashlib import sha256
 import json
 import numpy as np
 import pytest
-import anysolver._ge_beam3_seeded_fibre_control as native
-from anysolver._ge_beam3_retained_fibre_control import Context as OldContext
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.control import CancellationToken
+import anyfesolver._ge_beam3_seeded_fibre_control as native
+from anyfesolver._ge_beam3_retained_fibre_control import Context as OldContext
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken
 from test_ge_beam3_retained_fibre_control import program, make_model, arch, transformed_model
 from test_ge_beam3_retained_fibre_control import rehash
 
@@ -124,7 +124,7 @@ def test_seeded_arch_continuation_keeps_the_descending_branch(tmp_path):
 
 
 def test_large_rotation_covariance_of_initialized_controller(accepted, tmp_path):
-    from anysolver._ge_beam3_p5.algebra import rotation
+    from anyfesolver._ge_beam3_p5.algebra import rotation
     p, result = accepted; r = rotation([2.6, .8, -.3])
     direction = tuple(map(float, r@np.array(p.direction)))
     forces = tuple(map(float, r@np.array(p.nodal_forces[0][1:])))

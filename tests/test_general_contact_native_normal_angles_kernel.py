@@ -4,7 +4,7 @@ from decimal import (Decimal, Inexact, InvalidOperation, localcontext,
 from math import pi
 from pathlib import Path
 import pytest
-from anysolver.general_contact import native_normal_angles as angles
+from anyfesolver.general_contact import native_normal_angles as angles
 
 
 def _reference_sincos(angle):
@@ -319,7 +319,7 @@ def test_certified_early_completion_engages_and_directed_modes_never_certify():
 def test_fresh_source_import_raises_no_flags_or_traps_in_adversarial_contexts():
     from decimal import (Clamped, DivisionByZero, FloatOperation, Overflow,
                          Rounded, Subnormal, Underflow)
-    source = (Path(__file__).resolve().parents[1]/'src'/'anysolver'
+    source = (Path(__file__).resolve().parents[1]/'src'/'anyfesolver'
               /'general_contact'/'native_normal_angles.py').read_text(encoding='utf-8')
     all_traps = (Inexact, Rounded, Underflow, Subnormal, Clamped, Overflow,
                  DivisionByZero, InvalidOperation, FloatOperation)

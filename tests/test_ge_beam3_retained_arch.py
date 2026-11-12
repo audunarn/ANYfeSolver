@@ -5,7 +5,7 @@ import json
 import numpy as np
 import pytest
 from docs.reference_cases import ge_beam3_retained_arch_case as case
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from test_ge_beam3_schur_line_program import save
 
 

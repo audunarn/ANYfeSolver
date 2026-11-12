@@ -9,10 +9,10 @@ import sys
 import numpy as np
 from scipy import sparse
 
-from anysolver.e4_pl_s3_v2c_element import StrictFlatLinearE4PLS3V2CShellElement
-from anysolver.fe_core import FEModel
-from anysolver.matrix_assembly import assemble_stiffness_matrix
-from anysolver.s3_v2c_fast_assembly import get_v2c_stiffness_plan
+from anyfesolver.e4_pl_s3_v2c_element import StrictFlatLinearE4PLS3V2CShellElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+from anyfesolver.s3_v2c_fast_assembly import get_v2c_stiffness_plan
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -143,7 +143,7 @@ def test_independent_checker_imports_no_production_or_producer() -> None:
             imports.extend(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.module:
             imports.append(node.module)
-    assert not any(name == "anysolver" or name.startswith("anysolver.") for name in imports)
+    assert not any(name == "anyfesolver" or name.startswith("anyfesolver.") for name in imports)
     assert not any("v5k_producer" in name for name in imports)
 
 

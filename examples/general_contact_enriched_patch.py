@@ -4,9 +4,9 @@ This is not an installed/public D1 qualification or a replacement for the
 registered 174/300-coordinate cases.  Original nodal coordinates are first,
 followed by four physical transverse bubble coordinates per source Q4.
 """
-from anysolver import FEModel, BoundaryCondition, create_shell_element
-from anysolver.general_contact.enriched_overlap import QuadraturePolicy
-from anysolver.general_contact.enriched_static import EnrichedStaticSystem, PairDefinition
+from anyfesolver import FEModel, BoundaryCondition, create_shell_element
+from anyfesolver.general_contact.enriched_overlap import QuadraturePolicy
+from anyfesolver.general_contact.enriched_static import EnrichedStaticSystem, PairDefinition
 
 
 def build(*, target_z=0., target_shift=0., source_offset=0., target_offset=0., rotation=None,
@@ -46,7 +46,7 @@ def build(*, target_z=0., target_shift=0., source_offset=0., target_offset=0., r
 if __name__ == "__main__":
     import json
     import numpy as np
-    from anysolver.general_contact.enriched_static import MixedCriteria, IterationControl
+    from anyfesolver.general_contact.enriched_static import MixedCriteria, IterationControl
     _, system = build(target_z=-.01)
     result = system.solve(np.zeros(system.offset.size),
                           criteria=MixedCriteria(.04, 1e-6, 1e-8),

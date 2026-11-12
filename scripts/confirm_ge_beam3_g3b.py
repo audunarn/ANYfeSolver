@@ -153,7 +153,7 @@ def worker(lease_path,lease_hash):
     (output/"corrections").mkdir(exist_ok=False)
     import pytest
     from unittest.mock import patch
-    from anysolver._ge_beam3_g3b_owner import MixedReferenceOwner
+    from anyfesolver._ge_beam3_g3b_owner import MixedReferenceOwner
     # Install observation before owners capture dispatch; never change equations,
     # return values, guard calls or their identities during an accepted history.
     solve=MixedReferenceOwner.solve

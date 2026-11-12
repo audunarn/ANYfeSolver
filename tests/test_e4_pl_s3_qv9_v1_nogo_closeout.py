@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 REFERENCE = ROOT / "docs" / "reference_cases"
 PLAN = ROOT / "docs" / "agent_plans" / "S3_E4_PL_V2_FORMULATION_PLAN.md"
-ELEMENTS = ROOT / "src" / "anysolver" / "elements.py"
+ELEMENTS = ROOT / "src" / "anyfesolver" / "elements.py"
 
 
 def _load_canonical(path: Path) -> tuple[dict[str, object], bytes]:

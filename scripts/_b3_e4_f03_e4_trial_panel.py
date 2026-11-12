@@ -12,10 +12,10 @@ from hashlib import sha256
 
 import numpy as np
 
-from anysolver.corotational import corotational_element_response
-from anysolver.elements import create_shell_element
-from anysolver.fe_core import FEModel
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.corotational import corotational_element_response
+from anyfesolver.elements import create_shell_element
+from anyfesolver.fe_core import FEModel
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 
 from scripts._b3_e4_f03_shell_finite_pose_candidate import (
     pose_from_e4_total, reference_nodes)

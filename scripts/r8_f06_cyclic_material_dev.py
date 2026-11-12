@@ -10,7 +10,7 @@ from scripts.r8_f06_log_domain_check_dev import runtime,sha,write
 DOC=ROOT/'docs/agent_plans/development/r8-f06-log-domain-20261010/cyclic-material-v1'
 
 def bindings():
- paths=[ROOT/'src/anysolver'/p for p in (*infra.PRODUCTS,'_stiffened_shell_q4_algorithmic_pullback.py',
+ paths=[ROOT/'src/anyfesolver'/p for p in (*infra.PRODUCTS,'_stiffened_shell_q4_algorithmic_pullback.py',
   '_stiffened_shell_algorithmic_pullback.py','_stiffened_shell_staged_load_experimental.py')]
  paths += [Path(__file__),ROOT/'scripts/r8_f06_fibre_log_domain_dev.py',ROOT/'scripts/r8_f06_native_material_breadth_dev.py',
   ROOT/'scripts/r8_f06_log_domain_check_dev.py',ROOT/'tests/test_r8_f06_cyclic_material_dev.py',ROOT/'tests/conftest.py']
@@ -28,7 +28,7 @@ def definition(case):
  return base
 
 def actions(case,scale=1.):
- from anysolver import stiffened_shell as ss
+ from anyfesolver import stiffened_shell as ss
  vector=(0.,10.,0.,0.,0.,0.) if case=='bend-y' else (0.,0.,10.,0.,0.,0.)
  if case=='coupled':vector=(50.,0.,10.,0.,0.,0.)
  nodes=(103,203) if case=='coupled' else (103,)

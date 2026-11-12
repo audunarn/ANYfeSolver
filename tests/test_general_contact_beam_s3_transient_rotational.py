@@ -5,8 +5,8 @@ from dataclasses import replace
 import numpy as np
 import pytest
 from examples.general_contact_beam_s3_transient_rotational import build,run
-from anysolver.general_contact.beam_s3_rotational_transient import RotationalBeamS3Manager
-from anysolver.general_contact.beam_s3_transient import hermite_gap_bounds
+from anyfesolver.general_contact.beam_s3_rotational_transient import RotationalBeamS3Manager
+from anyfesolver.general_contact.beam_s3_transient import hermite_gap_bounds
 from test_general_contact_beam_s3_transient_flexural import independent_beam_storage,independent_shell_coefficients,independent_mass_chart
 
 
@@ -71,13 +71,13 @@ def test_rotational_complete_work_and_hidden_target_path():
 
 
 def test_actual_rotational_impact_opening_restart_and_temporal_energy():
-    from anysolver.assembly import assemble_mass_matrix
-    from anysolver.nonlinear_static import _assemble_nonlinear_system
-    from anysolver.general_contact.runtime import suspend_contact
+    from anyfesolver.assembly import assemble_mass_matrix
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system
+    from anyfesolver.general_contact.runtime import suspend_contact
     m,r=run();_,prefix=run(end=float(r.times[110]));_,resumed=run(restart=prefix.restart_checkpoint)
     assert resumed.restart_checkpoint==r.restart_checkpoint
     np.testing.assert_array_equal(resumed.displacements,r.displacements[len(prefix.times)-1:])
-    from anysolver.general_contact.transient_results_archive import read_transient_contact_results
+    from anyfesolver.general_contact.transient_results_archive import read_transient_contact_results
     archive=read_transient_contact_results(r.to_archive_bytes()).to_dict()
     assert archive['contact'][110]['fields']['shell_nodal_work_moment']==r.contact[110].shell_nodal_work_moment
     assert archive['contact'][110]['fields']['algebraic_acceleration_semantics']==r.contact[110].algebraic_acceleration_semantics
@@ -118,15 +118,15 @@ def test_actual_rotational_impact_opening_restart_and_temporal_energy():
 
 def test_rotational_secant_corruption_refused():
     import copy,hashlib,importlib.util,sys
-    from anysolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
-    from anysolver.nonlinear_restart import analysis_configuration_fingerprint
-    from anysolver.dynamics import TransientConfig
+    from anyfesolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
+    from anyfesolver.nonlinear_restart import analysis_configuration_fingerprint
+    from anyfesolver.dynamics import TransientConfig
     _,r=run(end=.0011)
     changed=copy.deepcopy(r.restart_checkpoint)
     # Shell rx is an actual declared zero-mass reduced coordinate.
     m,d,s,v=build();m.apply_boundary_conditions()
-    from anysolver.matrix_assembly import assemble_stiffness_matrix
-    from anysolver.assembly import build_constraint_transformation
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+    from anyfesolver.assembly import build_constraint_transformation
     K,_=assemble_stiffness_matrix(m)
     _,_,T,_,ids,_=build_constraint_transformation(K,np.zeros(len(v)),m)
     target=m.mesh.dof_manager.get_node_dofs(3)[3]
@@ -142,10 +142,10 @@ def test_rotational_secant_corruption_refused():
                     reason='historical V17 producer artifact must be explicitly provisioned')
 def test_legacy_v17_producer_checkpoint_resumes():
     import hashlib,importlib.util,sys
-    from anysolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
-    from anysolver.dynamics import TransientConfig
+    from anyfesolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
+    from anyfesolver.dynamics import TransientConfig
     legacy=Path(os.environ['C6_LEGACY_TRANSIENT'])
-    name='anysolver.general_contact._legacy_v17_transient'
+    name='anyfesolver.general_contact._legacy_v17_transient'
     spec=importlib.util.spec_from_file_location(name,legacy);module=importlib.util.module_from_spec(spec);sys.modules[name]=module
     try:
         spec.loader.exec_module(module)
@@ -162,8 +162,8 @@ def test_legacy_v17_producer_checkpoint_resumes():
 
 
 def test_rotational_initial_rate_and_profile_refusal():
-    from anysolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
-    from anysolver.dynamics import TransientConfig
+    from anyfesolver.general_contact.transient import solve_transient_contact,ContactTransientSolverControls
+    from anyfesolver.dynamics import TransientConfig
     m,d,s,v=build();v[m.mesh.dof_manager.get_node_dofs(3)[3]]+=.01
     with pytest.raises(ValueError,match='velocity|constraints'):
         solve_transient_contact(m,d,TransientConfig(1.e-5,1.e-4,initial_velocity=v),contact_settings=s,solver_controls=ContactTransientSolverControls(allow_rotational_beam_s3_dev=True))
@@ -172,11 +172,11 @@ def test_rotational_initial_rate_and_profile_refusal():
 
 @pytest.mark.parametrize('failure',('cancel','exception','retry'))
 def test_rotational_transactions(monkeypatch,failure):
-    import anysolver.general_contact.transient as driver
-    import anysolver.general_contact.beam_s3_transient as path
-    from anysolver.control import CancellationToken,SolveCancelled
-    from anysolver.general_contact.runtime import active_contact_manager
-    from anysolver.dynamics import TransientConfig
+    import anyfesolver.general_contact.transient as driver
+    import anyfesolver.general_contact.beam_s3_transient as path
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.general_contact.runtime import active_contact_manager
+    from anyfesolver.dynamics import TransientConfig
     token=CancellationToken();commits=[];calls=0
     original=driver.commit_state_candidate;bound=path.hermite_gap_bounds
     def commit(origin,trial):

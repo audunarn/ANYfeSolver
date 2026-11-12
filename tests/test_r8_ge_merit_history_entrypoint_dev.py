@@ -22,8 +22,8 @@ def test_source_history_entrypoint_guard_refusal(tmp_path,monkeypatch):
         runner.installed_history(tmp_path)
 
 def test_source_history_control_injection_seam(tmp_path,monkeypatch):
-    from anysolver import stiffened_shell as ss
-    from anysolver._stiffened_shell_displacement_corrector import PAIRED_FIXED_WORK_QUADRATIC_V1
+    from anyfesolver import stiffened_shell as ss
+    from anyfesolver._stiffened_shell_displacement_corrector import PAIRED_FIXED_WORK_QUADRATIC_V1
     from scripts import r8_ge_merit_interpolation_execution_dev as runner
     from scripts import r8_ge_paired_adaptive_dev as adaptive
     from scripts.r8_ge_coupled_cycle_dev import IDENTITIES,SEED

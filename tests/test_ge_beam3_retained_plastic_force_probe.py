@@ -3,14 +3,14 @@ import numpy as np
 import pytest
 import json
 from decimal import Decimal as D
-from anysolver._ge_beam3_seeded_load_program import ForceProgram
-from anysolver._ge_beam3_p5_seeded import NativeP5BeamElement
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_seeded_load_program import ForceProgram
+from anyfesolver._ge_beam3_p5_seeded import NativeP5BeamElement
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from docs.reference_cases.ge_beam3_retained_plastic_force_probe import solve
 from test_ge_beam3_curved_contrast_probe import make_curved
 from test_ge_beam3_complementary_section import section
 from test_ge_beam3_station_resultant_cell import identities
-from anysolver._ge_beam3_centered_mixed import CenteredStationaryBeam
+from anyfesolver._ge_beam3_centered_mixed import CenteredStationaryBeam
 
 
 def section_data(element, origins):

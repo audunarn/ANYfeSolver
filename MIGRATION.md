@@ -1,3 +1,17 @@
+# Move to ANYfeSolver 0.5
+
+Install the solver with `python -m pip install ANYfeSolver==0.5.0`. This installs the separate `ANYfeSolver-results` runtime. For offline recovery alone, install `ANYfeSolver-results==2.2.0`.
+
+| Previous Python name | Current Python name |
+| --- | --- |
+| `anysolver` | `anyfesolver` |
+| `anysolver_results` | `anyfesolver_results` |
+| `python -m anysolver.sesam_fem` | `python -m anyfesolver.sesam_fem` |
+
+Update application imports and dependency declarations together. For existing environments, upgrade the solver consumers first (ANYfem 0.4.2 and ANYstructure 6.4.2 for the released lines). Run `python -m pip check`, confirm your applications use the new imports, and remove the old distributions when no installed consumer needs them. A fresh environment installs just the new names.
+
+Existing recovery capsules and detached result archives retain their format identifiers. Supported nonlinear restart files retain their original model fingerprints. Exact-build and unsupported-state refusals still apply.
+
 # Migration to ANYsolver
 
 ANYsolver is a curated snapshot, not a filtered-history import.

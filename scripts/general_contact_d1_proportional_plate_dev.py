@@ -16,12 +16,12 @@ import json
 from pathlib import Path
 import time
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction, ContactSurface,
     ContactSolverSettings, LoadCase, create_shell_element,
     solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.fe_core import FEModel
+from anyfesolver.fe_core import FEModel
 from scripts.general_contact_d1_interior_press_dev import (
     _physical_bump_axis_weights,
 )

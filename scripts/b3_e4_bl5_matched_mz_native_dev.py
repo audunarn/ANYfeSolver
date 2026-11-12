@@ -21,8 +21,8 @@ import zipfile
 import numpy as np
 import numba
 from threadpoolctl import threadpool_info
-import anysolver
-from anysolver import stiffened_shell
+import anyfesolver
+from anyfesolver import stiffened_shell
 from b3_e4_bl5_coherent_aggregation_dev import model, physical_transfer
 
 
@@ -271,7 +271,7 @@ def main(output, directory, site, case):
     try:
         site = site.resolve(strict=True)
         imports = {n: str(Path(m.__file__).resolve()) for n, m in sys.modules.copy().items()
-                   if n.split('.')[0] == "anysolver" and getattr(m, "__file__", None)}
+                   if n.split('.')[0] == "anyfesolver" and getattr(m, "__file__", None)}
         require(all(Path(p).is_relative_to(site) for p in imports.values()), "installed product imports required")
         identity_path = site.parent/"identity.json"
         installed = json.loads(identity_path.read_text())
@@ -280,7 +280,7 @@ def main(output, directory, site, case):
         wheel = next((site.parent/"wheels").glob("*.whl"))
         require(sha(wheel) == WHEEL_SHA, "installed wheel bytes changed")
         with zipfile.ZipFile(wheel) as archive:
-            modules = [name for name in archive.namelist() if name.startswith("anysolver/") and name.endswith(".py")]
+            modules = [name for name in archive.namelist() if name.startswith("anyfesolver/") and name.endswith(".py")]
             require(len(modules) == 388 and all(archive.read(name) == (site/name).read_bytes() for name in modules),
                     "complete installed module/wheel byte binding required")
         fixture = Path(sys.modules["test_stiffened_shell_l1_assembly_experimental"].__file__).resolve()
@@ -355,7 +355,7 @@ def main(output, directory, site, case):
         summary.update(status="completed", work_relative_signed=compared["work_relative_signed"],
                        field_errors=compared["nodal_field_errors"], checks=checks)
         final_imports = {n: Path(m.__file__).resolve() for n, m in sys.modules.copy().items()
-                        if n.split('.')[0] == "anysolver" and getattr(m, "__file__", None)}
+                        if n.split('.')[0] == "anyfesolver" and getattr(m, "__file__", None)}
         require(all(path.is_relative_to(site) for path in final_imports.values()),
                 "all final product imports must remain on the canonical installed site")
     except BaseException as error:
@@ -365,7 +365,7 @@ def main(output, directory, site, case):
         raise
     finally:
         imports = {n: str(Path(m.__file__).resolve()) for n, m in sys.modules.copy().items()
-                   if n.split('.')[0] == "anysolver" and getattr(m, "__file__", None)}
+                   if n.split('.')[0] == "anyfesolver" and getattr(m, "__file__", None)}
         cleanup_error = None
         actions = [("retain_imports", lambda: write("imports", imports))]
         if owner is not None:

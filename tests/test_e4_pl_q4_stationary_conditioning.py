@@ -5,7 +5,7 @@ from fractions import Fraction
 import numpy as np
 import pytest
 
-from anysolver.e4_pl_element import (
+from anyfesolver.e4_pl_element import (
     STATIONARY_SOLVE_POLICY_ID,
     QualifiedE4PLShellElement,
     _coefficients,
@@ -14,7 +14,7 @@ from anysolver.e4_pl_element import (
     _symmetric_ruiz_congruence,
     equation7_frame,
 )
-from anysolver.fe_core import FEMesh, Material
+from anyfesolver.fe_core import FEMesh, Material
 
 
 GEOMETRIES = (

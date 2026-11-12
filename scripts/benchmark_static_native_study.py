@@ -4,10 +4,10 @@ import sys, os, json, time, hashlib, argparse, cProfile, runpy
 import numpy as np
 import pathlib; WT = str(pathlib.Path(__file__).resolve().parents[1])
 sys.path.insert(0, WT + r'\scripts')
-import anysolver as fs
-from anysolver.elements import create_shell_element
-from anysolver.boundary import FixedSupport, LoadCase, BoundaryCondition
-from anysolver.material_curves import DNVC208MaterialCurve
+import anyfesolver as fs
+from anyfesolver.elements import create_shell_element
+from anyfesolver.boundary import FixedSupport, LoadCase, BoundaryCondition
+from anyfesolver.material_curves import DNVC208MaterialCurve
 
 def H(*arrs):
     h = hashlib.sha256()
@@ -52,7 +52,7 @@ def nl_result(r):
 def case_lin_plate():
     m, L = plate(24, .01, 1e4)
     t0 = time.perf_counter(); u, info = fs.solve_linear(m, L); t1 = time.perf_counter()
-    from anysolver.assembly import compute_stresses
+    from anyfesolver.assembly import compute_stresses
     s = compute_stresses(m, u); t2 = time.perf_counter()
     arrs = [u]
     for e in sorted(s):
@@ -89,7 +89,7 @@ def case_arc_panel():
 
 def case_prepared_envelope():
     from benchmark_static_batches import mixed_free_model, free_cases, positions
-    from anysolver import prepare_static_evaluator, StaticCase, RecoveryConfig, ResourceConfig
+    from anyfesolver import prepare_static_evaluator, StaticCase, RecoveryConfig, ResourceConfig
     model, groups, balancing = mixed_free_model(1)
     idx = [positions('pilot')[i] for i in np.linspace(0, len(positions('pilot'))-1, 4, dtype=int)]
     nodes = tuple(model.mesh.nodes); els = tuple(model.mesh.elements)

@@ -10,7 +10,7 @@ import time
 
 import numpy as np
 
-from anysolver import solve_static_nonlinear, validate_general_contact
+from anyfesolver import solve_static_nonlinear, validate_general_contact
 from scripts.general_contact_d1_mixed_mesh_jet2_schur_press import build_case
 
 

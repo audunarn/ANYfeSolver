@@ -13,7 +13,7 @@ import pytest
 
 
 # Complete process-tree accounting is a research-runner capability. psutil is
-# intentionally not an ANYsolver runtime dependency, so environments without
+# intentionally not an ANYfeSolver runtime dependency, so environments without
 # it skip this runner-specific module instead of failing test collection.
 pytest.importorskip("psutil")
 

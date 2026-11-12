@@ -1,9 +1,9 @@
 """Independent affine-plane extrema and mapped cubic gap discriminators."""
 import numpy as np
 import pytest
-from anysolver.general_contact.s3_overlap_hermite_gap import s3_overlap_hermite_gap_bounds
-from anysolver.general_contact.s3_pressure_hermite_bounds import s3_pressure_hermite_bounds
-from anysolver.general_contact.shell_pair_hermite_sweep import shell_pair_hermite_lower
+from anyfesolver.general_contact.s3_overlap_hermite_gap import s3_overlap_hermite_gap_bounds
+from anyfesolver.general_contact.s3_pressure_hermite_bounds import s3_pressure_hermite_bounds
+from anyfesolver.general_contact.shell_pair_hermite_sweep import shell_pair_hermite_lower
 
 SOURCE=np.array([[0.,0.,0.],[1.,0.,0.],[0.,1.,0.]])
 TARGET=np.array([[-1.,0.,0.],[2.,0.,0.],[-1.,3.,0.]])

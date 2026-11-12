@@ -6,13 +6,13 @@ import numpy as np
 import pytest
 from scipy.spatial.transform import Rotation
 
-from anysolver.marine_rigid import RigidBody6D, RigidBodyState
-from anysolver.marine_hydro_coordinates import EquilibriumHydroFrame, evaluate_coupled
-from anysolver.marine_contributions import (BodyLayout, CommittedHistory, ContributionSet,
+from anyfesolver.marine_rigid import RigidBody6D, RigidBodyState
+from anyfesolver.marine_hydro_coordinates import EquilibriumHydroFrame, evaluate_coupled
+from anyfesolver.marine_contributions import (BodyLayout, CommittedHistory, ContributionSet,
     MarineContributionsError, StepInformation)
-from anysolver.marine_mechanical import (MarineMechanicalModel, MarineMechanicalRunSpec,
+from anyfesolver.marine_mechanical import (MarineMechanicalModel, MarineMechanicalRunSpec,
     solve_marine_mechanical)
-from anysolver.marine_potential_flow import (PotentialFlowDevelopmentData,
+from anyfesolver.marine_potential_flow import (PotentialFlowDevelopmentData,
     PotentialFlowDevelopmentContribution, MarinePotentialFlowError, equilibrium_geometry_hash)
 
 

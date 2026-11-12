@@ -5,15 +5,15 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver.assembly import solve_linear
-from anysolver.boundary import LoadCase
-from anysolver.mesh_gen import generate_simple_panel_mesh
-from anysolver.results import (
+from anyfesolver.assembly import solve_linear
+from anyfesolver.boundary import LoadCase
+from anyfesolver.mesh_gen import generate_simple_panel_mesh
+from anyfesolver.results import (
     _cached_gauss_to_node_extrapolation,
     _gauss_to_node_extrapolation,
     recover_nodal_stresses,
 )
-from anysolver.s4_validity import _membrane_displacement, _single_s4_model
+from anyfesolver.s4_validity import _membrane_displacement, _single_s4_model
 
 
 def test_extrapolation_operator_reproduces_matching_polynomials_exactly() -> None:

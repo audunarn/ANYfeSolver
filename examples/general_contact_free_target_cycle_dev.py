@@ -1,7 +1,7 @@
 """Development example: deformable Q4/S3 press, slide, open and recontact.
 
 Run with ``python general_contact_free_target_cycle_dev.py`` against an
-installed ANYsolver package. The contact route is implemented and locally
+installed ANYfeSolver package. The contact route is implemented and locally
 tested; the complete D1 capability is not independently accepted or released.
 """
 
@@ -13,14 +13,14 @@ from pathlib import Path
 
 import numpy as np
 
-import anysolver
-from anysolver import (
+import anyfesolver
+from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
     ContactPathControl, ContactPathNodalForce, ContactPathProgram,
     ContactSolverSettings, ContactSurface, create_shell_element,
     solve_static_nonlinear, validate_general_contact,
 )
-from anysolver.fe_core import FEModel
+from anyfesolver.fe_core import FEModel
 
 
 def build_case():
@@ -322,7 +322,7 @@ def run() -> dict:
         "split_restart_verified": True,
         "restart_maximum_displacement_difference": displacement_error,
         "restart_maximum_contact_force_difference_n": force_error,
-        "anysolver_module": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_module": str(Path(anyfesolver.__file__).resolve()),
         "steps": records,
     }
 

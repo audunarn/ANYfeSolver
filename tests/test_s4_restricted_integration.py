@@ -5,9 +5,9 @@ import inspect
 import json
 from pathlib import Path
 
-import anysolver
-from anysolver.elements import ShellElement
-from anysolver.shell_formulations import s4_restricted_policy as policy
+import anyfesolver
+from anyfesolver.elements import ShellElement
+from anyfesolver.shell_formulations import s4_restricted_policy as policy
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -96,8 +96,8 @@ def test_legacy_shell_defaults_and_root_exports_are_unchanged() -> None:
         "S4RestrictedReleaseStatus",
         "s4_restricted_policy",
     }
-    assert forbidden.isdisjoint(anysolver.__all__)
-    assert all(not hasattr(anysolver, name) for name in forbidden)
+    assert forbidden.isdisjoint(anyfesolver.__all__)
+    assert all(not hasattr(anyfesolver, name) for name in forbidden)
 
 
 def test_policy_is_stdlib_only_and_not_wired_to_hot_paths() -> None:
@@ -117,11 +117,11 @@ def test_policy_is_stdlib_only_and_not_wired_to_hot_paths() -> None:
     assert imports <= {"__future__", "dataclasses"}
 
     for relative in (
-        "src/anysolver/elements.py",
-        "src/anysolver/assembly.py",
-        "src/anysolver/matrix_assembly.py",
-        "src/anysolver/fe_core.py",
-        "src/anysolver/activity.py",
+        "src/anyfesolver/elements.py",
+        "src/anyfesolver/assembly.py",
+        "src/anyfesolver/matrix_assembly.py",
+        "src/anyfesolver/fe_core.py",
+        "src/anyfesolver/activity.py",
     ):
         source = (ROOT / relative).read_text(encoding="utf-8")
         assert "s4_restricted_policy" not in source

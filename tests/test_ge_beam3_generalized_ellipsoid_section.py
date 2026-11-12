@@ -3,8 +3,8 @@ from dataclasses import replace
 from hashlib import sha256
 import numpy as np
 import pytest
-from anysolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection,GeneralizedStation,GeneralizedHistory
-from anysolver._ge_beam3_fibre_section import canonical
+from anyfesolver._ge_beam3_generalized_ellipsoid_section import EllipsoidalGeneralizedSection,GeneralizedStation,GeneralizedHistory
+from anyfesolver._ge_beam3_fibre_section import canonical
 from docs.reference_cases.ge_beam3_generalized_ellipsoid_oracle import response as independent
 from test_ge_beam3_schur_line_program import save
 
@@ -144,7 +144,7 @@ def test_yield_boundary_and_serialization(tmp_path):
 
 
 def test_internal_deadline_representation_and_history(monkeypatch,tmp_path):
-    import anysolver._ge_beam3_generalized_ellipsoid_section as module
+    import anyfesolver._ge_beam3_generalized_ellipsoid_section as module
     s=section()
     with pytest.raises(ValueError,match='range'):s.response(np.array([1e308]*6),control='resultant')
     bad=replace(s.virgin(),plastic=((1.,1.),)+s.virgin().plastic[1:])

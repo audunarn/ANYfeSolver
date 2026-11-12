@@ -6,10 +6,10 @@ import pytest
 from scipy import sparse
 from scipy.sparse import linalg as spla
 
-from anysolver._ge_beam3_pose_joint import _exp_terms
-from anysolver._stiffened_shell_ge_distributing_finite import PreparedFiniteDistributingAttachment
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
-from anysolver._stiffened_shell_ge_experimental import ExperimentalGEAnalysis
+from anyfesolver._ge_beam3_pose_joint import _exp_terms
+from anyfesolver._stiffened_shell_ge_distributing_finite import PreparedFiniteDistributingAttachment
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver._stiffened_shell_ge_experimental import ExperimentalGEAnalysis
 from test_stiffened_shell_ge_distributing_reference import _multi_definition, _multi_selection
 
 
@@ -160,7 +160,7 @@ def test_closed_owner_rejected_without_changing_public_admission():
 
 
 def test_unrepresentable_recovery_is_typed_and_does_not_publish(model,monkeypatch):
-    from anysolver._stiffened_shell_distributing_pose import FiniteDistributingPose, DistributingPoseDomainError
+    from anyfesolver._stiffened_shell_distributing_pose import FiniteDistributingPose, DistributingPoseDomainError
     owner,adapter,driver=model
     original=FiniteDistributingPose.evaluate
     def overflow(self,*args,**kwargs):

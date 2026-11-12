@@ -6,13 +6,13 @@ import json
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_loaded_modal import solve_elastic_modes
-from anysolver._ge_beam3_load_program import ForceProgram, solve_force_program
-from anysolver._ge_beam3_p5_loads import NativeP5BeamElement, DirectedHardeningSection
-from anysolver._ge_beam3_p5_loads.core import canonical
-from anysolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
-from anysolver.boundary import BoundaryCondition
-from anysolver.fe_core import FEModel
+from anyfesolver._ge_beam3_loaded_modal import solve_elastic_modes
+from anyfesolver._ge_beam3_load_program import ForceProgram, solve_force_program
+from anyfesolver._ge_beam3_p5_loads import NativeP5BeamElement, DirectedHardeningSection
+from anyfesolver._ge_beam3_p5_loads.core import canonical
+from anyfesolver._ge_beam3_centered_reference import CenteredCurvedBeam3ReferenceGeometry
+from anyfesolver.boundary import BoundaryCondition
+from anyfesolver.fe_core import FEModel
 from docs.reference_cases.ge_beam3_straight_prestress_reference import StraightPrestress
 
 

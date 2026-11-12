@@ -5,8 +5,8 @@ from dataclasses import replace
 import numpy as np
 import pytest
 from examples.general_contact_beam_s3_transient import build,run
-from anysolver.general_contact.beam_s3_transient import BeamS3TransientManager,hermite_gap_bounds
-from anysolver.general_contact.transient import ContactTransientSolverControls
+from anyfesolver.general_contact.beam_s3_transient import BeamS3TransientManager,hermite_gap_bounds
+from anyfesolver.general_contact.transient import ContactTransientSolverControls
 
 
 def record(data):
@@ -30,9 +30,9 @@ def reference(times):
 
 def body_balance(model,result):
     """Recover each body from actual inertia, constraints and structural work."""
-    from anysolver.assembly import assemble_mass_matrix
-    from anysolver.nonlinear_static import _assemble_nonlinear_system
-    from anysolver.general_contact.runtime import suspend_contact
+    from anyfesolver.assembly import assemble_mass_matrix
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system
+    from anyfesolver.general_contact.runtime import suspend_contact
     M,_=assemble_mass_matrix(model);errors=[]
     for index in (0,int(np.argmin([x.minimum_gap for x in result.contact])),len(result.times)-1):
         u=result.displacements[index];inertia=np.asarray(M@result.accelerations[index]).reshape(-1)
@@ -62,7 +62,7 @@ def test_actual_two_body_impact_reference_restart_and_export():
     _,prefix=run(end=float(r.times[115]));_,resumed=run(restart=prefix.restart_checkpoint)
     np.testing.assert_array_equal(resumed.displacements,r.displacements[len(prefix.times)-1:])
     assert resumed.restart_checkpoint==r.restart_checkpoint
-    from anysolver.general_contact.transient_results_archive import read_transient_contact_results
+    from anyfesolver.general_contact.transient_results_archive import read_transient_contact_results
     archive=read_transient_contact_results(r.to_archive_bytes())
     assert archive.to_dict()['contact'][0]['record_type'].endswith('DeformableBeamS3Results')
     report=dict(states=len(r.times),active=active,displacement_error=displacement_error,velocity_error=velocity_error,energy_error=energy_error,momentum_error=momentum_error,
@@ -137,11 +137,11 @@ def test_temporal_and_enforcement_reference_sensitivity():
 
 @pytest.mark.parametrize('failure',('cancel','exception','retry'))
 def test_transaction_boundaries_and_restart_refusal(monkeypatch,failure):
-    import anysolver.general_contact.transient as driver
-    import anysolver.general_contact.beam_s3_transient as path
-    from anysolver.control import CancellationToken,SolveCancelled
-    from anysolver.general_contact.runtime import active_contact_manager
-    from anysolver.dynamics import TransientConfig
+    import anyfesolver.general_contact.transient as driver
+    import anyfesolver.general_contact.beam_s3_transient as path
+    from anyfesolver.control import CancellationToken,SolveCancelled
+    from anyfesolver.general_contact.runtime import active_contact_manager
+    from anyfesolver.dynamics import TransientConfig
     m,d,s,v=build();token=CancellationToken();commits=[];original=driver.commit_state_candidate;calls=0
     def commit(origin,trial):
         commits.append(1)
@@ -174,8 +174,8 @@ def test_transaction_boundaries_and_restart_refusal(monkeypatch,failure):
 
 
 def test_exact_zero_target_rates_and_historical_contract():
-    from anysolver.general_contact.transient import solve_transient_contact
-    from anysolver.dynamics import TransientConfig
+    from anyfesolver.general_contact.transient import solve_transient_contact
+    from anyfesolver.dynamics import TransientConfig
     m,d,s,v=build();v[m.mesh.dof_manager.get_node_dofs(3)[3]]=1.e-20
     with pytest.raises(ValueError,match='exactly zero'):
         solve_transient_contact(m,d,TransientConfig(1.e-5,1.e-4,initial_velocity=v),contact_settings=s,solver_controls=ContactTransientSolverControls(allow_deformable_beam_s3_dev=True))
@@ -183,8 +183,8 @@ def test_exact_zero_target_rates_and_historical_contract():
 
 
 def test_actual_b3_public_and_explicit_rotation_refusals():
-    from anysolver.general_contact.transient import solve_transient_contact
-    from anysolver.dynamics import TransientConfig
+    from anyfesolver.general_contact.transient import solve_transient_contact
+    from anyfesolver.dynamics import TransientConfig
     m,r=run(quadratic=True)
     assert any(x.active_line_length>0 for x in r.contact) and r.contact[-1].active_line_length==0
     assert np.max(body_balance(m,r))<=1.e-6
@@ -194,7 +194,7 @@ def test_actual_b3_public_and_explicit_rotation_refusals():
         solve_transient_contact(m,d,TransientConfig(1.e-5,1.e-4,initial_velocity=v,initial_displacement=u),contact_settings=s,solver_controls=ContactTransientSolverControls(allow_deformable_beam_s3_dev=True))
     for flag in ('allow_multiple_beam_planes_dev','s3_algebraic_path_dev','s3_event_subdivision_dev','allow_classical_beam_dev','allow_guided_shell_pair_dev'):
         with pytest.raises(ValueError):ContactTransientSolverControls(allow_deformable_beam_s3_dev=True,**{flag:True})
-    from anysolver import BoundaryCondition
+    from anyfesolver import BoundaryCondition
     m,d,s,v=build();m.clear_boundary_conditions()
     m.add_boundary_condition(BoundaryCondition('inplane_only',list(m.mesh.nodes),dict.fromkeys(('ux','uy','rz'),0.)))
     with pytest.raises(ValueError,match='positive definite|constrained zero'):
@@ -203,12 +203,12 @@ def test_actual_b3_public_and_explicit_rotation_refusals():
 
 def test_legacy_archive_wire_is_exact():
     import hashlib,importlib.util,sys
-    from anysolver.general_contact import transient_results_archive as current
+    from anyfesolver.general_contact import transient_results_archive as current
     from test_general_contact_transient_results_archive import sample
     baseline=os.environ.get('C6_LEGACY_CODEC')
     if not baseline:pytest.skip('protected baseline evidence is opt-in/local')
     path=Path(baseline);assert path.is_file()
-    spec=importlib.util.spec_from_file_location('anysolver.general_contact._legacy_c6_archive',path)
+    spec=importlib.util.spec_from_file_location('anyfesolver.general_contact._legacy_c6_archive',path)
     legacy=importlib.util.module_from_spec(spec);sys.modules[spec.name]=legacy
     try:
         spec.loader.exec_module(legacy);value=sample();before=legacy.serialize_transient_contact_results(value);after=current.serialize_transient_contact_results(value)

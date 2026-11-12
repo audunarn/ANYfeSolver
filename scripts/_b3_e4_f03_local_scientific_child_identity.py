@@ -35,24 +35,24 @@ def observed_hardware() -> registration.HardwareIdentity:
 def observed_package(name: str) -> tuple[str, str]:
     if name not in registration.PACKAGE_NAMES:
         raise ValueError("unregistered F03 package name")
-    import_name = "anysolver" if name == "ANYsolver" else name
+    import_name = "anyfesolver" if name == "ANYfeSolver" else name
     spec = importlib.util.find_spec(import_name)
     if spec is None or not spec.origin:
         raise ValueError(f"F03 package {name} has no import origin")
     return importlib.metadata.version(name), str(Path(spec.origin).resolve())
 
 
-def candidate_anysolver_origin(repository_root: str) -> Path:
+def candidate_anyfesolver_origin(repository_root: str) -> Path:
     """The source-backed F03 route must import the registered candidate."""
-    return Path(repository_root).resolve() / "src" / "anysolver" / "__init__.py"
+    return Path(repository_root).resolve() / "src" / "anyfesolver" / "__init__.py"
 
 
-def candidate_anysolver_version(repository_root: str) -> str:
+def candidate_anyfesolver_version(repository_root: str) -> str:
     with (Path(repository_root).resolve() / "pyproject.toml").open("rb") as stream:
         project = tomllib.load(stream)["project"]
     version = project["version"]
     if type(version) is not str or not version:
-        raise ValueError("F03 candidate ANYsolver version is invalid")
+        raise ValueError("F03 candidate ANYfeSolver version is invalid")
     return version
 
 
@@ -126,10 +126,10 @@ def verify_child_context(
         version, origin = observed_package(package.name)
         if version != package.version or Path(origin).resolve() != Path(package.origin).resolve():
             raise ValueError(f"F03 child package identity mismatch: {package.name}")
-        if (package.name == "ANYsolver"
-                and (Path(origin).resolve() != candidate_anysolver_origin(value.repository_root)
-                     or version != candidate_anysolver_version(value.repository_root))):
-            raise ValueError("F03 child ANYsolver origin/version disagrees with candidate")
+        if (package.name == "ANYfeSolver"
+                and (Path(origin).resolve() != candidate_anyfesolver_origin(value.repository_root)
+                     or version != candidate_anyfesolver_version(value.repository_root))):
+            raise ValueError("F03 child ANYfeSolver origin/version disagrees with candidate")
     if observed_hardware() != value.hardware:
         raise ValueError("F03 child hardware identity mismatch")
     commit, clean = observed_git(value.repository_root)

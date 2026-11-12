@@ -6,11 +6,11 @@ import json
 import numpy as np
 import pytest
 
-from anysolver import _ge_beam3_native_definition as codec
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.fe_core import FEModel
-from anysolver.nonlinear_static import _assemble_nonlinear_system
-from anysolver._ge_beam3_native_generalized_loading import assemble_distributed_trial
+from anyfesolver import _ge_beam3_native_definition as codec
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.fe_core import FEModel
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver._ge_beam3_native_generalized_loading import assemble_distributed_trial
 from test_ge_beam3_native_generalized import problem as generalized_problem, pattern
 from test_ge_beam3_native_fibre_static_element import problem as fibre_problem, store_for, sample
 

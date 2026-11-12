@@ -56,17 +56,17 @@ def package_identity(site,wheel):
     package={}
     with ZipFile(wheel) as archive:
         for name in archive.namelist():
-            if name.startswith('anysolver/') and not name.endswith('/'):
+            if name.startswith('anyfesolver/') and not name.endswith('/'):
                 require('..' not in Path(name).parts,'wheel path refusal')
                 expected=hashlib.sha256(archive.read(name)).hexdigest()
                 require(sha(site/name)==expected,'wheel/site mismatch '+name)
                 package[name]=expected
-    require(package and all('anysolver/'+name in package for name in B2_FILES),'package closure missing')
+    require(package and all('anyfesolver/'+name in package for name in B2_FILES),'package closure missing')
     for name in B2_FILES:
-        require(sha(ROOT/'src/anysolver'/name)==package['anysolver/'+name],
+        require(sha(ROOT/'src/anyfesolver'/name)==package['anyfesolver/'+name],
             'current B2 source/site mismatch '+name)
     return dict(site=str(site),wheel=str(wheel),wheel_sha256=sha(wheel),package=package,
-        relevant_current_sources={name:sha(ROOT/'src/anysolver'/name) for name in B2_FILES})
+        relevant_current_sources={name:sha(ROOT/'src/anyfesolver'/name) for name in B2_FILES})
 
 
 def preparation(site,wheel):
@@ -104,7 +104,7 @@ def child(attempt):
     bound=json.loads((attempt/'binding.json').read_text());p=bound['preparation'];artifact=p['artifact']
     require(package_identity(artifact['site'],artifact['wheel'])==artifact,'artifact/source drift before import')
     for relative,expected in p['source'].items():require(sha(ROOT/relative)==expected,'development source drift')
-    forbidden=(ROOT/'src',Path('C:/Github/ANYsolver/src'))
+    forbidden=(ROOT/'src',Path('C:/Github/ANYfeSolver/src'))
     sys.path[:]=[artifact['site']]+[entry for entry in sys.path
         if Path(entry or '.').resolve()!=Path(artifact['site']).resolve()
         and not any(Path(entry or '.').resolve().is_relative_to(base) for base in forbidden)]
@@ -114,16 +114,16 @@ def child(attempt):
     import scipy
     import numba
     from threadpoolctl import threadpool_info
-    import anysolver
-    from anysolver import stiffened_shell as api
-    import anysolver._stiffened_shell_b2_q4_panel_experimental as panel
-    from anysolver.linalg import backend_operation_counts
+    import anyfesolver
+    from anyfesolver import stiffened_shell as api
+    import anyfesolver._stiffened_shell_b2_q4_panel_experimental as panel
+    from anyfesolver.linalg import backend_operation_counts
     site=Path(artifact['site']).resolve()
 
     def runtime():
         imports={}
         for name,module in tuple(sys.modules.items()):
-            if name=='anysolver' or name.startswith('anysolver.'):
+            if name=='anyfesolver' or name.startswith('anyfesolver.'):
                 file=getattr(module,'__file__',None)
                 if file:
                     file=Path(file).resolve();require(file.is_relative_to(site),'source product import '+name)

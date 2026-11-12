@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 import time
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 import psutil
@@ -46,11 +46,11 @@ def main() -> None:
                "numba_disable_jit": int(numba.config.DISABLE_JIT),
                "numba_threads": int(numba.get_num_threads()),
                "threadpools": pools,
-               "anysolver_import": str(Path(anysolver.__file__).resolve())}
+               "anyfesolver_import": str(Path(anyfesolver.__file__).resolve())}
     if (runtime["cpu_affinity"] != [0] or runtime["numba_disable_jit"] != 1 or
             runtime["numba_threads"] != 1 or not pools or
             any(item["num_threads"] != 1 for item in pools) or
-            Path(anysolver.__file__).resolve().parent != ROOT / "src" / "anysolver"):
+            Path(anyfesolver.__file__).resolve().parent != ROOT / "src" / "anyfesolver"):
         raise ValueError("effective source/runtime does not match bounded contract")
     started = time.perf_counter()
     beam_nodes, beam_elements = beam_ref._mesh(*BEAM_LEVEL)

@@ -42,7 +42,7 @@ class ObstructionTests(unittest.TestCase):
         self.assertFalse(a.audit()['full_g3c_qualified'])
 
     def test_source_floor_mutation_changes_witness(self):
-        source = a.sources()['src/anysolver/elements.py']
+        source = a.sources()['src/anyfesolver/elements.py']
         original = a.witness(source)
         changed = a.witness(source.replace('_SMALL = 1.0e-12', '_SMALL = 1.0e-30'))
         self.assertNotEqual(original, changed)

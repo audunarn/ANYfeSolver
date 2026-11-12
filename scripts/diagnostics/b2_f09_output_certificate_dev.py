@@ -10,7 +10,7 @@ import json
 import numpy as np
 import pytest
 
-from anysolver._b2_physical_flexibility_linear import LinearOperator, LinearSection
+from anyfesolver._b2_physical_flexibility_linear import LinearOperator, LinearSection
 from test_b2_f09_fixed_aspect_wrench import _section, WIDTH_DEPTH_M, FIRST_M
 
 ENERGY_LIMIT = F(1, 10**8)

@@ -1,7 +1,7 @@
 """Standalone public beam-shell coupling example: registered pre-yield case.
 
 This example builds the registered eccentric beam-shell coupling case with
-public ``anysolver`` APIs only and solves it with the registered pre-yield
+public ``anyfesolver`` APIs only and solves it with the registered pre-yield
 force-controlled controls. It reports a truthful JSON summary: ``completed``
 is true only when the solver actually reached the requested load factor
 within 1e-8 and the existing constraint postcheck passed; anything else
@@ -56,7 +56,7 @@ from typing import Any, Callable, Optional
 
 import numpy as np
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     CoupledBeamShellElement,
     CancellationToken,
@@ -68,8 +68,8 @@ from anysolver import (
     solve_static_nonlinear,
     SolveCancelled,
 )
-from anysolver.elements import BeamElement
-from anysolver.material_curves import DNVC208MaterialCurve, dnv_c208_steel_curve
+from anyfesolver.elements import BeamElement
+from anyfesolver.material_curves import DNVC208MaterialCurve, dnv_c208_steel_curve
 
 L = 1.0
 W = 0.24

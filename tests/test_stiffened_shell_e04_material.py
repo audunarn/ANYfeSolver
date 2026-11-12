@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 from anymaterial import DNVC208MaterialCurve
-from anysolver import stiffened_shell as ss
+from anyfesolver import stiffened_shell as ss
 from docs.reference_cases.stiffened_shell_e04_roof import build,definition,material_definition
 
 LIMITS=(500.,300.,300.,1.,2.,.5)

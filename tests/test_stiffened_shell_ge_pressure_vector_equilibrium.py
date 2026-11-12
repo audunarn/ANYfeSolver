@@ -4,12 +4,12 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell as ss
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._stiffened_shell_ge_finite_experimental import (
+from anyfesolver import stiffened_shell as ss
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._stiffened_shell_ge_finite_experimental import (
     FinitePointDriver, _pressure_vector_equilibrium, _trial_work_ratio,
 )
-from anysolver._stiffened_shell_ge_pressure_load import (
+from anyfesolver._stiffened_shell_ge_pressure_load import (
     VECTOR_EQUILIBRIUM_POLICY, decode_checkpoint,
 )
 from test_stiffened_shell_ge_director_pressure import director_load

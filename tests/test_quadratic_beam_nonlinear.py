@@ -5,11 +5,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from anysolver.boundary import BoundaryCondition, LoadCase
-from anysolver.elements import BeamElement, QuadraticBeamElement
-from anysolver.fe_core import FEModel
-from anysolver.material_curves import dnv_c208_steel_curve
-from anysolver.nonlinear_static import solve_static_nonlinear
+from anyfesolver.boundary import BoundaryCondition, LoadCase
+from anyfesolver.elements import BeamElement, QuadraticBeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.material_curves import dnv_c208_steel_curve
+from anyfesolver.nonlinear_static import solve_static_nonlinear
 
 E_STEEL = 2.1e11
 LENGTH = 1.0

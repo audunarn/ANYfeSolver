@@ -9,8 +9,8 @@ from decimal import Decimal, localcontext
 import numpy as np
 import pytest
 
-from anysolver import stiffened_shell as ss
-from anysolver._stiffened_shell_displacement_checkpoint import (
+from anyfesolver import stiffened_shell as ss
+from anyfesolver._stiffened_shell_displacement_checkpoint import (
     decode_snapshot, identities, DISTRIBUTING_KIND, DISTRIBUTING_POLICY,
 )
 from test_stiffened_shell_distributing_cyclic import definition, actions

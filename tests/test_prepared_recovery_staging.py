@@ -1,9 +1,9 @@
 """Source staging copy/resource contracts; synthetic arrays are not certification."""
 import numpy as np
 import pytest
-from anysolver import ResourceConfig
-from anysolver.recovery import MemoryEstimate,ResourcePolicyError
-from anysolver.prepared_static_recovery import (_verification_storage_bytes,
+from anyfesolver import ResourceConfig
+from anyfesolver.recovery import MemoryEstimate,ResourcePolicyError
+from anyfesolver.prepared_static_recovery import (_verification_storage_bytes,
     _freeze_verification_value,_check_verification_memory)
 
 
@@ -39,7 +39,7 @@ def test_pending_copy_budget_refuses_before_copy_under_existing_policy():
 def test_staging_accepts_original_mapping_and_float_array_type_families():
     from collections import OrderedDict,UserDict
     from collections.abc import Mapping
-    from anysolver.prepared_static_recovery import _array_value,_plain_constant
+    from anyfesolver.prepared_static_recovery import _array_value,_plain_constant
     class NativeArray(np.ndarray): pass
     values=np.asfortranarray(np.array([[-0.,1.25],[3.,4.]],dtype=np.float32)).view(NativeArray)
     native=OrderedDict(field=values,constant=UserDict(label='native',axis=(1.,2.)))
@@ -60,9 +60,9 @@ def test_staging_accepts_original_mapping_and_float_array_type_families():
 
 def test_midloop_scope_exit_authority_failure_clears_queue_and_is_global(monkeypatch):
     import sys,threading,time
-    from anysolver import RecoveryConfig,PreparedStaticCapabilityError,prepare_static_response_evaluator
-    from anysolver.elements import BeamElement
-    import anysolver.prepared_static_recovery as recovery
+    from anyfesolver import RecoveryConfig,PreparedStaticCapabilityError,prepare_static_response_evaluator
+    from anyfesolver.elements import BeamElement
+    import anyfesolver.prepared_static_recovery as recovery
     from test_prepared_static_response_preparation import _independent_beams
     model,load=_independent_beams(64)
     main_id=threading.get_ident()
@@ -113,9 +113,9 @@ def test_midloop_scope_exit_authority_failure_clears_queue_and_is_global(monkeyp
 
 @pytest.mark.parametrize('action',['observe','cancel','source_helper','checker_code'])
 def test_public_staging_keeps_native_config_observations_outside_scope(monkeypatch,action):
-    from anysolver import (RecoveryConfig,PreparedStaticCapabilityError,SolveCancelled,
+    from anyfesolver import (RecoveryConfig,PreparedStaticCapabilityError,SolveCancelled,
                            prepare_static_response_evaluator)
-    import anysolver.prepared_static_recovery as recovery
+    import anyfesolver.prepared_static_recovery as recovery
     from test_prepared_static_response_preparation import _independent_beams
     model,load=_independent_beams(2)
     observations=[]
@@ -147,8 +147,8 @@ def test_public_staging_keeps_native_config_observations_outside_scope(monkeypat
 
 
 def test_staged_comparison_keeps_two_defects_without_promising_refusal_order():
-    from anysolver import RecoveryConfig,prepare_static_response_evaluator
-    import anysolver.prepared_static_recovery as recovery
+    from anyfesolver import RecoveryConfig,prepare_static_response_evaluator
+    import anyfesolver.prepared_static_recovery as recovery
     from test_prepared_static_response_preparation import _independent_beams
     model,load=_independent_beams(2)
     with prepare_static_response_evaluator(model,{'p':load},
@@ -173,8 +173,8 @@ def test_staged_comparison_keeps_two_defects_without_promising_refusal_order():
 
 
 def test_public_resource_config_reaches_pre_copy_staging_refusal():
-    from anysolver import RecoveryConfig,prepare_static_response_evaluator
-    from anysolver.recovery import estimate_model_memory
+    from anyfesolver import RecoveryConfig,prepare_static_response_evaluator
+    from anyfesolver.recovery import estimate_model_memory
     from test_prepared_static_response_preparation import _independent_beams
     model,load=_independent_beams(2)
     recovery=RecoveryConfig(include_stresses=True,include_reactions=False)

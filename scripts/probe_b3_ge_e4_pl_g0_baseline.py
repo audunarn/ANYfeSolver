@@ -23,13 +23,13 @@ def main() -> int:
         raise RuntimeError("installed baseline wheel SHA-256 mismatch")
 
     import numpy as np
-    import anysolver
-    from anysolver import b3_ge
-    from anysolver.boundary import BoundaryCondition
-    from anysolver.elements import ELEMENT_TYPES, QuadraticBeamElement, create_element
+    import anyfesolver
+    from anyfesolver import b3_ge
+    from anyfesolver.boundary import BoundaryCondition
+    from anyfesolver.elements import ELEMENT_TYPES, QuadraticBeamElement, create_element
 
-    origin = Path(anysolver.__file__).resolve(strict=True)
-    if not origin.is_relative_to(site) or version("ANYsolver") != "0.4.7":
+    origin = Path(anyfesolver.__file__).resolve(strict=True)
+    if not origin.is_relative_to(site) or version("ANYfeSolver") != "0.4.7":
         raise RuntimeError("baseline import must come from the isolated 0.4.7 wheel")
     if b3_ge.SELECTOR != "b3-ge" or "b3-ge" in ELEMENT_TYPES:
         raise RuntimeError("native B3-GE selector changed the legacy element registry")
@@ -68,7 +68,7 @@ def main() -> int:
         "native_owner_identity": owner.identity,
         "admission_sha256": b3_ge.ADMISSION_SHA256,
         "versions": {name: version(name) for name in (
-            "ANYsolver", "ANYmaterial", "ANYgeometry", "ANYmesher",
+            "ANYfeSolver", "ANYmaterial", "ANYgeometry", "ANYmesher",
             "ANYfileio", "numpy", "scipy",
         )},
         "checks": ["installed_origin", "legacy_factory", "native_owner", "public_provenance"],

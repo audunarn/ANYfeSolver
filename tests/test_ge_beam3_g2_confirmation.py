@@ -145,7 +145,7 @@ def test_compact_scientific_duplicate_nonfinite_rejection(raw):
 
 
 def test_compact_native_serializer_compatibility():
-    from anysolver._ge_beam3_g1_elastic import canonical
+    from anyfesolver._ge_beam3_g1_elastic import canonical
     body = dict(schema="example", value=[1., -0.0], qualification=False)
     raw = canonical(body)
     assert c.strict(raw, compact=True) == body

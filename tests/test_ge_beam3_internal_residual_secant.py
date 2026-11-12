@@ -1,8 +1,8 @@
 """Numerical-globalization tests, without changing constitutive mechanics."""
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_generalized_static_boundary as boundary
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver import _ge_beam3_generalized_static_boundary as boundary
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 import test_ge_beam3_native_spectral_prestress as preload
 from test_ge_beam3_schur_line_program import save
 

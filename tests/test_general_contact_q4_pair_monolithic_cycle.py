@@ -23,8 +23,8 @@ def report_sha(stage):return hashlib.sha256((Path(os.environ['AUTOMATIC_WORKFLOW
 
 
 def test_simple_exact_oracle_and_initial_clearance_reference():
-    from anysolver import LoadCase
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver import LoadCase
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
     model,domain,settings,res,program=build();manager=GeneralS3PatchManager(model,res.definition,settings)
     points=np.concatenate(manager._positions(np.zeros(manager.n_dof)));np.testing.assert_allclose(points,skin(model,np.zeros(manager.n_dof))[0],atol=1e-13,rtol=0)
     certificate=_oracle.strict_separation(points);assert certificate['strict_positive'] and certificate['source_normal_gap_lower_m']>0
@@ -69,10 +69,10 @@ def test_installed_cycle_solver_saved_inventory():
 @pytest.mark.skipif(not os.environ.get('CYCLE_STAGE'),
     reason='installed cycle stage input CYCLE_STAGE absent: saved mechanical proof requires the original staged report and stage selection')
 def test_saved_cycle_mechanical_proof():
-    from anysolver import LoadCase
-    from anysolver.general_contact.s3_patch_static import GeneralS3PatchManager
-    from anysolver.general_contact.semismooth import linearize,complementarity,reference_nodal_support
-    from anysolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
+    from anyfesolver import LoadCase
+    from anyfesolver.general_contact.s3_patch_static import GeneralS3PatchManager
+    from anyfesolver.general_contact.semismooth import linearize,complementarity,reference_nodal_support
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system,_discard_nonlinear_state_candidate
     stage=os.environ['CYCLE_STAGE'].removeprefix('proof-');source=read_report(stage);assert source['solver_completed'] and source['inventory_verified']
     model,domain,settings,res,program=build();assert source['identity']==res.identity and source['program']==program.contract()
     manager=GeneralS3PatchManager(model,res.definition,settings);reports=[];reference_cache={}
@@ -112,7 +112,7 @@ def test_saved_cycle_mechanical_proof():
 
 
 def test_actual_cycle_definition_content_and_precancel_refusal():
-    from anysolver import CancellationToken,SolveCancelled
+    from anyfesolver import CancellationToken,SolveCancelled
     model,domain,settings,res,program=build();before=repr(model)
     token=CancellationToken();token.cancel('cycle public precancel')
     with pytest.raises(SolveCancelled):solve(model,settings,res,program,cancellation_token=token)
@@ -121,8 +121,8 @@ def test_actual_cycle_definition_content_and_precancel_refusal():
 
 
 def test_actual_empty_control_admission_and_dependent_control_refusal():
-    from anysolver import CancellationToken,SolveCancelled
-    from anysolver.general_contact.static_path import ContactPathProgram,ContactPathControl
+    from anyfesolver import CancellationToken,SolveCancelled
+    from anyfesolver.general_contact.static_path import ContactPathProgram,ContactPathControl
     model,domain,settings,res,program=build();before=repr(model)
     # The legitimate pure-force programme has zero controls: the preflight
     # rank of its empty control matrix is zero, so the actual driver must
@@ -153,7 +153,7 @@ def test_actual_empty_control_admission_and_dependent_control_refusal():
 @pytest.mark.skipif(not os.environ.get('AUTOMATIC_WORKFLOW_EVIDENCE') or not all((Path(os.environ['AUTOMATIC_WORKFLOW_EVIDENCE'])/(name+'.json')).is_file() for name in ('prefix','proof-prefix')),
     reason='archived cycle inputs AUTOMATIC_WORKFLOW_EVIDENCE prefix.json/proof-prefix.json absent: restart-binding replay requires the original evidence root')
 def test_actual_archive_cycle_checkpoint_restart_refusals():
-    from anysolver.general_contact import resolve_automatic_contact_domain
+    from anyfesolver.general_contact import resolve_automatic_contact_domain
     model,domain,settings,res,program=build();prefix=read_report('prefix');proof=read_report('proof-prefix');assert proof['verified'] and proof['opening_verified'] and proof['source_sha256']==report_sha('prefix');before=repr(model)
     changed_forces=list(program.nodal_forces);changed_forces[0]=replace(changed_forces[0],values_n=(0.,-5e-5,+5e-5,-4e-5));changed=replace(program,nodal_forces=tuple(changed_forces))
     with pytest.raises(ValueError,match='incompatible'):solve(model,settings,res,changed,restart_checkpoint=prefix['checkpoint'])

@@ -15,7 +15,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-import anysolver
+import anyfesolver
 import numpy as np
 import scipy
 from scipy import sparse
@@ -142,10 +142,10 @@ def run(*, shell_cells: int = 2, beam_half_cells: int = 12,
     if mode_resolved_mx_only and (not policy_p0_only or
                                   (shell_cells, beam_half_cells) != (8, 12)):
         raise ValueError("bounded fixed-4:1 x8/B3-12 P0 mode required")
-    expected = (Path(__file__).resolve().parents[1]/"src"/"anysolver").resolve()
-    actual = Path(anysolver.__file__).resolve().parent
+    expected = (Path(__file__).resolve().parents[1]/"src"/"anyfesolver").resolve()
+    actual = Path(anyfesolver.__file__).resolve().parent
     if actual != expected:
-        raise RuntimeError("line-space screen imported another ANYsolver checkout")
+        raise RuntimeError("line-space screen imported another ANYfeSolver checkout")
     xs, ys = local_grid(shell_cells, transverse_cells=4)
     beam = build(beam_half_cells, z_offset=.0675,
                  torsion_constant=square_torsion_constant(),
@@ -314,7 +314,7 @@ def run(*, shell_cells: int = 2, beam_half_cells: int = 12,
         "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "source_git": subprocess.check_output(
             ("git", "rev-parse", "HEAD"), text=True).strip(),
-        "anysolver_import_path": str(Path(anysolver.__file__).resolve()),
+        "anyfesolver_import_path": str(Path(anyfesolver.__file__).resolve()),
         "python_version": sys.version.split()[0],
         "numpy_version": np.__version__,
         "scipy_version": scipy.__version__,

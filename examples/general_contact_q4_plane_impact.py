@@ -3,7 +3,7 @@
 import argparse
 import numpy as np
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     ContactDefinition,
     ContactInteraction,
@@ -15,7 +15,7 @@ from anysolver import (
     create_shell_element,
     solve_transient_contact,
 )
-from anysolver.fe_core import FEModel
+from anyfesolver.fe_core import FEModel
 
 
 def main() -> None:

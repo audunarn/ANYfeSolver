@@ -7,10 +7,10 @@ import tempfile
 import numpy as np
 import pytest
 
-from anysolver.control import CancellationToken, SolveCancelled
-from anysolver._ge_beam3_g3c_local_shell import deformation
-from anysolver._ge_beam3_pose_joint import _exp_terms
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken, SolveCancelled
+from anyfesolver._ge_beam3_g3c_local_shell import deformation
+from anyfesolver._ge_beam3_pose_joint import _exp_terms
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 
 os.environ.setdefault("NUMBA_CACHE_DIR", str(Path(tempfile.gettempdir()) / "f06_v4_numba"))
 
@@ -18,7 +18,7 @@ from scripts.probe_b3_ge_e4_pl_g0_f06_owned_rebase_v4 import (
     OwnedRebasePrototype, main, measure_pilot, physical_tangent,
 )
 from scripts.probe_b3_ge_e4_pl_g0_f06_loaded_rebase_v3 import numeric_state, shell_spatial
-from anysolver._ge_beam3_shell_joint_state import decode
+from anyfesolver._ge_beam3_shell_joint_state import decode
 
 
 def _git_history_available():
@@ -329,7 +329,7 @@ def test_unregistered_pilot_reports_raw_scaled_metrics_and_identity(tmp_path):
     assert metric["schema"] == "G0_F06_CURVED_S3_V4_SCIENTIFIC_MEASUREMENT_V1"
     assert metric["scope"] == "G0_S3_OWNED_REBASE_MEASUREMENT_NOT_ADJUDICATED"
     assert metric["effective_environment"]["python_executable"]
-    assert metric["effective_environment"]["anysolver_import"]
+    assert metric["effective_environment"]["anyfesolver_import"]
     assert "numba_cache_dir" in metric["effective_environment"]
     assert set(metric["effective_environment"]["python_environment"]) == {
         "PYTHONPATH", "PYTHONNOUSERSITE"}
@@ -344,9 +344,9 @@ def test_unregistered_pilot_reports_raw_scaled_metrics_and_identity(tmp_path):
     assert "blas" in metric["effective_environment"]
     assert len(metric["source_commit"]) == 40
     assert len(metric["source_sha256"]) == 25
-    assert {"src/anysolver/_ge_beam3_native_generalized_element.py",
-            "src/anysolver/_ge_beam3_generalized_ellipsoid_section.py",
-            "src/anysolver/_ge_beam3_generalized_static_boundary.py"} <= set(
+    assert {"src/anyfesolver/_ge_beam3_native_generalized_element.py",
+            "src/anyfesolver/_ge_beam3_generalized_ellipsoid_section.py",
+            "src/anyfesolver/_ge_beam3_generalized_static_boundary.py"} <= set(
                 metric["source_sha256"])
     assert metric["targets"] == (.5, 1., .75)
     assert metric["runtime_seconds"]["total"] > 0.

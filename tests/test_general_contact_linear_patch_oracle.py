@@ -8,7 +8,7 @@ have been calculated independently.
 import numpy as np
 from dataclasses import replace
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition,
     ContactDefinition,
     ContactInteraction,
@@ -19,8 +19,8 @@ from anysolver import (
     solve_static_nonlinear,
     validate_general_contact,
 )
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.core import contact_scope
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.core import contact_scope
 
 
 def _case_and_local_check(*, target_left_x=-0.2):

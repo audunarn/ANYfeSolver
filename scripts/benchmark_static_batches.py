@@ -11,7 +11,7 @@ Honest measurement contract of this driver:
   the batch stream and are reported as one documented bucket. Cross-route
   phase comparison is valid only for the documented buckets and the total.
 - Backend factorization counts are actual operations. The candidate exposes
-  ``anysolver.linalg.backend_operation_counts``; on the baseline the driver
+  ``anyfesolver.linalg.backend_operation_counts``; on the baseline the driver
   installs counting wrappers around the equivalent linalg call sites
   (PARDISO phase-12 full factorizations, phase-22 symbolic refreshes, stale
   handle rebuilds and scipy/superlu factorizations). Wrappers only count;
@@ -46,8 +46,8 @@ def positions(history: str):
 
 
 def mixed_free_model(bodies=1):
-    from anysolver import FEModel, LoadCase, assemble_load_vector
-    from anysolver.elements import BeamElement, create_shell_element
+    from anyfesolver import FEModel, LoadCase, assemble_load_vector
+    from anyfesolver.elements import BeamElement, create_shell_element
     model = FEModel('balanced mixed static stream')
     model.add_material('steel', 210e9, .3, density=7850.)
     groups = []
@@ -97,7 +97,7 @@ def mixed_free_model(bodies=1):
 
 
 def free_cases(model,groups,balancing,indices):
-    from anysolver import LoadCase
+    from anyfesolver import LoadCase
     for position in indices:
         t=.1*position
         load=LoadCase(f'case-{position:03}')
@@ -171,7 +171,7 @@ def install_backend_counters(linalg):
     required=('_pardiso_full_factorize','_new_pypardiso_solver','_PardisoFactorization','splu')
     missing=[name for name in required if not hasattr(linalg,name)]
     if missing:
-        raise RuntimeError('baseline anysolver.linalg lacks symbols required '
+        raise RuntimeError('baseline anyfesolver.linalg lacks symbols required '
                            f'for equivalent backend instrumentation: {missing}')
     lock=threading.Lock()
     counters={'scipy_factorization_attempts':0,
@@ -214,11 +214,11 @@ def install_backend_counters(linalg):
     def counts():
         with lock: return dict(counters)
     return counts,{'mode':'driver-wrapper',
-                   'wrapped_symbols':['anysolver.linalg._pardiso_full_factorize',
-                                      'anysolver.linalg._new_pypardiso_solver'
+                   'wrapped_symbols':['anyfesolver.linalg._pardiso_full_factorize',
+                                      'anyfesolver.linalg._new_pypardiso_solver'
                                       ' (+ solver-class set_phase(22) counting)',
-                                      'anysolver.linalg._PardisoFactorization._active_solver',
-                                      'anysolver.linalg.splu'],
+                                      'anyfesolver.linalg._PardisoFactorization._active_solver',
+                                      'anyfesolver.linalg.splu'],
                    'note':'counting wrappers only; no mechanical change'}
 
 
@@ -227,9 +227,9 @@ PHASE_SEMANTICS={
         'load_evaluation':'constructing each load record (case resolution / LoadCase definition)',
         'batch_solve':'one anyfem.solve_linear_static_many call; includes its internal load '
                       'assembly and all solves',
-        'solve':'one anysolver.solve_linear call per case; includes its internal assembly, '
+        'solve':'one anyfesolver.solve_linear call per case; includes its internal assembly, '
                 'factorization and solve work',
-        'stress_recovery':'one anysolver.recover_stress_result call per case',
+        'stress_recovery':'one anyfesolver.recover_stress_result call per case',
         'constraint_diagnostics':'one compute_constraint_force_diagnostics call per case',
         'envelope_output':'selected-output extraction and envelope reduction'},
     'candidate':{
@@ -262,10 +262,10 @@ def main():
                         help='Evenly spaced subset of the frozen history for bounded checks; not a full primary/holdout campaign')
     args=parser.parse_args()
     driver_start=time.perf_counter()
-    import anysolver
-    import anysolver.linalg as solver_linalg
-    from anysolver import AnalysisSession,RecoveryConfig,ResourceConfig
-    from anysolver.assembly import compute_constraint_force_diagnostics
+    import anyfesolver
+    import anyfesolver.linalg as solver_linalg
+    from anyfesolver import AnalysisSession,RecoveryConfig,ResourceConfig
+    from anyfesolver.assembly import compute_constraint_force_diagnostics
     from threadpoolctl import threadpool_info
     import psutil
     counts,instrumentation=install_backend_counters(solver_linalg)
@@ -325,7 +325,7 @@ def main():
         return
     # The identical reducer implementation is used in both measurements. It is
     # standalone and imports no solver package, so baseline mechanics stay old.
-    spec=importlib.util.spec_from_file_location('benchmark_envelope',Path(__file__).parents[1]/'src/anysolver/static_envelopes.py')
+    spec=importlib.util.spec_from_file_location('benchmark_envelope',Path(__file__).parents[1]/'src/anyfesolver/static_envelopes.py')
     module=importlib.util.module_from_spec(spec);sys.modules[spec.name]=module;spec.loader.exec_module(module)
     def run(session):
         reducer=module.EnvelopeReducer()
@@ -369,7 +369,7 @@ def main():
                     batch_size=args.block_size,output_dofs=dofs,recovery_config=config,
                     resource_config=resources,session=session)
             else:
-                from anysolver import iter_linear_batches,StaticCase
+                from anyfesolver import iter_linear_batches,StaticCase
                 stream=iter_linear_batches(model,(StaticCase(name,load,t) for name,t,load in records()),
                     batch_size=args.block_size,output_dofs=dofs,recovery_config=config,
                     resource_config=resources,session=session)
@@ -403,7 +403,7 @@ def main():
                 for i,(name,t,_) in enumerate(cases):
                     shape=solved.shapes[i]
                     recovery_start=time.perf_counter()
-                    stresses=anysolver.recover_stress_result(model,shape.displacements,
+                    stresses=anyfesolver.recover_stress_result(model,shape.displacements,
                         recovery_config=config,resource_config=resources).element_stresses
                     phases['stress_recovery']+=time.perf_counter()-recovery_start
                     diagnostics_start=time.perf_counter()
@@ -423,11 +423,11 @@ def main():
                     if record is None: break
                     name,t,load=record
                     solve_start=time.perf_counter()
-                    u,info=anysolver.solve_linear(model,load,session=session,resource_config=resources)
+                    u,info=anyfesolver.solve_linear(model,load,session=session,resource_config=resources)
                     phases['solve']+=time.perf_counter()-solve_start
                     if info['convergence_info']['status']!='converged': raise RuntimeError(info)
                     recovery_start=time.perf_counter()
-                    stresses=anysolver.recover_stress_result(model,u,recovery_config=config,
+                    stresses=anyfesolver.recover_stress_result(model,u,recovery_config=config,
                         resource_config=resources).element_stresses
                     phases['stress_recovery']+=time.perf_counter()-recovery_start
                     diagnostics_start=time.perf_counter()
@@ -500,7 +500,7 @@ def main():
              'sample_cases':args.sample_cases,
              'fixture':str(args.fixture) if args.fixture is not None else None,
              'resource_config':{'solver_threads':1,'assembly_threads':1,'recovery_threads':1},
-             'runtime':{'python':sys.executable,'solver':anysolver.__file__,
+             'runtime':{'python':sys.executable,'solver':anyfesolver.__file__,
                         'application':getattr(anyfem,'__file__',None) if anyfem is not None else None,
                         'threadpools':threadpool_info()},
              'model_dofs':model.mesh.dof_manager.total_dofs,

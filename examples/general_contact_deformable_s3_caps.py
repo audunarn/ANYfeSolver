@@ -3,11 +3,11 @@
 Development profile: fixed shell directors, frictionless elastic materials,
 explicit radius-covering face clearance and distinct line/endpoint stiffness.
 """
-from anysolver import (BoundaryCondition, ContactDefinition, ContactSurface,
+from anyfesolver import (BoundaryCondition, ContactDefinition, ContactSurface,
     ContactInteraction, ContactSolverSettings, LoadCase, create_shell_element,
     solve_static_nonlinear)
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
 
 
 def build():

@@ -3,14 +3,14 @@
 The beam nodal root translations and x/y rotations are restrained; normal
 spin remains free. This is a separate support condition from a shell-only
 clamp or a physical retained-section endpoint attachment. BL5 is unqualified.
-Run through an installed ANYsolver package; no private operators are used.
+Run through an installed ANYfeSolver package; no private operators are used.
 """
 import argparse
 import json
 
 import numpy as np
-import anysolver
-from anysolver import b3_ge, stiffened_shell as ss
+import anyfesolver
+from anyfesolver import b3_ge, stiffened_shell as ss
 
 
 LOADS={"fy":(0.,100.,0.,0.,0.,0.),"mx":(0.,0.,0.,10.,0.,0.)}
@@ -95,7 +95,7 @@ def run(intervals=16):
         preflight=owner.preflight()
         if preflight["reference_linear_factorizations"]!=1:
             raise AssertionError("eligible static operator refactorized")
-        return {"source":anysolver.__file__,"qualification":owner.capabilities["status"],
+        return {"source":anyfesolver.__file__,"qualification":owner.capabilities["status"],
             "shell_elements":intervals,"beam_elements":intervals//2,
             "support_semantics":"shell-root clamp plus beam nodal root ground components 0..4; normal spin free",
             "reaction_semantics":"ground reactions, not concentrated beam-to-shell endpoint transfer",

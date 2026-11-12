@@ -6,9 +6,9 @@ import math
 import numpy as np
 import pytest
 
-from anysolver._ge_beam3_fibre_cell import FibreCellConjugate, FibreTrialState, CellHistory
-from anysolver._ge_beam3_fibre_section import FlowCurve, canonical
-from anysolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
+from anyfesolver._ge_beam3_fibre_cell import FibreCellConjugate, FibreTrialState, CellHistory
+from anyfesolver._ge_beam3_fibre_section import FlowCurve, canonical
+from anyfesolver._stiffened_shell_ge_finite_experimental import FinitePointDriver
 
 
 def one_fibre(strain=.49, derivative=.1, *, curve=None, z0=0., p0=0., force=1.):
@@ -121,11 +121,11 @@ def test_driver_cache_state_origin_generation_and_legacy_dispatch():
 
 
 def test_actual_cell_capture_preserves_legacy_response_bytes_and_origin():
-    from anysolver import stiffened_shell as ss
+    from anyfesolver import stiffened_shell as ss
     from examples.stiffened_shell_native_fibre_bl5_material import definition
     owner=ss.create_analysis(definition=definition())
     try:
-        from anysolver._ge_beam3_retained_fibre import RetainedFibreOperator
+        from anyfesolver._ge_beam3_retained_fibre import RetainedFibreOperator
         element, _, origin=next(part for part in owner._beam_parts if type(part[0].operator) is RetainedFibreOperator)
         cell=element.operator.cell
         before=canonical(origin)
@@ -141,7 +141,7 @@ def test_actual_cell_capture_preserves_legacy_response_bytes_and_origin():
         # Capturing from a one-shot load iterable also owns the validated p.
         generated=cell.response(iter([0.]*18), origin, capture_trial=True)['_trial_state']
         assert generated.resultants == (0.,)*18
-        from anysolver._ge_beam3_retained_fibre import Evaluation, BoundaryEvaluation
+        from anyfesolver._ge_beam3_retained_fibre import Evaluation, BoundaryEvaluation
         operator=element.operator
         args=(operator.reference.coordinates, np.zeros((3,3)), operator.reference.nodal_triads,
               np.tile(np.eye(3),(2,1,1)), np.zeros(18))

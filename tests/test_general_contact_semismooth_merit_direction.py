@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from anysolver.general_contact.semismooth_path import (
+from anyfesolver.general_contact.semismooth_path import (
     _current_merit_slope, _original_direction_event_fraction,
 )
 
@@ -108,7 +108,7 @@ def _caller(monkeypatch, *, gaps, forces, gradient, directions, certificates):
     """Controlled linear responses exercise production selection/cleanup only."""
     from types import SimpleNamespace
     from scipy import sparse
-    import anysolver.general_contact.semismooth_path as owner
+    import anyfesolver.general_contact.semismooth_path as owner
     modes = len(gaps)
     origin = {7: {'origin': 11}}
     seen_origins, proposals, candidate_poses, discards = [], [], [], []

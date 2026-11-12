@@ -3,16 +3,16 @@
 import numpy as np
 import pytest
 
-from anysolver import (
+from anyfesolver import (
     BoundaryCondition, DisplacementControl, LoadCase, create_shell_element,
     solve_static_nonlinear,
 )
-from anysolver.fe_core import FEModel
-from anysolver.general_contact.core import (
+from anyfesolver.fe_core import FEModel
+from anyfesolver.general_contact.core import (
     ContactDefinition, ContactInteraction, ContactSolverSettings, ContactSurface,
     validate_general_contact,
 )
-from anysolver.general_contact.s3_pair_static import (
+from anyfesolver.general_contact.s3_pair_static import (
     GeneralS3PairManager, _swept_gap_lower,
 )
 

@@ -8,12 +8,12 @@ import sys,json,time,warnings,numpy as np
 with warnings.catch_warnings():
     warnings.simplefilter('ignore', pytest.PytestUnknownMarkWarning)
     slow = pytest.mark.slow
-import anysolver as fs
-from anysolver import _compensated_native as native_contractions
-from anysolver import _compensated_contractions as contractions
-from anysolver.elements import create_shell_element
-from anysolver.boundary import FixedSupport,LoadCase
-from anysolver.material_curves import DNVC208MaterialCurve
+import anyfesolver as fs
+from anyfesolver import _compensated_native as native_contractions
+from anyfesolver import _compensated_contractions as contractions
+from anyfesolver.elements import create_shell_element
+from anyfesolver.boundary import FixedSupport,LoadCase
+from anyfesolver.material_curves import DNVC208MaterialCurve
 def plate(c):
     m=fs.FEModel('p');n=c['n'];t=c['t'];form=c['form']
     curve=DNVC208MaterialCurve(sigma_prop=3e7,sigma_yield=3.2e7,sigma_yield_2=3.4e7,eps_p_y1=.005,eps_p_y2=.01,K=4e8,n=.2)

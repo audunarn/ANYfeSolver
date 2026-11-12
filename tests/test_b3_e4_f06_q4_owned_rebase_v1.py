@@ -15,10 +15,10 @@ import pytest
 os.environ.setdefault("NUMBA_CACHE_DIR",
     str(Path(tempfile.gettempdir()) / "f06_q4_numba"))
 
-from anysolver._ge_beam3_g3c_local_shell import deformation
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_shell_joint_state import decode
-from anysolver.control import CancellationToken, SolveCancelled
+from anyfesolver._ge_beam3_g3c_local_shell import deformation
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_shell_joint_state import decode
+from anyfesolver.control import CancellationToken, SolveCancelled
 from scripts.probe_b3_ge_e4_pl_g0_f06_q4_owned_rebase_v1 import (
     Q4OwnedRebaseCandidate, SCHEMA,
 )

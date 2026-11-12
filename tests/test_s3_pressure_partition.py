@@ -3,7 +3,7 @@ from fractions import Fraction as Q
 from types import SimpleNamespace
 import numpy as np
 import pytest
-from anysolver.general_contact import s3_pressure_hermite_bounds as module
+from anyfesolver.general_contact import s3_pressure_hermite_bounds as module
 
 
 class RecomputedPartition:

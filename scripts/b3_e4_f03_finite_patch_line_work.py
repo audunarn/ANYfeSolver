@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from anysolver._ge_beam3_pose_joint import RigidPoseJoint
+from anyfesolver._ge_beam3_pose_joint import RigidPoseJoint
 from scripts._b3_e4_f03_native_spatial_port import NativeHalfCellSpatialPort
 from scripts.b3_e4_f03_finite_patch_pose import FlatQ4FiniteSupportPose
 from scripts.b3_e4_f03_l1_physical_rail import _owned

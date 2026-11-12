@@ -14,7 +14,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / "src")]
 
-import anysolver
+import anyfesolver
 import numba
 import numpy as np
 import psutil
@@ -79,7 +79,7 @@ def one_side(model, elements, saved, side):
 
 def main(output: Path):
     pools = threadpool_info()
-    if not Path(anysolver.__file__).resolve().is_relative_to(ROOT / "src"):
+    if not Path(anyfesolver.__file__).resolve().is_relative_to(ROOT / "src"):
         raise ValueError("solver imported outside bound source checkout")
     if (psutil.Process().cpu_affinity() != [0] or numba.config.DISABLE_JIT != 1 or
             numba.get_num_threads() != 1 or not pools or
@@ -93,9 +93,9 @@ def main(output: Path):
     six = sum(row["six_resultant_work_J"] for row in sides.values())
     result = dict(identity=IDENTITY, status="DEVELOPMENT_DIAGNOSTIC_NOT_QUALIFIED",
         saved_v7_sha256=digest(SAVED), source_sha256={name:digest(Path(module.__file__))
-            for name,module in (("ports",ports),("weak",ports.weak),("anysolver",anysolver))},
+            for name,module in (("ports",ports),("weak",ports.weak),("anyfesolver",anyfesolver))},
         source_paths={name:str(Path(module.__file__).resolve()) for name,module in
-            (("ports",ports),("weak",ports.weak),("anysolver",anysolver))},
+            (("ports",ports),("weak",ports.weak),("anyfesolver",anyfesolver))},
         effective_runtime=dict(affinity=psutil.Process().cpu_affinity(),
             numba_disable_jit=int(numba.config.DISABLE_JIT),
             numba_threads=int(numba.get_num_threads()),threadpools=pools),

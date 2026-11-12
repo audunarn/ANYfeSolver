@@ -1,11 +1,11 @@
 """Capture completion, separate immutable spectral ownership and old routing."""
 from hashlib import sha256
 import pytest
-from anysolver import _ge_beam3_analysis_modal_snapshot as snapshot
-from anysolver import _ge_beam3_analysis_translation_modal as route
-from anysolver._ge_beam3_native_analysis import NativeBeamAnalysis
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver.control import CancellationToken,SolveCancelled
+from anyfesolver import _ge_beam3_analysis_modal_snapshot as snapshot
+from anyfesolver import _ge_beam3_analysis_translation_modal as route
+from anyfesolver._ge_beam3_native_analysis import NativeBeamAnalysis
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver.control import CancellationToken,SolveCancelled
 from test_ge_beam3_native_analysis import definitions
 from test_ge_beam3_elastic_seed_continuation import seed,model,programme
 

@@ -7,8 +7,8 @@ B3/E4 mass operators, the mixed owner, free-free modes, or coupled buckling.
 import numpy as np
 from scipy import linalg
 
-from anysolver._ge_beam3_native_buckling import factor_buckling
-from anysolver._native_paired_factor_chain_modes import solve_paired_factor_chain_modes
+from anyfesolver._ge_beam3_native_buckling import factor_buckling
+from anyfesolver._native_paired_factor_chain_modes import solve_paired_factor_chain_modes
 
 
 def test_massless_retained_coordinate_and_multiplier_are_algebraic():

@@ -20,7 +20,7 @@ ENV = {key: "1" for key in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_
                            "NUMBA_NUM_THREADS", "NUMBA_DISABLE_JIT")}
 RSS_CAP = 2*1024**3
 TEST_FILE = ROOT / "tests/test_r8_b2_original_operator_20261010.py"
-PRODUCT = ROOT / "src/anysolver/_stiffened_shell_b2_q4_panel_experimental.py"
+PRODUCT = ROOT / "src/anyfesolver/_stiffened_shell_b2_q4_panel_experimental.py"
 OLD = ROOT / "docs/agent_plans/development/r8-b2-compensated-refinement-20261009"
 
 
@@ -40,8 +40,8 @@ def save(path, record):
 
 def binding():
     sources = [Path(__file__).resolve(), PRODUCT, TEST_FILE,
-               ROOT / "src/anysolver/_b2_physical_linear_batch_dev.py",
-               ROOT / "src/anysolver/_b2_loaded_point_trace_dev.py",
+               ROOT / "src/anyfesolver/_b2_physical_linear_batch_dev.py",
+               ROOT / "src/anyfesolver/_b2_loaded_point_trace_dev.py",
                ROOT / "examples/stiffened_shell_b2_physical_rigid_footprint.py",
                ROOT / "tests/test_stiffened_shell_b2_q4_panel_experimental.py",
                ROOT / "tests/test_b2_loaded_point_owner.py"]
@@ -73,8 +73,8 @@ def child(folder, authority_path):
     import numpy as np
     import scipy
     import numba
-    import anysolver
-    import anysolver._stiffened_shell_b2_q4_panel_experimental as panel
+    import anyfesolver
+    import anyfesolver._stiffened_shell_b2_q4_panel_experimental as panel
     from threadpoolctl import threadpool_info
     import pytest
     expected_root = Path(receipt["installed_site"]).resolve() if receipt["installed_site"] else ROOT / "src"
@@ -88,7 +88,7 @@ def child(folder, authority_path):
                          "threads": numba.get_num_threads()},
                "installed_site": receipt["installed_site"],
                "imported": {m.__name__: {"path": str(Path(m.__file__).resolve()), "sha256": sha(m.__file__)}
-                            for m in (anysolver, panel, np, scipy, numba)}}
+                            for m in (anyfesolver, panel, np, scipy, numba)}}
     require(runtime["affinity"] == [0] and runtime["environment"] == ENV and
             runtime["pools"] and all(p["num_threads"] == 1 for p in runtime["pools"]) and
             runtime["numba"]["disable_jit"] == 1 and runtime["numba"]["threads"] == 1 and

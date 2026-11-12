@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from scipy import sparse
 
-from anysolver import (
+from anyfesolver import (
     AnyStructureFEMResult,
     CancellationToken,
     ConstraintEquation,
@@ -24,19 +24,19 @@ from anysolver import (
     solve_outcome,
     solve_nonlinear_load_stepping,
 )
-from anysolver.assembly import (
+from anyfesolver.assembly import (
     build_constraint_transformation,
     build_reduced_rigid_body_modes,
     reconstruct_full_solution,
 )
-from anysolver.boundary import BoundaryCondition, FixedSupport, LoadCase
-from anysolver.elements import BeamElement
-from anysolver.fe_core import FEModel
-from anysolver.buckling import BucklingMode, BucklingResult
-from anysolver.modal import ModalMode, ModalResult
-from anysolver.nonlinear_static import NonlinearStaticResult, solve_static_nonlinear
-from anysolver.recovery import StressRecoveryProvenance, StressRecoveryResult
-from anysolver.results import FEResult
+from anyfesolver.boundary import BoundaryCondition, FixedSupport, LoadCase
+from anyfesolver.elements import BeamElement
+from anyfesolver.fe_core import FEModel
+from anyfesolver.buckling import BucklingMode, BucklingResult
+from anyfesolver.modal import ModalMode, ModalResult
+from anyfesolver.nonlinear_static import NonlinearStaticResult, solve_static_nonlinear
+from anyfesolver.recovery import StressRecoveryProvenance, StressRecoveryResult
+from anyfesolver.results import FEResult
 
 
 def _elastic_cantilever() -> tuple[FEModel, LoadCase]:
@@ -724,7 +724,7 @@ def test_public_workflow_result_families_have_exact_type_outcomes() -> None:
     spoof_type = type(
         "NonlinearStaticResult",
         (),
-        {"__module__": "anysolver.nonlinear_static"},
+        {"__module__": "anyfesolver.nonlinear_static"},
     )
     with pytest.raises(TypeError):
         solve_outcome(spoof_type())

@@ -1,9 +1,9 @@
 import importlib.util,pathlib
 import numpy as np
 import pytest
-from anysolver import solve_static_nonlinear
-from anysolver._plate_stability_continuation import trust_steps,segment_work,admit
-from anysolver.nonlinear_static import _assemble_nonlinear_system
+from anyfesolver import solve_static_nonlinear
+from anyfesolver._plate_stability_continuation import trust_steps,segment_work,admit
+from anyfesolver.nonlinear_static import _assemble_nonlinear_system
 spec=importlib.util.spec_from_file_location('plate_case',pathlib.Path(__file__).parents[1]/'scripts/investigate_plate_edge_shear.py');fixture=importlib.util.module_from_spec(spec);spec.loader.exec_module(fixture)
 
 @pytest.mark.parametrize('gradient',[np.zeros(3),np.array([1e-15,-2e-15,.1]),np.array([1e-30,-2e-30,.1]),np.array([.2,-.4,.3])])
@@ -58,7 +58,7 @@ def test_hostile_observation_cannot_change_admitted_policy(where):
         solve_static_nonlinear(m,None,kinematics='corotational',corotational_tangent='work_conjugate',stability_control='plate_energy',**kwargs)
 
 def test_cancellation_during_work_propagates_and_preserves_reference_geometry():
-    from anysolver.control import SolveCancelled,CancellationToken
+    from anyfesolver.control import SolveCancelled,CancellationToken
     m=fixture.plate(.01,True);original=[(n.x,n.y,n.z) for n in m.mesh.nodes.values()]
     class Token(CancellationToken):
         calls=0
@@ -84,7 +84,7 @@ def test_large_mesh_refuses_before_solving():
 
 @pytest.mark.parametrize('binding',['trust_steps','eigh','np','math'])
 def test_callback_cannot_replace_stability_algorithm(monkeypatch,binding):
-    import anysolver._plate_stability_continuation as helper
+    import anyfesolver._plate_stability_continuation as helper
     m=fixture.plate(1e-6,True)
     def status(message):monkeypatch.setattr(helper,binding,lambda *a: [np.zeros(1)])
     with pytest.raises(ValueError,match='authority changed'):
@@ -92,7 +92,7 @@ def test_callback_cannot_replace_stability_algorithm(monkeypatch,binding):
 
 
 def test_callback_cannot_replace_algorithm_code(monkeypatch):
-    import anysolver._plate_stability_continuation as helper
+    import anyfesolver._plate_stability_continuation as helper
     m=fixture.plate(1e-6,True)
     def status(message):
         monkeypatch.setattr(helper.trust_steps,'__code__',(lambda *args: []). __code__)
@@ -103,7 +103,7 @@ def test_callback_cannot_replace_algorithm_code(monkeypatch):
 @pytest.mark.parametrize('amplitude,delta_scale',[(.002,None),(.01,None),(.1,None),(.01,1e-9)])
 def test_two_point_local_work_matches_three_point_reference(amplitude,delta_scale):
     import math
-    from anysolver.corotational import _corotational_cache,_corotational_deformation_state
+    from anyfesolver.corotational import _corotational_cache,_corotational_deformation_state
     m=fixture.plate(.01,True);rng=np.random.default_rng(918)
     size=m.mesh.dof_manager.total_dofs
     old=amplitude*rng.standard_normal(size);new=amplitude*rng.standard_normal(size)

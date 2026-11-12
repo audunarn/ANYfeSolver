@@ -5,8 +5,8 @@ import json
 import numpy as np
 import pytest
 from docs.reference_cases import ge_beam3_retained_generalized_force_probe as probe
-from anysolver._ge_beam3_p5_seeded.core import canonical
-from anysolver._ge_beam3_p5.algebra import rotation
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5.algebra import rotation
 from test_ge_beam3_generalized_slenderness_diagnostic import make
 from test_ge_beam3_schur_line_program import save
 

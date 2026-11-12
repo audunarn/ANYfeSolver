@@ -6,9 +6,9 @@ import numpy as np
 import pytest
 from scipy.linalg import eig
 from scipy.spatial.transform import Rotation
-from anysolver import stiffened_shell as api
-from anysolver.control import CancellationToken
-from anysolver._stiffened_shell_b2_reference_buckling import (
+from anyfesolver import stiffened_shell as api
+from anyfesolver.control import CancellationToken
+from anyfesolver._stiffened_shell_b2_reference_buckling import (
     beam_reference_derivatives,member_green_hessian,point_green_hessian,compile_geometric,
 )
 
@@ -74,8 +74,8 @@ def test_member_reference_derivatives_match_independent_objective_finite_trace()
     assert sum(error<=1. for error in first_errors)>=2,first_errors
 
 def test_full_point_curvature_matches_objective_polar_and_beam_pose_work():
-    from anysolver._ge_beam3_pose_joint import RigidPoseJoint
-    from anysolver._b2_f10_f11_point_attachment import compile_reference_point
+    from anyfesolver._ge_beam3_pose_joint import RigidPoseJoint
+    from anyfesolver._b2_f10_f11_point_attachment import compile_reference_point
     owner=api.create_analysis(definition=example.definition())
     try:
         member,_=owner._members[0][1]
@@ -317,7 +317,7 @@ def test_finite_common_rigid_path_includes_gradient_acceleration_work():
     finally: owner.close()
 
 def test_midassembly_cancellation_publishes_no_spectral_identity(monkeypatch):
-    import anysolver._stiffened_shell_b2_reference_buckling as module
+    import anyfesolver._stiffened_shell_b2_reference_buckling as module
     owner=api.create_analysis(definition=example.definition())
     try:
         load=np.zeros(54);load[[12,30]]=-1.

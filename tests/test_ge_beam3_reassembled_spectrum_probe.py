@@ -4,10 +4,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 from docs.reference_cases.ge_beam3_reassembled_spectrum_probe import solve
-from anysolver._native_reassembled_factor_modes import solve_reassembled_factor_modes as native_solve
+from anyfesolver._native_reassembled_factor_modes import solve_reassembled_factor_modes as native_solve
 from test_ge_beam3_seeded_reduction_diagnostic import test_capture_reference_factor_reduction as capture
 from test_ge_beam3_curved_contrast_probe import ROTATION
-from anysolver._ge_beam3_p5_seeded.core import canonical
+from anyfesolver._ge_beam3_p5_seeded.core import canonical
 from docs.reference_cases.ge_beam3_decimal_factor_audit import factor_roots
 
 

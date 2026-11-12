@@ -9,8 +9,8 @@ import numpy as np
 import pytest
 from dataclasses import replace
 from scipy.optimize import minimize_scalar
-from anysolver.control import CancellationToken
-from anysolver.general_contact.native_curve_union import resolved_physical_gap_lower
+from anyfesolver.control import CancellationToken
+from anyfesolver.general_contact.native_curve_union import resolved_physical_gap_lower
 
 from test_general_contact_native_curved_pair_ownership import _physical_curves, _scalar_projection, _point
 

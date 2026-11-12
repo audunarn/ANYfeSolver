@@ -5,10 +5,10 @@ from hashlib import sha256
 import json
 import numpy as np
 import pytest
-from anysolver import _ge_beam3_elastic_seed_continuation as c
-from anysolver import _ge_beam3_retained_translation_control as old
-from anysolver._ge_beam3_p5_seeded.core import canonical,sha
-from anysolver.control import CancellationToken
+from anyfesolver import _ge_beam3_elastic_seed_continuation as c
+from anyfesolver import _ge_beam3_retained_translation_control as old
+from anyfesolver._ge_beam3_p5_seeded.core import canonical,sha
+from anyfesolver.control import CancellationToken
 from test_ge_beam3_native_generalized_modal import make
 
 def model():return make(False,1,clamped=True,coupled=False)[0]
