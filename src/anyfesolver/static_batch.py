@@ -150,11 +150,16 @@ def _class_state(cls: type) -> Any:
 
 def _model_state(model: Any) -> Any:
     from .fe_core import _ELEMENT_LOCAL_CACHE_NAMES
+    from .e4_pl_s3_v2d_element import _V2D_LEASE_EPOCHS_KEY
     mesh = model.mesh
     token = getattr(mesh, "_qualified_direct_state_token", None)
     activity = mesh.element_activity
     derived = set(_ELEMENT_LOCAL_CACHE_NAMES) | {"_fiber_grid_cache",
-        "_qualified_direct_state_token", "_qualified_direct_state_tokens"}
+        "_qualified_direct_state_token", "_qualified_direct_state_tokens",
+        # Weak-reference bookkeeping that a V2D trusted capture appends to its
+        # elements; it carries no model state and the capture's own write
+        # counter, not this witness, is what detects a V2D modification.
+        _V2D_LEASE_EPOCHS_KEY}
     element_state = tuple((element_id, id(element), _plain_state({k: v for k, v in vars(element).items()
         if k not in derived})) for element_id, element in mesh.elements.items())
     classes = tuple(dict.fromkeys(type(e) for e in mesh.elements.values()))

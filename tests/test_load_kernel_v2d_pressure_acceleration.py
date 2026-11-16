@@ -321,3 +321,96 @@ def test_replaced_mpc_mass_method_is_not_admitted(monkeypatch) -> None:
         lambda self, mesh, material: original(self, mesh, material),
     )
     assert _call_kernel(model, case, v2d_authority=True) is None
+
+
+# --- pressure entries on two-node beam/coupling elements (exactly zero) ------
+
+
+def _add_beam_and_coupling(model: FEModel) -> tuple[int, int]:
+    from anyfesolver.elements import BeamElement, CoupledBeamShellElement
+
+    nodes = sorted(model.mesh.nodes)
+    beam_id = max(model.mesh.elements) + 1
+    model.add_element(beam_id, BeamElement(beam_id, [nodes[0], nodes[1]], "steel"))
+    coupling_id = beam_id + 1
+    model.add_element(
+        coupling_id,
+        CoupledBeamShellElement(coupling_id, nodes[2], nodes[3], "steel", 1.0e6),
+    )
+    return beam_id, coupling_id
+
+
+def test_pressure_on_beam_and_coupling_is_zero_and_stays_owned(monkeypatch) -> None:
+    model, q4, v2d = _mixed_model(3)
+    beam_id, coupling_id = _add_beam_and_coupling(model)
+    case = _pressure_case(q4, v2d)
+    probe = LoadCase("zero")
+    for element_id in (beam_id, coupling_id):
+        assert not np.any(
+            probe._consistent_pressure_load(model.mesh.elements[element_id], model.mesh, 1.0, None)
+        )
+    case.pressure_loads[beam_id] = 5.0e3
+    case.pressure_loads[coupling_id] = 5.0e3
+    taken = []
+    original = boundary._run_foreign_code_free_load_vector
+
+    def spy(*args, **kwargs):
+        result = original(*args, **kwargs)
+        taken.append(result is not None)
+        return result
+
+    monkeypatch.setattr(boundary, "_run_foreign_code_free_load_vector", spy)
+    vector, _info = assemble_load_vector(model, case)
+    assert taken == [True]
+    assert np.array_equal(vector, _oracle(model, case))
+
+
+def test_scans_stay_flat_with_beam_pressure_entries() -> None:
+    counts = []
+    for pairs in (3, 12):
+        model, q4, v2d = _mixed_model(pairs)
+        beam_id, coupling_id = _add_beam_and_coupling(model)
+        case = _pressure_case(q4, v2d)
+        case.pressure_loads[beam_id] = 1.0
+        case.pressure_loads[coupling_id] = 1.0
+        scans, _result = _count_scans(model, case)
+        counts.append(scans)
+    assert counts[1] <= counts[0] + 2, counts
+
+
+def test_replaced_beam_class_member_keeps_the_public_route(monkeypatch) -> None:
+    from anyfesolver.elements import BeamElement
+
+    model, q4, v2d = _mixed_model(2)
+    beam_id, _coupling_id = _add_beam_and_coupling(model)
+    case = LoadCase("beam-pressure")
+    case.pressure_loads = {beam_id: 1.0}
+    assert _call_kernel(model, case, v2d_authority=True) is not None
+    original = BeamElement.get_node_coordinates
+    monkeypatch.setattr(
+        BeamElement, "get_node_coordinates", lambda self, mesh: original(self, mesh)
+    )
+    assert _call_kernel(model, case, v2d_authority=True) is None
+
+
+def test_beam_with_native_pressure_hook_is_not_admitted() -> None:
+    model, q4, v2d = _mixed_model(2)
+    beam_id, _coupling_id = _add_beam_and_coupling(model)
+    case = LoadCase("beam-pressure")
+    case.pressure_loads = {beam_id: 1.0}
+    object.__setattr__(
+        model.mesh.elements[beam_id], "compute_native_dead_pressure_load", lambda *a: None
+    )
+    assert _call_kernel(model, case, v2d_authority=True) is None
+
+
+def test_v2d_trusted_capture_does_not_change_the_source_witness() -> None:
+    """A load assembly subscribes V2D elements to a lease epoch; preparation's
+    coherence witness must not read that bookkeeping as a model change."""
+
+    from anyfesolver.prepared_static_snapshot import capture_source_witness
+
+    model, q4, v2d = _mixed_model(3)
+    before = capture_source_witness(model)
+    assemble_load_vector(model, _pressure_case(q4, v2d))
+    assert capture_source_witness(model) == before

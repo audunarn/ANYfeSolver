@@ -1369,6 +1369,44 @@ def _builtin_acceleration_inputs(state: dict, mesh_state: dict, material_getter:
     return True
 
 
+_NATIVE_PRESSURE_HOOKS = ("compute_native_dead_pressure_load",
+                          "compute_native_current_pressure_load")
+
+
+def _two_node_element_takes_exact_zero_pressure(element: Any) -> bool:
+    """Prove a pressure entry on an exact package beam/coupling is exactly zero.
+
+    ``_consistent_pressure_load`` reaches ``_fallback_lumped_pressure_load`` for
+    these classes, which reads the element coordinates (``get_node_coordinates``,
+    ``mesh.get_node`` and ``Node.coords``, all class-snapshotted) and returns a
+    zero vector for fewer than three nodes.  Admitted only with the same class
+    snapshot and plain constructed instance state that the acceleration route
+    uses for these classes, no native pressure hook anywhere in the class
+    hierarchy and exactly two integer node ids.
+    """
+
+    kind = type(element)
+    if kind not in (_BeamElement, _CoupledBeamShellElement) or not _mass_classes_are_untouched():
+        return False
+    class_names = {name for owner in type.__getattribute__(kind, "__mro__")
+                   for name in type.__getattribute__(owner, "__dict__")}
+    if any(hook in class_names for hook in _NATIVE_PRESSURE_HOOKS):
+        return False
+    data = object.__getattribute__(element, "__dict__")
+    authority_fields = ("_qualified_direct_state_tokens", "_qualified_direct_state_token",
+                        "_qualified_component_guard")
+    if type(data) is not dict or not all(type(key) is str for key in data):
+        return False
+    if any(key in class_names or key in _NATIVE_PRESSURE_HOOKS for key in data):
+        return False
+    if not all(key in authority_fields or _plain_mass_input(value) for key, value in data.items()):
+        return False
+    if kind is _CoupledBeamShellElement and not _plain_coupled_element_state(data):
+        return False
+    ids = data.get("node_ids")
+    return type(ids) in (list, tuple) and len(ids) == 2 and all(type(i) is int for i in ids)
+
+
 def _plain_numeric_array(value: Any) -> bool:
     """Exact arrays with builtin numeric scalars cannot invoke object hooks."""
     return (type(value) is np.ndarray and value.dtype.kind in "biuf"
@@ -1574,7 +1612,14 @@ def _run_foreign_code_free_load_vector(
             if type(element_id) is not int:
                 return None
             element = dict.get(elements, element_id)
-            if element is not None and type(element) not in owned_load_types:
+            if (
+                element is not None
+                and type(element) not in owned_load_types
+                and not (
+                    source is state["pressure_loads"]
+                    and _two_node_element_takes_exact_zero_pressure(element)
+                )
+            ):
                 return None
             if element is not None:
                 element_state = object.__getattribute__(element, "__dict__")
