@@ -7,8 +7,8 @@ import pytest
 
 from anyfesolver import (
     BoundaryCondition, ContactDefinition, ContactInteraction,
-    ContactSolverSettings, ContactSurface, LoadCase, RigidContactBody,
-    create_shell_element, solve_static_nonlinear, validate_general_contact,
+    ContactSolverSettings, ContactSurface, LoadCase, NonlinearConvergenceSettings,
+    RigidContactBody, create_shell_element, solve_static_nonlinear, validate_general_contact,
 )
 from anyfesolver.fe_core import FEModel
 from anyfesolver.general_contact.warped_q4_static import WarpedQ4PlaneManager
@@ -164,7 +164,11 @@ def test_two_face_warped_q4_coupled_gap_budget_and_restart():
     for node in (3, 6):
         load.add_nodal_load(node, forces=(0.0, 0.0, -0.5))
     common = dict(contact_settings=_settings(), num_steps=2,
-                  max_iterations=25, kinematics="von_karman")
+                  max_iterations=25, kinematics="von_karman",
+                  # The pinned load factors come from the step path of the
+                  # former default; the default became "rescue" in 141c6fa69.
+                  convergence_settings=NonlinearConvergenceSettings(
+                      line_search="auto"))
     tight = solve_static_nonlinear(
         model, load, contact=_definition(tolerance=0.001), **common,
     )
