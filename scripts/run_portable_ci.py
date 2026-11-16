@@ -402,9 +402,11 @@ def _worker_environment(root: Path) -> dict[str, str]:
             "OPENBLAS_NUM_THREADS": "1",
             "MKL_NUM_THREADS": "1",
             # Cooperative native timers are execution guards, not mechanics.
-            # Give shared CI hardware bounded headroom; the outer process-tree
-            # timeout and all iteration/integration/scientific limits still apply.
-            "ANYSOLVER_GE_BEAM3_DEADLINE_SCALE": "4",
+            # Give shared CI hardware bounded headroom (the service maximum, 8:
+            # a 120 s guard became 960 s; scale 4 missed by 8 s on a shared
+            # runner); the outer process-tree timeout and all
+            # iteration/integration/scientific limits still apply.
+            "ANYSOLVER_GE_BEAM3_DEADLINE_SCALE": "8",
             "NUMEXPR_NUM_THREADS": "1",
             "PYTHONHASHSEED": "0",
             "PYTHONNOUSERSITE": "1",

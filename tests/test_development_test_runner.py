@@ -11,7 +11,7 @@ from scripts import run_portable_ci as runner
 def test_portable_native_deadline_headroom_is_fixed_and_bounded(tmp_path, monkeypatch):
     monkeypatch.setenv('ANYSOLVER_GE_BEAM3_DEADLINE_SCALE', '1000')
     environment = runner._worker_environment(tmp_path)
-    assert environment['ANYSOLVER_GE_BEAM3_DEADLINE_SCALE'] == '4'
+    assert environment['ANYSOLVER_GE_BEAM3_DEADLINE_SCALE'] == '8'
     assert environment['OPENBLAS_NUM_THREADS'] == '1'
     assert environment['MKL_NUM_THREADS'] == '1'
     # Preparing CI execution settings does not mutate the calling application.
