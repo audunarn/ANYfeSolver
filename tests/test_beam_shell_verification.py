@@ -436,3 +436,14 @@ def test_beam_shell_verification_report_writer_and_cli(tmp_path: Path) -> None:
         check=False,
     )
     assert completed.returncode == 0, completed.stderr + completed.stdout
+
+def test_nlg_007_panel_runs_on_legacy_shells_and_records_the_qualified_refusal():
+    from anyfesolver import beam_shell_verification as module
+
+    case = {item.case_id: item for item in verification_manifest_cases()}['NLG-007']
+    result = module._evaluate_nlg_007(case)
+    assert result.status == 'PASS'
+    assert result.result['panel_shell_formulation'] == 'legacy'
+    route = result.checks['panel_qualified_route']
+    assert route['outcome'] == 'refused'
+    assert 'warped facet' in route['refusal']

@@ -3124,6 +3124,33 @@ def _plastic_stiffened_panel_model() -> Tuple[FEModel, LoadCase]:
     return model, load
 
 
+def _legacy_shell_plastic_stiffened_panel_model() -> Tuple[FEModel, LoadCase]:
+    """The plastic stiffened panel with legacy-formulation shells.
+
+    The qualified Q4 default refuses plastic analysis on a warped facet, which
+    the imperfect-panel bow creates. The verification of this case therefore
+    uses the legacy shell explicitly; the qualified refusal is recorded
+    separately (see ``_evaluate_nlg_007``), never hidden.
+    """
+
+    from .elements import ShellElement, create_shell_element
+
+    model, load = _plastic_stiffened_panel_model()
+    for element_id, element in list(model.mesh.elements.items()):
+        if isinstance(element, ShellElement):
+            model.add_element(
+                int(element_id),
+                create_shell_element(
+                    int(element_id),
+                    list(element.node_ids),
+                    material_name=element.material_name,
+                    formulation="legacy",
+                    thickness=float(element.thickness),
+                ),
+            )
+    return model, load
+
+
 def _run_nlg_006(case: VerificationCase) -> VerificationCaseResult:
     from .nonlinear_static import solve_static_nonlinear
 
@@ -3195,7 +3222,7 @@ def _evaluate_nlg_007(case: VerificationCase) -> VerificationCaseResult:
     analytical_peak = 2.0 / (3.0 * math.sqrt(3.0))
     peak_error = _rel_error(spring.peak_load_factor, analytical_peak)
 
-    panel, panel_load = _plastic_stiffened_panel_model()
+    panel, panel_load = _legacy_shell_plastic_stiffened_panel_model()
     offsets = {
         int(node_id): (0.0, 0.0, 1.0e-4)
         for node_id, node in panel.mesh.nodes.items()
@@ -3209,6 +3236,27 @@ def _evaluate_nlg_007(case: VerificationCase) -> VerificationCaseResult:
         maximum_absolute_load_factor=0.50,
         stop_after_peak_steps=2,
     )
+    # Record the qualified route's behaviour on the same imperfect panel. It is
+    # expected to refuse plastic analysis on the warped facet (fail closed);
+    # an unexpected success is recorded, not asserted, so this evidence stays
+    # honest in both directions.
+    qualified_panel, qualified_load = _plastic_stiffened_panel_model()
+    qualified_route: Dict[str, Any] = {"formulation": "qualified-q4-default"}
+    try:
+        solve_static_arc_length(
+            qualified_panel,
+            qualified_load,
+            control=panel_control,
+            max_iterations=15,
+            tolerance=1.0e-6,
+            arc_tolerance=1.0e-6,
+            num_layers=3,
+            imperfection=ImperfectionField(offsets, name="verification_panel_bow"),
+        )
+        qualified_route["outcome"] = "completed"
+    except ValueError as error:
+        qualified_route["outcome"] = "refused"
+        qualified_route["refusal"] = str(error)
     panel_result = solve_static_arc_length(
         panel,
         panel_load,
@@ -3232,8 +3280,10 @@ def _evaluate_nlg_007(case: VerificationCase) -> VerificationCaseResult:
             "panel_status": panel_result.status,
             "panel_last_load_factor": float(panel_result.load_factor),
             "panel_peak_load_factor": float(panel_result.peak_load_factor),
+            "panel_shell_formulation": "legacy",
         },
         checks={
+            "panel_qualified_route": qualified_route,
             "softening_steps": [step.to_dict() for step in spring.steps[-8:]],
             "panel_steps": [step.to_dict() for step in panel_result.steps],
             "panel_imperfection": panel_result.info.get("imperfection", []),
