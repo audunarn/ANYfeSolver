@@ -37,6 +37,10 @@ from .e4_pl_s3_element import (
     _s3_trusted_operation_scope as _S3_TRUSTED_OPERATION_SCOPE,
 )
 
+from .e4_pl_s3_v2d_element import (
+    _V2D_LEASE_EPOCHS_KEY,
+    NativeParityE4PLS3V2DShellElement as _NativeParityE4PLS3V2DShellElement,
+)
 from ._qualified_authority_epoch import _AuthorityEpochManager
 from . import elements as _element_module
 from .elements import (
@@ -47,6 +51,9 @@ from .elements import (
 )
 from anymaterial import IsotropicMaterial as _IsotropicMaterial
 
+from .mesh_gen import (
+    InterpolatedBeamShellMPCElement as _InterpolatedBeamShellMPCElement,
+)
 from .fe_core import (
     DOFManager as _DOFManager, FEModel as _FEModel, FEMesh as _FEMesh, Node as _Node,
     _QualifiedStateMapping,
@@ -885,7 +892,7 @@ _EXACT_MASS_CLASSES = tuple(
     (owner, type.__getattribute__(owner, "__mro__"),
      dict(type.__getattribute__(owner, "__dict__")))
     for owner in (_BeamElement, _Element, _ShellElement, _IsotropicMaterial, _AuthorityEpochManager,
-                  _CoupledBeamShellElement,
+                  _CoupledBeamShellElement, _InterpolatedBeamShellMPCElement,
                   _QualifiedE4PLShellElement, _QualifiedE4PLS3ShellElement)
 )
 _EXACT_MASS_METADATA = {
@@ -1213,12 +1220,13 @@ def _capture_mass_function_dependencies() -> tuple:
         (_QualifiedE4PLS3ShellElement, "compute_mass_matrix"),
         (_QualifiedE4PLS3ShellElement, "_compute_mass_components"),
         (_QualifiedE4PLS3ShellElement, "_compute_stiffness_components"),
-        (_CoupledBeamShellElement, "compute_mass_matrix"))]
+        (_CoupledBeamShellElement, "compute_mass_matrix"),
+        (_InterpolatedBeamShellMPCElement, "compute_mass_matrix"))]
     seen = set()
     dependencies = []
     methods = {}
     for owner in (_BeamElement, _Element, _ShellElement, _IsotropicMaterial,
-                  _CoupledBeamShellElement,
+                  _CoupledBeamShellElement, _InterpolatedBeamShellMPCElement,
                   _QualifiedE4PLShellElement, _QualifiedE4PLS3ShellElement,
                   _AuthorityEpochManager, _Node, _FEMesh, _DOFManager):
         for name, member in type.__getattribute__(owner, "__dict__").items():
@@ -1296,7 +1304,8 @@ def _plain_coupled_element_state(data: dict) -> bool:
 
 
 def _builtin_acceleration_inputs(state: dict, mesh_state: dict, material_getter: Any,
-                                 elements: Any, loaded_nodes: set) -> bool:
+                                 elements: Any, loaded_nodes: set, *,
+                                 v2d_authority: bool = False) -> bool:
     if mesh_state.get("concentrated_masses"):
         return False  # preserve the public validated mass/load observation route
     acceleration = state.get("gravity")
@@ -1326,15 +1335,21 @@ def _builtin_acceleration_inputs(state: dict, mesh_state: dict, material_getter:
     # span; they are package-owned authority objects, never numerical inputs.
     authority_fields = {"_qualified_direct_state_tokens", "_qualified_direct_state_token",
                         "_qualified_component_guard"}
+    mass_kinds = (_BeamElement, _CoupledBeamShellElement,
+                  _InterpolatedBeamShellMPCElement,
+                  _QualifiedE4PLShellElement, _QualifiedE4PLS3ShellElement)
+    if v2d_authority:
+        # The caller's guard re-validates the V2D class authority and every
+        # V2D instance (immutable values only); the checks below still apply.
+        mass_kinds += (_NativeParityE4PLS3V2DShellElement,)
+        authority_fields.add(_V2D_LEASE_EPOCHS_KEY)
     mass_class_names = {
         kind: {name for owner in type.__getattribute__(kind, "__mro__")
                for name in type.__getattribute__(owner, "__dict__")}
-        for kind in (_BeamElement, _CoupledBeamShellElement,
-                     _QualifiedE4PLShellElement, _QualifiedE4PLS3ShellElement)
+        for kind in mass_kinds
     }
     for element in dict.values(elements):
-        if type(element) not in (_BeamElement, _CoupledBeamShellElement,
-                                 _QualifiedE4PLShellElement, _QualifiedE4PLS3ShellElement):
+        if type(element) not in mass_kinds:
             return False
         data = object.__getattribute__(element, "__dict__")
         if type(data) is not dict or not all(type(key) is str for key in data):
@@ -1472,6 +1487,7 @@ def _run_foreign_code_free_load_vector(
     element_activity: Optional[object],
     *,
     stage_guard: Callable[..., None],
+    v2d_authority: bool = False,
 ) -> Optional[np.ndarray]:
     """Assemble a load vector whose whole evaluation runs only owned code.
 
@@ -1490,6 +1506,14 @@ def _run_foreign_code_free_load_vector(
     model-wide lifecycle/lease validation; a span it admits
     can then be bracketed by the lease's constant-time trusted guard because
     no code that could change model state runs inside it.
+
+    Exact S3 V2D elements (``NativeParityE4PLS3V2DShellElement``) are admitted
+    as loaded or mass-contributing elements only when the caller sets
+    ``v2d_authority``: its attestation that ``stage_guard`` also re-validates
+    the V2D formulation/class authority and every V2D instance (the lease's
+    trusted state check alone does not cover them; see
+    ``_capture_qualified_v2d_trusted_authority``).  Without it a V2D element
+    keeps the ordinary public route.
     """
 
     if element_activity is not None or not _numpy_error_routes_are_builtin():
@@ -1522,11 +1546,15 @@ def _run_foreign_code_free_load_vector(
         return None
     loaded_nodes = set()
     if state.get("gravity") is not None and not _builtin_acceleration_inputs(
-        state, mesh_state, material_getter, elements, loaded_nodes
+        state, mesh_state, material_getter, elements, loaded_nodes,
+        v2d_authority=v2d_authority,
     ):
         return None
+    owned_load_types = (_QualifiedE4PLShellElement, _QualifiedE4PLS3ShellElement)
+    if v2d_authority:
+        owned_load_types += (_NativeParityE4PLS3V2DShellElement,)
     for element in dict.values(elements):
-        if type(element) in (_QualifiedE4PLShellElement, _QualifiedE4PLS3ShellElement):
+        if type(element) in owned_load_types:
             continue  # Owned epoch-tracked metaclasses; never the fibre family.
         if type(type(element)) not in (type, ABCMeta):
             return None
@@ -1546,10 +1574,7 @@ def _run_foreign_code_free_load_vector(
             if type(element_id) is not int:
                 return None
             element = dict.get(elements, element_id)
-            if element is not None and type(element) not in (
-                _QualifiedE4PLShellElement,
-                _QualifiedE4PLS3ShellElement,
-            ):
+            if element is not None and type(element) not in owned_load_types:
                 return None
             if element is not None:
                 element_state = object.__getattribute__(element, "__dict__")

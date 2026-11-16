@@ -6485,6 +6485,7 @@ def _qualified_s3_pressure_surface_records(
     *,
     qualified_runtime_guard: Any,
     foreign_code_free_preamble: bool = False,
+    v2d_guard: Any = None,
 ) -> list[Dict[str, Any]]:
     """Identify the exact surface carrying qualified-S3 pressure work.
 
@@ -6492,7 +6493,10 @@ def _qualified_s3_pressure_surface_records(
     outside owned code ran since the last guard (an untouched ``LoadCase``, no
     activity provider); the opening observation guard is then the lease's
     constant-time trusted guard rather than a complete scan.  A lease without
-    that capability keeps the complete guard.
+    that capability keeps the complete guard.  ``v2d_guard`` is the constant-time
+    S3 V2D authority check captured for an owned-kernel assembly (see
+    ``_capture_qualified_v2d_trusted_authority``); it accompanies every use of
+    the trusted guard, which says nothing about V2D elements.
 
     The S3 section origin may be offset from its nodal interpolation surface.
     Pressure is intentionally conjugate to the latter; reporting that choice
@@ -6533,6 +6537,8 @@ def _qualified_s3_pressure_surface_records(
             exact_qualified_guard(context=context)
             return
         trusted_input_guard(model, context=context)
+        if v2d_guard is not None:
+            v2d_guard(context=context)
 
     pressure_ids = tuple(getattr(load_case, "pressure_loads", {}))
     if foreign_code_free_preamble and trusted_input_guard is not None:
@@ -6540,6 +6546,10 @@ def _qualified_s3_pressure_surface_records(
             model,
             context="qualified S3 pressure-surface mapping observation",
         )
+        if v2d_guard is not None:
+            v2d_guard(
+                context="qualified S3 pressure-surface mapping observation",
+            )
     else:
         exact_qualified_guard(
             context="qualified S3 pressure-surface mapping observation",
@@ -6603,6 +6613,50 @@ def _qualified_trusted_state_guard(qualified_runtime_guard: Any) -> Any:
     if type(namespace) is not dict:
         return None
     return dict.get(namespace, "_qualified_trusted_state_require")
+
+
+def _capture_v2d_load_guard(
+    model: "FEModel",
+    case_state: dict,
+) -> Any:
+    """Capture the constant-time S3 V2D authority check for an owned-kernel load.
+
+    Returns ``None`` unless the load case loads exact S3 V2D elements (pressure
+    or element loads on them, or an acceleration field with V2D in the mesh)
+    and every V2D instance is eligible for the trusted capture; the caller then
+    keeps the ordinary public load route.  Only called for an untouched
+    ``LoadCase`` on a model whose mesh reads are provably builtin, directly
+    after a complete guard, so the capture's own complete scan observes the
+    current state.
+    """
+
+    from .current_state_tangent import (
+        _capture_qualified_v2d_trusted_authority,
+    )
+    from .e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
+
+    elements = object.__getattribute__(model.mesh, "__dict__").get("elements")
+    if type(elements) not in (dict, _QualifiedStateMapping):
+        return None
+    items = tuple(dict.items(elements))
+    if not all(type(element_id) is int for element_id, _element in items):
+        return None
+    is_v2d = lambda element: type(element) is NativeParityE4PLS3V2DShellElement
+    needed = case_state.get("gravity") is not None and any(
+        is_v2d(element) for _id, element in items
+    )
+    if not needed:
+        needed = any(
+            is_v2d(dict.get(elements, element_id))
+            for source in (case_state["element_loads"], case_state["pressure_loads"])
+            for element_id in source
+            if type(element_id) is int
+        )
+    if not needed:
+        return None
+    return _capture_qualified_v2d_trusted_authority(
+        items, context="load-vector assembly"
+    )
 
 
 def _assemble_load_vector_under_lease(
@@ -6718,11 +6772,22 @@ def _assemble_load_vector_under_lease(
         if not np.all(np.isfinite(displacements)):
             raise AssemblyError("Displacement vector contains non-finite values.")
     owned_kernel = False
+    v2d_guard = None
     if load_case is None:
         load_vector = np.zeros(total_dofs, dtype=float)
     else:
         load_vector = None
         if routing_foreign_code_free and case_state is not None and trusted_state_guard is not None:
+            # Exact S3 V2D elements are outside the lease's trusted state check;
+            # their own constant-time authority check accompanies it, and the
+            # kernel admits them only with that attestation.
+            v2d_guard = _capture_v2d_load_guard(model, case_state)
+            if v2d_guard is not None:
+                lease_state_guard = trusted_state_guard
+
+                def trusted_state_guard(expected_model, *, context):  # noqa: F811
+                    lease_state_guard(expected_model, context=context)
+                    v2d_guard(context=context)
 
             def owned_stage_guard(*, stage: str) -> None:
                 trusted_state_guard(model, context=stage)
@@ -6735,6 +6800,7 @@ def _assemble_load_vector_under_lease(
                 displacements,
                 _element_activity(model),
                 stage_guard=owned_stage_guard,
+                v2d_authority=v2d_guard is not None,
             )
             owned_kernel = load_vector is not None
         if load_vector is None:
@@ -6797,6 +6863,7 @@ def _assemble_load_vector_under_lease(
         # observations could have invoked foreign code.
         qualified_runtime_guard=(qualified_runtime_guard if routing_foreign_code_free else exact_qualified_guard),
         foreign_code_free_preamble=preamble_foreign_code_free,
+        v2d_guard=v2d_guard if owned_kernel and routing_foreign_code_free else None,
     )
     if pressure_surfaces:
         info["qualified_s3_pressure_surfaces"] = pressure_surfaces
