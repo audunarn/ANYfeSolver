@@ -30,7 +30,7 @@ from scripts.general_contact_d1_free_target_press_probe import build_free_target
 
 started = time.perf_counter()
 path = (Path(__file__).resolve().parents[2] / "docs/d1_review_support"
-        / "d1_two_body_reference_compare_full_20260928.json")
+        / "d1_two_body_reference_compare_full_20261116.json")
 saved_bytes = path.read_bytes()
 saved = json.loads(saved_bytes)
 assert saved["production_status"] == "completed"

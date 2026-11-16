@@ -60,9 +60,18 @@ def test_saved_slide_matches_independent_current_contact_kkt(tmp_path):
         "relative_pressure_l2_difference",
         "relative_nodal_force_l2_difference",
         "relative_integrated_force_difference",
-        "control_reaction_relative_l2_difference",
     ):
         assert result[name] <= 1e-6, (name, result[name])
+    # The control reaction is a cancelled structural sum (about 1e-9 N here), so
+    # a relative norm divides roundoff by roundoff. Scale the independent-vs-
+    # production difference by the integrated contact force instead.
+    reaction_difference = np.linalg.norm(
+        np.asarray(result["independent_control_reaction_n"])
+        - np.asarray(result["production_recovered_control_reaction_n"]))
+    force_scale = abs(result["integrated_normal_force_n"])
+    assert force_scale > 0.0
+    assert reaction_difference / force_scale <= 1e-8, (
+        reaction_difference, force_scale)
 
 
 def test_active_contact_work_is_exactly_independent_of_control_dofs():
