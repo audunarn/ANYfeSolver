@@ -155,6 +155,11 @@ def test_relocated_source_map_binds_original_bytes_and_complete_inventory(tmp_pa
 def test_original_matched238_complete_independent_seven_gates(record_property, tmp_path):
     out = Path(os.environ.get('ENRICHED_REFERENCE_OUTPUT', tmp_path))
     binding = Path(os.environ.get('ENRICHED_REFERENCE_BINDING', runner.W/'INPUT_BINDING.json'))
+    if not binding.is_file():
+        pytest.skip(
+            f'archived input binding {binding} absent: the original matched-238 assay '
+            'requires the workstation evidence root (set ENRICHED_REFERENCE_BINDING)'
+        )
     result = runner.run(out/'reference', binding, resolved_inputs=os.environ.get('ENRICHED_REFERENCE_INPUT_MAP'))
     record_property('assessment_file', str(out/'reference/ASSESSMENT.json'))
     record_property('assessment_sha256', runner.sha(out/'reference/ASSESSMENT.json'))
