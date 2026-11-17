@@ -1,0 +1,26 @@
+# CI shard 2400 s timeouts: findings (2026-11-17)
+
+Evidence only; no code change. Runs: 43950995536 (commit 322411bbe), 44048316984 (HEAD 4f4655ec4, still running when written; 2 failures so far), earlier 43861722899, 43188937230 (not re-read).
+
+## What stalls
+In run 43950995536, 5 jobs hit "shared 2400-second limit reached" (win 3.12 2/1, 2/3; ubuntu 3.12 3/1; 3.13 5/2; 3.14 7/3). Pool partitions were rebuilt with `scripts/run_portable_ci.py` functions at the run's commit (module counts match the logs: 15/17, 16/16, 14/16, 15/16, 15/15).
+- The pytest "passed" summary comes from the *other, finished* pool (e.g. 148 passed in 407 s). The stalled pool never printed a summary: it is not "passed".
+- Counting progress dots (total dots minus finished-pool tests) puts the stalled pool at ~74-103 of 134-217 tests when output stopped. The test after that point is a heavy contact test: enriched_path full364 (2/1), native_fibre_pair_static (2/3), s3_friction_replay partial_overlap (3/1), s3_q4_patch_augmented (5/2), ge_beam3_native_definition native transaction (7/3). No single module is common to all (intersection empty); the six always-repeated S3 successor modules sit before the stall point.
+- Hence not a deadlock in one module: it is a heavily imbalanced pool. Finished pool 2-7 min, other pool >40 min (up to 6x).
+
+## Why only CI
+- `_module_weight` balances by file size (plus few overrides), not runtime. The `general_contact_*` modules are small files with multi-minute tests.
+- Measured locally (py3.13 venv, cold numba cache, scale 8, OMP=1): `test_general_contact_native_fibre_pair_static.py` alone = 723 s (staged 200 s, weak_normal 198 s, actual 121 s, refined 114 s). Commit 6f3a37233 recorded 488 s for one of them on a shared runner (~2.4x slower than here). CI passing jobs of run 44048316984 show 100-225 s tests (curved_s3_multifacet 225 s, coupled_tool_staging 185 s).
+- Deadline scale 8 does not wait: guards raise when exceeded, so it only turns "fails at 480 s" into "passes slowly"; tests that were failing before (hiding the timeout) now run to completion and exceed the pool budget. Scale 4 -> 8 therefore unmasked, not caused, the limit.
+- Not found: pipe backpressure (workers inherit stdout), numba/numpy version mismatch (local venv numba present, numpy 2.5.5).
+
+## Proposal (not implemented: needs CI to prove before/after)
+1. Add time-based `PORTABLE_MODULE_WEIGHT_OVERRIDES` for the multi-minute contact modules (fibre_pair_static, curved_s3_multifacet, coupled_tool_staging, curved_pair_lifecycle, enriched_path, s3_friction_replay, s3_q4_patch_augmented), from measured durations; the existing mechanism, no test changes.
+2. Or raise `--matrix-subshard-count` 4 -> 8 for these OS/python cells, or lift the 2400 s limit for the job (cost ~ minutes). A unit check can assert the max pool weight ratio per shard.
+3. Add `--durations` per module summary (`junit`/`--durations=0` file) to learn true module times from CI.
+
+## Second item: displacement-hash test
+In run 43950995536 it failed on ubuntu-latest 3.13 shard 5/0 (not Windows): `test_protected_linear_and_corotational_displacement_hashes` ('linear', 8) got 3f1deac1... instead of 0be6e35e.... Not yet failed in 44048316984. Same family in that run: `test_native_fibre_enforcement_successive_response[k8e7]` (ubuntu 3.14 7/0) and an exact-bytes replay mismatch (win 3.11 0/1) differ only in last digits (e.g. 0.005414355840998849 vs ...8505, ~1 ulp): runner CPU/BLAS bitwise differences (FMA/AVX dispatch) are the likely cause. The pin was not weakened. Options: pin per-runner CPU flags (`OPENBLAS_CORETYPE=...`, NUMBA_CPU_NAME=generic), or restrict bitwise pins to a reference runner class with a tolerance fallback elsewhere (owner decision).
+
+## Not run
+Full pool/shard reproduction locally; per-module local timings of all stalled-pool modules; reading 43861722899/43188937230 logs; the hash test locally.
