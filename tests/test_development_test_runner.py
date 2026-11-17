@@ -195,3 +195,10 @@ def test_ci_does_not_launch_more_work_after_immediate_failure(tmp_path, monkeypa
 
 def test_ci_worker_stops_at_first_failure(tmp_path):
     assert '-x' in runner._worker_command(('tests/test_x.py',), tmp_path)
+
+
+def test_portable_worker_pins_openblas_kernel_baseline(tmp_path, monkeypatch):
+    monkeypatch.setenv('OPENBLAS_CORETYPE', 'SkylakeX')
+    environment = runner._worker_environment(tmp_path)
+    assert environment['OPENBLAS_CORETYPE'] == 'Haswell'
+    assert environment['OPENBLAS_NUM_THREADS'] == '1'

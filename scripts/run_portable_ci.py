@@ -502,6 +502,16 @@ def _worker_environment(root: Path) -> dict[str, str]:
             "NUMBA_NUM_THREADS": "1",
             "OMP_NUM_THREADS": "1",
             "OPENBLAS_NUM_THREADS": "1",
+            # Bitwise references (tests/data checkpoints, protected hashes)
+            # are cross-machine byte comparisons.  OpenBLAS picks its kernels
+            # per CPU: references written with the AVX-512 (SkylakeX) kernels
+            # differ in the last bit from the Haswell/Zen kernels of AVX2
+            # runners (reproduced locally: OPENBLAS_CORETYPE=Haswell gives the
+            # exact CI values for the fibre-enforcement replay, the curved
+            # checkpoint and the S3-R1 displacement hash).  Haswell is the
+            # common x86-64 AVX2 baseline; the variable is ignored by builds
+            # without OpenBLAS dynamic-arch dispatch.
+            "OPENBLAS_CORETYPE": "Haswell",
             "MKL_NUM_THREADS": "1",
             # Cooperative native timers are execution guards, not mechanics.
             # Give shared CI hardware bounded headroom (the service maximum, 8:

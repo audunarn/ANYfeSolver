@@ -60,3 +60,6 @@ No runner-environment baseline can make CI match the references: forcing `OPENBL
 2. Make the replay-critical path BLAS-independent (compensated/pure NumPy reductions): product change, preserves pins but changes code.
 3. Contract change: replay equality up to a documented ulp tolerance for non-identity leaves, hash tests replaced by tolerance band + exact hash on a pinned-kernel lane.
 Proof run: shards containing the tests are 7/0 (a), 0/1 (b) and the hash test's shard (changes with the new weights; compute with `scripts/run_portable_ci.py`'s partition: 5/2 at HEAD); with option 1 each must pass on windows and ubuntu.
+
+## Haswell pin and reference regeneration (2026-11-17)
+Runner pins `OPENBLAS_CORETYPE=Haswell` (test: `test_portable_worker_pins_openblas_kernel_baseline`); README documents it. Sweep of 38 reference-bearing modules under the pin (local, CI-style pools, 2 pools, 54 min): 5 failures = all the stale SkylakeX references listed in `tests/data/HASWELL_REFERENCE_PROVENANCE_20261117.md`. Only k4e7 was regenerated (2.3e-16); plane_v7, the S3-R1 hashes and the multi_line fixture exceed the 1e-15 rule and await the owner's decision (candidates in the session notes folder). CI runs with `-x` per pool, so more stale references may surface.

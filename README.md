@@ -305,6 +305,14 @@ CalculiX executable on `PATH`, through `ANYSOLVER_CALCULIX_EXECUTABLE`, or with
 python scripts/run_fe_verification.py --execute-calculix
 ```
 
+Committed bitwise references (`tests/data/*.checkpoint`, protected hashes) were
+generated with `OPENBLAS_CORETYPE=Haswell`, the AVX2 baseline that
+`scripts/run_portable_ci.py` pins for CI. On AVX-512 machines OpenBLAS otherwise
+selects different kernels and last-bit differences appear, so run the tests with
+`OPENBLAS_CORETYPE=Haswell` (PowerShell: `$env:OPENBLAS_CORETYPE = "Haswell"`)
+or through `scripts/run_portable_ci.py`. See
+`docs/agent_plans/CI_SHARD_TIMEOUT_20261116.md`.
+
 An external case becomes passing evidence only after isolated execution,
 successful FRD/DAT parsing, and every declared comparison meeting its
 tolerance.
