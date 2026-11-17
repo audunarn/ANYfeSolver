@@ -70,12 +70,14 @@ def test_c4_plastic_n8_twenty_steps_s8r_band():
 
 @slow
 def test_protected_linear_and_corotational_displacement_hashes():
-    # Stored pre-R1 constants, never regenerated from the candidate. Execute
+    # Stored pre-R1 constants (re-sealed once under OPENBLAS_CORETYPE=Haswell;
+    # old SkylakeX hashes: tests/data/HASWELL_REFERENCE_PROVENANCE_20261117.md),
+    # never regenerated from the candidate. Execute
     # with run_job --env-profile s3-base-run to preserve baseline runtime.
     expected = {
-        ("linear", 8): "0be6e35ec37efac23e1c79a7f6e8b681b158d0d54994d2910242c79664b17c45",
-        ("corotational", 4): "9620e80d96933d835146adc585e2d71e6c35d0e3b1099a6d1f6ff9535f18ce1d",
-        ("corotational", 8): "23fe778428522ca78b4cb75ffa40854510405625d2c608f1ecb1af88a64c9355",
+        ("linear", 8): "3f1deac1f8742a2d347ec232685e1d6e0ede6c3c073b4094f29ca1080251f5c1",
+        ("corotational", 4): "1c3f160e0d760741fad496bda447ca2f069ac2d3fb0f0b9d3ffeb2299ebed64c",
+        ("corotational", 8): "6d915aa9647226cd82fa63f061e21104a777f7fb39c52d87fb321dcb66cdeb37",
     }
     for (kinematics, n), stored_hash in expected.items():
         _, u = _solve_plate(n, 50000, False, kinematics)
