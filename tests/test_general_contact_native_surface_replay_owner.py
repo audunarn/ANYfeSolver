@@ -558,12 +558,7 @@ def test_saved_native_active_checkpoint_continues_second_load(tmp_path):
     assert transaction.accepted.sequence==2
 
 
-def test_friction_integral_edge_one_ulp_inside_panel_edge_resolves():
-    # Saved from the Haswell-kernel run of the coupled active-rebase test: a
-    # captured-pose front root fell one binary64 below the panel edge 0.8, so
-    # the interval (0.7999999999999999, 0.8) had no representable interior
-    # coordinate and the solve refused. Whether the root lands on the edge or
-    # one ulp inside is last-bit BLAS rounding, not physics.
+def _saved_adjacent_edge_field():
     import json
     from pathlib import Path
     import anyfesolver.general_contact.native_surface_friction_integral as module
@@ -575,24 +570,84 @@ def test_friction_integral_edge_one_ulp_inside_panel_edge_resolves():
         NativeS3MaterialConfiguration(**{k:np.asarray(v) for k,v in saved['initial'].items()}),
         tuple(NativeSurfaceMotionSegment(**{k:np.asarray(v) for k,v in s.items()}) for s in saved['segments']),
         maximum_intervals=saved['maximum_intervals'])
-    settings=module.NativeSurfaceFrictionIntegrationSettings(**saved['settings'])
-    result=module.integrate_material_friction(field,settings,_front_uncertainty=1e-7,
+    return module,field,module.NativeSurfaceFrictionIntegrationSettings(**saved['settings'])
+
+
+def _integrate_saved(module,field,settings):
+    return module.integrate_material_friction(field,settings,_front_uncertainty=1e-7,
         _local_front_strips=True,_variable_endpoint_branches=True)
-    assert np.all(np.isfinite(result.value if hasattr(result,'value') else 0.))
+
+
+def _assert_complete_finite(result):
+    for value in (result.residual,result.tangent,result.stored_energy_j,result.dissipated_increment_j,
+                  result.released_storage_j,result.cumulative_dissipation_j):
+        assert np.all(np.isfinite(value))
+    assert np.max(np.abs(result.residual))>0.
     assert result.diagnostics['maximum_scaled_error_estimate']<=1.
 
 
-def test_drop_unresolvable_edges_only_removes_sub_resolution_interior_edges():
+def test_friction_integral_edge_one_ulp_inside_panel_edge_resolves():
+    # Saved from the Haswell-kernel run of the coupled active-rebase test: a
+    # captured-pose front root fell one binary64 below the panel edge 0.8, so
+    # the interval (0.7999999999999999, 0.8) had no representable interior
+    # coordinate and the solve refused. Whether the root lands on the edge or
+    # one ulp inside is last-bit BLAS rounding, not physics.
+    module,field,settings=_saved_adjacent_edge_field()
+    result=_integrate_saved(module,field,settings)
+    _assert_complete_finite(result)
+    # The dropped strips are charged to the error channel; for this contact
+    # density the charge is far below the requested tolerance.
+    # (Which leaves drop an edge can differ by kernel; the charge never matters.)
+    assert 0.<=result.diagnostics['dropped_edge_charge_max_scaled']<1e-9
+
+
+def test_friction_integral_partition_independent_of_front_root_shift():
+    # Deterministic perturbation of the front-root placement next to the panel
+    # edge (a few ulp up to just past the drop floor). Whether the edge is
+    # dropped (charged) or kept, the integral must agree within tolerance and
+    # must not refuse: the decision may not depend on last-bit placement.
+    module,field,settings=_saved_adjacent_edge_field()
+    base=_integrate_saved(module,field,settings)
+    original=module._drop_unresolvable_edges
+    scale=max(float(np.max(np.abs(base.residual))),1e-300)
+    for shift in (-1,-224,-1030):
+        def moved(edges,left,right,shift=shift):
+            new=[]
+            for edge in edges:
+                if left<edge<right and right-edge<1e-6:
+                    for _ in range(abs(shift)):edge=float(np.nextafter(edge,right if shift>0 else 0.))
+                new.append(edge)
+            return original(sorted(set(new)),left,right)
+        module._drop_unresolvable_edges=moved
+        try:perturbed=_integrate_saved(module,field,settings)
+        finally:module._drop_unresolvable_edges=original
+        _assert_complete_finite(perturbed)
+        assert np.max(np.abs(perturbed.residual-base.residual))<=1e-9*scale+settings.force_absolute_tolerance
+        assert abs(perturbed.dissipated_increment_j-base.dissipated_increment_j)<=settings.energy_absolute_tolerance
+        assert perturbed.diagnostics['dropped_edge_charge_max_scaled']<1e-9
+
+
+def test_drop_unresolvable_edges_threshold_chain_and_width():
     from anyfesolver.general_contact.native_surface_friction_integral import _drop_unresolvable_edges
-    def up(x,n):
-        for _ in range(n):x=float(np.nextafter(x,1.))
-        return x
-    def down(x,n):
-        for _ in range(n):x=float(np.nextafter(x,0.))
-        return x
-    assert _drop_unresolvable_edges([.2,down(.8,1),.8],.2,.8)==[.2,.8]
-    assert _drop_unresolvable_edges([.2,down(.8,3),.8],.2,.8)==[.2,.8]
-    assert _drop_unresolvable_edges([.2,up(.2,2),.5,.8],.2,.8)==[.2,.5,.8]
+    eps=np.finfo(float).eps
+    kept,width=_drop_unresolvable_edges([.2,float(np.nextafter(.8,0.)),.8],.2,.8)
+    assert kept==[.2,.8] and width==.8-float(np.nextafter(.8,0.))
+    # Strips next to a retained edge: dropped (and their width charged) up to
+    # the 512-eps floor, kept above it.
+    for multiple,dropped in ((511.5,True),(512.,True),(512.5,False)):
+        edge=.5+multiple*eps
+        kept,width=_drop_unresolvable_edges([.2,.5,edge,.8],.2,.8)
+        assert (edge not in kept)==dropped
+        assert (width==edge-.5)==dropped and (width==0.)==(not dropped)
+    # Chain: an edge is dropped only within one floor of a retained edge, so
+    # no kink ends up farther than one floor from a retained edge, and the
+    # charged width is the sum of the individual distances.
+    chain=[.2,.5,.5+300*eps,.5+600*eps,.5+900*eps,.8]
+    kept,width=_drop_unresolvable_edges(chain,.2,.8)
+    assert kept==[.2,.5,.5+600*eps,.8]
+    for edge in chain:
+        assert min(abs(edge-k) for k in kept)<=512.*eps
+    assert width==(.5+300*eps-.5)+(.5+900*eps-(.5+600*eps))
     ordinary=[.2,.5,.8-1e-12,.8]
-    assert _drop_unresolvable_edges(ordinary,.2,.8)==ordinary
-    assert _drop_unresolvable_edges([.2,.8],.2,.8)==[.2,.8]
+    assert _drop_unresolvable_edges(ordinary,.2,.8)==(ordinary,0.)
+    assert _drop_unresolvable_edges([.2,.8],.2,.8)==([.2,.8],0.)

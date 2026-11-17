@@ -30,21 +30,24 @@ def _interior_material_coordinate(left,right,node,*,allow_rounding=False):
 
 
 def _drop_unresolvable_edges(edges,left,right):
-    """Remove interior edges within the binary64 resolution floor of a neighbour.
+    """Drop interior edges within the binary64 resolution floor of a retained edge.
 
-    The floor (8 eps, scaled) is the one the front-cut merge already uses.
+    The floor (8 eps, scaled) is the one the front-cut merge already uses. An
+    edge is dropped only when it lies within one floor of an edge that is
+    itself retained (the previous kept edge or the panel's right edge), so a
+    chain of close cuts never removes a kink farther than one floor from a
+    retained edge. Returns the retained edges and the total dropped width,
+    the sum of each dropped edge's distance to its retained edge.
     """
     eps=np.finfo(float).eps
-    kept=[edges[0]]
-    for position in range(1,len(edges)):
-        edge=edges[position]
-        if edge==right or edge==left:
-            kept.append(edge);continue
-        following=edges[position+1]
-        if (edge-kept[-1]<=8.*eps*max(1.,abs(edge)) or following-edge<=8.*eps*max(1.,abs(edge))):
-            continue
+    kept=[edges[0]];width=0.
+    for edge in edges[1:]:
+        floor=512.*eps*max(1.,abs(edge))
+        if edge==right:kept.append(edge);continue
+        if edge-kept[-1]<=floor:width+=edge-kept[-1];continue
+        if right-edge<=floor:width+=right-edge;continue
         kept.append(edge)
-    return kept
+    return kept,width
 
 
 def _captured_front_crossing_angles(coefficients,left,right,lower,upper):
@@ -530,7 +533,7 @@ def integrate_material_friction(field,settings,*,_front_uncertainty=None,_local_
             endpoint_partitions[cell]=stationary_endpoint_angular_partition(field,cell,(alo,ahi),budget=support_budget)
         panels.extend(front_panels(cell,left,right,alo,ahi))
     budget=NativeSurfaceReplayBudget(settings.maximum_point_paths)
-    cache={};branch_cache={};margin_cache={};branch_cut_cache={};branch_cut_hints=0;branch_cut_queries=0;front_cache={};front_error={};front_covers={};front_axes={};front_band_cache={};front_prepared={};support_by_panel={};refinement_axes=[];visited=accepted=empty_certificates=0
+    cache={};branch_cache={};margin_cache={};branch_cut_cache={};branch_cut_hints=0;branch_cut_queries=0;front_cache={};front_error={};drop_error={};front_covers={};front_axes={};front_band_cache={};front_prepared={};support_by_panel={};refinement_axes=[];visited=accepted=empty_certificates=0
     # DEFERRED constitutive-cut schedule: branch_cut_parents holds the exact
     # parent panels on which a constitutive cut attempt has been made. An
     # attempt happens at most once per exact parent, only after the global
@@ -1002,6 +1005,7 @@ def integrate_material_friction(field,settings,*,_front_uncertainty=None,_local_
             angular_nodes=tuple((angular,wa,axial_points,axial_weights)
                 for angular,wa in zip(points,weights))
         measure=rule.definition['radius']*np.linalg.norm(reference.coordinates[cell+1]-reference.coordinates[cell])
+        drop_charge=np.zeros(size)
         for angular,wa,axial_points,axial_weights in angular_nodes:
             angle=(lower+upper)/2+(upper-lower)*float(angular)/2
             roots={left,right}
@@ -1104,7 +1108,7 @@ def integrate_material_friction(field,settings,*,_front_uncertainty=None,_local_
             # above are: the kink then lies within the coordinate-rounding
             # scale the rule already applies to every node. Panel edges and
             # intervals with any interior coordinate are never altered.
-            edges=_drop_unresolvable_edges(edges,left,right)
+            edges,dropped_width=_drop_unresolvable_edges(edges,left,right)
             for x0,x1 in zip(edges[:-1],edges[1:]):
                 if _local_front_strips:
                     from .native_surface_front import prepared_front_open_interval
@@ -1230,6 +1234,24 @@ def integrate_material_friction(field,settings,*,_front_uncertainty=None,_local_
                         if np.any(point[-4:]<0) or np.any(point[-4:]>density):
                             raise ValueError('replayed strip work exceeds complete-history density bound')
                     result+=point*(float(wx*wa)*(x1-x0)*(upper-lower)*measure/4)
+            if dropped_width:
+                # The dropped strip is integrated inside its retained neighbour
+                # with nodes that treat it as smooth. Charge the strip width
+                # times twice the largest node magnitude seen on this ordinate
+                # (a jump across the dropped kink is at most that), through the
+                # estimator's own error channel, so refinement or the existing
+                # refusals decide when it cannot be resolved. Total dropped
+                # width is charged, not per pair.
+                peak=np.zeros(size)
+                for x0,x1 in zip(edges[:-1],edges[1:]):
+                    for axial in axial_points:
+                        node=cache.get((_interior_material_coordinate(x0,x1,axial,
+                            allow_rounding=_variable_endpoint_branches),float(angle)))
+                        if node is not None:peak=np.maximum(peak,np.abs(node))
+                drop_charge=drop_charge+2.*dropped_width*float(wa)*(upper-lower)*measure/2*peak
+        if order==1:
+            if np.any(drop_charge):drop_error[panel]=drop_charge
+            else:drop_error.pop(panel,None)
         if panel in front_error and not _variable_endpoint_branches:result+=front_error[panel]
         return result
 
@@ -1550,6 +1572,7 @@ def integrate_material_friction(field,settings,*,_front_uncertainty=None,_local_
                         leaves.append((parent,parent_high,parent_error,parent_safe))
                         continue
                     if parent in front_error:rebuild_error=rebuild_error+front_error[parent]
+                    if parent in drop_error:rebuild_error=rebuild_error+drop_error[parent]
                     last_error=float(np.max(scale*rebuild_error))
                     last_error_components=scaled_error_components(rebuild_error)
                     leaves.append((parent,rebuild_high,rebuild_error,parent_safe))
@@ -1674,6 +1697,7 @@ def integrate_material_friction(field,settings,*,_front_uncertainty=None,_local_
                 raise ValueError('native friction quadrature panel resolution exhausted') from request
             continue
         if panel in front_error:error+=front_error[panel]
+        if panel in drop_error:error+=drop_error[panel]
         if _front_uncertainty is not None and (not _local_front_strips or _eager_directional_controls):
             directional_controls(panel,high)
         last_error=float(np.max(scale*error))
@@ -1747,5 +1771,7 @@ def integrate_material_friction(field,settings,*,_front_uncertainty=None,_local_
             reused_segment_covers=segment_cover_reuses,
             reused_prepared_segment_controls=prepared_segment_reuses,
             directional_control_panels=len(front_axes),refinement_axes=refinement_axes,
+            dropped_edge_charge_panels=sum(1 for leaf in leaves if leaf[0] in drop_error),
+            dropped_edge_charge_max_scaled=max((float(np.max(scale*drop_error[leaf[0]])) for leaf in leaves if leaf[0] in drop_error),default=0.),
             stationary_strip_work_error_j=sum((front_error.get(leaf[0],np.zeros(size))[-4:] for leaf in leaves),np.zeros(4)).tolist(),
             maximum_scaled_error_estimate=float(np.max(scale*errors)),estimator='GAUSS3_CUBATURE7_DIFFERENCE' if _variable_endpoint_branches else 'GAUSS_4_8_DIFFERENCE'))
