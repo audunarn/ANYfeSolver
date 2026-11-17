@@ -6636,7 +6636,7 @@ def _capture_v2d_load_guard(
     from .e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
 
     elements = object.__getattribute__(model.mesh, "__dict__").get("elements")
-    if type(elements) not in (dict, _QualifiedStateMapping):
+    if type(elements) is not dict and type(elements) is not _QualifiedStateMapping:
         return None
     items = tuple(dict.items(elements))
     if not all(type(element_id) is int for element_id, _element in items):

@@ -155,13 +155,18 @@ def _model_state(model: Any) -> Any:
     token = getattr(mesh, "_qualified_direct_state_token", None)
     activity = mesh.element_activity
     derived = set(_ELEMENT_LOCAL_CACHE_NAMES) | {"_fiber_grid_cache",
-        "_qualified_direct_state_token", "_qualified_direct_state_tokens",
-        # Weak-reference bookkeeping that a V2D trusted capture appends to its
-        # elements; it carries no model state and the capture's own write
-        # counter, not this witness, is what detects a V2D modification.
-        _V2D_LEASE_EPOCHS_KEY}
+        "_qualified_direct_state_token", "_qualified_direct_state_tokens"}
+    import weakref
+
+    def _witnessed(k, v):
+        if k == _V2D_LEASE_EPOCHS_KEY:
+            # Only the capture's own weak-reference list is bookkeeping; any
+            # other value under that name stays part of the witness.
+            return not (type(v) is list and all(type(i) is weakref.ref for i in v))
+        return k not in derived
+
     element_state = tuple((element_id, id(element), _plain_state({k: v for k, v in vars(element).items()
-        if k not in derived})) for element_id, element in mesh.elements.items())
+        if _witnessed(k, v)})) for element_id, element in mesh.elements.items())
     classes = tuple(dict.fromkeys(type(e) for e in mesh.elements.values()))
     revisions = tuple((k, v) for k, v in model.revision_signature().items() if k not in {"load", "result_state"})
     return (id(model), id(mesh), revisions, element_state,

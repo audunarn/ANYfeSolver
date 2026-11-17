@@ -520,3 +520,95 @@ def test_mixed_q4_v2d_beam_coupling_hashes_equal_the_public_route() -> None:
         )
         digest = lambda a: hashlib.sha256(np.asarray(a, dtype=float).tobytes()).hexdigest()
         assert digest(owned) == digest(public), case.name
+
+
+# --- unloaded generic elements must not reach the V2D mesh traversal ---------
+
+
+def _install_class_property_generic(model: FEModel, q4_formulation: str) -> list[int]:
+    """A generic element whose ``__class__`` property mutates class state."""
+
+    calls: list[int] = []
+
+    class Generic:
+        formulation_id = "GENERIC"
+        element_id = 99
+        node_ids = (1, 2)
+        material_name = "steel"
+
+        @property
+        def __class__(self):  # noqa: D401
+            calls.append(1)
+            Generic.formulation_id = q4_formulation
+            return type(self)
+
+    model.mesh.elements[99] = Generic()
+    return calls
+
+
+@pytest.mark.parametrize("kind", ["pressure", "gravity"])
+def test_unloaded_generic_element_with_class_property_is_refused(kind: str) -> None:
+    model, q4, v2d = _mixed_model(2)
+    q4_formulation = type(model.mesh.elements[q4[0]]).formulation_id
+    calls = _install_class_property_generic(model, q4_formulation)
+    case = _pressure_case(q4, v2d) if kind == "pressure" else _gravity_case(model)
+    assert _call_kernel(model, case, v2d_authority=True) is None
+    assert calls == []
+    with pytest.raises(Exception):  # public route refuses the class mutation
+        assemble_load_vector(model, case)
+
+
+# --- review closure: bad pressure entries, witness masking, bookkeeping -------
+
+
+def test_bad_pressure_entries_on_beams_match_the_public_route() -> None:
+    model, q4, v2d = _mixed_model(2)
+    beam_id, coupling_id = _add_beam_and_coupling(model)
+    entries = {
+        "nan": {beam_id: float("nan"), coupling_id: float("inf")},
+        "unknown-and-negative-ids": {10_000: 1.0, -3: 1.0, beam_id: 1.0},
+        "tuple-on-beam": {beam_id: (1.0, 2.0)},
+        "negative": {beam_id: -5.0e3, coupling_id: -1.0},
+    }
+    for name, loads in entries.items():
+        case = LoadCase(name)
+        case.pressure_loads = dict(loads)
+        try:
+            expected = case.get_load_vector(
+                model.mesh, model.mesh.dof_manager, model.get_material
+            )
+        except Exception as error:  # same refusal on both routes
+            with pytest.raises(type(error)):
+                assemble_load_vector(model, case)
+            continue
+        vector, _info = assemble_load_vector(model, case)
+        assert np.array_equal(vector, expected, equal_nan=True), name
+
+
+def test_witness_masks_only_weakref_bookkeeping() -> None:
+    from anyfesolver.e4_pl_s3_v2d_element import _V2D_LEASE_EPOCHS_KEY
+    from anyfesolver.prepared_static_snapshot import capture_source_witness
+
+    model, q4, v2d = _mixed_model(2)
+    element = model.mesh.elements[v2d[0]]
+    assemble_load_vector(model, _pressure_case(q4, v2d))
+    before = capture_source_witness(model)
+    # A real V2D mutation is still seen.
+    object.__setattr__(element, "thickness", element.thickness * 2.0)
+    assert capture_source_witness(model) != before
+    object.__setattr__(element, "thickness", element.thickness / 2.0)
+    assert capture_source_witness(model) == before
+    # Foreign data hidden under the bookkeeping name is not masked.
+    object.__setattr__(element, _V2D_LEASE_EPOCHS_KEY, [1.0])
+    assert capture_source_witness(model) != before
+
+
+def test_lease_epoch_subscriptions_stay_bounded() -> None:
+    from anyfesolver.e4_pl_s3_v2d_element import _V2D_LEASE_EPOCHS_KEY
+
+    model, q4, v2d = _mixed_model(2)
+    case = _pressure_case(q4, v2d)
+    for _ in range(25):
+        assemble_load_vector(model, case)
+    element = model.mesh.elements[v2d[0]]
+    assert len(vars(element)[_V2D_LEASE_EPOCHS_KEY]) <= 2

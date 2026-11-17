@@ -40,7 +40,7 @@ Replaces the guard-batching approach (PREP_COST_20261116). No batching code is u
   records). Not weakened; it fails on per-record complete guards.
 
 ## Measurements (serial, one process, Python 3.13 CI venv, ANYfem bracketed_barge_fatigue, mesh build ~46 s excluded)
-* Full default `prepare_linear_static_evaluator`: 76.3 s (old 2,192 s; batching branch 125-131 s).
+* Full default `prepare_linear_static_evaluator`: 76.3 s (82.2 s after review round 1) (old 2,192 s; batching branch 125-131 s).
 * Pressure assembly, 1,404 V2D: 4.0 s (old ~2,100 s extrapolated; 50 elements old 56.8 s here, new 1.9 s).
 * Gravity + four node masses, full barge: 10.9 s (old > 30 min, stopped).
 * Hashes (sha256 of vector bytes, first 16 hex): 50-element pressure probe (first 50 V2D ids, p = 1000):
@@ -51,3 +51,42 @@ Replaces the guard-batching approach (PREP_COST_20261116). No batching code is u
   arithmetic oracle (`LoadCase._get_load_vector_core` with a no-op guard, the old route's arithmetic); the old
   route cannot finish on the barge. On the scaled mixed Q4+V2D+beam+coupling fixture the new route equals the
   public route byte for byte (pressure, gravity+masses, both).
+
+## Review round 1 (Codex P1) and closure by enumeration
+P1: an unloaded generic element in `mesh.elements` stayed eligible; the V2D scope check
+(`e4_pl_s3_v2d_element._validate_model_scope`: `isinstance(element, ShellElement)`) consults an instance
+`__class__` and ran a foreign property mid-span. Reproduced (`test_unloaded_generic_element_with_class_property_is_refused[pressure]`
+fails on 715818f8a). Class fix: with `v2d_authority`, EVERY mesh element must be an exact known class
+(`type(e) is cls` for Q4/S3/V2D/Beam/Coupled/MPC), and the beam-family class snapshot must hold; otherwise the
+public route runs. Acceleration already required exact mass kinds for all elements.
+
+Sites on the new path and verdicts (V2D = traversal run when `v2d_authority`):
+* boundary kernel: `_type_is_one_of` (identity); all-element exact-class loop; `dict.get(elements, int)` (keys
+  verified `type(k) is int`, mapping reads builtin); `object.__getattribute__(e, "__dict__")` (no instance
+  `__getattr__`); `_plain_mass_input`/`_plain_numeric_array` (`type(x) is`); `key in class_names`/`in _NATIVE_PRESSURE_HOOKS`
+  (str keys, verified). `mass_class_names[type(element)]`: dict keyed by exact classes already identity-verified. Safe.
+* `matrix_assembly._capture_v2d_load_guard`: container type was `in (dict, X)` (metaclass `__eq__`); now identity. `type(e) is V2D`;
+  `dict.items/get` on verified containers. Safe.
+* `_qualified_s3_pressure_surface_records`: `getattr(element, formulation_id/...)` only for elements in the pressure
+  set, which the kernel proved exact owned/beam classes; `mesh.get_element` is class-snapshotted. Safe.
+* element modules (unchanged): V2D `_validate_model_scope` (`isinstance`, `type(e) not in allowed`) and V2C scope
+  (`type(e) not in allowed_types`, `list(elements.items())`) run over all mesh elements; with only exact known classes
+  in the mesh no foreign `__class__`/`__eq__` exists to run. V2C-only meshes are not admitted (refused -> public route).
+* Not changed, pre-existing: Q4/S3-only kernel admission still tolerates unloaded generic elements (no
+  mesh-wide traversal in the Q4/S3 pressure path; outside this change).
+
+## Review items not reported by Codex (what was checked)
+* Capture returning None / `__slots__` / descriptors: `_v2d_trusted_instance_eligible` reads `object.__getattribute__(e,"__dict__")`
+  (AttributeError -> ineligible) and accepts only immutable values, so an instance cannot carry a descriptor/callable;
+  class-level descriptors are caught by the class-epoch/representative guard. Ineligible instance -> `None` -> public route
+  (`test_ineligible_v2d_instance_keeps_the_public_route`).
+* Zero-pressure admission: subclass, metaclass `__eq__`, `__class__` spoof, hostile/non-plain state, wrong node-id types
+  tested; bad entries (NaN/inf, negative, unknown/negative ids, tuple on beam) compared with the public route
+  (`test_bad_pressure_entries_on_beams_match_the_public_route`): same vector or same exception type.
+* Numerics/error precedence: the owned route runs the identical core arithmetic; errors raised inside the core propagate
+  from the same code in both routes; guards differ only in being constant-time trusted checks.
+* `_model_state` masking: now masks `_qualified_v2d_lease_epochs` ONLY when it is a list of `weakref.ref`; a real V2D
+  mutation still changes the witness and any other value under that name is witnessed
+  (`test_witness_masks_only_weakref_bookkeeping`). The list holds no model state (consumed only by the epoch counter).
+* Weakref bookkeeping: each capture prunes dead refs under the module lock before appending; 25 assemblies leave <= 2 live
+  entries (`test_lease_epoch_subscriptions_stay_bounded`).

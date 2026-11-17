@@ -1369,6 +1369,10 @@ def _builtin_acceleration_inputs(state: dict, mesh_state: dict, material_getter:
     return True
 
 
+_MASS_EXACT_KINDS = (_BeamElement, _CoupledBeamShellElement,
+                     _InterpolatedBeamShellMPCElement)
+
+
 def _type_is_one_of(kind: Any, kinds: tuple) -> bool:
     """Identity membership: ``in`` would call a forged metaclass ``__eq__``."""
     return any(kind is candidate for candidate in kinds)
@@ -1597,6 +1601,22 @@ def _run_foreign_code_free_load_vector(
     owned_load_types = (_QualifiedE4PLShellElement, _QualifiedE4PLS3ShellElement)
     if v2d_authority:
         owned_load_types += (_NativeParityE4PLS3V2DShellElement,)
+    if v2d_authority:
+        # The V2D geometry/scope traversal inspects EVERY mesh element
+        # (``isinstance(element, ShellElement)``, which consults an instance
+        # ``__class__`` and may run foreign code).  Only exact package classes
+        # whose class authority is proven (V2D by the caller's guard; Q4/S3 by
+        # the lease epochs; beam/coupling/MPC by the class snapshots) may be in
+        # the mesh at all, loaded or not.
+        known_exact = owned_load_types + _MASS_EXACT_KINDS
+        has_beam_family = False
+        for element in dict.values(elements):
+            kind = type(element)
+            if not _type_is_one_of(kind, known_exact):
+                return None
+            has_beam_family = has_beam_family or _type_is_one_of(kind, _MASS_EXACT_KINDS)
+        if has_beam_family and not _mass_classes_are_untouched():
+            return None
     for element in dict.values(elements):
         if _type_is_one_of(type(element), owned_load_types):
             continue  # Owned epoch-tracked metaclasses; never the fibre family.
