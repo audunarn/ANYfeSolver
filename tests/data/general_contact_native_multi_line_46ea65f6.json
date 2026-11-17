@@ -1,7 +1,9 @@
 {
   "artifact_source": "46ea65f6",
   "wheel_sha256": "d654f456679403486be46e2dc200f0657e008e43c6b8e9873ad7f60cac6d86ba",
-  "checkpoint_sha256": "6d8f704d43a0c9c7aed71493330612ead89bd68964b3e10d290407c04597a08a",
+  "checkpoint_sha256": "7d5c1de35566ae984e4c8408300b883768a5c90107375cc4b7090e0d5640c8f5",
   "module_path": "C:\\ANYworkspaceWork\\contact_native_material_s3_20261004\\candidate01\\installed2\\anysolver\\general_contact\\native_multi_s3_static.py",
-  "module_sha256": "6c50bea8414b88c4b42866893b2194237c733387b487ded2aa6082cded356414"
+  "module_sha256": "6c50bea8414b88c4b42866893b2194237c733387b487ded2aa6082cded356414",
+  "original_wheel_checkpoint_sha256": "6d8f704d43a0c9c7aed71493330612ead89bd68964b3e10d290407c04597a08a",
+  "resealed_derivative": "Re-sealed under OPENBLAS_CORETYPE=Haswell from the current analysis (solve(stop_after=1)); wheel_sha256/module_* describe the original wheel fixture. See tests/data/HASWELL_REFERENCE_PROVENANCE_20261117.md"
 }
