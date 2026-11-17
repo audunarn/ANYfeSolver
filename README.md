@@ -311,7 +311,9 @@ generated with `OPENBLAS_CORETYPE=Haswell`, the AVX2 baseline that
 selects different kernels and last-bit differences appear, so run the tests with
 `OPENBLAS_CORETYPE=Haswell` (PowerShell: `$env:OPENBLAS_CORETYPE = "Haswell"`)
 or through `scripts/run_portable_ci.py`. See
-`docs/agent_plans/CI_SHARD_TIMEOUT_20261116.md`.
+`docs/agent_plans/CI_SHARD_TIMEOUT_20261116.md`. The corotational S3-R1 displacement
+hashes are compared by stored vector with a 1e-10 relative tolerance; a pinned
+environment lane can demand bit equality with `ANYSOLVER_EXACT_REFERENCE_HASHES=1`.
 
 An external case becomes passing evidence only after isolated execution,
 successful FRD/DAT parsing, and every declared comparison meeting its
