@@ -141,3 +141,12 @@ new class-protected entry in the epoch machinery; two calls to the existing help
 * `test_v2d_write_counts_are_atomic_under_contention` now expects exactly two counts per write (intent unchanged: no lost increment).
 Barge (serial): prepare 76.5 s; pressure 1,404 V2D 4.09 s (one earlier 6.8 s run was machine noise, repeated at 4.09 s);
 gravity+masses 10.99 s; hashes unchanged.
+
+## Trust contract and known limits
+Assumption (same as the `_capture_qualified_v2d_trusted_authority` docstring): while an assembly or capture runs, no foreign code
+runs and no other thread mutates V2D elements.
+* Covered: single-threaded replace/delete/set of `_qualified_v2d_lease_epochs`; a writer paused anywhere in the counted write while
+  an existing lease observes (value visible implies counter already advanced); a capture taken during a write.
+* Accepted limit (owner decision, no lock added): a second thread capturing between a writer's pre- and post-advance while that
+  writer replaces or deletes the bookkeeping attribute can lose its subscription. Needs two threads mutating V2D elements during
+  a capture, which the contract above excludes.

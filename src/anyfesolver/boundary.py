@@ -1569,7 +1569,10 @@ def _run_foreign_code_free_load_vector(
     the V2D formulation/class authority and every V2D instance (the lease's
     trusted state check alone does not cover them; see
     ``_capture_qualified_v2d_trusted_authority``).  Without it a V2D element
-    keeps the ordinary public route.
+    keeps the ordinary public route.  Trust contract: no foreign code and no
+    other thread mutating V2D elements while the span runs (see
+    docs/agent_plans/V2D_LOAD_KERNEL_20261117.md, "Trust contract and known
+    limits").
     """
 
     if element_activity is not None or not _numpy_error_routes_are_builtin():

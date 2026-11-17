@@ -402,7 +402,12 @@ class NativeParityE4PLS3V2DShellElement(
         # counter unseen), and an existing lease already reads nonzero before
         # the change can be observed.  After: a capture that subscribed while
         # the writer sat between the two steps still sees a count.  A counter
-        # only has to change, so double counting is harmless.
+        # only has to change, so double counting is harmless.  Known limit
+        # (docs/agent_plans/V2D_LOAD_KERNEL_20261117.md, "Trust contract and
+        # known limits"): a second thread capturing between the two counts
+        # while this write replaces/deletes the subscription list can lose
+        # its subscription; a trusted span assumes no other thread mutates
+        # V2D elements.
         _advance(self, name, value)
         super().__setattr__(name, value)
         _advance(self, name, value)
