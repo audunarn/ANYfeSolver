@@ -199,6 +199,18 @@ PORTABLE_ISOLATED_MODULES = (
     "tests/test_generalized_section_api_workflows.py",
     "tests/test_generalized_shell_sections.py",
 )
+# Modules holding single tests that run longer than the ordinary shared limit on
+# GitHub runners (run 44100447361: each module alone kept its pool busy until the
+# 2400 s limit although its tests were still passing).  They cannot be split by
+# module-level balancing; a cell that selects one of them gets this larger limit.
+# Every other cell keeps the requested limit.  All tests still run unchanged.
+PORTABLE_LONG_RUNNING_MODULES = (
+    "tests/test_general_contact_enriched_path.py",
+    "tests/test_general_contact_s3_friction_replay.py",
+    "tests/test_general_contact_s3_q4_patch_augmented.py",
+    "tests/test_general_contact_transient_clipped_s3.py",
+)
+PORTABLE_LONG_RUNNING_LIMIT_SECONDS = 5_400
 DEFAULT_WORKERS = 4
 DEFAULT_TIMEOUT_SECONDS = 2_400
 TIMEOUT_EXIT_CODE = 124
@@ -224,6 +236,14 @@ def _module_weight(module: str) -> int:
         else PORTABLE_BASE_SECONDS + proxy_bytes / PORTABLE_BYTES_PER_SECOND
     )
     return int(round(1000 * seconds))
+
+
+def effective_timeout_seconds(timeout_seconds: int, modules: Sequence[str]) -> int:
+    """Return the shared limit for a cell: larger only if it holds a long module."""
+
+    if any(module in PORTABLE_LONG_RUNNING_MODULES for module in modules):
+        return max(timeout_seconds, PORTABLE_LONG_RUNNING_LIMIT_SECONDS)
+    return timeout_seconds
 
 
 def partition_modules(
@@ -628,6 +648,15 @@ def run(
             flush=True,
         )
     partitions = (tuple(modules),) if development else execution_partitions(modules, workers)
+    if not development:
+        extended = effective_timeout_seconds(timeout_seconds, modules)
+        if extended != timeout_seconds:
+            print(
+                f"[portable-ci] long-running module selected: shared limit "
+                f"{timeout_seconds} -> {extended} seconds",
+                flush=True,
+            )
+            timeout_seconds = extended
     temp_parent = Path(os.environ.get("RUNNER_TEMP", tempfile.gettempdir())).resolve()
     temp_parent.mkdir(parents=True, exist_ok=True)
     run_root = Path(tempfile.mkdtemp(prefix="anyfesolver-portable-ci-", dir=temp_parent))

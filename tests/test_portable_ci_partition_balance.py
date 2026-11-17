@@ -88,3 +88,19 @@ def test_module_duration_summary_is_cheap_and_never_fails(tmp_path, monkeypatch,
     (pool / 'junit.xml').write_text('<broken', encoding='utf-8')
     runner._record_module_durations(tmp_path, tmp_path)
     assert 'skipped' in capsys.readouterr().out
+
+
+def test_long_running_modules_extend_only_their_own_cell_limit(cells):
+    manifest, result = cells
+    long_modules = set(runner.PORTABLE_LONG_RUNNING_MODULES)
+    assert long_modules <= set(manifest)
+    extended = []
+    for cell, (selected, _) in result.items():
+        limit = runner.effective_timeout_seconds(2400, selected)
+        if long_modules & set(selected):
+            assert limit == runner.PORTABLE_LONG_RUNNING_LIMIT_SECONDS
+            extended.append(cell)
+        else:
+            assert limit == 2400
+    assert len(extended) == len(long_modules)  # one module per cell, no cell shares two
+    assert runner.effective_timeout_seconds(7200, tuple(long_modules)) == 7200
