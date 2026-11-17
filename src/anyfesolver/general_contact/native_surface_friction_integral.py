@@ -42,7 +42,7 @@ def _drop_unresolvable_edges(edges,left,right):
     eps=np.finfo(float).eps
     kept=[edges[0]];width=0.
     for edge in edges[1:]:
-        floor=512.*eps*max(1.,abs(edge))
+        floor=8.*eps*max(1.,abs(edge))
         if edge==right:kept.append(edge);continue
         if edge-kept[-1]<=floor:width+=edge-kept[-1];continue
         if right-edge<=floor:width+=right-edge;continue
@@ -1100,14 +1100,12 @@ def integrate_material_friction(field,settings,*,_front_uncertainty=None,_local_
                         roots.update(x for x in _resolved_yield_margin_cuts(cell,angle,edges)
                             if left<x<right)
                         edges=sorted(roots)
-            # A cut within 8 binary64 steps of a neighbouring edge bounds an
-            # interval below the coordinate resolution floor of the rule nodes. Whether a
-            # computed front root lands on the panel edge or one ulp inside is
-            # decided by last-bit rounding (BLAS kernel, platform), so such an
-            # interior edge is dropped exactly as the sub-resolution pairs
-            # above are: the kink then lies within the coordinate-rounding
-            # scale the rule already applies to every node. Panel edges and
-            # intervals with any interior coordinate are never altered.
+            # A cut within the existing 8*eps*max(1,|x|) resolution floor of a
+            # retained edge (the floor the front-cut merge above uses) is
+            # dropped: whether a computed front root lands on the panel edge or
+            # a few ulp inside is last-bit rounding (BLAS kernel, platform).
+            # The strip is then integrated inside its retained neighbour, and
+            # its width is charged below as a heuristic error estimate.
             edges,dropped_width=_drop_unresolvable_edges(edges,left,right)
             for x0,x1 in zip(edges[:-1],edges[1:]):
                 if _local_front_strips:
@@ -1235,19 +1233,23 @@ def integrate_material_friction(field,settings,*,_front_uncertainty=None,_local_
                             raise ValueError('replayed strip work exceeds complete-history density bound')
                     result+=point*(float(wx*wa)*(x1-x0)*(upper-lower)*measure/4)
             if dropped_width:
-                # The dropped strip is integrated inside its retained neighbour
-                # with nodes that treat it as smooth. Charge the strip width
-                # times twice the largest node magnitude seen on this ordinate
-                # (a jump across the dropped kink is at most that), through the
-                # estimator's own error channel, so refinement or the existing
-                # refusals decide when it cannot be resolved. Total dropped
-                # width is charged, not per pair.
+                # Heuristic charge, not a bound: strip width times twice the
+                # largest sampled node magnitude on this ordinate, added to the
+                # leaf error so refinement or the existing refusals can react.
+                # It sees only sampled nodes: an unsampled pulse inside a
+                # dropped strip is missed, a limit shared with the parent
+                # estimator (which also only sees such a pulse if a cut places
+                # nodes in it). Total dropped width is charged, not per pair.
                 peak=np.zeros(size)
                 for x0,x1 in zip(edges[:-1],edges[1:]):
                     for axial in axial_points:
                         node=cache.get((_interior_material_coordinate(x0,x1,axial,
                             allow_rounding=_variable_endpoint_branches),float(angle)))
                         if node is not None:peak=np.maximum(peak,np.abs(node))
+                if not np.any(peak) and cache:
+                    # No node was sampled on this ordinate (its neighbours are
+                    # enclosure strips): fall back to every cached query.
+                    peak=np.max(np.abs(np.asarray(tuple(cache.values()))),axis=0)
                 drop_charge=drop_charge+2.*dropped_width*float(wa)*(upper-lower)*measure/2*peak
         if order==1:
             if np.any(drop_charge):drop_error[panel]=drop_charge

@@ -595,36 +595,65 @@ def test_friction_integral_edge_one_ulp_inside_panel_edge_resolves():
     module,field,settings=_saved_adjacent_edge_field()
     result=_integrate_saved(module,field,settings)
     _assert_complete_finite(result)
-    # The dropped strips are charged to the error channel; for this contact
-    # density the charge is far below the requested tolerance.
+    # Dropped strips are charged to the error channel as a heuristic estimate
+    # from sampled node magnitudes (not a bound on unseen density); for this
+    # contact density it is far below the requested tolerance.
     # (Which leaves drop an edge can differ by kernel; the charge never matters.)
     assert 0.<=result.diagnostics['dropped_edge_charge_max_scaled']<1e-9
 
 
-def test_friction_integral_partition_independent_of_front_root_shift():
+def _shifted_edge_drop(module,monkeypatch,shift,width_factor=1.):
+    """Patch the module's drop helper (restored by monkeypatch) to move the
+    front root next to the panel edge by `shift` ulp; records each outcome."""
+    original=module._drop_unresolvable_edges
+    outcomes=[]
+    def moved(edges,left,right):
+        new=[]
+        for edge in edges:
+            if left<edge<right and right-edge<1e-6:
+                for _ in range(abs(shift)):edge=float(np.nextafter(edge,right if shift>0 else 0.))
+            new.append(edge)
+        kept,width=original(sorted(set(new)),left,right)
+        outcomes.append(width>0.)
+        return kept,width*width_factor
+    monkeypatch.setattr(module,'_drop_unresolvable_edges',moved)
+    return outcomes
+
+
+def test_friction_integral_partition_independent_of_front_root_shift(monkeypatch):
     # Deterministic perturbation of the front-root placement next to the panel
-    # edge (a few ulp up to just past the drop floor). Whether the edge is
-    # dropped (charged) or kept, the integral must agree within tolerance and
-    # must not refuse: the decision may not depend on last-bit placement.
+    # edge. Shifts of -1 and -8 ulp keep it inside the 8-eps floor (dropped and
+    # charged); -4096 ulp leaves it retained. Both branches must agree with the
+    # unperturbed integral within the requested tolerances and never refuse.
     module,field,settings=_saved_adjacent_edge_field()
     base=_integrate_saved(module,field,settings)
-    original=module._drop_unresolvable_edges
-    scale=max(float(np.max(np.abs(base.residual))),1e-300)
-    for shift in (-1,-224,-1030):
-        def moved(edges,left,right,shift=shift):
-            new=[]
-            for edge in edges:
-                if left<edge<right and right-edge<1e-6:
-                    for _ in range(abs(shift)):edge=float(np.nextafter(edge,right if shift>0 else 0.))
-                new.append(edge)
-            return original(sorted(set(new)),left,right)
-        module._drop_unresolvable_edges=moved
-        try:perturbed=_integrate_saved(module,field,settings)
-        finally:module._drop_unresolvable_edges=original
+    for shift,expect_dropped in ((-1,True),(-8,True),(-4096,False)):
+        with monkeypatch.context() as local:
+            outcomes=_shifted_edge_drop(module,local,shift)
+            perturbed=_integrate_saved(module,field,settings)
         _assert_complete_finite(perturbed)
-        assert np.max(np.abs(perturbed.residual-base.residual))<=1e-9*scale+settings.force_absolute_tolerance
+        assert any(outcomes)==expect_dropped
+        charge=perturbed.diagnostics['dropped_edge_charge_max_scaled']
+        assert (charge>0.)==expect_dropped and charge<1e-9
+        assert np.max(np.abs(perturbed.residual-base.residual))<=settings.force_absolute_tolerance
+        assert np.max(np.abs(perturbed.tangent-base.tangent))<=settings.tangent_absolute_tolerance
         assert abs(perturbed.dissipated_increment_j-base.dissipated_increment_j)<=settings.energy_absolute_tolerance
-        assert perturbed.diagnostics['dropped_edge_charge_max_scaled']<1e-9
+
+
+def test_friction_integral_dropped_edge_charge_reaches_the_error_gate(monkeypatch):
+    # A dropped strip whose charge exceeds the tolerance must refine or refuse:
+    # inflating the charged width must change the outcome, so a zero charge
+    # cannot pass unnoticed.
+    module,field,settings=_saved_adjacent_edge_field()
+    with monkeypatch.context() as local:
+        _shifted_edge_drop(module,local,-1)
+        reference=_integrate_saved(module,field,settings)
+    with monkeypatch.context() as local:
+        _shifted_edge_drop(module,local,-1,width_factor=1e12)
+        try:inflated=_integrate_saved(module,field,settings)
+        except (MemoryError,ValueError):return
+    assert (inflated.diagnostics['dropped_edge_charge_max_scaled']>1e3*reference.diagnostics['dropped_edge_charge_max_scaled']
+            or inflated.diagnostics['queries']>reference.diagnostics['queries'])
 
 
 def test_drop_unresolvable_edges_threshold_chain_and_width():
@@ -633,8 +662,8 @@ def test_drop_unresolvable_edges_threshold_chain_and_width():
     kept,width=_drop_unresolvable_edges([.2,float(np.nextafter(.8,0.)),.8],.2,.8)
     assert kept==[.2,.8] and width==.8-float(np.nextafter(.8,0.))
     # Strips next to a retained edge: dropped (and their width charged) up to
-    # the 512-eps floor, kept above it.
-    for multiple,dropped in ((511.5,True),(512.,True),(512.5,False)):
+    # the existing 8-eps floor, kept above it.
+    for multiple,dropped in ((7.5,True),(8.,True),(8.5,False)):
         edge=.5+multiple*eps
         kept,width=_drop_unresolvable_edges([.2,.5,edge,.8],.2,.8)
         assert (edge not in kept)==dropped
@@ -642,12 +671,12 @@ def test_drop_unresolvable_edges_threshold_chain_and_width():
     # Chain: an edge is dropped only within one floor of a retained edge, so
     # no kink ends up farther than one floor from a retained edge, and the
     # charged width is the sum of the individual distances.
-    chain=[.2,.5,.5+300*eps,.5+600*eps,.5+900*eps,.8]
+    chain=[.2,.5,.5+5*eps,.5+10*eps,.5+15*eps,.8]
     kept,width=_drop_unresolvable_edges(chain,.2,.8)
-    assert kept==[.2,.5,.5+600*eps,.8]
+    assert kept==[.2,.5,.5+10*eps,.8]
     for edge in chain:
-        assert min(abs(edge-k) for k in kept)<=512.*eps
-    assert width==(.5+300*eps-.5)+(.5+900*eps-(.5+600*eps))
+        assert min(abs(edge-k) for k in kept)<=8.*eps
+    assert width==(.5+5*eps-.5)+(.5+15*eps-(.5+10*eps))
     ordinary=[.2,.5,.8-1e-12,.8]
     assert _drop_unresolvable_edges(ordinary,.2,.8)==(ordinary,0.)
     assert _drop_unresolvable_edges([.2,.8],.2,.8)==([.2,.8],0.)
