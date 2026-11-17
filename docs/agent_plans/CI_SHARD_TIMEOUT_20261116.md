@@ -37,3 +37,26 @@ Full pool/shard reproduction locally; per-module local timings of all stalled-po
 - Local, py3.13 venv, CI environment (scale 8, OMP=1, NUMBA threads 1): alone PASS (183 s); in the exact failing pool of run 43950995536 (12 modules incl. v6g and fast_total before it, in pool order) PASS (the test took 289 s there). Not reproduced; no order dependence found locally. No env-var or global-state mutation found in the predecessor modules (grep).
 - Evidence leans against runner CPU noise (same value on two OSes) and for a deterministic alternative path that is Python 3.13 / dependency-version dependent on CI (e.g. a different SciPy/BLAS or solver code path chosen in the CI installation), or state left by modules that precede it in the pool in CI only (run 43861722899 pool preceded by v2d_linear_native_parity, v2d_native_state_corotational, v6e/v6g/v6t, ...).
 - Options (pin untouched): (a) run the test in a fresh interpreter (add to PORTABLE_ISOLATED_MODULES) to separate order effects; (b) print scipy/numpy/BLAS and `solve_linear` backend info in this test's failure message and CI job log to identify the alternative path; (c) in CI, run only this test alone on 3.13 once to classify order vs environment. Weights now change pool order, so a rerun will also show whether the failure moves with its predecessors.
+
+## Bitwise mismatches: cause established (CPU baseline experiment, 2026-11-17)
+Reading: in (a) `test_native_fibre_enforcement_successive_response[k8e7]` and (b) `test_curved_material_authentic_split_restart_and_atomic_failure`, `stored` is a committed reference checkpoint (`tests/data/*.checkpoint`, written on the author's machine) and `replayed` is computed now (`native_multi_s3_static.py:819`). The hash test compares against stored pre-R1 constants. So all three are cross-machine bitwise comparisons, not in-process nondeterminism.
+
+Machine here: AMD Zen4 (numba host cpu znver4), AVX-512, numpy 2.5.5, numba 0.68.1, scipy 1.18.1 (bundled scipy-openblas 0.3.34, `architecture: SkylakeX`), all CI env as in the runner (OMP/OPENBLAS threads 1). Each case run alone, same cold numba cache:
+
+| setting | (a) | (b) | hash test |
+|---|---|---|---|
+| default (SkylakeX kernels) | pass 40 s | pass 131 s | pass 295 s |
+| OPENBLAS_CORETYPE=Haswell | FAIL, identical to CI (stored 9.123885834601848e-07, replayed ...846e-07) | FAIL | FAIL, hash 3f1deac1... = the CI hash |
+| OPENBLAS_CORETYPE=Zen | not run | not run | FAIL, same 3f1deac1... |
+| NPY_DISABLE_CPU_FEATURES=AVX512* | pass | pass | not run |
+| NUMBA_CPU_NAME=generic | pass 39 s | pass 132 s | pass 281 s |
+| NUMBA_CPU_NAME=haswell | pass 36 s | pass 126 s | not run |
+| Haswell + no AVX512 + numba haswell | FAIL | FAIL | FAIL (15 s) |
+
+Conclusion: the references were produced with OpenBLAS's AVX-512 (SkylakeX) kernels; CI runners (no AVX-512 or different kernel choice: Haswell/Zen kernels) produce 1-ulp-different BLAS results. This reproduces the exact CI values for all three tests and explains the same wrong hash on two OSes. numpy SIMD and numba code generation are not involved (no effect); `MKL_ENABLE_INSTRUCTIONS` is a no-op (wheels use OpenBLAS). Cost of the numba/numpy variables: none measurable (+-5 %); OPENBLAS_CORETYPE=Haswell: none measurable.
+
+No runner-environment baseline can make CI match the references: forcing `OPENBLAS_CORETYPE=SkylakeX` crashes on runners without AVX-512. Not implemented (and no pin/tolerance changed). Options for the owner:
+1. Regenerate the affected references (replay checkpoints, hash constants) once under a pinned kernel `OPENBLAS_CORETYPE=Haswell` (valid on every AVX2 x86-64 runner and on AVX-512 machines) and set the same variable in the runner worker environment and in the generation instructions. Gives bitwise cross-machine reproducibility; re-pin = owner decision.
+2. Make the replay-critical path BLAS-independent (compensated/pure NumPy reductions): product change, preserves pins but changes code.
+3. Contract change: replay equality up to a documented ulp tolerance for non-identity leaves, hash tests replaced by tolerance band + exact hash on a pinned-kernel lane.
+Proof run: shards containing the tests are 7/0 (a), 0/1 (b) and the hash test's shard (changes with the new weights; compute with `scripts/run_portable_ci.py`'s partition: 5/2 at HEAD); with option 1 each must pass on windows and ubuntu.
