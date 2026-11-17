@@ -742,21 +742,27 @@ def test_portable_ci_executes_process_state_sensitive_modules_in_fresh_processes
 
 
 def test_portable_ci_observed_costs_separate_the_four_heaviest_modules() -> None:
-    partitions = portable_ci.partition_modules(
-        portable_ci.merge_test_modules(), 4
-    )
-    heaviest = {
-        "tests/test_beam_shell_verification.py",
-        "tests/test_e4_pl_q4_state_lifecycle.py",
-        "tests/test_e4_pl_s3_restart_history.py",
-        "tests/test_e4_pl_s3_state_lifecycle.py",
-    }
+    # Weights are predicted CI seconds (measured on GitHub runners). The four
+    # heaviest modules by that cost must be owned by four different workers,
+    # and the modules that were the heaviest under the earlier byte proxy must
+    # keep their measured costs (their weights were frozen in bytes before).
+    modules = portable_ci.merge_test_modules()
+    partitions = portable_ci.partition_modules(modules, 4)
+    heaviest = set(sorted(modules, key=lambda m: (-portable_ci._module_weight(m), m))[:4])
     owners = {
         index
         for index, partition in enumerate(partitions)
         if heaviest.intersection(partition)
     }
     assert owners == set(range(4))
+    assert all(len(heaviest.intersection(partition)) == 1 for partition in partitions)
+    for legacy in (
+        "tests/test_beam_shell_verification.py",
+        "tests/test_e4_pl_q4_state_lifecycle.py",
+        "tests/test_e4_pl_s3_restart_history.py",
+        "tests/test_e4_pl_s3_state_lifecycle.py",
+    ):
+        assert portable_ci._module_weight(legacy) >= 1000 * 45
 
 
 def test_portable_ci_matrix_shards_cover_general_once_and_s3_critical_always() -> None:

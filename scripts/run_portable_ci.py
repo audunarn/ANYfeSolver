@@ -162,7 +162,8 @@ PORTABLE_NONQUALIFYING_NODES = (
 # median CI duration (call/setup/teardown phases separately) seen in the "slowest 20 durations"
 # blocks of GitHub runs 44048316984, 43950995536 and 43861722899 (all OS/Python
 # cells).  Those blocks list only each pool's 20 slowest tests, so a module sum
-# is a lower bound; only modules with >= 60 s are listed.  Re-tune from the
+# is a lower bound; only modules with >= 60 s are listed (plus the three
+# historic heavy lifecycle/restart modules at 45-57 s, guarded by test_e4_pl_burnin).  Re-tune from the
 # per-module CI artifact (portable-ci-module-durations.json).  Weights only
 # decide pool/shard assignment; they never select, skip or deselect a test.
 PORTABLE_BASE_SECONDS = 2.0
@@ -181,6 +182,9 @@ PORTABLE_MODULE_BYTE_WEIGHT_OVERRIDES = {
 }
 
 PORTABLE_MODULE_CI_SECONDS = {
+    "tests/test_e4_pl_q4_state_lifecycle.py": 57,
+    "tests/test_e4_pl_s3_restart_history.py": 52,
+    "tests/test_e4_pl_s3_state_lifecycle.py": 45,
     "tests/test_general_contact_s3_q4_patch_augmented.py": 1432,
     "tests/test_general_contact_q4_s3_patch_static.py": 1330,
     "tests/test_general_contact_d1_interior_profile.py": 1314,

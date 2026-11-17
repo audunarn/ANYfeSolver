@@ -456,7 +456,7 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
     assert action_sequence(job_block(ci, "license")) == [checkout_ref, setup_ref]
     assert action_sequence(job_block(ci, "resolver")) == [checkout_ref, setup_ref]
     pytest_block = job_block(ci, "pytest")
-    assert action_sequence(pytest_block) == [checkout_ref] * 5 + [setup_ref, checkout_ref, upload_ref]
+    assert action_sequence(pytest_block) == [checkout_ref] * 5 + [setup_ref, checkout_ref, upload_ref, upload_ref]
     solid_condition = "        if: matrix.shard-index == 0 && matrix.subshard-index == 0\n"
     assert pytest_block.count(solid_condition) == 2
     solid_checkout = (
