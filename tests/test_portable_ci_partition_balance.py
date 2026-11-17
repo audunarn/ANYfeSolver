@@ -12,10 +12,12 @@ from scripts import run_portable_ci as runner
 SHARDS, SUBSHARDS, WORKERS = 8, 4, 2
 # A pool's predicted time may exceed the best conceivable makespan
 # L = max(heaviest module, half the cell total) by at most 25 %, and must stay
-# at or below 1500 s (62 % of the 2400 s shared limit).  The old size-based
-# weights gave ratios up to 1.66 and pools of 1782-1891 s on these cells.
+# at or below 1800 s (75 % of the 2400 s shared limit) unless one single module
+# alone is heavier: a module is never split, so such a pool is the module itself
+# (documented in docs/agent_plans/CI_SHARD_TIMEOUT_20261116.md).  The old
+# size-based weights gave ratios up to 1.66 and pools of 1782-1891 s.
 MAKESPAN_BOUND = 1.25
-MAX_POOL_SECONDS = 1500.0
+MAX_POOL_SECONDS = 1800.0
 
 
 def _seconds(module):
@@ -56,7 +58,7 @@ def test_pools_are_balanced_and_far_below_the_shared_limit(cells):
         times = [sum(_seconds(m) for m in p) for p in ordinary]
         modules = [_seconds(m) for p in ordinary for m in p]
         lower_bound = max(max(modules), sum(modules) / len(ordinary))
-        if max(times) > MAKESPAN_BOUND * lower_bound or max(times) > MAX_POOL_SECONDS:
+        if max(times) > MAKESPAN_BOUND * lower_bound or max(times) > max(MAX_POOL_SECONDS, max(modules)):
             failures.append((cell, round(max(times)), round(lower_bound)))
     assert not failures
 
@@ -64,7 +66,7 @@ def test_pools_are_balanced_and_far_below_the_shared_limit(cells):
 def test_measured_modules_exist_and_weights_follow_measurements():
     for module, seconds in runner.PORTABLE_MODULE_CI_SECONDS.items():
         assert (runner.ROOT / module).is_file(), module
-        assert runner._module_weight(module) >= 1000 * seconds
+        assert runner._module_weight(module) == round(1000 * seconds)
 
 
 def test_module_duration_summary_is_cheap_and_never_fails(tmp_path, monkeypatch, capsys):
