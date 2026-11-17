@@ -6,6 +6,7 @@ from collections.abc import Mapping, Sequence
 import inspect
 import math
 import sys
+import weakref
 from types import MappingProxyType, ModuleType
 from typing import TYPE_CHECKING, Any, Dict
 
@@ -1443,7 +1444,7 @@ _V2D_TRUSTED_SCALAR_TYPES = frozenset({type(None), bool, int, float, str})
 
 def _v2d_trusted_immutable_value(value: Any, *, depth: int = 0) -> bool:
     kind = type(value)
-    if kind in _V2D_TRUSTED_SCALAR_TYPES:
+    if any(kind is scalar for scalar in _V2D_TRUSTED_SCALAR_TYPES):
         return True
     if kind is tuple:
         return depth < 2 and all(
@@ -1478,6 +1479,18 @@ def _v2d_trusted_instance_eligible(element: Any) -> bool:
     for name, value in tuple(dict.items(namespace)):
         if type(name) is not str:
             return False
+        if name == _V2D_LEASE_EPOCHS_KEY:
+            # Validate the subscription list without executing anything: only
+            # exact weak references whose live referent is an exact epoch.
+            if type(value) is not list:
+                return False
+            for item in value:
+                if type(item) is not weakref.ref:
+                    return False
+                referent = item()
+                if referent is not None and type(referent) is not _V2DLeaseEpoch:
+                    return False
+            continue
         if name in _V2D_TRUSTED_BOOKKEEPING_NAMES:
             continue
         if name in _S3_V2D_DERIVED_CACHE_NAMES:

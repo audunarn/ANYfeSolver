@@ -60,20 +60,46 @@ fails on 715818f8a). Class fix: with `v2d_authority`, EVERY mesh element must be
 (`type(e) is cls` for Q4/S3/V2D/Beam/Coupled/MPC), and the beam-family class snapshot must hold; otherwise the
 public route runs. Acceleration already required exact mass kinds for all elements.
 
-Sites on the new path and verdicts (V2D = traversal run when `v2d_authority`):
-* boundary kernel: `_type_is_one_of` (identity); all-element exact-class loop; `dict.get(elements, int)` (keys
-  verified `type(k) is int`, mapping reads builtin); `object.__getattribute__(e, "__dict__")` (no instance
-  `__getattr__`); `_plain_mass_input`/`_plain_numeric_array` (`type(x) is`); `key in class_names`/`in _NATIVE_PRESSURE_HOOKS`
-  (str keys, verified). `mass_class_names[type(element)]`: dict keyed by exact classes already identity-verified. Safe.
-* `matrix_assembly._capture_v2d_load_guard`: container type was `in (dict, X)` (metaclass `__eq__`); now identity. `type(e) is V2D`;
-  `dict.items/get` on verified containers. Safe.
-* `_qualified_s3_pressure_surface_records`: `getattr(element, formulation_id/...)` only for elements in the pressure
-  set, which the kernel proved exact owned/beam classes; `mesh.get_element` is class-snapshotted. Safe.
-* element modules (unchanged): V2D `_validate_model_scope` (`isinstance`, `type(e) not in allowed`) and V2C scope
-  (`type(e) not in allowed_types`, `list(elements.items())`) run over all mesh elements; with only exact known classes
-  in the mesh no foreign `__class__`/`__eq__` exists to run. V2C-only meshes are not admitted (refused -> public route).
-* Not changed, pre-existing: Q4/S3-only kernel admission still tolerates unloaded generic elements (no
-  mesh-wide traversal in the Q4/S3 pressure path; outside this change).
+CORRECTION (round 2): the round-1 enumeration claimed identity checks everywhere; that was wrong. `type(x) in (float, int)`,
+`type(v) in (...)` in `_plain_mass_input`, `__mro__ !=` tuple comparison, the truth test of `concentrated_masses` and
+the frozenset membership of a type in the V2D eligibility check all run a foreign metaclass `__eq__`/`__hash__`/`__bool__`.
+All were found by grepping every `in (`, `==`, `!=`, truthiness, `len`, iteration and key lookup in the owned path and are
+fixed below (round 2 commit). Rule now: classify a value or class ONLY by `type(x) is C` or `_type_is_one_of` (identity);
+validate that a container is exactly `dict`/`list`/`tuple` before any truth test, `len`, iteration or lookup.
+
+Enumeration (boundary.py kernel, helpers; matrix_assembly V2D capture; current_state_tangent V2D eligibility; static_batch):
+* `_plain_mass_input`, `_plain_coupled_element_state`, `_two_node_element_takes_exact_zero_pressure`, kernel pressure/node/dof
+  scalar classification, node mass classification, `type(type(element))`, warnings-filter `type(message/module/buffer)`:
+  were `type(x) in (...)` (FIXED -> `_type_is_one_of`).
+* `__mro__ != mro` at four class-authority sites (mass, routing, warning-context, numpy-route): tuple compare calls `__eq__` on
+  differing members (FIXED -> `_identities_differ`, element-wise `is`).
+* `mesh_state.get("concentrated_masses")` truth test (FIXED: exact `dict` then `dict.__len__`; other types refuse).
+* `_v2d_trusted_immutable_value`: `kind in frozenset(types)` hashes/compares a foreign type (FIXED: identity scan).
+* `_v2d_trusted_instance_eligible`: bookkeeping values were skipped unvalidated (FIXED: list of exact `weakref.ref` whose live
+  referent is exactly `_V2DLeaseEpoch`; anything else declines the capture -> public route).
+* Left as is, verified safe: `key in set/frozenset/tuple` where `key` is an exact `str` (hash/eq of exact str);
+  `mass_class_names[type(element)]` (key is an exact package class already identity-checked); `dict.get/values/items/keys`
+  on mappings proven exactly `dict` or `_QualifiedStateMapping` with the builtin `get`; iteration of exact `list`/`tuple`;
+  `object.__getattribute__(x, "__dict__")`/`type.__getattribute__` (no instance/class hooks); `_callable_authority(_matches)` on
+  class-dict snapshot members only (callers compare `is` first); `cell.cell_contents is not value`; ints compared with `!=`;
+  `getattr(element, ...)` in `_qualified_s3_pressure_surface_records` only for elements the kernel proved exact package classes
+  (all mesh elements when `v2d_authority`); `element_modules` V2D/V2C scope checks see only exact known classes.
+* Pre-existing and not on the model/load-case value path: process-global numpy/warnings state read by
+  `_numpy_error_routes_are_builtin` (identity checks now used for the type tests above).
+
+## Round 2 findings
+* P1 foreign values: tests `test_forged_pressure_scalar_is_refused_without_running_it`, `test_forged_container_truthiness_is_never_evaluated`,
+  `test_forged_mass_input_values_are_refused`, `test_class_authority_compares_mro_by_identity` fail on 99820deff, pass now.
+* P2 concurrent write: `V2D.__setattr__/__delattr__` counted BEFORE assigning; a capture taken while a writer sat between the two
+  steps missed the write. Now the write completes first and is counted after: a capture either scans the new value or observes
+  the late count and rejects (conservative). `test_capture_during_an_in_flight_write_never_misses_the_write` (writer thread paused by
+  a trace hook at the end of the counting helper) fails on 99820deff. Hot path cost unchanged: 0.256 us per V2D attribute write
+  before and after (200k-write loop, best of 5).
+* P2 malformed bookkeeping (`[1.0]`): capture declines, public route runs (`test_malformed_lease_bookkeeping_declines_the_capture`).
+  Not changed: an ordinary V2D write on an element carrying such a list still raises inside the pre-existing counting helper.
+* P2 profile test: the per-record assertion is now independent of the scaling assertion (every record crosses
+  `internal_input_guard` once); mutating the production code to skip the per-record guard makes it fail while the scaling assertion
+  still passes.
 
 ## Review items not reported by Codex (what was checked)
 * Capture returning None / `__slots__` / descriptors: `_v2d_trusted_instance_eligible` reads `object.__getattribute__(e,"__dict__")`
@@ -90,3 +116,10 @@ Sites on the new path and verdicts (V2D = traversal run when `v2d_authority`):
   (`test_witness_masks_only_weakref_bookkeeping`). The list holds no model state (consumed only by the epoch counter).
 * Weakref bookkeeping: each capture prunes dead refs under the module lock before appending; 25 assemblies leave <= 2 live
   entries (`test_lease_epoch_subscriptions_stay_bounded`).
+
+## Round 2 measurements and tests
+Barge (serial): prepare 77.0 s; pressure 1,404 V2D 4.07 s; gravity+masses 11.09 s; hashes unchanged
+(`28641c0fe4510b17`/`f945cd604b2defed` vs old route, `316eda3ddf369689`, `8c704b393b5bc227` vs oracle).
+Targeted 11 files: 247 passed. Extra V2D files run: 91 passed, 1 failed
+(`test_e4_pl_s3_v2d_linear_native_parity.py::test_v2d_stateless_identity_roundtrip_and_remaining_successor_gaps` needs git object
+`dfe3d314...` that this clone lacks; it fails identically on 99820deff).

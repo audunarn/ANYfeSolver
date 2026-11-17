@@ -396,16 +396,20 @@ class NativeParityE4PLS3V2DShellElement(
         value: Any,
         _advance: Any = _advance_v2d_lease_epochs,
     ) -> None:
-        _advance(self, name, value)
+        # Count AFTER the assignment: a capture that subscribes while a writer
+        # is between the two steps then either scans the new value or sees the
+        # (late) count; counting first let such a write change a scanned fact
+        # without ever advancing the capture's counter.
         super().__setattr__(name, value)
+        _advance(self, name, value)
 
     def __delattr__(
         self,
         name: str,
         _advance: Any = _advance_v2d_lease_epochs,
     ) -> None:
-        _advance(self, name, None, deleting=True)
         super().__delattr__(name)
+        _advance(self, name, None, deleting=True)
 
     def __init__(
         self,

@@ -80,7 +80,7 @@ def test_pressure_surface_traversal_uses_captured_constant_time_guard() -> None:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     try:
         from test_load_kernel_v2d_pressure_acceleration import (
-            _count_scans,
+            _count_scans_and_crossings,
             _mixed_model,
             _pressure_case,
         )
@@ -88,13 +88,21 @@ def test_pressure_surface_traversal_uses_captured_constant_time_guard() -> None:
         sys.path.pop(0)
     counts = []
     records = []
+    crossings = []
     for pairs in (3, 12):
         model, q4, v2d = _mixed_model(pairs)
-        scans, (_vector, info) = _count_scans(model, _pressure_case(q4, v2d))
+        scans, crossed, (_vector, info) = _count_scans_and_crossings(
+            model, _pressure_case(q4, v2d)
+        )
         counts.append(scans)
         records.append(len(info["qualified_s3_pressure_surfaces"]))
+        crossings.append(crossed)
     assert records == [6, 24]
     assert 0 < counts[0] and counts[1] <= counts[0] + 2, counts
+    # Independent of the scaling assertion: every record crosses the captured
+    # guard once (removing the per-record guard keeps the scan count flat but
+    # fails here).
+    assert crossings == records, (crossings, records)
 
 
 def test_equivalence_pair_is_preserved_and_nonclassifying() -> None:

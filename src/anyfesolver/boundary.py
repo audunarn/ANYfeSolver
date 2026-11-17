@@ -66,6 +66,16 @@ if TYPE_CHECKING:
 _SMALL = 1.0e-12
 
 
+def _identities_differ(current: tuple, expected: tuple) -> bool:
+    """Compare two class tuples by identity (tuple ``!=`` calls foreign ``__eq__``)."""
+    return len(current) != len(expected) or any(a is not b for a, b in zip(current, expected))
+
+
+def _type_is_one_of(kind: Any, kinds: tuple) -> bool:
+    """Identity membership: ``in`` would call a forged metaclass ``__eq__``."""
+    return any(kind is candidate for candidate in kinds)
+
+
 class _MeshLeaseModel:
     """Closure-private adapter for direct mesh-level load operations."""
 
@@ -1047,7 +1057,7 @@ def _builtin_warning_encoder(stream: Any) -> bool:
         return False
     for owner, mro, namespace, metadata in classes:
         current = type.__getattribute__(owner, "__dict__")
-        if (type.__getattribute__(owner, "__mro__") != mro or len(current) != len(namespace)
+        if (_identities_differ(type.__getattribute__(owner, "__mro__"), mro) or len(current) != len(namespace)
                 or any(current.get(name, _MISSING) is not value or
                        not _callable_authority_matches(value, metadata[name])
                        for name, value in namespace.items())):
@@ -1081,7 +1091,7 @@ def _builtin_warning_stream(stream: Any) -> bool:
     buffer = stream.buffer
     if type(buffer) is io.FileIO:
         return not any(name in vars(buffer) for name in ("write", "flush"))
-    if type(buffer) not in (io.BufferedWriter, io.BufferedRandom):
+    if not _type_is_one_of(type(buffer), (io.BufferedWriter, io.BufferedRandom)):
         return False
     raw = buffer.raw
     return (not any(name in vars(buffer) for name in ("write", "flush"))
@@ -1116,7 +1126,7 @@ def _numpy_error_routes_are_builtin() -> bool:
             if (type(owner) is not type or "log" in current
                     or (dictionary is not _MISSING
                         and not _builtin_instance_dict_descriptor(dictionary, owner))
-                    or type.__getattribute__(owner, "__mro__") != mro
+                    or _identities_differ(type.__getattribute__(owner, "__mro__"), mro)
                     or len(current) != len(namespace)
                     or any(current.get(name, _MISSING) is not member or
                            not _callable_authority_matches(member, metadata[name])
@@ -1182,8 +1192,8 @@ def _numpy_error_routes_are_builtin() -> bool:
             return False
         action, message, category, module, lineno = entry
         if (type(action) is not str or type(lineno) is not int
-                or (message is not None and type(message) not in (str, re.Pattern))
-                or (module is not None and type(module) not in (str, re.Pattern))
+                or (message is not None and not _type_is_one_of(type(message), (str, re.Pattern)))
+                or (module is not None and not _type_is_one_of(type(module), (str, re.Pattern)))
                 or type(category) is not type):
             return False
     return True
@@ -1193,11 +1203,11 @@ def _plain_mass_input(value: Any, depth: int = 0) -> bool:
     """Fail closed on foreign values, including nested section/cache data."""
     if depth > 12:
         return False
-    if value is None or type(value) in (bool, int, float, str, bytes, np.float64, np.float32, np.int64, np.int32):
+    if value is None or _type_is_one_of(type(value), (bool, int, float, str, bytes, np.float64, np.float32, np.int64, np.int32)):
         return True
     if _plain_numeric_array(value):
         return True
-    if type(value) in (list, tuple):
+    if _type_is_one_of(type(value), (list, tuple)):
         return all(_plain_mass_input(item, depth + 1) for item in value)
     if type(value) is types.MappingProxyType:
         if not _referent_provider_is_builtin():
@@ -1208,7 +1218,7 @@ def _plain_mass_input(value: Any, depth: int = 0) -> bool:
             return False
         value = referents[0]
     if type(value) is dict:
-        return all(type(key) in (str, int) and _plain_mass_input(item, depth + 1)
+        return all(_type_is_one_of(type(key), (str, int)) and _plain_mass_input(item, depth + 1)
                    for key, item in dict.items(value))
     return False
 
@@ -1273,7 +1283,7 @@ def _mass_classes_are_untouched() -> bool:
            for name, function, authority in _MASS_HELPERS):
         return False
     for owner, mro, expected in _EXACT_MASS_CLASSES:
-        if type.__getattribute__(owner, "__mro__") != mro:
+        if _identities_differ(type.__getattribute__(owner, "__mro__"), mro):
             return False
         current = type.__getattribute__(owner, "__dict__")
         extra = 1 if "__slotnames__" in current and "__slotnames__" not in expected else 0
@@ -1297,7 +1307,7 @@ def _plain_coupled_element_state(data: dict) -> bool:
     return (
         type(data.get("beam_node_id")) is int
         and type(data.get("shell_node_id")) is int
-        and type(data.get("coupling_stiffness")) in (float, int)
+        and _type_is_one_of(type(data.get("coupling_stiffness")), (float, int))
         and (data.get("eccentricity") is None
              or _plain_numeric_array(data.get("eccentricity")))
     )
@@ -1306,7 +1316,10 @@ def _plain_coupled_element_state(data: dict) -> bool:
 def _builtin_acceleration_inputs(state: dict, mesh_state: dict, material_getter: Any,
                                  elements: Any, loaded_nodes: set, *,
                                  v2d_authority: bool = False) -> bool:
-    if mesh_state.get("concentrated_masses"):
+    concentrated = mesh_state.get("concentrated_masses")
+    # Classify before any truth test: truthiness of a foreign container runs
+    # its ``__bool__``/``__len__``.
+    if concentrated is not None and (type(concentrated) is not dict or dict.__len__(concentrated)):
         return False  # preserve the public validated mass/load observation route
     acceleration = state.get("gravity")
     if not _plain_numeric_array(acceleration) or not _mass_classes_are_untouched():
@@ -1319,7 +1332,7 @@ def _builtin_acceleration_inputs(state: dict, mesh_state: dict, material_getter:
             or object.__getattribute__(object.__getattribute__(material_getter.__self__, "__dict__")["mesh"], "__dict__") is not mesh_state):
         return False
     model_state = object.__getattribute__(material_getter.__self__, "__dict__")
-    if type(model_state.get("materials")) is not dict or type(model_state.get("current_material")) not in (str, type(None)):
+    if type(model_state.get("materials")) is not dict or not _type_is_one_of(type(model_state.get("current_material")), (str, type(None))):
         return False
     materials = model_state["materials"]
     if not all(type(key) is str for key in materials) or "default" not in materials:
@@ -1328,7 +1341,7 @@ def _builtin_acceleration_inputs(state: dict, mesh_state: dict, material_getter:
         if type(material) is not _IsotropicMaterial or not _plain_mass_input(object.__getattribute__(material, "__dict__")):
             return False
     for mapping in (mesh_state.get("point_masses", {}), state.get("added_node_masses")):
-        if type(mapping) is not dict or not all(type(key) is int and type(mass) in (float, int) for key, mass in mapping.items()):
+        if type(mapping) is not dict or not all(type(key) is int and _type_is_one_of(type(mass), (float, int)) for key, mass in mapping.items()):
             return False
         loaded_nodes.update(mapping)
     # Epoch tokens/component guards are checked by the full lease before this
@@ -1363,7 +1376,7 @@ def _builtin_acceleration_inputs(state: dict, mesh_state: dict, material_getter:
         if type(element) is _CoupledBeamShellElement and not _plain_coupled_element_state(data):
             return False
         ids = data.get("node_ids")
-        if type(ids) not in (list, tuple) or not all(type(node_id) is int for node_id in ids) or type(data.get("material_name")) is not str:
+        if not _type_is_one_of(type(ids), (list, tuple)) or not all(type(node_id) is int for node_id in ids) or type(data.get("material_name")) is not str:
             return False
         loaded_nodes.update(ids)
     return True
@@ -1371,11 +1384,6 @@ def _builtin_acceleration_inputs(state: dict, mesh_state: dict, material_getter:
 
 _MASS_EXACT_KINDS = (_BeamElement, _CoupledBeamShellElement,
                      _InterpolatedBeamShellMPCElement)
-
-
-def _type_is_one_of(kind: Any, kinds: tuple) -> bool:
-    """Identity membership: ``in`` would call a forged metaclass ``__eq__``."""
-    return any(kind is candidate for candidate in kinds)
 
 
 _NATIVE_PRESSURE_HOOKS = ("compute_native_dead_pressure_load",
@@ -1414,7 +1422,7 @@ def _two_node_element_takes_exact_zero_pressure(element: Any) -> bool:
     if kind is _CoupledBeamShellElement and not _plain_coupled_element_state(data):
         return False
     ids = data.get("node_ids")
-    return type(ids) in (list, tuple) and len(ids) == 2 and all(type(i) is int for i in ids)
+    return _type_is_one_of(type(ids), (list, tuple)) and len(ids) == 2 and all(type(i) is int for i in ids)
 
 
 def _plain_numeric_array(value: Any) -> bool:
@@ -1425,7 +1433,7 @@ def _plain_numeric_array(value: Any) -> bool:
 
 def _load_routing_classes_are_untouched() -> bool:
     for owner, mro, expected in _EXACT_LOAD_ROUTING_CLASSES:
-        if type(owner) is not type or type.__getattribute__(owner, "__mro__") != mro:
+        if type(owner) is not type or _identities_differ(type.__getattribute__(owner, "__mro__"), mro):
             return False
         current = type.__getattribute__(owner, "__dict__")
         extra = 1 if "__slotnames__" in current and "__slotnames__" not in expected else 0
@@ -1620,7 +1628,7 @@ def _run_foreign_code_free_load_vector(
     for element in dict.values(elements):
         if _type_is_one_of(type(element), owned_load_types):
             continue  # Owned epoch-tracked metaclasses; never the fibre family.
-        if type(type(element)) not in (type, ABCMeta):
+        if not _type_is_one_of(type(type(element)), (type, ABCMeta)):
             return None
         module = type.__getattribute__(type(element), "__dict__").get("__module__")
         if (
@@ -1650,13 +1658,13 @@ def _run_foreign_code_free_load_vector(
             if element is not None:
                 element_state = object.__getattribute__(element, "__dict__")
                 node_ids = dict.get(element_state, "node_ids")
-                if type(node_ids) not in (list, tuple) or not all(
+                if not _type_is_one_of(type(node_ids), (list, tuple)) or not all(
                     type(node_id) is int for node_id in node_ids
                 ):
                     return None
                 loaded_nodes.update(node_ids)
     for pressure in state["pressure_loads"].values():
-        if type(pressure) in (float, int):
+        if _type_is_one_of(type(pressure), (float, int)):
             continue
         if type(pressure) is not tuple or not all(
             type(value) is float for value in pressure
@@ -1680,7 +1688,7 @@ def _run_foreign_code_free_load_vector(
             "coords" in node_state
             or type(dofs) is not list
             or not all(type(dof) is int for dof in dofs)
-            or not all(type(node_state.get(axis)) in (float, int) for axis in ("x", "y", "z"))
+            or not all(_type_is_one_of(type(node_state.get(axis)), (float, int)) for axis in ("x", "y", "z"))
         ):
             return None
     stage_guard(stage="load-vector preflight")

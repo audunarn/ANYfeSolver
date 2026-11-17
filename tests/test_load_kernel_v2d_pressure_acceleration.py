@@ -102,17 +102,25 @@ def _oracle(model: FEModel, case: LoadCase, displacements=None) -> np.ndarray:
     )
 
 
-def _count_scans(model: FEModel, case: LoadCase):
+def _count_scans_and_crossings(model: FEModel, case: LoadCase):
+    """(complete scans over >1 element, per-record guard crossings, result)."""
+
     scans = 0
+    crossings = 0
 
     def profiler(frame: object, event: str, arg: object) -> None:
-        nonlocal scans
-        if event == "call" and frame.f_code.co_name == _SCAN:  # type: ignore[attr-defined]
+        nonlocal scans, crossings
+        if event != "call":
+            return
+        name = frame.f_code.co_name  # type: ignore[attr-defined]
+        if name == _SCAN:
             # The V2D authority check re-runs the guard on a one-element probe
             # (constant cost); count only scans of more than one element.
             probe = frame.f_locals.get("model")  # type: ignore[attr-defined]
             if len(probe.mesh.elements) > 1:
                 scans += 1
+        elif name == "internal_input_guard":
+            crossings += 1
 
     previous = sys.getprofile()
     sys.setprofile(profiler)
@@ -120,6 +128,11 @@ def _count_scans(model: FEModel, case: LoadCase):
         result = assemble_load_vector(model, case)
     finally:
         sys.setprofile(previous)
+    return scans, crossings, result
+
+
+def _count_scans(model: FEModel, case: LoadCase):
+    scans, _crossings, result = _count_scans_and_crossings(model, case)
     return scans, result
 
 
@@ -612,3 +625,173 @@ def test_lease_epoch_subscriptions_stay_bounded() -> None:
         assemble_load_vector(model, case)
     element = model.mesh.elements[v2d[0]]
     assert len(vars(element)[_V2D_LEASE_EPOCHS_KEY]) <= 2
+
+
+# --- round 2: foreign VALUES and CONTAINERS must never be classified by ``==`` ---
+
+
+class _EqMeta(type):
+    """Metaclass whose instances' classes claim equality with anything."""
+
+    def __eq__(cls, other):  # noqa: D105
+        return True
+
+    __hash__ = type.__hash__
+
+
+def _forged_value(log: list):
+    class ForgedScalar(metaclass=_EqMeta):
+        def __float__(self):
+            log.append("float")
+            return 1.0
+
+        def __index__(self):
+            log.append("index")
+            return 1
+
+    return ForgedScalar()
+
+
+def test_forged_pressure_scalar_is_refused_without_running_it() -> None:
+    log: list = []
+    model, q4, v2d = _mixed_model(2)
+    case = _pressure_case(q4, v2d)
+    case.pressure_loads[v2d[0]] = _forged_value(log)
+    assert _call_kernel(model, case, v2d_authority=True) is None
+    assert log == []
+
+
+def test_forged_container_truthiness_is_never_evaluated() -> None:
+    log: list = []
+
+    class ForgedMasses:
+        def __bool__(self):
+            log.append("bool")
+            return False
+
+        def __len__(self):
+            log.append("len")
+            return 0
+
+    model, q4, v2d = _mixed_model(2)
+    object.__getattribute__(model.mesh, "__dict__")["concentrated_masses"] = ForgedMasses()
+    assert _call_kernel(model, _gravity_case(model), v2d_authority=True) is None
+    assert log == []
+
+
+def test_forged_mass_input_values_are_refused() -> None:
+    log: list = []
+    model, q4, v2d = _mixed_model(2)
+    beam_id, _c = _add_beam_and_coupling(model)
+    # forged node mass
+    case = _gravity_case(model)
+    case.added_node_masses[1] = _forged_value(log)
+    assert _call_kernel(model, case, v2d_authority=True) is None
+    # forged value inside an element's instance state
+    case = _gravity_case(model)
+    object.__setattr__(model.mesh.elements[beam_id], "forged_extra", _forged_value(log))
+    assert _call_kernel(model, case, v2d_authority=True) is None
+    del model.mesh.elements[beam_id].__dict__["forged_extra"]
+    # forged zero-pressure beam state
+    object.__setattr__(model.mesh.elements[beam_id], "forged_extra", _forged_value(log))
+    assert _call_kernel(model, _pressure_on_beam_case(beam_id), v2d_authority=True) is None
+    assert log == []
+
+
+# --- round 2: write counter must cover a write that is in flight during capture -
+
+
+def _pause_writer_at_advance_return(element, new_thickness):
+    """Run ``element.thickness = new`` in a thread paused at the end of the counting helper."""
+
+    import threading
+
+    from anyfesolver import e4_pl_s3_v2d_element as module
+
+    target = module._advance_v2d_lease_epochs.__code__
+    reached, release = threading.Event(), threading.Event()
+
+    def local(frame, event, arg):
+        if event == "return":
+            reached.set()
+            release.wait(10)
+        return local
+
+    def tracer(frame, event, arg):
+        return local if frame.f_code is target else None
+
+    def writer():
+        import sys as _sys
+
+        _sys.settrace(tracer)
+        try:
+            element.thickness = new_thickness
+        finally:
+            _sys.settrace(None)
+
+    thread = threading.Thread(target=writer)
+    thread.start()
+    assert reached.wait(10)
+    return thread, release
+
+
+def test_capture_during_an_in_flight_write_never_misses_the_write() -> None:
+    from anyfesolver.current_state_tangent import (
+        ElementCapabilityError,
+        _capture_qualified_v2d_trusted_authority,
+    )
+
+    model, q4, v2d = _mixed_model(3)
+    items = tuple(dict.items(model.mesh.elements))
+    victim = model.mesh.elements[v2d[-1]]  # not the representative element
+    thread, release = _pause_writer_at_advance_return(victim, 0.02)
+    guard = _capture_qualified_v2d_trusted_authority(items, context="paused writer")
+    seen_at_capture = victim.thickness
+    release.set()
+    thread.join(10)
+    assert victim.thickness == 0.02
+    if guard is not None and seen_at_capture != victim.thickness:
+        with pytest.raises(ElementCapabilityError):
+            guard(context="after the write")
+
+
+# --- round 2: malformed lease bookkeeping must decline the capture -------------
+
+
+def test_malformed_lease_bookkeeping_declines_the_capture() -> None:
+    from anyfesolver.e4_pl_s3_v2d_element import _V2D_LEASE_EPOCHS_KEY
+
+    for bad in ([1.0], "text", [lambda: None], ()):
+        model, q4, v2d = _mixed_model(2)
+        case = _pressure_case(q4, v2d)
+        object.__setattr__(model.mesh.elements[v2d[0]], _V2D_LEASE_EPOCHS_KEY, bad)
+        assert _capture_v2d_load_guard(model, vars(case)) is None
+        vector, _info = assemble_load_vector(model, case)  # public route
+        assert np.array_equal(vector, _oracle(model, case))
+
+
+def test_class_authority_compares_mro_by_identity() -> None:
+    """A reassigned base with a forging metaclass must not run its ``__eq__``."""
+
+    calls: list = []
+
+    class Forged(type(boundary._BeamElement), ):
+        def __eq__(cls, other):  # noqa: D105
+            calls.append(1)
+            return True
+
+        __hash__ = type.__hash__
+
+    model, q4, v2d = _mixed_model(2)
+    probe = type("Probe", (), {})
+    original_bases = boundary._BeamElement.__bases__
+    Forged_base = Forged("ForgedBase", (original_bases[0],), {})
+    try:
+        boundary._BeamElement.__bases__ = (Forged_base,)
+    except TypeError:
+        pytest.skip("interpreter refuses base reassignment here")
+    try:
+        assert boundary._mass_classes_are_untouched() is False
+        assert calls == []
+    finally:
+        boundary._BeamElement.__bases__ = original_bases
