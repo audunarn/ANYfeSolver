@@ -185,7 +185,7 @@ def _evaluate_transverse_event(pair, start, history, translations, angular, shel
     if ((not opening and (not g0>padding or not g1<-padding)) or
             (opening and (not g0<-padding or not (g1>padding or exact_release_endpoint)))):
         raise ValueError('first-touch needs resolved open and closed endpoints')
-    alpha=brentq(root_gap,0.,1.,xtol=4*np.finfo(float).eps,rtol=4*np.finfo(float).eps,maxiter=64)
+    alpha=brentq(root_gap,0.,1.,xtol=4*np.finfo(float).eps,rtol=4*np.finfo(float).eps,maxiter=512)
     if abs(gap(alpha))>padding:
         raise ValueError('first-touch root residual unresolved')
     if opening:

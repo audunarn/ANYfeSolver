@@ -556,3 +556,43 @@ def test_saved_native_active_checkpoint_continues_second_load(tmp_path):
     (folder/'restored_stage.json').write_text(json.dumps(dict(stage='second_load_accepted',sequence=transaction.accepted.sequence)))
     (folder/'second_checkpoint.json').write_bytes(transaction.checkpoint())
     assert transaction.accepted.sequence==2
+
+
+def test_friction_integral_edge_one_ulp_inside_panel_edge_resolves():
+    # Saved from the Haswell-kernel run of the coupled active-rebase test: a
+    # captured-pose front root fell one binary64 below the panel edge 0.8, so
+    # the interval (0.7999999999999999, 0.8) had no representable interior
+    # coordinate and the solve refused. Whether the root lands on the edge or
+    # one ulp inside is last-bit BLAS rounding, not physics.
+    import json
+    from pathlib import Path
+    import anyfesolver.general_contact.native_surface_friction_integral as module
+    from anyfesolver.general_contact.native_surface_history import NativeSurfaceHistoryField,NativeSurfaceMotionSegment
+    from anyfesolver.general_contact.native_surface_s3_friction import NativeS3MaterialConfiguration
+    saved=json.loads((Path(__file__).parent/'data/native_friction_adjacent_edge_rejected_path.json').read_text())
+    _,bridge=_replay_patch()
+    field=NativeSurfaceHistoryField(bridge.pair,
+        NativeS3MaterialConfiguration(**{k:np.asarray(v) for k,v in saved['initial'].items()}),
+        tuple(NativeSurfaceMotionSegment(**{k:np.asarray(v) for k,v in s.items()}) for s in saved['segments']),
+        maximum_intervals=saved['maximum_intervals'])
+    settings=module.NativeSurfaceFrictionIntegrationSettings(**saved['settings'])
+    result=module.integrate_material_friction(field,settings,_front_uncertainty=1e-7,
+        _local_front_strips=True,_variable_endpoint_branches=True)
+    assert np.all(np.isfinite(result.value if hasattr(result,'value') else 0.))
+    assert result.diagnostics['maximum_scaled_error_estimate']<=1.
+
+
+def test_drop_unresolvable_edges_only_removes_sub_resolution_interior_edges():
+    from anyfesolver.general_contact.native_surface_friction_integral import _drop_unresolvable_edges
+    def up(x,n):
+        for _ in range(n):x=float(np.nextafter(x,1.))
+        return x
+    def down(x,n):
+        for _ in range(n):x=float(np.nextafter(x,0.))
+        return x
+    assert _drop_unresolvable_edges([.2,down(.8,1),.8],.2,.8)==[.2,.8]
+    assert _drop_unresolvable_edges([.2,down(.8,3),.8],.2,.8)==[.2,.8]
+    assert _drop_unresolvable_edges([.2,up(.2,2),.5,.8],.2,.8)==[.2,.5,.8]
+    ordinary=[.2,.5,.8-1e-12,.8]
+    assert _drop_unresolvable_edges(ordinary,.2,.8)==ordinary
+    assert _drop_unresolvable_edges([.2,.8],.2,.8)==[.2,.8]

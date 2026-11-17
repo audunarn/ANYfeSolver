@@ -29,6 +29,24 @@ def _interior_material_coordinate(left,right,node,*,allow_rounding=False):
     return value
 
 
+def _drop_unresolvable_edges(edges,left,right):
+    """Remove interior edges within the binary64 resolution floor of a neighbour.
+
+    The floor (8 eps, scaled) is the one the front-cut merge already uses.
+    """
+    eps=np.finfo(float).eps
+    kept=[edges[0]]
+    for position in range(1,len(edges)):
+        edge=edges[position]
+        if edge==right or edge==left:
+            kept.append(edge);continue
+        following=edges[position+1]
+        if (edge-kept[-1]<=8.*eps*max(1.,abs(edge)) or following-edge<=8.*eps*max(1.,abs(edge))):
+            continue
+        kept.append(edge)
+    return kept
+
+
 def _captured_front_crossing_angles(coefficients,left,right,lower,upper):
     """Partition hints at crossings of two affine captured-pose fronts.
 
@@ -1078,6 +1096,15 @@ def integrate_material_friction(field,settings,*,_front_uncertainty=None,_local_
                         roots.update(x for x in _resolved_yield_margin_cuts(cell,angle,edges)
                             if left<x<right)
                         edges=sorted(roots)
+            # A cut within 8 binary64 steps of a neighbouring edge bounds an
+            # interval below the coordinate resolution floor of the rule nodes. Whether a
+            # computed front root lands on the panel edge or one ulp inside is
+            # decided by last-bit rounding (BLAS kernel, platform), so such an
+            # interior edge is dropped exactly as the sub-resolution pairs
+            # above are: the kink then lies within the coordinate-rounding
+            # scale the rule already applies to every node. Panel edges and
+            # intervals with any interior coordinate are never altered.
+            edges=_drop_unresolvable_edges(edges,left,right)
             for x0,x1 in zip(edges[:-1],edges[1:]):
                 if _local_front_strips:
                     from .native_surface_front import prepared_front_open_interval
