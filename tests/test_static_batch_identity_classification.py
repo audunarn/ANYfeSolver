@@ -108,3 +108,57 @@ def test_model_state_never_hashes_foreign_classes() -> None:
     log.clear()
     sb._model_state(model)
     assert log == []
+
+
+def _metaclass_hooks():
+    """Instances whose metaclass defines __mro__ / __dict__ properties."""
+
+    hit: list = []
+
+    class Meta(type):
+        @property
+        def __mro__(cls):  # noqa: D401
+            hit.append("mro")
+            return (cls, object)
+
+        @property
+        def __dict__(cls):  # noqa: D401
+            hit.append("dict")
+            return {}
+
+    class Hooked(metaclass=Meta):
+        pass
+
+    return Hooked, hit
+
+
+def test_metaclass_mro_and_dict_properties_are_never_run() -> None:
+    cls, hit = _metaclass_hooks()
+    # _plain_state: the instance is opaque, nothing from the metaclass runs.
+    state = sb._plain_state(cls())
+    assert hit == [] and state[0] is cls
+    # _snapshot_plain_load: a foreign object in a load is refused without inspection.
+    case = LoadCase("hooked")
+    case.pressure_loads = {1: cls()}
+    assert sb._snapshot_plain_load(case) == (False, None)
+    assert hit == []
+    # class fingerprints and the model witness read slots, not the properties
+    assert sb._class_state(cls)
+    model, q4, v2d = _mixed_model(2)
+    element = cls()
+    element.element_id = 99
+    model.mesh.elements[99] = element
+    sb._model_state(model)
+    assert hit == []
+
+
+def test_ordinary_class_inspection_is_unchanged() -> None:
+    class Plain:
+        x = 1
+
+    assert sb._class_mro(Plain) == Plain.__mro__
+    assert sb._class_namespace(Plain).get("x") == 1
+    assert sb._namespace_of(Plain()) == {}
+    plain = Plain()
+    plain.y = 2
+    assert sb._namespace_of(plain) == {"y": 2}

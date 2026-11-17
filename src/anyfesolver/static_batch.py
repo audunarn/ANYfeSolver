@@ -59,6 +59,20 @@ def _one_of(kind: Any, kinds: tuple) -> bool:
     return any(kind is candidate for candidate in kinds)
 
 
+_TYPE_MRO = type.__dict__["__mro__"]
+_TYPE_DICT = type.__dict__["__dict__"]
+
+
+def _class_mro(cls: Any) -> tuple:
+    """``cls.__mro__`` read from the slot, never through a metaclass property."""
+    return _TYPE_MRO.__get__(cls)
+
+
+def _class_namespace(cls: Any) -> Any:
+    """The class namespace read from the slot, never through a metaclass ``__dict__``."""
+    return _TYPE_DICT.__get__(cls)
+
+
 def _namespace_of(value: Any) -> Any:
     """The instance namespace of an ordinary object, without running its code.
 
@@ -66,16 +80,17 @@ def _namespace_of(value: Any) -> Any:
     The class MRO is inspected statically: only the interpreter's own
     ``__dict__`` slot descriptor is followed; any other definition is refused.
     """
-    for base in type.__getattribute__(type(value), "__mro__"):
-        descriptor = type.__getattribute__(base, "__dict__").get("__dict__")
+    for base in _class_mro(type(value)):
+        descriptor = _class_namespace(base).get("__dict__")
         if descriptor is not None:
             if type(descriptor) is not types.GetSetDescriptorType:
                 return None
             break
     try:
-        return object.__getattribute__(value, "__dict__")
+        namespace = object.__getattribute__(value, "__dict__")
     except AttributeError:
         return None
+    return namespace if type(namespace) is dict else None
 
 
 def _snapshot_plain_load(load: Any) -> tuple[bool, Any]:
@@ -151,10 +166,10 @@ def _callable_state(function: Any, seen: Optional[set[int]] = None) -> Any:
 
 def _class_state(cls: type) -> Any:
     result = []
-    for base in cls.__mro__:
+    for base in _class_mro(cls):
         # Sorted by name: deleting and re-adding an attribute reorders a class
         # dict without changing the class; the members themselves are compared.
-        for name, value in sorted(vars(base).items(), key=lambda item: str(item[0])):
+        for name, value in sorted(_class_namespace(base).items(), key=lambda item: str(item[0])):
             if name == "__slotnames__":
                 # copy/pickle cache this on a class at its first use
                 # (copyreg._slotnames); a deep copy is not a class change.
@@ -192,7 +207,10 @@ def _model_state(model: Any) -> Any:
         return k not in derived
 
     def _element_namespace(element):
-        items = [(k, v) for k, v in vars(element).items() if _witnessed(k, v)]
+        namespace = _namespace_of(element)
+        if namespace is None:  # no statically readable instance namespace
+            return (type(element), id(element))
+        items = [(k, v) for k, v in dict.items(namespace) if _witnessed(k, v)]
         # Rebuilding a dict would hash a non-str key (foreign ``__hash__``).
         return dict(items) if all(type(k) is str for k, _v in items) else tuple(items)
 

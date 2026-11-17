@@ -180,3 +180,16 @@ test above, identical on 99820deff). Barge was machine-load dependent this round
 5.8-5.9 s, gravity 14.7-15.2 s; the PREVIOUS commit 89086dd7e measured back to back in the same load: 126.3 s, 6.97 s, 18.15 s
 (so no regression from round 4; quiet-machine numbers were 76.5 s, 4.09 s, 10.99 s in round 3). Hashes unchanged
 (`28641c0fe4510b17`/`f945cd604b2defed`, `316eda3ddf369689`, `8c704b393b5bc227`). The double advance cost 0.126 us per V2D write.
+
+## Round 5: metaclass descriptors in static_batch
+Every inspection of an unvalidated object's class in `static_batch.py` now reads the interpreter slots
+(`type.__dict__["__mro__"].__get__`, `type.__dict__["__dict__"].__get__`) instead of `type.__getattribute__`/`cls.__mro__`/`vars(cls)`,
+which run a metaclass property:
+* `_namespace_of` (MRO walk and per-base `__dict__` lookup): FIXED (`_class_mro`, `_class_namespace`); result must be an exact `dict`.
+* `_class_state` (`cls.__mro__`, `vars(base)`): FIXED (same helpers).
+* `_model_state` element namespace (`vars(element)` ran an element's `__dict__` property): FIXED (`_namespace_of`; unreadable -> opaque
+  `(type, id)` entry).
+* Unchanged, verified: `type(x)` one-argument calls (run no code); `getattr(mesh, ...)` on the model's own `FEMesh`;
+  `getattr(iterator, "close")` (the caller's own iterator, deliberately invoked, not a classification).
+Tests: `test_metaclass_mro_and_dict_properties_are_never_run` (goes through `_plain_state`, `_snapshot_plain_load`, `_class_state`,
+`_model_state`; fails on d27928b93), `test_ordinary_class_inspection_is_unchanged`.
