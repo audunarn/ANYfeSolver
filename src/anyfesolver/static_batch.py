@@ -54,6 +54,30 @@ def _case_failure_boundary(stage: str, case: StaticCase, input_index: int):
             "error": str(error), "original_exception_type": type(error).__name__, **details}) from error
 
 
+def _one_of(kind: Any, kinds: tuple) -> bool:
+    """Identity membership: tuple ``in`` would call a forged metaclass ``__eq__``."""
+    return any(kind is candidate for candidate in kinds)
+
+
+def _namespace_of(value: Any) -> Any:
+    """The instance namespace of an ordinary object, without running its code.
+
+    ``getattr(value, "__dict__")`` would run a foreign ``__getattr__``/property.
+    The class MRO is inspected statically: only the interpreter's own
+    ``__dict__`` slot descriptor is followed; any other definition is refused.
+    """
+    for base in type.__getattribute__(type(value), "__mro__"):
+        descriptor = type.__getattribute__(base, "__dict__").get("__dict__")
+        if descriptor is not None:
+            if type(descriptor) is not types.GetSetDescriptorType:
+                return None
+            break
+    try:
+        return object.__getattribute__(value, "__dict__")
+    except AttributeError:
+        return None
+
+
 def _snapshot_plain_load(load: Any) -> tuple[bool, Any]:
     """Own an exact builtin load without conversion or foreign observations."""
     from .boundary import LoadCase, _exact_load_case_instance_namespace, _plain_numeric_array
@@ -64,11 +88,11 @@ def _snapshot_plain_load(load: Any) -> tuple[bool, Any]:
         return False, None
     refused = object()
     def clone(value: Any) -> Any:
-        if type(value) in (int, float, bool, str, type(None)):
+        if _one_of(type(value), (int, float, bool, str, type(None))):
             return value
         if _plain_numeric_array(value):
             return value.copy()
-        if type(value) in (list, tuple):
+        if _one_of(type(value), (list, tuple)):
             made = [clone(v) for v in value]
             return refused if any(v is refused for v in made) else type(value)(made)
         if type(value) is dict and all(type(k) is int for k in value):
@@ -84,15 +108,15 @@ def _snapshot_plain_load(load: Any) -> tuple[bool, Any]:
 def _plain_state(value: Any, depth: int = 0) -> Any:
     if depth > 8:
         return (type(value), id(value))
-    if type(value) in (str, int, float, bool, type(None)):
+    if _one_of(type(value), (str, int, float, bool, type(None))):
         return value
     if type(value) is np.ndarray:
         return (value.shape, value.dtype.str, value.tobytes())
     if type(value) is dict:
         return tuple((_plain_state(k, depth + 1), _plain_state(v, depth + 1)) for k, v in value.items())
-    if type(value) in (list, tuple):
+    if _one_of(type(value), (list, tuple)):
         return tuple(_plain_state(v, depth + 1) for v in value)
-    namespace = getattr(value, "__dict__", None)
+    namespace = _namespace_of(value)
     return (type(value), id(value), _plain_state(namespace, depth + 1))
 
 
@@ -140,7 +164,7 @@ def _class_state(cls: type) -> Any:
             elif type(value) is property:
                 state = (id(value), _callable_state(value.fget),
                          _callable_state(value.fset), _callable_state(value.fdel))
-            elif type(value) in (staticmethod, classmethod):
+            elif _one_of(type(value), (staticmethod, classmethod)):
                 state = _callable_state(value.__func__)
             else:
                 state = (type(value), id(value))
@@ -159,15 +183,26 @@ def _model_state(model: Any) -> Any:
     import weakref
 
     def _witnessed(k, v):
+        if type(k) is not str:
+            return True  # never hash or compare an unvalidated key
         if k == _V2D_LEASE_EPOCHS_KEY:
             # Only the capture's own weak-reference list is bookkeeping; any
             # other value under that name stays part of the witness.
             return not (type(v) is list and all(type(i) is weakref.ref for i in v))
         return k not in derived
 
-    element_state = tuple((element_id, id(element), _plain_state({k: v for k, v in vars(element).items()
-        if _witnessed(k, v)})) for element_id, element in mesh.elements.items())
-    classes = tuple(dict.fromkeys(type(e) for e in mesh.elements.values()))
+    def _element_namespace(element):
+        items = [(k, v) for k, v in vars(element).items() if _witnessed(k, v)]
+        # Rebuilding a dict would hash a non-str key (foreign ``__hash__``).
+        return dict(items) if all(type(k) is str for k, _v in items) else tuple(items)
+
+    element_state = tuple((element_id, id(element), _plain_state(_element_namespace(element)))
+                          for element_id, element in mesh.elements.items())
+    classes = []
+    for element in mesh.elements.values():
+        if not any(type(element) is known for known in classes):  # identity, no hash/eq
+            classes.append(type(element))
+    classes = tuple(classes)
     revisions = tuple((k, v) for k, v in model.revision_signature().items() if k not in {"load", "result_state"})
     return (id(model), id(mesh), revisions, element_state,
             tuple(_class_state(cls) for cls in classes),

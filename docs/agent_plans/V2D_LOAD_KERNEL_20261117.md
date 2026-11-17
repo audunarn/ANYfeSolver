@@ -150,3 +150,33 @@ runs and no other thread mutates V2D elements.
 * Accepted limit (owner decision, no lock added): a second thread capturing between a writer's pre- and post-advance while that
   writer replaces or deletes the bookkeeping attribute can lose its subscription. Needs two threads mutating V2D elements during
   a capture, which the contract above excludes.
+
+* Accepted limit (owner decision, round 4): deliberate tampering with the exposed bookkeeping state is outside the trust contract,
+  in the same category as `object.__setattr__`, direct `__dict__` writes and `vars().update`: in-place `list.clear()` / slice
+  deletion of `_qualified_v2d_lease_epochs`, resetting an exposed epoch's `value`, plus the bypasses listed under "Not covered"
+  above. Such tampering needs the same control as foreign code. The storage was deliberately not restructured.
+
+## static_batch enumeration (round 4; all now identity-classified)
+Inside the core trusted span: none (the span is the kernel, the V2D guard and the load-vector assembly). Upstream/outside the span but
+on the load-input and preparation-witness path: all sites below.
+* `_snapshot_plain_load.clone` (`type(v) in (int, float, ...)`, `in (list, tuple)`): FIXED to identity; a forged scalar/container makes
+  the snapshot refuse. Ordinary loads clone exactly as before (`test_snapshot_of_ordinary_loads_is_unchanged`).
+* `_plain_state` (`in (str, int, ...)`, `in (list, tuple)`): FIXED to identity; forged objects fall through to the opaque
+  `(type, id, namespace)` form, never returned as plain.
+* `_plain_state` `getattr(value, "__dict__", None)`: FIXED -> `_namespace_of` (static MRO inspection; only the interpreter's
+  `__dict__` slot descriptor is followed, a foreign property/`__getattr__` is not run; such objects get namespace `None`).
+* `_class_state` `type(value) in (staticmethod, classmethod)`: FIXED to identity.
+* `_model_state` `dict.fromkeys(type(e) ...)` (hash/eq of foreign classes): FIXED (identity de-duplication).
+* `_model_state` element namespace rebuild `{k: v ...}` (hashes keys) and `k not in derived`: FIXED (non-str keys stay in the witness,
+  never hashed; the namespace dict is rebuilt only when every key is an exact str).
+* Unchanged, verified: `revision_signature().items()` and `k not in {"load", "result_state"}` (package-owned str keys);
+  `_callable_state` (`type(function) is`, ids only); `node.x/y/z` and `tuple(node.dofs)` on mesh nodes (reads on package `Node`s
+  whose class authority the lease already proves for the load path; witness-only elsewhere).
+Tests: `tests/test_static_batch_identity_classification.py` (5 of 6 fail on 89086dd7e).
+
+## Round 4 measurements
+Tests: 22 files (11 targeted + kernel + static_batch + V2D families): 436 passed, 1 skipped (pypardiso), 1 failed (the missing-git-object
+test above, identical on 99820deff). Barge was machine-load dependent this round: this commit prepare 104.8/106.8 s, pressure 1,404
+5.8-5.9 s, gravity 14.7-15.2 s; the PREVIOUS commit 89086dd7e measured back to back in the same load: 126.3 s, 6.97 s, 18.15 s
+(so no regression from round 4; quiet-machine numbers were 76.5 s, 4.09 s, 10.99 s in round 3). Hashes unchanged
+(`28641c0fe4510b17`/`f945cd604b2defed`, `316eda3ddf369689`, `8c704b393b5bc227`). The double advance cost 0.126 us per V2D write.

@@ -408,6 +408,9 @@ class NativeParityE4PLS3V2DShellElement(
         # while this write replaces/deletes the subscription list can lose
         # its subscription; a trusted span assumes no other thread mutates
         # V2D elements.
+        # Deliberate tampering with the exposed list (clear/slice delete, epoch.value
+        # reset) is likewise outside the contract, like object.__setattr__ or direct
+        # __dict__ writes (see the note).
         _advance(self, name, value)
         super().__setattr__(name, value)
         _advance(self, name, value)

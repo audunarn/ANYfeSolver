@@ -710,11 +710,13 @@ def _pause_writer_at_advance_return(element, new_thickness):
 
     target = module._advance_v2d_lease_epochs.__code__
     reached, release = threading.Event(), threading.Event()
+    expired: list = []
 
     def local(frame, event, arg):
         if event == "return":
             reached.set()
-            release.wait(10)
+            if not release.wait(10):
+                expired.append(1)
         return local
 
     def tracer(frame, event, arg):
@@ -730,6 +732,7 @@ def _pause_writer_at_advance_return(element, new_thickness):
             _sys.settrace(None)
 
     thread = threading.Thread(target=writer)
+    thread.waits_expired = expired  # type: ignore[attr-defined]
     thread.start()
     assert reached.wait(10)
     return thread, release
@@ -746,11 +749,13 @@ def test_capture_during_an_in_flight_write_never_misses_the_write() -> None:
     victim = model.mesh.elements[v2d[-1]]  # not the representative element
     thread, release = _pause_writer_at_advance_return(victim, 0.02)
     guard = _capture_qualified_v2d_trusted_authority(items, context="paused writer")
+    assert guard is not None  # a declined capture would make this test vacuous
     seen_at_capture = victim.thickness
     release.set()
     thread.join(10)
+    assert not thread.is_alive() and not thread.waits_expired  # type: ignore[attr-defined]
     assert victim.thickness == 0.02
-    if guard is not None and seen_at_capture != victim.thickness:
+    if seen_at_capture != victim.thickness:
         with pytest.raises(ElementCapabilityError):
             guard(context="after the write")
 
@@ -786,11 +791,10 @@ def test_class_authority_compares_mro_by_identity() -> None:
     probe = type("Probe", (), {})
     original_bases = boundary._BeamElement.__bases__
     Forged_base = Forged("ForgedBase", (original_bases[0],), {})
+    # Precondition: base reassignment works here (a TypeError fails the test).
+    boundary._BeamElement.__bases__ = (Forged_base,)
     try:
-        boundary._BeamElement.__bases__ = (Forged_base,)
-    except TypeError:
-        pytest.skip("interpreter refuses base reassignment here")
-    try:
+        assert boundary._BeamElement.__mro__[1] is Forged_base
         assert boundary._mass_classes_are_untouched() is False
         assert calls == []
     finally:
@@ -810,13 +814,15 @@ def _pause_writer_at(action, event_kind, nth):
     target = module._advance_v2d_lease_epochs.__code__
     reached, release = threading.Event(), threading.Event()
     seen = {"call": 0, "return": 0}
+    expired: list = []
 
     def local(frame, event, arg):
         if event == "return":
             seen["return"] += 1
             if event_kind == "return" and seen["return"] == nth:
                 reached.set()
-                release.wait(10)
+                if not release.wait(10):
+                    expired.append(1)
         return local
 
     def tracer(frame, event, arg):
@@ -825,7 +831,8 @@ def _pause_writer_at(action, event_kind, nth):
         seen["call"] += 1
         if event_kind == "call" and seen["call"] == nth:
             reached.set()
-            release.wait(10)
+            if not release.wait(10):
+                expired.append(1)
         return local
 
     def writer():
@@ -838,6 +845,7 @@ def _pause_writer_at(action, event_kind, nth):
             _sys.settrace(None)
 
     thread = threading.Thread(target=writer)
+    thread.waits_expired = expired  # type: ignore[attr-defined]
     thread.start()
     assert reached.wait(10)
     return thread, release
@@ -866,6 +874,7 @@ def test_existing_lease_rejects_a_visible_write_at_every_pause_point(event_kind,
     finally:
         release.set()
         thread.join(10)
+    assert not thread.is_alive() and not thread.waits_expired  # type: ignore[attr-defined]
     assert victim.thickness == 0.02
     with pytest.raises(ElementCapabilityError):
         guard(context="after the write")
