@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+import sys
 from pathlib import Path
 
 
@@ -69,18 +70,31 @@ def test_profile_bindings_and_registered_timeout_members() -> None:
 
 
 def test_pressure_surface_traversal_uses_captured_constant_time_guard() -> None:
-    source_path = ROOT / "src" / "anyfesolver" / "matrix_assembly.py"
-    source = source_path.read_text(encoding="utf-8")
-    function_start = source.index("def _qualified_s3_pressure_surface_records(")
-    function_end = source.index("\ndef _assemble_load_vector_under_lease(", function_start)
-    body = source[function_start:function_end]
-    assert "qualified_runtime_guard: Any" in body
-    assert '"_qualified_trusted_input_require"' in body
-    assert "trusted_input_guard(model, context=context)" in body
-    assert "lifecycle_guard(model, context=context)" in body
-    assert "qualified_runtime_guard(model, context=context)" in body
-    caller = source[function_end : source.index("\ndef assemble_load_vector(", function_end)]
-    assert "qualified_runtime_guard=qualified_runtime_guard" in caller
+    # Original intent (a source-text assertion that broke when e593afe02 made the
+    # caller's guard argument conditional): the pressure-surface traversal must
+    # observe each record through a captured constant-time guard, never through
+    # one complete model-wide lifecycle scan per S3 pressure record, which made
+    # the diagnostic quadratic in mesh size.  Asserted behaviourally: the number
+    # of complete scans over the whole model does not grow with the number of
+    # S3 V2D pressure elements on the owned-kernel route.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        from test_load_kernel_v2d_pressure_acceleration import (
+            _count_scans,
+            _mixed_model,
+            _pressure_case,
+        )
+    finally:
+        sys.path.pop(0)
+    counts = []
+    records = []
+    for pairs in (3, 12):
+        model, q4, v2d = _mixed_model(pairs)
+        scans, (_vector, info) = _count_scans(model, _pressure_case(q4, v2d))
+        counts.append(scans)
+        records.append(len(info["qualified_s3_pressure_surfaces"]))
+    assert records == [6, 24]
+    assert 0 < counts[0] and counts[1] <= counts[0] + 2, counts
 
 
 def test_equivalence_pair_is_preserved_and_nonclassifying() -> None:

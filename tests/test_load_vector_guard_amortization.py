@@ -149,11 +149,17 @@ def test_foreign_load_case_subclass_keeps_every_complete_guard(
 def test_generic_element_pressure_keeps_the_complete_closing_guard(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    model, ids = _model()
-    case = LoadCase("generic")
-    case.pressure_loads[ids["beam"]] = 1.0e3
-    assert (
-        boundary._run_foreign_code_free_load_vector(
+    """Two halves.
+
+    Original intent: a pressure entry on a generic element is refused by the
+    owned kernel and the complete guard closes the span.  An exact package
+    ``BeamElement`` is no longer generic for pressure: it carries exactly zero
+    pressure (two-node fallback) under the class-snapshot proof, so it is
+    admitted.  Any other class (here a subclass) keeps the complete guard.
+    """
+
+    def run_kernel(model: FEModel, case: LoadCase) -> Any:
+        return boundary._run_foreign_code_free_load_vector(
             case,
             model.mesh,
             model.mesh.dof_manager,
@@ -162,8 +168,30 @@ def test_generic_element_pressure_keeps_the_complete_closing_guard(
             None,
             stage_guard=lambda *, stage: None,
         )
-        is None
+
+    # Half 1: the exact beam is admitted with an exactly-zero contribution.
+    model, ids = _model()
+    case = LoadCase("exact-beam")
+    case.pressure_loads[ids["beam"]] = 1.0e3
+    owned = run_kernel(model, case)
+    assert owned is not None and not np.any(owned)
+    assert owned.tobytes() == np.asarray(
+        case.get_load_vector(model.mesh, model.mesh.dof_manager, model.get_material),
+        dtype=float,
+    ).tobytes()
+
+    # Half 2: a generic (non-exact) element keeps the complete closing guard.
+    class GenericBeam(BeamElement):
+        pass
+
+    model, ids = _model()
+    old = model.mesh.elements[ids["beam"]]
+    model.mesh.elements[ids["beam"]] = GenericBeam(
+        4, [3, 4], "steel", cross_section=dict(old.cross_section)
     )
+    case = LoadCase("generic")
+    case.pressure_loads[ids["beam"]] = 1.0e3
+    assert run_kernel(model, case) is None
     calls = _count_lifecycle_guard(monkeypatch)
     assemble_load_vector(model, case)
     assert len(calls) >= 3, calls

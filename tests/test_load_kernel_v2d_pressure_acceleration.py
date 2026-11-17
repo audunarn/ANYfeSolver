@@ -414,3 +414,109 @@ def test_v2d_trusted_capture_does_not_change_the_source_witness() -> None:
     before = capture_source_witness(model)
     assemble_load_vector(model, _pressure_case(q4, v2d))
     assert capture_source_witness(model) == before
+
+
+# --- the admission must not be wider than the exact package classes ----------
+
+
+def _pressure_on_beam_case(beam_id: int) -> LoadCase:
+    case = LoadCase("beam-pressure")
+    case.pressure_loads = {beam_id: 1.0}
+    return case
+
+
+def test_beam_subclass_is_refused_and_takes_the_public_route() -> None:
+    from anyfesolver.elements import BeamElement
+
+    model, q4, v2d = _mixed_model(2)
+    beam_id, _c = _add_beam_and_coupling(model)
+
+    class SubBeam(BeamElement):
+        pass
+
+    old = model.mesh.elements[beam_id]
+    model.mesh.elements[beam_id] = SubBeam(
+        beam_id, list(old.node_ids), "steel", cross_section=dict(old.cross_section)
+    )
+    assert _call_kernel(model, _pressure_on_beam_case(beam_id), v2d_authority=True) is None
+
+
+def test_metaclass_equality_and_class_spoof_are_refused() -> None:
+    from anyfesolver.elements import BeamElement
+
+    class AlwaysEqual(type(BeamElement)):
+        def __eq__(cls, other):  # noqa: D105
+            return True
+
+        __hash__ = type.__hash__
+
+    model, q4, v2d = _mixed_model(2)
+    beam_id, _c = _add_beam_and_coupling(model)
+    old = model.mesh.elements[beam_id]
+    forged_cls = AlwaysEqual("Forged", (BeamElement,), {})
+    forged = forged_cls(beam_id, list(old.node_ids), "steel", cross_section=dict(old.cross_section))
+    model.mesh.elements[beam_id] = forged
+    case = _pressure_on_beam_case(beam_id)
+    assert _call_kernel(model, case, v2d_authority=True) is None
+    # A ``__class__`` property that claims to be the exact class is not the type.
+    spoof_cls = type("Spoof", (BeamElement,), {"__class__": property(lambda self: BeamElement)})
+    spoof = spoof_cls(beam_id, list(old.node_ids), "steel", cross_section=dict(old.cross_section))
+    model.mesh.elements[beam_id] = spoof
+    assert _call_kernel(model, case, v2d_authority=True) is None
+    # The same metaclass trick against a V2D slot of the owned types.
+    model2, q4b, v2db = _mixed_model(2)
+    victim = model2.mesh.elements[v2db[0]]
+    victim.__class__ = type(
+        "ForgedV2D",
+        (type(victim),),
+        {},
+        )
+    assert _call_kernel(model2, _pressure_case(q4b, v2db), v2d_authority=True) is None
+
+
+def test_beam_with_non_plain_instance_state_is_refused() -> None:
+    model, q4, v2d = _mixed_model(2)
+    beam_id, coupling_id = _add_beam_and_coupling(model)
+    for element_id in (beam_id, coupling_id):
+        case = _pressure_on_beam_case(element_id)
+        assert _call_kernel(model, case, v2d_authority=True) is not None
+        element = model.mesh.elements[element_id]
+        object.__setattr__(element, "hostile", object())
+        assert _call_kernel(model, case, v2d_authority=True) is None
+        del element.__dict__["hostile"]
+        assert _call_kernel(model, case, v2d_authority=True) is not None
+        # A node-id list holding a non-int is refused as well.
+        saved = element.node_ids
+        object.__setattr__(element, "node_ids", [saved[0], float(saved[1])])
+        assert _call_kernel(model, case, v2d_authority=True) is None
+        object.__setattr__(element, "node_ids", saved)
+
+
+def test_v2d_subclass_pressure_and_acceleration_are_refused() -> None:
+    from anyfesolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
+
+    model, q4, v2d = _mixed_model(2)
+    forged = type("SubV2D", (NativeParityE4PLS3V2DShellElement,), {})
+    model.mesh.elements[v2d[0]].__class__ = forged
+    assert _call_kernel(model, _pressure_case(q4, v2d), v2d_authority=True) is None
+    assert _call_kernel(model, _gravity_case(model), v2d_authority=True) is None
+
+
+def test_mixed_q4_v2d_beam_coupling_hashes_equal_the_public_route() -> None:
+    import hashlib
+
+    model, q4, v2d = _mixed_model(4)
+    beam_id, coupling_id = _add_beam_and_coupling(model)
+    pressure = _pressure_case(q4, v2d)
+    pressure.pressure_loads[beam_id] = 2.0e3
+    pressure.pressure_loads[coupling_id] = 2.0e3
+    gravity = _gravity_case(model)
+    mixed = _gravity_case(model)
+    mixed.pressure_loads = dict(pressure.pressure_loads)
+    for case in (pressure, gravity, mixed):
+        owned, _info = assemble_load_vector(model, case)
+        public = case.get_load_vector(
+            model.mesh, model.mesh.dof_manager, model.get_material
+        )
+        digest = lambda a: hashlib.sha256(np.asarray(a, dtype=float).tobytes()).hexdigest()
+        assert digest(owned) == digest(public), case.name

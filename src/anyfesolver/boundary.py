@@ -1349,7 +1349,7 @@ def _builtin_acceleration_inputs(state: dict, mesh_state: dict, material_getter:
         for kind in mass_kinds
     }
     for element in dict.values(elements):
-        if type(element) not in mass_kinds:
+        if not _type_is_one_of(type(element), mass_kinds):
             return False
         data = object.__getattribute__(element, "__dict__")
         if type(data) is not dict or not all(type(key) is str for key in data):
@@ -1369,6 +1369,11 @@ def _builtin_acceleration_inputs(state: dict, mesh_state: dict, material_getter:
     return True
 
 
+def _type_is_one_of(kind: Any, kinds: tuple) -> bool:
+    """Identity membership: ``in`` would call a forged metaclass ``__eq__``."""
+    return any(kind is candidate for candidate in kinds)
+
+
 _NATIVE_PRESSURE_HOOKS = ("compute_native_dead_pressure_load",
                           "compute_native_current_pressure_load")
 
@@ -1386,7 +1391,8 @@ def _two_node_element_takes_exact_zero_pressure(element: Any) -> bool:
     """
 
     kind = type(element)
-    if kind not in (_BeamElement, _CoupledBeamShellElement) or not _mass_classes_are_untouched():
+    if (not _type_is_one_of(kind, (_BeamElement, _CoupledBeamShellElement))
+            or not _mass_classes_are_untouched()):
         return False
     class_names = {name for owner in type.__getattribute__(kind, "__mro__")
                    for name in type.__getattribute__(owner, "__dict__")}
@@ -1592,7 +1598,7 @@ def _run_foreign_code_free_load_vector(
     if v2d_authority:
         owned_load_types += (_NativeParityE4PLS3V2DShellElement,)
     for element in dict.values(elements):
-        if type(element) in owned_load_types:
+        if _type_is_one_of(type(element), owned_load_types):
             continue  # Owned epoch-tracked metaclasses; never the fibre family.
         if type(type(element)) not in (type, ABCMeta):
             return None
@@ -1614,7 +1620,7 @@ def _run_foreign_code_free_load_vector(
             element = dict.get(elements, element_id)
             if (
                 element is not None
-                and type(element) not in owned_load_types
+                and not _type_is_one_of(type(element), owned_load_types)
                 and not (
                     source is state["pressure_loads"]
                     and _two_node_element_takes_exact_zero_pressure(element)
