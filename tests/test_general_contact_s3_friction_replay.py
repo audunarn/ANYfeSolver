@@ -194,6 +194,7 @@ def test_hidden_patch_crossing_and_nonfinite_work_reject_without_commit():
     assert capped.checkpoint_state()==before
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("normal_guide",(False,True))
 def test_partial_overlap_coupled_workflow_and_split_restart(monkeypatch,tmp_path,normal_guide):
     # The ordinary actual-pressure route intrinsically exceeds the committed
@@ -206,10 +207,12 @@ def test_partial_overlap_coupled_workflow_and_split_restart(monkeypatch,tmp_path
     _partial_overlap_coupled_workflow(monkeypatch,tmp_path,normal_guide,prepared_partial=True)
 
 
+@pytest.mark.slow
 def test_partial_overlap_coupled_full_workflow(monkeypatch,tmp_path):
     _partial_overlap_coupled_workflow(monkeypatch,tmp_path,False,split_restart=False,prepared_partial=True)
 
 
+@pytest.mark.slow
 def test_partial_overlap_saved_reference_split_restart(monkeypatch,tmp_path):
     reference=Path(__file__).resolve().parents[1]/(
         'docs/d1_review_support/contact_c5_s3_partial_replay_20261002/separation_full_v1_vk_s3r1_checkpoint.json')

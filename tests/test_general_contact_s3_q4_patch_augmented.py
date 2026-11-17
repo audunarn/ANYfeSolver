@@ -3,6 +3,7 @@
 from dataclasses import replace
 
 import numpy as np
+import pytest
 
 from anyfesolver import (
     BoundaryCondition, ContactPathControl, ContactPathProgram,
@@ -125,6 +126,7 @@ def _path_case():
     return model, definition, settings, program
 
 
+@pytest.mark.slow
 def test_mixed_projected_path_updates_and_restarts():
     model, definition, settings, program = _path_case()
     common = dict(contact=definition, contact_settings=settings,

@@ -256,8 +256,16 @@ def test_explicit_stiffer_penalty_clipped_reference_preflight():
     assert minimum>=-2.e-5
 
 
-def test_moving_clipped_overlap_with_explicit_enforcement_matches_coupled_reference(*,solver_controls=demo['CONTROLS'],
-        record_name='clipped_s3_coupled.json'):
+# Full horizon of the coupled transient (120+ steps, ~20 min). The ordinary tests use the
+# shortened horizon below, which still contains the first two localized contact events
+# (t=1.0629e-3 s and 1.0952e-3 s), active pressure states and cutbacks, and every assertion
+# of the full scenario; the full horizon runs in the opt-in slow tier.
+FULL_DURATION_S=.003
+SHORT_DURATION_S=.00115
+
+
+def _coupled_reference_check(*,solver_controls=demo['CONTROLS'],
+        record_name='clipped_s3_coupled.json',duration=SHORT_DURATION_S):
     columns=8;stiffness=2.e10;_,_,mass,initial=layout(columns)
     model,definition,modes=demo['build_model'](target_xy=TARGET_XY,source_columns=columns,
         normal_stiffness=stiffness)
@@ -267,7 +275,7 @@ def test_moving_clipped_overlap_with_explicit_enforcement_matches_coupled_refere
     with pytest.raises(ValueError,match='initial penetration'):
         GeneralS3PatchManager(model,definition,demo['_fixture']['SETTINGS'],initial_displacement=modes@initial)
     result=solve_transient_contact(model,definition,
-        TransientConfig(2.5e-5,.003,initial_displacement=modes@initial,
+        TransientConfig(2.5e-5,duration,initial_displacement=modes@initial,
             initial_velocity=modes@np.r_[np.full(len(initial)-3,-.1),np.zeros(3)]),
         contact_settings=demo['_fixture']['SETTINGS'],solver_controls=solver_controls)
     q,v,a=(np.asarray(values)@modes for values in (result.displacements,result.velocities,result.accelerations))
@@ -303,6 +311,15 @@ def test_moving_clipped_overlap_with_explicit_enforcement_matches_coupled_refere
     assert record['swept_minimum_gap_m']>=-2.e-5
     assert record['maximum_momentum_error_kg_m_s']<=1.e-9
     assert active_contact_manager() is None and model_configuration_fingerprint(model)==fingerprint
+
+
+def test_moving_clipped_overlap_with_explicit_enforcement_matches_coupled_reference():
+    _coupled_reference_check()
+
+
+@pytest.mark.slow
+def test_moving_clipped_overlap_with_explicit_enforcement_matches_coupled_reference_full_horizon():
+    _coupled_reference_check(duration=FULL_DURATION_S,record_name='clipped_s3_coupled_full.json')
 
 
 CAPTURED_DT_S=7.8125e-07
@@ -438,6 +455,13 @@ def test_fresh_matched_penetration_is_rejected_even_within_step_gap_budget():
 
 def test_moving_clipped_overlap_polygon_pressure_route_matches_coupled_reference():
     """Same mechanical checks on the separately selected existing polygon route."""
-    test_moving_clipped_overlap_with_explicit_enforcement_matches_coupled_reference(
+    _coupled_reference_check(
         solver_controls=replace(demo['CONTROLS'],normal_s3_polygon_pressure_bounds_dev=True),
         record_name='clipped_s3_coupled_polygon.json')
+
+
+@pytest.mark.slow
+def test_moving_clipped_overlap_polygon_pressure_route_matches_coupled_reference_full_horizon():
+    _coupled_reference_check(
+        solver_controls=replace(demo['CONTROLS'],normal_s3_polygon_pressure_bounds_dev=True),
+        record_name='clipped_s3_coupled_polygon_full.json',duration=FULL_DURATION_S)

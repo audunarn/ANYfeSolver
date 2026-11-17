@@ -38,6 +38,11 @@ def pytest_configure(config):
     directory collection stays with ``pytest_ignore_collect``; retired nodes
     inside active modules stay with the deselection hook below.
     """
+    config.addinivalue_line(
+        "markers",
+        "slow: single test far longer than any ordinary CI test; skipped unless "
+        "--run-slow / ANYSOLVER_RUN_SLOW=1 (runs in the separate slow-tests workflow)",
+    )
     if retirement_policy.opt_in_enabled():
         return
     refused = retirement_policy.retired_explicit_selectors(
@@ -96,8 +101,22 @@ def pytest_ignore_collect(config, collection_path):
     return retirement_policy.is_retired_module(relative)
 
 
+SLOW_ENV = "ANYSOLVER_RUN_SLOW"
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--run-slow", action="store_true", default=False,
+        help="also run tests marked slow (opt-in tier; see .github/workflows/slow-tests.yml)",
+    )
+
+
+def _slow_enabled(config):
+    return bool(config.getoption("--run-slow")) or os.environ.get(SLOW_ENV) == "1"
+
+
 def pytest_collection_modifyitems(config, items):
-    """Deselect retired programme items collected via explicit paths.
+    """Skip opt-in slow tests by default, then deselect retired programme items collected via explicit paths.
 
     Retired nodes inside otherwise active modules are removed here with
     truthful reporting through the pytest deselection hook; their sibling
@@ -105,6 +124,13 @@ def pytest_collection_modifyitems(config, items):
     directory collection ignores them before import and explicit selectors
     are refused in ``pytest_configure``.
     """
+    if not _slow_enabled(config):
+        skip_slow = pytest.mark.skip(
+            reason="opt-in slow tier: run with --run-slow or ANYSOLVER_RUN_SLOW=1"
+        )
+        for item in items:
+            if item.get_closest_marker("slow"):
+                item.add_marker(skip_slow)
     if retirement_policy.opt_in_enabled():
         return
     kept = []

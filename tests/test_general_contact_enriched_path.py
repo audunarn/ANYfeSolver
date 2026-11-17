@@ -53,6 +53,7 @@ def test_public_candidate_failure_retains_genuine_prefix(tmp_path,monkeypatch):
     assert json.loads((output/'failure.json').read_bytes())['owner_accepted_step']==1
 
 
+@pytest.mark.slow
 def test_registered_full364_force8_displacement8_authentic2plus6_public_delivery(record_property, tmp_path):
     root=Path(os.environ.get('ENRICHED_REFERENCE_OUTPUT', tmp_path))/'full364'
     result=complete_paths(root)
