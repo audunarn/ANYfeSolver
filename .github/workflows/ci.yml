@@ -149,6 +149,13 @@ jobs:
           python scripts/run_portable_ci.py --workers 2 --timeout-seconds 2400
           --matrix-shard-index ${{ matrix.shard-index }} --matrix-shard-count 8
           --matrix-subshard-index ${{ matrix.subshard-index }} --matrix-subshard-count 4
+      - name: Retain per-module test durations
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: module-durations-${{ matrix.os }}-${{ matrix.python-version }}-${{ matrix.shard-index }}-${{ matrix.subshard-index }}
+          path: ${{ runner.temp }}/portable-ci-module-durations.json
+          if-no-files-found: ignore
       - name: Retain failed contact replay evidence
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

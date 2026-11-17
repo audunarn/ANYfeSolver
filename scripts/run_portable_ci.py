@@ -155,11 +155,19 @@ PORTABLE_NONQUALIFYING_NODES = (
         "test_real_n20_n40_smoke_is_byte_identical_and_never_claims_a_gate"
     ),
 )
-# File size is a useful default partition proxy, but these integration modules
-# are computationally dense relative to their source size.  Frozen observed
-# costs keep the four existing workers balanced on slower hosted runners; they
-# do not change any test, timeout, or scientific result.
-PORTABLE_MODULE_WEIGHT_OVERRIDES = {
+# Partition weights are predicted CI seconds.  A file-size proxy (2 s + 1 s per
+# 50 kB) covers modules without a measurement; its byte-scale hand overrides
+# below were frozen earlier and are converted with the same formula.  Measured
+# modules use PORTABLE_MODULE_CI_SECONDS: per module, the sum over tests of the
+# median CI duration (call/setup/teardown phases separately) seen in the "slowest 20 durations"
+# blocks of GitHub runs 44048316984, 43950995536 and 43861722899 (all OS/Python
+# cells).  Those blocks list only each pool's 20 slowest tests, so a module sum
+# is a lower bound; only modules with >= 60 s are listed.  Re-tune from the
+# per-module CI artifact (portable-ci-module-durations.json).  Weights only
+# decide pool/shard assignment; they never select, skip or deselect a test.
+PORTABLE_BASE_SECONDS = 2.0
+PORTABLE_BYTES_PER_SECOND = 50_000
+PORTABLE_MODULE_BYTE_WEIGHT_OVERRIDES = {
     "tests/test_beam_shell_verification.py": 250_000,
     "tests/test_corotational.py": 100_000,
     "tests/test_e4_pl_q4_state_lifecycle.py": 160_000,
@@ -170,6 +178,95 @@ PORTABLE_MODULE_WEIGHT_OVERRIDES = {
     "tests/test_fe_solver_nonlinear_static.py": 150_000,
     "tests/test_hht_alpha.py": 100_000,
     "tests/test_mixed_shell_quadrature_grouping.py": 120_000,
+}
+
+PORTABLE_MODULE_CI_SECONDS = {
+    "tests/test_general_contact_s3_q4_patch_augmented.py": 1432,
+    "tests/test_general_contact_q4_s3_patch_static.py": 1330,
+    "tests/test_general_contact_d1_interior_profile.py": 1314,
+    "tests/test_general_contact_native_fibre_pair_static.py": 1189,
+    "tests/test_general_contact_s3_q4_patch_static.py": 1059,
+    "tests/test_general_contact_q4_s3_projected_profile.py": 1036,
+    "tests/test_general_contact_enriched_nonlinear.py": 854,
+    "tests/test_general_contact_mixed_ordinary_augmented.py": 670,
+    "tests/test_general_contact_q4_source_augmented.py": 637,
+    "tests/test_general_contact_native_two_fibre_s3.py": 630,
+    "tests/test_general_contact_transient_q4_plastic.py": 598,
+    "tests/test_general_contact_q4_q4_static.py": 582,
+    "tests/test_general_contact_transient_oblique_q4_plastic.py": 546,
+    "tests/test_general_contact_native_surface_replay_owner.py": 516,
+    "tests/test_general_contact_native_curved_s3_restart.py": 459,
+    "tests/test_general_contact_s3_patch_augmented.py": 444,
+    "tests/test_general_contact_s3_patch_static.py": 383,
+    "tests/test_general_contact_admission_globalization_driver_small_patch.py": 362,
+    "tests/test_s3_r1_qualification_regression.py": 362,
+    "tests/test_general_contact_q4_projected_profile.py": 351,
+    "tests/test_general_contact_linearized_pivot_patch.py": 339,
+    "tests/test_general_contact_transient_plane_events.py": 326,
+    "tests/test_general_contact_coupled_tool_staging.py": 311,
+    "tests/test_general_contact_force_augmented.py": 286,
+    "tests/test_general_contact_native_curved_s3_static.py": 282,
+    "tests/test_general_contact_native_material_s3.py": 272,
+    "tests/test_general_contact_admission_globalization_driver.py": 271,
+    "tests/test_general_contact_native_curved_static.py": 261,
+    "tests/test_general_contact_native_transient_multi_shell.py": 260,
+    "tests/test_general_contact_admission_globalization_final_checks.py": 256,
+    "tests/test_nonlinear_beam_shell_slice3_continuation.py": 252,
+    "tests/test_general_contact_native_retained_body_pair.py": 246,
+    "tests/test_general_contact_hemisphere_cylinder_motion.py": 233,
+    "tests/test_general_contact_q4_q4_augmented.py": 231,
+    "tests/test_general_contact_native_retained_whole_pair.py": 231,
+    "tests/test_general_contact_native_curved_s3_multifacet.py": 220,
+    "tests/test_general_contact_enriched_moment_batch.py": 215,
+    "tests/test_general_contact_native_curved_pair_lifecycle.py": 206,
+    "tests/test_general_contact_native_retained_whole_pair_static.py": 198,
+    "tests/test_general_contact_b2_b3_pair_static.py": 194,
+    "tests/test_e4_pl_burnin.py": 193,
+    "tests/test_general_contact_patch_sliding.py": 190,
+    "tests/test_general_contact_native_material_activation.py": 187,
+    "tests/test_beam_shell_checkpoint_workflow.py": 185,
+    "tests/test_ge_beam3_native_analysis.py": 167,
+    "tests/test_general_contact_native_enforcement.py": 166,
+    "tests/test_general_contact_native_fibre_s3.py": 159,
+    "tests/test_ge_beam3_coupled_modes.py": 151,
+    "tests/test_beam_shell_verification.py": 147,
+    "tests/test_e4_pl_s3_mixed_mesh_manifest.py": 145,
+    "tests/test_fe_solver_infrastructure.py": 142,
+    "tests/test_general_contact_q4_source_overlap.py": 127,
+    "tests/test_general_contact_beam_curve_ends.py": 122,
+    "tests/test_general_contact_transient_deforming_s3.py": 117,
+    "tests/test_general_contact_displacement_augmented.py": 116,
+    "tests/test_general_contact_enriched_cold_predictor.py": 115,
+    "tests/test_general_contact_native_candidate_reuse.py": 113,
+    "tests/test_general_contact_enriched_small_cut.py": 105,
+    "tests/test_ge_beam3_shell_joint_state.py": 100,
+    "tests/test_general_contact_native_curved_fibre_pair_static.py": 100,
+    "tests/test_general_contact_native_multiple_s3_static.py": 99,
+    "tests/test_general_contact_native_fibre_plastic_restart.py": 96,
+    "tests/test_general_contact_supported_schur_path.py": 95,
+    "tests/test_corotational.py": 95,
+    "tests/test_general_contact_beam_chain_refinement.py": 94,
+    "tests/test_general_contact_native_initial_guess.py": 92,
+    "tests/test_q4_assumed_strain_plasticity.py": 91,
+    "tests/test_elastic_sphere_panel_continuation.py": 88,
+    "tests/test_general_contact_enriched_multitarget_cost.py": 86,
+    "tests/test_prepared_static_response_m25.py": 85,
+    "tests/test_ge_beam3_native_generalized.py": 83,
+    "tests/test_general_contact_s3_sliding_friction.py": 83,
+    "tests/test_ge_beam3_native_definition.py": 80,
+    "tests/test_general_contact_native_curved_plane_work.py": 76,
+    "tests/test_general_contact_monolithic_restart.py": 75,
+    "tests/test_general_contact_native_curved_pair_trial_seed.py": 74,
+    "tests/test_follower_pressure.py": 71,
+    "tests/test_general_contact_native_curved_gap.py": 70,
+    "tests/test_mixed_shell_quadrature_grouping.py": 69,
+    "tests/test_general_contact_s3_patch_refined.py": 68,
+    "tests/test_general_contact_native_retained_pair_static.py": 66,
+    "tests/test_general_contact_patch_refinement.py": 65,
+    "tests/test_general_contact_transient_multiple_shell_planes.py": 63,
+    "tests/test_e4_pl_orchestrator_operation_lease.py": 63,
+    "tests/test_hht_alpha.py": 62,
+    "tests/test_general_contact_native_surface_normal.py": 62,
 }
 # Runtime panel tests repeatedly construct and solve independent application
 # models.  Keep them in a fresh interpreter so report/restart tests cannot
@@ -188,7 +285,7 @@ TIMEOUT_EXIT_CODE = 124
 
 
 def _module_weight(module: str) -> int:
-    """Return a stable, inexpensive proxy for collection/execution work."""
+    """Return predicted CI milliseconds for a module (assignment weight only)."""
 
     path = ROOT / module
     if not path.is_file():
@@ -197,9 +294,14 @@ def _module_weight(module: str) -> int:
     # Normalize the proxy so the same commit receives the same shard assignment
     # on every supported host.
     normalized_size = len(path.read_bytes().replace(b"\r\n", b"\n"))
-    return PORTABLE_MODULE_WEIGHT_OVERRIDES.get(
+    proxy_bytes = PORTABLE_MODULE_BYTE_WEIGHT_OVERRIDES.get(
         module, max(1, normalized_size)
     )
+    seconds = max(
+        PORTABLE_BASE_SECONDS + proxy_bytes / PORTABLE_BYTES_PER_SECOND,
+        float(PORTABLE_MODULE_CI_SECONDS.get(module, 0)),
+    )
+    return int(round(1000 * seconds))
 
 
 def partition_modules(
@@ -447,6 +549,7 @@ def _worker_command(modules: Sequence[str], root: Path) -> list[str]:
         "--durations=20",
         "--durations-min=0.0",
         f"--basetemp={root / 'basetemp'}",
+        f"--junitxml={root / 'junit.xml'}",
         *(f"--deselect={node}" for node in deselections),
         *modules,
     ]
@@ -484,6 +587,42 @@ def _terminate_tree(worker: subprocess.Popen[bytes], grace_seconds: float = 10.0
     except subprocess.TimeoutExpired:
         worker.kill()
         worker.wait()
+
+
+def _record_module_durations(run_root: Path, destination_dir: Path) -> None:
+    """Summarise per-module CI seconds from the pool junit files (never fails).
+
+    The JSON file and the job-summary table let PORTABLE_MODULE_CI_SECONDS be
+    re-tuned from real runner data.  Any problem is reported and ignored.
+    """
+
+    try:
+        import xml.etree.ElementTree as ElementTree
+
+        seconds: dict[str, float] = {}
+        for junit in sorted(run_root.glob("P*/junit.xml")):
+            for case in ElementTree.parse(junit).getroot().iter("testcase"):
+                parts = str(case.get("classname", "")).split(".")
+                head = [p for p in parts[: next((i for i, p in enumerate(parts) if p.startswith("test_")), -1) + 1]]
+                if not head or not head[-1].startswith("test_"):
+                    continue
+                module = "/".join(head) + ".py"
+                seconds[module] = seconds.get(module, 0.0) + float(case.get("time", 0.0))
+        record = {m: round(v, 1) for m, v in sorted(seconds.items(), key=lambda x: -x[1])}
+        (destination_dir / "portable-ci-module-durations.json").write_text(
+            json.dumps(record, indent=1) + "\n", encoding="utf-8"
+        )
+        top = list(record.items())[:10]
+        print("[portable-ci] slowest modules (s): " + ", ".join(
+            f"{m.rsplit('/', 1)[-1]}={v}" for m, v in top), flush=True)
+        summary = os.environ.get("GITHUB_STEP_SUMMARY")
+        if summary:
+            with open(summary, "a", encoding="utf-8") as handle:
+                rows = ["### Module durations (s, top 20)", "", "| module | seconds |", "|---|---|"]
+                rows += [f"| {module} | {value} |" for module, value in list(record.items())[:20]]
+                handle.write(chr(10).join(rows) + chr(10))
+    except Exception as exc:  # pragma: no cover - diagnostics must not fail CI
+        print(f"[portable-ci] module duration summary skipped: {exc!r}", flush=True)
 
 
 def _development_targets(targets: Sequence[str]) -> tuple[str, ...]:
@@ -677,6 +816,8 @@ def run(
         if returncodes == [0] and not (worker_root / "runtime.json").is_file():
             print("[development] missing runtime/coverage record", file=sys.stderr)
             return 1
+    if not development:
+        _record_module_durations(run_root, temp_parent)
     for index, returncode in enumerate(returncodes, start=1):
         print(f"[portable-ci] P{index:02d} exit={returncode}", flush=True)
     return 0 if all(returncode == 0 for returncode in returncodes) else 1

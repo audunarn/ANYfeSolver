@@ -24,3 +24,10 @@ In run 43950995536 it failed on ubuntu-latest 3.13 shard 5/0 (not Windows): `tes
 
 ## Not run
 Full pool/shard reproduction locally; per-module local timings of all stalled-pool modules; reading 43861722899/43188937230 logs; the hash test locally.
+
+## Implemented (follow-up, owner-approved)
+- `scripts/run_portable_ci.py`: weights are predicted CI milliseconds. `PORTABLE_MODULE_CI_SECONDS` (86 modules >= 60 s) = per module, sum over tests of the median CI duration (call/setup/teardown separately) in the "slowest 20 durations" blocks of runs 44048316984, 43950995536, 43861722899 (96 pytest job logs; lower bound, since only each pool's 20 slowest tests appear). Unmeasured modules: 2 s + bytes/50 kB. Only assignment changes; no test selection change.
+- Predicted max pool seconds per cell, old -> new weights (new time model): worst 1891 (6,3) / 1782 (4,3) / 1495 (2,3) -> 1432 (0,0). Worst makespan/lower-bound 1.66 -> 1.05.
+- Remaining risk: indivisible heavy modules (s3_q4_patch_augmented, q4_s3_patch_static, d1_interior_profile, fibre_pair_static, ...) alone fill a pool (1.0-1.4 ks median); single tests vary 3x between runs (q4_s3_patch_static::...four_phase_path_and_restart: 536/1293/1756 s). Splitting such modules by node is the next option.
+- CI records per-module seconds (junit -> `portable-ci-module-durations.json` artifact + step summary).
+- Test: `tests/test_portable_ci_partition_balance.py`.
