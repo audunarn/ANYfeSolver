@@ -396,10 +396,14 @@ class NativeParityE4PLS3V2DShellElement(
         value: Any,
         _advance: Any = _advance_v2d_lease_epochs,
     ) -> None:
-        # Count AFTER the assignment: a capture that subscribes while a writer
-        # is between the two steps then either scans the new value or sees the
-        # (late) count; counting first let such a write change a scanned fact
-        # without ever advancing the capture's counter.
+        # Write barrier: advance before AND after the assignment.  Before:
+        # subscriptions are read while their storage still exists (a write or
+        # delete of the subscription list itself would otherwise remove the
+        # counter unseen), and an existing lease already reads nonzero before
+        # the change can be observed.  After: a capture that subscribed while
+        # the writer sat between the two steps still sees a count.  A counter
+        # only has to change, so double counting is harmless.
+        _advance(self, name, value)
         super().__setattr__(name, value)
         _advance(self, name, value)
 
@@ -408,6 +412,7 @@ class NativeParityE4PLS3V2DShellElement(
         name: str,
         _advance: Any = _advance_v2d_lease_epochs,
     ) -> None:
+        _advance(self, name, None, deleting=True)
         super().__delattr__(name)
         _advance(self, name, None, deleting=True)
 

@@ -599,7 +599,10 @@ def test_v2d_write_counts_are_atomic_under_contention() -> None:
         sys.setswitchinterval(interval)
 
     assert errors == []
-    assert epoch.value == 4 * writes_per_thread
+    # Intent: no increment is lost under contention (exact count).  Each ordinary
+    # write is counted twice by the write barrier (before and after the
+    # assignment), so the exact total is two per write.
+    assert epoch.value == 2 * 4 * writes_per_thread
     with pytest.raises(ElementCapabilityError, match="modified during the trusted"):
         require(context="after contention")
 

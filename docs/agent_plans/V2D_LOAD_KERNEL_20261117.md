@@ -123,3 +123,21 @@ Barge (serial): prepare 77.0 s; pressure 1,404 V2D 4.07 s; gravity+masses 11.09 
 Targeted 11 files: 247 passed. Extra V2D files run: 91 passed, 1 failed
 (`test_e4_pl_s3_v2d_linear_native_parity.py::test_v2d_stateless_identity_roundtrip_and_remaining_successor_gaps` needs git object
 `dfe3d314...` that this clone lacks; it fails identically on 99820deff).
+
+## Round 3: write barrier (trust assumptions)
+Chosen: count BEFORE and AFTER every V2D `__setattr__`/`__delattr__` (not a protected non-replaceable attribute: that would need a
+new class-protected entry in the epoch machinery; two calls to the existing helper is the smaller change).
+* Before: subscriptions are read while their storage still exists, so assigning, replacing or deleting
+  `_qualified_v2d_lease_epochs` itself advances every existing counter first (P1 detach). It also means an existing lease already
+  reads a nonzero counter before any assigned value can be observed (P2 paused writer).
+* After: a capture that subscribed while a writer sat between the two steps still sees a count (round-2 case, test unchanged).
+* Pause points covered deterministically (trace hook, existing lease): call/return of the first and second counting call;
+  invariant: whenever the new value is observable the guard raises (`test_existing_lease_rejects_a_visible_write_at_every_pause_point`),
+  detach by assign-empty/delete/assign-other (`test_detaching_the_subscriptions_cannot_bypass_invalidation`) and through
+  `assemble_load_vector` (`test_detached_subscription_with_method_override_is_not_run_by_assembly`). 7 of the new tests fail on 80ad94d16.
+* Not covered (documented module contract): `object.__setattr__`, direct `__dict__` writes and class-level `__setattr__` replacement
+  bypass the counted surface; class replacement is covered by the V2D class epoch, instance `__dict__` bypass is not.
+* Cost: 0.375 us per V2D attribute write (was 0.249). Writes to V2D elements are rare on the load path.
+* `test_v2d_write_counts_are_atomic_under_contention` now expects exactly two counts per write (intent unchanged: no lost increment).
+Barge (serial): prepare 76.5 s; pressure 1,404 V2D 4.09 s (one earlier 6.8 s run was machine noise, repeated at 4.09 s);
+gravity+masses 10.99 s; hashes unchanged.

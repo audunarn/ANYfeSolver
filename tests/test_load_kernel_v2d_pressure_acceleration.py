@@ -795,3 +795,124 @@ def test_class_authority_compares_mro_by_identity() -> None:
         assert calls == []
     finally:
         boundary._BeamElement.__bases__ = original_bases
+
+
+# --- round 3: the write barrier at every pause point ---------------------------
+
+
+def _pause_writer_at(action, event_kind, nth):
+    """Run ``action()`` in a thread paused at the nth ``call``/``return`` of the counting helper."""
+
+    import threading
+
+    from anyfesolver import e4_pl_s3_v2d_element as module
+
+    target = module._advance_v2d_lease_epochs.__code__
+    reached, release = threading.Event(), threading.Event()
+    seen = {"call": 0, "return": 0}
+
+    def local(frame, event, arg):
+        if event == "return":
+            seen["return"] += 1
+            if event_kind == "return" and seen["return"] == nth:
+                reached.set()
+                release.wait(10)
+        return local
+
+    def tracer(frame, event, arg):
+        if frame.f_code is not target:
+            return None
+        seen["call"] += 1
+        if event_kind == "call" and seen["call"] == nth:
+            reached.set()
+            release.wait(10)
+        return local
+
+    def writer():
+        import sys as _sys
+
+        _sys.settrace(tracer)
+        try:
+            action()
+        finally:
+            _sys.settrace(None)
+
+    thread = threading.Thread(target=writer)
+    thread.start()
+    assert reached.wait(10)
+    return thread, release
+
+
+@pytest.mark.parametrize("event_kind,nth", [("call", 1), ("return", 1), ("call", 2), ("return", 2)])
+def test_existing_lease_rejects_a_visible_write_at_every_pause_point(event_kind, nth) -> None:
+    from anyfesolver.current_state_tangent import (
+        ElementCapabilityError,
+        _capture_qualified_v2d_trusted_authority,
+    )
+
+    model, q4, v2d = _mixed_model(3)
+    items = tuple(dict.items(model.mesh.elements))
+    guard = _capture_qualified_v2d_trusted_authority(items, context="existing lease")
+    assert guard is not None
+    victim = model.mesh.elements[v2d[-1]]  # not the representative element
+    original = victim.thickness
+    thread, release = _pause_writer_at(
+        lambda: setattr(victim, "thickness", 0.02), event_kind, nth
+    )
+    try:
+        if victim.thickness != original:  # the change is observable right now
+            with pytest.raises(ElementCapabilityError):
+                guard(context="while the writer is paused")
+    finally:
+        release.set()
+        thread.join(10)
+    assert victim.thickness == 0.02
+    with pytest.raises(ElementCapabilityError):
+        guard(context="after the write")
+
+
+@pytest.mark.parametrize("how", ["assign-empty", "delete", "assign-other"])
+def test_detaching_the_subscriptions_cannot_bypass_invalidation(how) -> None:
+    from anyfesolver.current_state_tangent import (
+        ElementCapabilityError,
+        _capture_qualified_v2d_trusted_authority,
+    )
+    from anyfesolver.e4_pl_s3_v2d_element import _V2D_LEASE_EPOCHS_KEY
+
+    model, q4, v2d = _mixed_model(3)
+    items = tuple(dict.items(model.mesh.elements))
+    guard = _capture_qualified_v2d_trusted_authority(items, context="detach")
+    assert guard is not None
+    victim = model.mesh.elements[v2d[-1]]
+    if how == "assign-empty":
+        setattr(victim, _V2D_LEASE_EPOCHS_KEY, [])
+    elif how == "delete":
+        delattr(victim, _V2D_LEASE_EPOCHS_KEY)
+    else:
+        setattr(victim, _V2D_LEASE_EPOCHS_KEY, [lambda: None])
+    # the detach itself is a counted write
+    with pytest.raises(ElementCapabilityError):
+        guard(context="after the detach")
+    # and a later write to the now-unsubscribed element cannot restore trust
+    victim.compute_native_dead_pressure_load = lambda mesh, pressure: None
+    with pytest.raises(ElementCapabilityError):
+        guard(context="after the override")
+
+
+def test_detached_subscription_with_method_override_is_not_run_by_assembly(monkeypatch) -> None:
+    from anyfesolver.e4_pl_s3_v2d_element import _V2D_LEASE_EPOCHS_KEY
+
+    model, q4, v2d = _mixed_model(3)
+    case = _pressure_case(q4, v2d)
+    victim = model.mesh.elements[v2d[-1]]
+    ran = []
+    real_core = boundary._EXACT_LOAD_CASE_GET_VECTOR_CORE
+
+    def hostile_core(*args, **kwargs):
+        setattr(victim, _V2D_LEASE_EPOCHS_KEY, [])
+        victim.compute_native_dead_pressure_load = lambda mesh, pressure: ran.append(1) or np.zeros(18)
+        return real_core(*args, **kwargs)
+
+    monkeypatch.setattr(boundary, "_EXACT_LOAD_CASE_GET_VECTOR_CORE", hostile_core)
+    with pytest.raises(Exception):
+        assemble_load_vector(model, case)
