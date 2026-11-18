@@ -262,6 +262,12 @@ def test_explicit_stiffer_penalty_clipped_reference_preflight():
 # of the full scenario; the full horizon runs in the opt-in slow tier.
 FULL_DURATION_S=.003
 SHORT_DURATION_S=.00115
+# Measured on the shortened 1.15 ms run (both routes): exactly two localized
+# contact events, 70 states, 69 cutbacks. Events and counts before 1.15 ms are
+# the same in the full-horizon runs (same deterministic step grid).
+SHORT_EVENT_TIMES_S=(0.0010628508546447748,0.0010951771865844722)
+SHORT_STATES=70
+SHORT_CUTBACKS=69
 
 
 def _coupled_reference_check(*,solver_controls=demo['CONTROLS'],
@@ -306,7 +312,15 @@ def _coupled_reference_check(*,solver_controls=demo['CONTROLS'],
     assert record['max_acceleration_error_m_s2']<=.02
     assert record['max_pressure_gap_error_m']<=2.e-16
     assert record['reference_overlap_area_range_m2'][1]-record['reference_overlap_area_range_m2'][0]>1.e-9
-    assert record['active_states']>0 and record['localized_events_s']
+    assert record['active_states']>0
+    # The requested horizon was reached and both expected contact events were localized.
+    assert result.times[-1]==pytest.approx(duration,rel=0,abs=1.e-12)
+    events=np.asarray(record['localized_events_s'],dtype=float)
+    assert events.size>=len(SHORT_EVENT_TIMES_S)
+    np.testing.assert_allclose(events[:len(SHORT_EVENT_TIMES_S)],SHORT_EVENT_TIMES_S,rtol=0,atol=1.e-9)
+    if duration==SHORT_DURATION_S:
+        assert events.size==len(SHORT_EVENT_TIMES_S)
+        assert record['states']==SHORT_STATES and record['cutbacks']==SHORT_CUTBACKS
     assert record['independent_minimum_gap_m']>=-2.e-5
     assert record['swept_minimum_gap_m']>=-2.e-5
     assert record['maximum_momentum_error_kg_m_s']<=1.e-9

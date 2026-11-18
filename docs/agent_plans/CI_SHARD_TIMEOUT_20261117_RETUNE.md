@@ -34,3 +34,8 @@ Predicted pool seconds per cell after retuning are in the handoff; all cells exc
 (0,0), (1,0), (2,0) and (3,0) stay at or below 1330 s per pool. Those four cells each
 hold one long module that no balancing can split; the following commit gives only
 these cells a 5400 s limit (`PORTABLE_LONG_RUNNING_MODULES`).
+
+> **Superseded (2026-11-18):** the 5400 s extension and `PORTABLE_LONG_RUNNING_MODULES`
+> were removed. The single multi-minute tests were shortened or moved to the opt-in `slow`
+> tier (`.github/workflows/slow-tests.yml`), and the four module weights above were reset to
+> measured values in `scripts/portable_ci_module_seconds.json`.
