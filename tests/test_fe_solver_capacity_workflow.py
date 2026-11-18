@@ -156,3 +156,56 @@ def test_capacity_workflow_report_writer_and_cli() -> None:
     finally:
         if output_dir.exists():
             shutil.rmtree(output_dir)
+
+
+def _model_state(model: FEModel):
+    coords = {nid: node.coords().copy() for nid, node in model.mesh.nodes.items()}
+    revisions = dict(model.revision_signature())
+    return coords, list(getattr(model, "imperfection_metadata", []) or []), revisions
+
+
+def _assert_state_equal(before, after) -> None:
+    assert before[0].keys() == after[0].keys()
+    for nid in before[0]:
+        assert before[0][nid].tobytes() == after[0][nid].tobytes()
+    assert before[1] == after[1]
+    assert before[2] == after[2]
+
+
+def _imperfect_config(**extra) -> CapacityWorkflowConfig:
+    return CapacityWorkflowConfig(
+        eigenmode_imperfection_amplitude=0.004,
+        nonlinear_num_steps=2,
+        nonlinear_max_iterations=12,
+        nonlinear_num_layers=3,
+        **extra,
+    )
+
+
+def test_capacity_workflow_default_leaves_callers_model_unchanged() -> None:
+    model = _beam_column_model()
+    before = _model_state(model)
+    result = run_nonlinear_capacity_workflow(
+        model, _compression_load(model), config=_imperfect_config()
+    )
+    assert result.imperfect_model is not model
+    _assert_state_equal(before, _model_state(model))
+
+
+def test_capacity_workflow_copy_model_false_never_changes_callers_model() -> None:
+    """copy_model=False used to apply the eigenmode imperfection to the caller's
+    model in place.  The workflow now refuses it; either way the caller's model
+    must be left exactly as it was."""
+    model = _beam_column_model()
+    load = _compression_load(model)
+    before = _model_state(model)
+    with pytest.raises(ValueError, match="copy_model"):
+        run_nonlinear_capacity_workflow(
+            model, load, config=_imperfect_config(copy_model=False)
+        )
+    _assert_state_equal(before, _model_state(model))
+
+
+def test_capacity_config_refuses_copy_model_false() -> None:
+    with pytest.raises(ValueError, match="copy_model"):
+        CapacityWorkflowConfig(copy_model=False)

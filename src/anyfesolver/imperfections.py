@@ -176,7 +176,14 @@ def to_imperfection_field(model: "FEModel", imperfection: Any) -> ImperfectionFi
 
 
 def apply_imperfection(model: "FEModel", imperfection: Any, copy_model: bool = True) -> "FEModel":
-    """Apply a stress-free geometric imperfection to a model."""
+    """Apply a stress-free geometric imperfection to a model.
+
+    With ``copy_model=True`` (default) the input is untouched and a modified
+    deep copy is returned.  ``copy_model=False`` is an explicit opt-in to
+    in-place mutation: node coordinates, ``imperfection_metadata`` and the
+    geometry revision of ``model`` itself change, and ``model`` is returned.
+    Only use it on a model you own and have just built.
+    """
     require_model_element_capabilities(
         model,
         "initial_fields",
