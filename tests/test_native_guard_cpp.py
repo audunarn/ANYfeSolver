@@ -57,28 +57,74 @@ def _assert_helper_facts_closed():
     for name in ('_load_model_access_is_builtin','_load_routing_classes_are_untouched','_numpy_error_routes_are_builtin',
                  '_builtin_acceleration_inputs','_exact_load_case_instance_namespace'):
         assert id(getattr(boundary,name)) in captured,name
-    for function,_,bindings in facts:
-        reachable=[binding[-1] for binding in bindings]
-        for cell in function.__closure__ or ():
-            try: reachable.append(cell.cell_contents)
-            except ValueError: pass
-        for value in reachable:
-            if tracked(value):
-                assert id(value) in captured,(function.__qualname__,value.__qualname__)
+    # Rebuild the reachable set and every binding tuple from the live functions, without
+    # trusting the captured bindings, and require exact equality in both directions:
+    # a dropped fact, a dropped binding or an extra (unreachable) fact all fail.
+    def names(code):
+        return set(code.co_names).union(*(names(c) for c in code.co_consts if type(c) is types.CodeType))
+    def rebuilt_bindings(function):
+        g=function.__globals__
+        if function is loads._native_authority_matches:
+            return tuple((n,n in g,g.get(n)) for n in sorted(names(function.__code__)))
+        return tuple((n,g[n]) for n in function.__code__.co_names if n in g)
+    roots=[loads._native_authority_matches]+[getattr(boundary,n) for n in (
+        '_load_model_access_is_builtin','_load_routing_classes_are_untouched','_numpy_error_routes_are_builtin',
+        '_builtin_acceleration_inputs','_exact_load_case_instance_namespace')]
     for cls in loads._NATIVE_CLASS_FACTS:
         for base in cls.__mro__:
             for member in vars(base).values():
                 if type(member) in (staticmethod,classmethod): member=member.__func__
-                members=(member.fget,member.fset,member.fdel) if type(member) is property else (member,)
-                for value in members:
-                    if tracked(value): assert id(value) in captured,(cls.__qualname__,value.__qualname__)
+                roots.extend((member.fget,member.fset,member.fdel) if type(member) is property else (member,))
+    reachable={};work=[f for f in roots if tracked(f)]
+    while work:
+        function=work.pop()
+        if id(function) in reachable: continue
+        reachable[id(function)]=function
+        successors=[b[-1] for b in rebuilt_bindings(function)]
+        for cell in function.__closure__ or ():
+            try: successors.append(cell.cell_contents)
+            except ValueError: pass
+        work.extend(v for v in successors if tracked(v))
+    missing=[reachable[i].__qualname__ for i in reachable.keys()-captured]
+    extra=[f.__qualname__ for f in functions if id(f) not in reachable]
+    assert not missing,('reachable helpers not captured',missing[:10])
+    assert not extra,('captured helpers not reachable',extra[:10])
+    for function,_,bindings in facts:
+        expected=rebuilt_bindings(function)
+        assert len(bindings)==len(expected) and all(
+            len(a)==len(b) and a[0]==b[0] and all(x is y for x,y in zip(a[1:],b[1:]))
+            for a,b in zip(bindings,expected)),('bindings differ',function.__qualname__)
     assert len(functions)>1000   # guards against an accidentally empty or truncated capture
+
+def test_helper_facts_are_exactly_the_reachable_closure():
+    # Runs without the optional native extension (the capture is pure Python).
+    _assert_helper_facts_closed()
 
 def test_helper_fact_closure_check_detects_a_dropped_fact(monkeypatch):
     facts=loads._NATIVE_HELPER_FACTS
     referenced={id(binding[-1]) for _,_,b in facts for binding in b}
     index=next(i for i in range(1,len(facts)) if id(facts[i][0]) in referenced)
     monkeypatch.setattr(loads,'_NATIVE_HELPER_FACTS',facts[:index]+facts[index+1:])
+    with pytest.raises(AssertionError):
+        _assert_helper_facts_closed()
+
+def test_helper_fact_closure_check_detects_an_extra_unreachable_fact(monkeypatch):
+    def stray(): return 1
+    stray.__module__='anyfesolver.stray_probe'
+    facts=loads._NATIVE_HELPER_FACTS
+    monkeypatch.setattr(loads,'_NATIVE_HELPER_FACTS',facts+((stray,boundary._callable_authority(stray),()),))
+    with pytest.raises(AssertionError,match='not reachable'):
+        _assert_helper_facts_closed()
+
+def test_helper_fact_closure_check_detects_a_fact_dropped_with_its_bindings(monkeypatch):
+    """Drop a helper AND every captured binding that points to it (Codex r1 case)."""
+    # boundary._identities_differ is reached only through global bindings (no closure
+    # cell, no class member), so the old binding-trusting check accepted this removal.
+    facts=loads._NATIVE_HELPER_FACTS
+    target=boundary._identities_differ
+    index=next(i for i,(f,_,_) in enumerate(facts) if f is target)
+    pruned=tuple((f,a,tuple(b for b in bs if b[-1] is not target)) for f,a,bs in facts[:index]+facts[index+1:])
+    monkeypatch.setattr(loads,'_NATIVE_HELPER_FACTS',pruned)
     with pytest.raises(AssertionError):
         _assert_helper_facts_closed()
 

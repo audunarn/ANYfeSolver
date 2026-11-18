@@ -15,7 +15,9 @@ def _namespace(cls):
     behaviour, but counting it made this guard decline for the rest of the process
     after any such copy.  Only the exact empty-list form is ignored."""
     namespace = dict(vars(cls))
-    if namespace.get("__slotnames__") == [] and type(namespace["__slotnames__"]) is list:
+    cached = namespace.get("__slotnames__")
+    # Exact type first: a list subclass must not get to run a custom __eq__/__len__.
+    if type(cached) is list and len(cached) == 0:
         del namespace["__slotnames__"]
     return namespace
 

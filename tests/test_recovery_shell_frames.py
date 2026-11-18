@@ -149,3 +149,25 @@ def test_native_route_survives_copy_and_pickle_of_a_material():
     copy.deepcopy(material);pickle.loads(pickle.dumps(material))
     assert '__slotnames__' in vars(type(material))
     assert native_recovery_frames(element,coords,points,material) is not None
+
+
+@pytest.mark.parametrize('cache',['raising_subclass','plain_subclass','nonempty','tuple'])
+def test_non_benign_slotnames_cache_declines_without_running_its_code(monkeypatch,cache):
+    """Only an exact empty list is exempt; anything else declines to the scalar route
+    and no custom comparison on the cached object is executed."""
+    from anyfesolver.elements import ShellElement
+    calls=[]
+    class Raising(list):
+        def __eq__(self,other):calls.append('eq');raise RuntimeError('custom __eq__ ran')
+        def __len__(self):calls.append('len');raise RuntimeError('custom __len__ ran')
+        __hash__=None
+    value={'raising_subclass':Raising(),'plain_subclass':type('L',(list,),{})(),
+           'nonempty':['x'],'tuple':()}[cache]
+    model,element,u=model8(True)
+    points=np.array([[-.4,.2],[.7,-.8]])
+    coords=element.get_node_coordinates(model.mesh)
+    material=model.get_material('steel')
+    assert native_recovery_frames(element,coords,points,material) is not None
+    monkeypatch.setattr(ShellElement,'__slotnames__',value,raising=False)
+    assert native_recovery_frames(element,coords,points,material) is None
+    assert calls==[]
