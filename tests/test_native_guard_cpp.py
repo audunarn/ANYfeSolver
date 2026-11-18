@@ -32,7 +32,55 @@ def test_actual_all_original_facts(native):
     after=native.statistics()
     assert after['class_facts']-before['class_facts']==18
     assert after['helper_facts']-before['helper_facts']==len(loads._NATIVE_HELPER_FACTS)
-    assert len(loads._NATIVE_HELPER_FACTS)-1==1304
+    _assert_helper_facts_closed()
+
+def _assert_helper_facts_closed():
+    """The captured helper set is closed under the reachability rule that builds it.
+
+    The exact fact count is not a constant: it depends on the Python version (3.12+
+    inlines comprehensions, changing co_names) and on whether numba wraps the
+    plasticity kernels (a numba dispatcher is not a FunctionType, so it is not
+    captured). Measured on this tree: 3.11 with numba 1300 facts, 3.13/3.14 with
+    numba 1302, 3.11 without numba 1307. Instead of pinning a number, check
+    independently that every function reachable from a captured fact through a
+    referenced global, a closure cell or a member of a root class is itself captured
+    exactly once, that nothing outside the anyfesolver/anymaterial modules is, and
+    that the five boundary helpers and the matcher are present."""
+    facts=loads._NATIVE_HELPER_FACTS
+    functions=[f for f,_,_ in facts]
+    assert len(functions)==len({id(f) for f in functions}), 'duplicate helper facts'
+    assert functions[0] is loads._native_authority_matches
+    captured={id(f) for f in functions}
+    def tracked(value):
+        return type(value) is types.FunctionType and value.__module__.startswith(('anyfesolver','anymaterial'))
+    assert all(tracked(f) for f in functions)
+    for name in ('_load_model_access_is_builtin','_load_routing_classes_are_untouched','_numpy_error_routes_are_builtin',
+                 '_builtin_acceleration_inputs','_exact_load_case_instance_namespace'):
+        assert id(getattr(boundary,name)) in captured,name
+    for function,_,bindings in facts:
+        reachable=[binding[-1] for binding in bindings]
+        for cell in function.__closure__ or ():
+            try: reachable.append(cell.cell_contents)
+            except ValueError: pass
+        for value in reachable:
+            if tracked(value):
+                assert id(value) in captured,(function.__qualname__,value.__qualname__)
+    for cls in loads._NATIVE_CLASS_FACTS:
+        for base in cls.__mro__:
+            for member in vars(base).values():
+                if type(member) in (staticmethod,classmethod): member=member.__func__
+                members=(member.fget,member.fset,member.fdel) if type(member) is property else (member,)
+                for value in members:
+                    if tracked(value): assert id(value) in captured,(cls.__qualname__,value.__qualname__)
+    assert len(functions)>1000   # guards against an accidentally empty or truncated capture
+
+def test_helper_fact_closure_check_detects_a_dropped_fact(monkeypatch):
+    facts=loads._NATIVE_HELPER_FACTS
+    referenced={id(binding[-1]) for _,_,b in facts for binding in b}
+    index=next(i for i in range(1,len(facts)) if id(facts[i][0]) in referenced)
+    monkeypatch.setattr(loads,'_NATIVE_HELPER_FACTS',facts[:index]+facts[index+1:])
+    with pytest.raises(AssertionError):
+        _assert_helper_facts_closed()
 
 @pytest.mark.parametrize('mutation',['code','defaults','keywords','closure','empty','method','property','mro'])
 def test_mutable_metadata_literal_differential(native,mutation):
