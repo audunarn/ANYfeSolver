@@ -94,6 +94,109 @@ def test_failed_acceptance_gate_in_solve_to_preserves_accepted_state(monkeypatch
     assert sim.lam=={7:4.} and not commits
 
 
+def _ev(**kw):
+    from anyfesolver.general_contact.corner_contact_solver import Evaluation
+    base=dict(residual=np.zeros(2),stiffness=None,ids=[],gaps=np.zeros(0),
+              gradients=np.zeros((0,2)),guide_error=np.zeros(0),guide_rows=np.zeros((0,2)))
+    base.update(kw)
+    if 'gradients' not in kw:base['gradients']=np.zeros((len(base['ids']),2))
+    return Evaluation(**base)
+
+
+@pytest.mark.parametrize('field',['residual','guide_error','gap','multiplier','force_scale',
+                                  'force_scale_inf'])
+def test_non_finite_state_is_never_converged(field):
+    """Review finding (High): NaN fails every '>' test, so it must be refused explicitly."""
+    from anyfesolver.general_contact.corner_contact_solver import converged,NewtonFailure
+    kw,lam={},{}
+    if field=='residual':kw['residual']=np.array([0.,np.nan])
+    elif field=='guide_error':kw['guide_error']=np.array([np.nan])
+    elif field=='gap':kw.update(ids=[3],gaps=np.array([np.nan]))
+    elif field=='multiplier':kw.update(ids=[3],gaps=np.array([0.]));lam={3:np.nan}
+    elif field=='force_scale':kw['force_scale']=np.nan
+    else:kw.update(force_scale=np.inf,residual=np.array([1e300,0.]))
+    with pytest.raises(NewtonFailure) as caught:
+        converged(_ev(**kw),lam,1.,1.,1e-6)
+    assert caught.value.code=='non_finite_state'
+    # Ordinary finite states keep their previous verdicts.
+    assert converged(_ev(),{},1.,1.,1e-6) is True
+    assert converged(_ev(residual=np.array([1.,0.])),{},1.,1.,1e-6) is False
+
+
+@pytest.mark.parametrize('value',[np.nan,np.inf])
+def test_balance_gate_refuses_non_finite_wrench_norms(value):
+    import anyfesolver.general_contact.corner_contact_indentation as module
+    from examples.elastic_sphere_stiffened_panel import FORCE_BALANCE_TOLERANCE as F,MOMENT_BALANCE_TOLERANCE as M
+    finite={'sphere':(0.,0.),'panel':(0.,0.)}
+    assert module._balance_exceeded(finite,F,M) is False
+    assert module._balance_exceeded({**finite,'panel':(value,0.)},F,M) is True
+    assert module._balance_exceeded({**finite,'sphere':(0.,value)},F,M) is True
+    assert module._balance_exceeded({**finite,'panel':(2*F,0.)},F,M) is True
+    assert module._balance_exceeded({**finite,'panel':(F,M)},F,M) is False   # bound is inclusive, as before
+
+
+def test_cancellation_during_acceptance_gates_does_not_commit(monkeypatch):
+    """Review finding: a cancel raised while the gates run must stop before commit."""
+    import anyfesolver.general_contact.corner_contact_indentation as module
+    from anyfesolver.general_contact.corner_contact_solver import Cancelled
+    target=np.arange(6,dtype=float);commits=[];flag=[]
+    sim=SimpleNamespace(q=np.array([1.,2.]),mu=np.array([3.]),lam={7:4.},
+        target=target.copy(),_trial_target=target.copy(),f_ref=1.,force_tolerance=1e-6,
+        cancel=lambda:bool(flag),max_iterations=20,
+        bridge=SimpleNamespace(commit=lambda *args:commits.append(args)))
+    sim._initial_guess=lambda:sim.q.copy()
+    result=dict(q=np.array([5.,6.]),mu=np.array([7.]),lam={7:8.},
+                ev=SimpleNamespace(extra=dict(state=object(),histories=())))
+    monkeypatch.setattr(module,'solve_ncp',lambda *args,**kwargs:result)
+    def gates(result):
+        flag.append(1)                      # cancel arrives while certificates run
+        return None,{},None,None,None
+    sim._gates=gates
+    with pytest.raises(Cancelled):
+        CoupledIndentation.solve_to(sim,9.)
+    assert not commits
+    np.testing.assert_array_equal(sim.q,[1.,2.])
+    np.testing.assert_array_equal(sim.target,target)
+    np.testing.assert_array_equal(sim._trial_target,target)
+
+
+def test_committed_bisection_records_survive_a_later_refusal(monkeypatch):
+    """Review finding: an accepted midpoint must stay in the report when the rest refuses."""
+    import anyfesolver.general_contact.corner_contact_indentation as module
+    from anyfesolver.general_contact.corner_contact_solver import NewtonFailure
+    sim=SimpleNamespace(target=np.zeros(6),bisections_left=1)
+    def solve_to(z):
+        if z==1.:raise NewtonFailure('fixture','full step refuses')
+        if z==0.5:
+            sim.target[2]=z
+            return dict(z=z)
+        raise AssertionError(z)
+    sim.solve_to=solve_to
+    accepted=[]
+    with pytest.raises(NewtonFailure):
+        CoupledIndentation.advance(sim,1.,accepted)
+    assert accepted==[dict(z=0.5)] and sim.target[2]==0.5
+
+
+def test_run_cycle_reports_accepted_increments_before_a_refusal(monkeypatch):
+    import anyfesolver.general_contact.corner_contact_indentation as module
+    from anyfesolver.general_contact.corner_contact_solver import NewtonFailure
+    class Fake:
+        f_ref=1.;penetration_limit=1.;force_tolerance=1.;bisections_left=module.MAX_BISECTIONS
+        z_open=1.
+        def __init__(self,case):self.target=np.zeros(6);self.target[2]=1.;self.q=np.zeros(1)
+        def prepare_open(self):return dict(open=True)
+        def first_touch_height(self):return 0.,[],[]
+        def advance(self,z,records=None):
+            records=[] if records is None else records
+            records.append(dict(z=z));self.target[2]=z
+            raise NewtonFailure('fixture','refused after one accepted midpoint')
+    monkeypatch.setattr(module,'CoupledIndentation',Fake)
+    report,_=module.run_cycle(case=object())
+    assert report['status']==module.STATUS_REFUSED
+    assert [r['z'] for r in report['increments']]==[0.] and report['increments'][0]['stage']=='to_first_touch'
+
+
 def test_acceptance_gate_failure_is_not_retried_or_bisected():
     from anyfesolver.general_contact.corner_contact_indentation import GateFailure
     calls=[]

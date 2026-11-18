@@ -95,7 +95,16 @@ def _affine_guide_progress(ev, trial, alpha):
 def converged(ev, lam, f_ref, l_ref, force_tolerance):
     lam_arr = _lam_array(ev, lam)
     if ev.force_scale is not None:
+        if not np.isfinite(float(ev.force_scale)):   # max(1.0, nan) would silently give 1.0
+            raise NewtonFailure("non_finite_state", "non-finite force scale")
         force_tolerance = RELATIVE_FORCE_TOL * max(1.0, float(ev.force_scale))
+    # Every '>' test below is False for NaN, and an infinite scale makes the force
+    # tolerance infinite: refuse a non-finite state explicitly instead of accepting it.
+    if not (np.isfinite(force_tolerance) and np.all(np.isfinite(ev.residual))
+            and np.all(np.isfinite(ev.guide_error)) and np.all(np.isfinite(ev.gaps))
+            and np.all(np.isfinite(lam_arr))):
+        raise NewtonFailure("non_finite_state",
+                            "non-finite residual, guide error, gap, multiplier or force scale")
     if float(np.linalg.norm(ev.residual)) > force_tolerance:
         return False
     if ev.guide_error.size and float(np.max(np.abs(ev.guide_error))) > GAP_TOL_M:

@@ -42,6 +42,13 @@ class GateFailure(RuntimeError):
         super().__init__(message)
 
 
+def _balance_exceeded(norms, force_tolerance, moment_tolerance):
+    """True when any force/moment norm exceeds its bound or is not finite (NaN fails '>')."""
+    return any(not (np.isfinite(force) and np.isfinite(moment))
+               or force > force_tolerance or moment > moment_tolerance
+               for force, moment in norms.values())
+
+
 def _translation_sum(model, vector):
     total = np.zeros(3)
     for node in model.mesh.nodes.values():
@@ -308,8 +315,7 @@ class CoupledIndentation:
             sphere_weight_N=self.weight["sphere"], panel_weight_N=self.weight["panel"],
             guide_force_N=guide[0].tolist(), contact_on_sphere_N=ws[0].tolist(),
             contact_on_panel_N=wp[0].tolist(), support_force_N=supports[0].tolist())
-        if (any(v[0] > FORCE_BALANCE_TOLERANCE for v in norms.values())
-                or any(v[1] > MOMENT_BALANCE_TOLERANCE for v in norms.values())):
+        if _balance_exceeded(norms, FORCE_BALANCE_TOLERANCE, MOMENT_BALANCE_TOLERANCE):
             raise GateFailure("balance", "force/moment balance exceeds the frozen case bound",
                               checks)
         return cert, checks, resultant, supports[0], None
@@ -331,6 +337,10 @@ class CoupledIndentation:
                                max_iterations=self.max_iterations)
             self.last_result = result
             cert, checks, resultant, reaction, _ = self._gates(result)
+            # The gates (certificates, balance recovery) can be long; a cancel that
+            # arrived meanwhile must stop the increment before it is committed.
+            if self.cancel is not None and self.cancel():
+                raise Cancelled("cancelled before commit")
             x = result["ev"].extra
             state = x["state"]
             self.bridge.commit(state, x["histories"])
@@ -341,9 +351,13 @@ class CoupledIndentation:
         self.target = self._trial_target.copy()
         return self._record(result, cert, checks, resultant, reaction)
 
-    def advance(self, z_goal):
-        """Increment toward ``z_goal`` with at most four bisections over the cycle."""
-        records, targets = [], [float(z_goal)]
+    def advance(self, z_goal, records=None):
+        """Increment toward ``z_goal`` with at most four bisections over the cycle.
+
+        Committed increments are appended to ``records`` as they are accepted, so a
+        caller passing its own list keeps them when a later sub-target refuses."""
+        records = [] if records is None else records
+        targets = [float(z_goal)]
         while targets:
             try:
                 records.append(self.solve_to(targets[-1]))
@@ -460,9 +474,14 @@ def run_cycle(case=None, *, cancel=None, stages=None):
         for name, goal, count in path:
             start = sim.target[2]
             for k in range(1, count + 1):
-                for record in sim.advance(start + (goal - start) * k / count):
-                    record["stage"] = name
-                    report["increments"].append(record)
+                accepted = []
+                try:
+                    sim.advance(start + (goal - start) * k / count, accepted)
+                finally:
+                    # Committed increments are reported even if a later sub-target refuses.
+                    for record in accepted:
+                        record["stage"] = name
+                        report["increments"].append(record)
         if stages is None:
             error = np.abs(sim.q - q_open) - (1e-10 + 1e-8 * np.abs(q_open))
             report["open_recovery"] = dict(
