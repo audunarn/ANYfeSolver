@@ -1,0 +1,4 @@
+# CI-only cap: numpy>=2.5.2 bundles OpenBLAS 0.3.34, whose forced-Haswell dgemm
+# (OPENBLAS_CORETYPE=Haswell, scripts/run_portable_ci.py) segfaults for matrices >= ~175x175
+# on AVX-512 CPUs.  See tests/test_openblas_haswell_gemm_smoke.py.  Library requirement stays numpy>=2.0.
+numpy<2.5.2

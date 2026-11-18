@@ -6,6 +6,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+env:
+  PIP_CONSTRAINT: ${{ github.workspace }}/.github/ci-constraints.txt
+
 jobs:
   license:
     name: License compliance

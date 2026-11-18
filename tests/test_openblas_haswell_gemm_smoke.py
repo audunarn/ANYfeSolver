@@ -22,4 +22,11 @@ _CODE = (
 def test_forced_haswell_large_gemm_does_not_crash():
     env = dict(os.environ, OPENBLAS_CORETYPE="Haswell", OPENBLAS_NUM_THREADS="1")
     result = subprocess.run([sys.executable, "-c", _CODE], env=env, capture_output=True, text=True, timeout=120)
-    assert result.returncode == 0, (result.returncode, result.stderr[-500:])
+    import numpy
+
+    assert result.returncode == 0, (
+        f"forced-Haswell {numpy.__version__} dgemm crashed (exit {result.returncode}): numpy >= 2.5.2 bundles "
+        "OpenBLAS 0.3.34 whose Haswell kernel segfaults on large matrices on AVX-512 CPUs. "
+        "Fix: install numpy<2.5.2 (CI does so via .github/ci-constraints.txt / PIP_CONSTRAINT) or drop "
+        "OPENBLAS_CORETYPE=Haswell. " + result.stderr[-300:]
+    )

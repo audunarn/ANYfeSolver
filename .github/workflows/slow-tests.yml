@@ -8,6 +8,9 @@ on:
   schedule:
     - cron: "17 3 * * 6"
 
+env:
+  PIP_CONSTRAINT: ${{ github.workspace }}/.github/ci-constraints.txt
+
 jobs:
   slow:
     name: Slow tests (ubuntu, Python 3.12)
