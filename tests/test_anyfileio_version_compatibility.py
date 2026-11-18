@@ -371,6 +371,7 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
     assert ci_header == (
         "name: Tests\n\non:\n  push:\n    branches: [main]\n"
         "  pull_request:\n  workflow_dispatch:\n\n"
+        "env:\n  PIP_CONSTRAINT: ${{ github.workspace }}/.github/ci-constraints.txt\n\n"
     )
     assert re.findall(r"(?m)^  ([a-z0-9-]+):\n", ci_jobs) == [
         "license",
