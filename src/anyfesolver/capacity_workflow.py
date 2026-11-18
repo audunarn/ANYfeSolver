@@ -62,7 +62,9 @@ class CapacityWorkflowConfig:
     mesh_min_elements_per_half_wave: int = 4
     #: The workflow always applies its imperfection to a private copy and
     #: returns it as ``CapacityWorkflowResult.imperfect_model``; the caller's
-    #: model is never modified.  ``False`` (apply in place) is refused: it left
+    #: model keeps its geometry, imperfection metadata and revisions (the
+    #: static/buckling solves still fill derived solver caches and DOF
+    #: numbering on it, as any solve does).  ``False`` (apply in place) is refused: it left
     #: the caller's coordinates, imperfection metadata and geometry revision
     #: changed after the run.  Use ``apply_imperfection(..., copy_model=False)``
     #: directly when in-place mutation of a model you own is really intended.
