@@ -60,7 +60,22 @@ class CapacityWorkflowConfig:
     nonlinear_convergence_settings: Optional[NonlinearConvergenceSettings | str | Mapping[str, Any]] = None
     nonlinear_resource_config: Optional[ResourceConfig] = None
     mesh_min_elements_per_half_wave: int = 4
+    #: The workflow always applies its imperfection to a private copy and
+    #: returns it as ``CapacityWorkflowResult.imperfect_model``; the caller's
+    #: model is never modified.  ``False`` (apply in place) is refused: it left
+    #: the caller's coordinates, imperfection metadata and geometry revision
+    #: changed after the run.  Use ``apply_imperfection(..., copy_model=False)``
+    #: directly when in-place mutation of a model you own is really intended.
     copy_model: bool = True
+
+    def __post_init__(self) -> None:
+        if self.copy_model is not True:
+            raise ValueError(
+                "CapacityWorkflowConfig.copy_model must be True: the capacity "
+                "workflow never applies its imperfection to the caller's model "
+                "in place (use apply_imperfection(..., copy_model=False) "
+                "directly for that)"
+            )
 
 
 @dataclass(frozen=True)
@@ -311,7 +326,7 @@ def run_nonlinear_capacity_workflow(
     if selected_imperfection is None:
         selected_imperfection = default_eigenmode_imperfection(buckling, config)
     imperfection_field = to_imperfection_field(model, selected_imperfection)
-    imperfect_model = apply_imperfection(model, imperfection_field, copy_model=config.copy_model)
+    imperfect_model = apply_imperfection(model, imperfection_field, copy_model=True)
 
     if nonlinear_load_program is not None:
         nonlinear_result = solve_static_nonlinear(
