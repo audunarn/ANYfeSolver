@@ -7,6 +7,19 @@ No mesh, material, displacement or element data survives the invocation.
 import numpy as np
 
 
+def _namespace(cls):
+    """Class namespace without the stdlib's lazily cached ``__slotnames__``.
+
+    ``copyreg._slotnames`` (reached by copy.copy/deepcopy/pickle of any instance)
+    stores ``__slotnames__`` on the class.  It is a benign cache that changes no
+    behaviour, but counting it made this guard decline for the rest of the process
+    after any such copy.  Only the exact empty-list form is ignored."""
+    namespace = dict(vars(cls))
+    if namespace.get("__slotnames__") == [] and type(namespace["__slotnames__"]) is list:
+        del namespace["__slotnames__"]
+    return namespace
+
+
 def native_recovery_frames(element, coords, points, material):
     from . import elements
     from .elements import (
@@ -21,7 +34,7 @@ def native_recovery_frames(element, coords, points, material):
     instance = vars(element)
     for cls, expected in ((ShellElement, _SHELL_RECOVERY_FRAME_METHODS),
                           (Element, _SHELL_RECOVERY_BASE_METHODS)):
-        namespace = vars(cls)
+        namespace = _namespace(cls)
         if len(namespace) != len(expected) or any(
             namespace.get(name) is not method or name in instance
             for name, method in expected
@@ -33,7 +46,7 @@ def native_recovery_frames(element, coords, points, material):
         return None
     if type(material) is not _RecoveryIsotropicMaterial:
         return None
-    namespace = vars(_RecoveryIsotropicMaterial)
+    namespace = _namespace(_RecoveryIsotropicMaterial)
     if len(namespace) != len(_SHELL_RECOVERY_MATERIAL_METHODS) or any(
         namespace.get(name) is not method for name, method in _SHELL_RECOVERY_MATERIAL_METHODS
     ):

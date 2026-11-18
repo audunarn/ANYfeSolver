@@ -136,3 +136,16 @@ def test_callback_mutating_frame_dispatch_preserves_later_refusal():
     element._material_angle=MethodType(angle,element)
     with pytest.raises(ValueError,match='mutated frame dispatch'):
         element.compute_stresses(model.mesh,u,model.get_material('steel'))
+
+
+def test_native_route_survives_copy_and_pickle_of_a_material():
+    """copy/pickle of any instance makes copyreg cache __slotnames__ on its class; that
+    benign cache must not make the native recovery guard decline for the whole process."""
+    import copy,pickle
+    model,element,u=model8(True)
+    points=np.array([[-.4,.2],[.7,-.8]])
+    coords=element.get_node_coordinates(model.mesh)
+    material=model.get_material('steel')
+    copy.deepcopy(material);pickle.loads(pickle.dumps(material))
+    assert '__slotnames__' in vars(type(material))
+    assert native_recovery_frames(element,coords,points,material) is not None
