@@ -599,7 +599,7 @@ plasticity, new numerical tolerance or automatic qualification campaign is adopt
 
 Candidate version: `0.4.7+contact.candidate.20261020.s7`. The slice adds the
 face-local curved shell skin geometry/work mapping service
-(`anysolver.general_contact.curved_shell_skin`), the
+(`anyfesolver.general_contact.curved_shell_skin`), the
 `examples.elastic_sphere_panel_contact_skins.py` report and thirteen
 focused selectors, all development-only: no contact solve is admitted, and the
 offset skins are not claimed watertight. Local supervised evidence is in

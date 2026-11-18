@@ -15,7 +15,7 @@ import copy
 
 import numpy as np
 
-from anysolver import LoadCase, assemble_load_vector, assemble_mass_matrix
+from anyfesolver import LoadCase, assemble_load_vector, assemble_mass_matrix
 
 from .corner_contact_certificate import (
     CornerContactRefusal, PENETRATION_LIMIT_M, first_touch_lift, whole_face_certificates,

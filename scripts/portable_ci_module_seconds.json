@@ -76,6 +76,7 @@
  "tests/test_general_contact_beam_s3_transient_rotational.py": 14,
  "tests/test_general_contact_beam_shell_patch.py": 12,
  "tests/test_general_contact_capped_cylinder_endcaps.py": 21,
+ "tests/test_general_contact_coupled_indentation.py": 300,
  "tests/test_general_contact_coupled_tool_staging.py": 439,
  "tests/test_general_contact_cross_side_broad_phase.py": 26,
  "tests/test_general_contact_curved_cylinder_response.py": 43,

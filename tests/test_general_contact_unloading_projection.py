@@ -4,9 +4,9 @@ from types import SimpleNamespace, MethodType
 import copy
 import numpy as np
 import pytest
-from anysolver.general_contact import corner_contact_geometry as geometry
-from anysolver.general_contact.corner_contact_certificate import CornerContactRefusal
-from anysolver.general_contact.corner_contact_indentation import CoupledIndentation
+from anyfesolver.general_contact import corner_contact_geometry as geometry
+from anyfesolver.general_contact.corner_contact_certificate import CornerContactRefusal
+from anyfesolver.general_contact.corner_contact_indentation import CoupledIndentation
 
 FIXTURE=Path(__file__).parent/'data/general_contact/s11_unload_first_separated_tie.npz'
 
@@ -56,7 +56,7 @@ def test_unavailable_or_uncertain_separation_retains_original_refusal(monkeypatc
     with pytest.raises(CornerContactRefusal): qualified(data,panel,pose,error)
 
 def test_error_boxes_touching_or_crossing_panel_do_not_certify():
-    from anysolver.general_contact.corner_contact_projection_inactive import separated_zero_force_proof
+    from anyfesolver.general_contact.corner_contact_projection_inactive import separated_zero_force_proof
     data,panel,pose,error=captured()
     # Move the query below every captured local skin; the positive-side proof
     # must fail even though its unsigned distance is still strictly positive.
@@ -111,7 +111,7 @@ def test_unambiguous_gap_work_gradient_is_unchanged():
         assert (plus-minus)/(2*h)==pytest.approx(info['direction'][axis],abs=1e-8)
 
 def test_hidden_closer_omitted_face_cannot_be_excluded_by_float_broadphase_assumption():
-    from anysolver.general_contact.corner_contact_projection_inactive import separated_zero_force_proof
+    from anyfesolver.general_contact.corner_contact_projection_inactive import separated_zero_force_proof
     first=np.array([[-1.,-1.,0.],[1.,-1.,0.],[1.,1.,0.],[-1.,1.,0.]])
     second=first.copy();second[:,2]=.009
     positions=np.vstack([first,second]);errors=np.zeros_like(positions)
@@ -129,13 +129,13 @@ def test_hidden_closer_omitted_face_cannot_be_excluded_by_float_broadphase_assum
 
 @pytest.mark.parametrize('radius,zero',[(np.inf,1e-9),(.05,np.nan),(-1.,1e-9),(.05,.05),(.05,0.)])
 def test_invalid_proof_thresholds_refuse(radius,zero):
-    from anysolver.general_contact.corner_contact_projection_inactive import separated_zero_force_proof
+    from anyfesolver.general_contact.corner_contact_projection_inactive import separated_zero_force_proof
     data,panel,pose,error=captured()
     assert separated_zero_force_proof(data['x'],error[0],pose.positions,pose.position_errors,
         panel.face_slices,data['faces'],radius=radius,zero_distance=zero) is None
 
 def test_nonfinite_or_wrong_shape_positions_do_not_certify():
-    from anysolver.general_contact.corner_contact_projection_inactive import separated_zero_force_proof
+    from anyfesolver.general_contact.corner_contact_projection_inactive import separated_zero_force_proof
     data,panel,pose,error=captured()
     for positions in (np.zeros(3),np.zeros((4,2)),np.full_like(pose.positions,np.nan)):
         assert separated_zero_force_proof(data['x'],error[0],positions,np.zeros_like(positions),

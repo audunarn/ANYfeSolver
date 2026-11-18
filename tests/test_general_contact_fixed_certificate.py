@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 from test_general_contact_corner_contact import make_panel, _sphere
-import anysolver.general_contact.corner_contact_certificate as cert
+import anyfesolver.general_contact.corner_contact_certificate as cert
 
 
 def _area(points):

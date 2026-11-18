@@ -16,12 +16,12 @@ from pathlib import Path
 
 import numpy as np
 
-from anysolver.general_contact.corner_contact_indentation import (
+from anyfesolver.general_contact.corner_contact_indentation import (
     STATUS_COMPLETED, run_cycle,
 )
 from examples.elastic_sphere_stiffened_panel import _runtime_identity
 
-SCHEMA = "anysolver.elastic-sphere-panel-indentation-v1"
+SCHEMA = "anyfesolver.elastic-sphere-panel-indentation-v1"
 
 
 def _plain(value):

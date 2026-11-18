@@ -3,9 +3,9 @@ import numpy as np
 import pytest
 from types import SimpleNamespace
 from test_general_contact_corner_contact import Spring
-from anysolver.general_contact.corner_contact_solver import solve_ncp
-from anysolver.general_contact.corner_contact_certificate import CornerContactRefusal
-from anysolver.general_contact.corner_contact_indentation import CoupledIndentation
+from anyfesolver.general_contact.corner_contact_solver import solve_ncp
+from anyfesolver.general_contact.corner_contact_certificate import CornerContactRefusal
+from anyfesolver.general_contact.corner_contact_indentation import CoupledIndentation
 
 
 def test_residual_only_trials_rebuild_tangent_only_if_another_step_is_needed():
@@ -56,7 +56,7 @@ def test_inadmissible_trial_pose_refuses_before_any_structural_assembly():
     assert caught.value.code == 'invalid_pose' and not called
 
 def test_inflight_cancellation_is_observed_before_line_search_exhaustion():
-    from anysolver.general_contact.corner_contact_solver import Cancelled
+    from anyfesolver.general_contact.corner_contact_solver import Cancelled
     problem = Spring()
     calls = []
     def cancel():
@@ -70,7 +70,7 @@ def test_inflight_cancellation_is_observed_before_line_search_exhaustion():
 
 
 def test_failed_acceptance_gate_in_solve_to_preserves_accepted_state(monkeypatch):
-    import anysolver.general_contact.corner_contact_indentation as module
+    import anyfesolver.general_contact.corner_contact_indentation as module
     target = np.arange(6, dtype=float)
     commits = []
     sim = SimpleNamespace(
@@ -95,7 +95,7 @@ def test_failed_acceptance_gate_in_solve_to_preserves_accepted_state(monkeypatch
 
 
 def test_acceptance_gate_failure_is_not_retried_or_bisected():
-    from anysolver.general_contact.corner_contact_indentation import GateFailure
+    from anyfesolver.general_contact.corner_contact_indentation import GateFailure
     calls=[]
     sim=SimpleNamespace(target=np.zeros(6),bisections_left=4)
     def refuse(z):

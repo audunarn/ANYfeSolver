@@ -1,7 +1,7 @@
 """Linearized contact sets must satisfy compression before nonlinear line search."""
 import numpy as np
 import pytest
-from anysolver.general_contact.corner_contact_solver import Evaluation, solve_ncp, NewtonFailure
+from anyfesolver.general_contact.corner_contact_solver import Evaluation, solve_ncp, NewtonFailure
 
 
 class NearParallelContact:

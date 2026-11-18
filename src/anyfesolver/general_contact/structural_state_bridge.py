@@ -205,7 +205,7 @@ class TwoBodyStateBridge:
                               tangent)
 
     def _assemble(self, displacement, sphere_history, panel_history, tangent):
-        from anysolver.nonlinear_static import _assemble_nonlinear_system
+        from anyfesolver.nonlinear_static import _assemble_nonlinear_system
         forces, blocks, histories = [], [], []
         parts = (displacement[:self.sizes[0]], displacement[self.sizes[0]:])
         for body, u, history in zip(self._bodies, parts, (sphere_history, panel_history)):

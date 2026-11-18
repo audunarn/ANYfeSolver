@@ -1,7 +1,7 @@
 """Trial filtering cannot relax final contact/control/equilibrium acceptance."""
 import numpy as np
 import pytest
-from anysolver.general_contact.corner_contact_solver import (
+from anyfesolver.general_contact.corner_contact_solver import (
     Evaluation, solve_ncp, _affine_guide_progress, NewtonFailure, GAP_TOL_M,
 )
 
@@ -59,7 +59,7 @@ def test_guide_progress_cannot_admit_nonfinite_force_residual():
 
 def test_failed_scientific_gate_is_preserved_without_increment_retries():
     from types import SimpleNamespace
-    from anysolver.general_contact.corner_contact_indentation import CoupledIndentation, GateFailure
+    from anyfesolver.general_contact.corner_contact_indentation import CoupledIndentation, GateFailure
     calls = []
     def reject(target):
         calls.append(target)

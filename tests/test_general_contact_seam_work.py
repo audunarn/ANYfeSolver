@@ -3,10 +3,10 @@ from fractions import Fraction
 import numpy as np
 import pytest
 from test_general_contact_corner_contact import make_panel, gap
-from anysolver.general_contact.corner_contact_geometry import (
+from anyfesolver.general_contact.corner_contact_geometry import (
     _face_candidates, _face_minimum_bounds,
 )
-from anysolver.general_contact.corner_contact_solver import Evaluation, solve_ncp
+from anyfesolver.general_contact.corner_contact_solver import Evaluation, solve_ncp
 
 
 def test_distinct_edge_candidates_do_not_hide_a_provably_unique_face_minimum():

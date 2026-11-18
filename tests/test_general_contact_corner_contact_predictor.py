@@ -3,9 +3,9 @@ from pathlib import Path
 from types import SimpleNamespace
 import numpy as np
 import pytest
-from anysolver.general_contact.corner_contact_indentation import CoupledIndentation
-from anysolver.general_contact.corner_contact_geometry import closest_panel_point
-from anysolver.general_contact.corner_contact_certificate import CornerContactRefusal
+from anyfesolver.general_contact.corner_contact_indentation import CoupledIndentation
+from anyfesolver.general_contact.corner_contact_geometry import closest_panel_point
+from anyfesolver.general_contact.corner_contact_certificate import CornerContactRefusal
 
 
 def test_actual_captured_44_45_tie_remains_refused():

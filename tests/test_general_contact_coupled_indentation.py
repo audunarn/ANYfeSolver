@@ -9,10 +9,10 @@ import json
 
 import numpy as np
 
-from anysolver.general_contact.corner_contact_certificate import (
+from anyfesolver.general_contact.corner_contact_certificate import (
     PENETRATION_LIMIT_M, first_touch_lift, whole_face_certificates,
 )
-from anysolver.general_contact.s3_q4_swept import s3_q4_affine_lower
+from anyfesolver.general_contact.s3_q4_swept import s3_q4_affine_lower
 from examples.elastic_sphere_panel_contact_work import prepare_work_case
 
 
@@ -79,11 +79,11 @@ def test_actual_coupled_increment_and_rollback(record_property):
     """Open equilibrium (both gravities), touch, ONE genuinely coupled loaded increment,
     then exact rollback after cancellation, a rejected trial and foreign/nonfinite state."""
     import pytest
-    from anysolver.general_contact.corner_contact_indentation import (
+    from anyfesolver.general_contact.corner_contact_indentation import (
         CoupledIndentation, GateFailure,
     )
-    from anysolver.general_contact.corner_contact_solver import Cancelled
-    from anysolver.general_contact.structural_state_bridge import BridgeState
+    from anyfesolver.general_contact.corner_contact_solver import Cancelled
+    from anyfesolver.general_contact.structural_state_bridge import BridgeState
 
     import time
     started = time.perf_counter()
@@ -146,7 +146,7 @@ def test_actual_coupled_increment_and_rollback(record_property):
     sim.cancel = None
     assert _same(sim, accepted)
     # A rejected trial (iteration budget exhausted) also rolls back exactly.
-    from anysolver.general_contact.corner_contact_solver import NewtonFailure
+    from anyfesolver.general_contact.corner_contact_solver import NewtonFailure
     sim.max_iterations = 0
     with pytest.raises(NewtonFailure):
         sim.solve_to(z_touch - 0.5e-3)

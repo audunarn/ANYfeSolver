@@ -459,7 +459,7 @@ handoff. No broader qualification follows this slice automatically.
 ## Slice-7 curved contact-skin geometry (development-only)
 
 The s7 slice adds a development-only face-local curved shell skin geometry
-service (`anysolver.general_contact.curved_shell_skin`) and the example
+service (`anyfesolver.general_contact.curved_shell_skin`) and the example
 `examples/elastic_sphere_panel_contact_skins.py`. Skin points are keyed
 (body, element, local corner) and preserve each element's own physical
 reference director and offset, so a shared sphere node keeps one distinct

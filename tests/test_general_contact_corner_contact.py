@@ -4,11 +4,11 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from anysolver.general_contact.corner_contact_certificate import (
+from anyfesolver.general_contact.corner_contact_certificate import (
     CornerContactRefusal, PENETRATION_LIMIT_M, directional_exclusion, whole_face_certificates,
 )
-from anysolver.general_contact.corner_contact_geometry import closest_panel_point, corner_gaps
-from anysolver.general_contact.corner_contact_solver import (
+from anyfesolver.general_contact.corner_contact_geometry import closest_panel_point, corner_gaps
+from anyfesolver.general_contact.corner_contact_solver import (
     Cancelled, Evaluation, NewtonFailure, solve_ncp,
 )
 
