@@ -881,3 +881,37 @@ def test_nonfinite_derived_resultant_is_refused_not_certified():
     for key in ("global_membrane_resultant_tensors", "global_bending_resultant_tensors"):
         if key in out.arrays:
             assert np.all(np.isfinite(out.arrays[key]))
+
+
+def test_nonfinite_positions_are_refused_not_silently_omitted(monkeypatch):
+    """Codex r2: a nonfinite station table must not leave every family certified."""
+
+    import anyfesolver.shell_axes_outputs as module
+
+    original = module._shape_positions
+
+    def poisoned(element, coords, points):
+        out = np.array(original(element, coords, points))
+        out[0, 0] = float("nan")
+        return out
+
+    monkeypatch.setattr(module, "_shape_positions", poisoned)
+    el, mesh, loc = build("e4pl", "q4", "h")
+    res, u = recover(el, mesh, loc)
+    out = derive(el, mesh, u, res)
+    assert out.refusals["positions"].reason == "nonfinite"
+    assert "recovery_station_positions" not in out.arrays
+    with pytest.raises(ShellAxesRefusal):
+        out.require_all()
+
+
+def test_nonfinite_metadata_is_refused_not_copied():
+    """Codex r2: finite thickness and offset can still give an infinite top offset."""
+
+    el, mesh, loc = build("v2d", "t3", "g")
+    res, u = recover(el, mesh, loc)
+    el.thickness = 1.7e308
+    el.reference_surface_offset = 1.7e308
+    out = derive(el, mesh, u, res)
+    assert out.refusals["metadata"].reason == "nonfinite"
+    assert "physical_top_offset_from_reference" not in out.arrays
