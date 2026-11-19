@@ -673,6 +673,12 @@ def derive_shell_axes_outputs(
         if not ok:
             refuse(family, "out_of_plane", f"|nu.T|={value:.3e} > 1e-13 s_T")
 
+    # Derived resultants N = h sigma, M, Q can overflow while the stresses are
+    # finite (Codex r1): a nonfinite family is never certified or returned.
+    for family, tensors in family_arrays.items():
+        if not _finite(tensors):
+            refuse(family, "nonfinite", "derived family tensor is not finite")
+
     arrays: Dict[str, np.ndarray] = {}
     if _finite(branch.positions):
         arrays["recovery_station_positions"] = _frozen(branch.positions)

@@ -866,3 +866,18 @@ def test_legacy_q8_batched_recovery_frames_path_is_certified(topo):
     res = el.compute_stresses(mesh, u, material, return_global=True)
     out = derive_shell_axes_outputs(el, mesh, u, material, res)
     assert out.refusals == {}, out.refusals
+
+
+def test_nonfinite_derived_resultant_is_refused_not_certified():
+    """Codex r1 P2: N = h sigma overflows while the stresses are finite."""
+
+    el, mesh, loc = build("legacy", "q4", "h", thickness=1000.0)
+    res, u = recover(el, mesh, loc, field=plate_field(loc, ex=5.0e294))
+    out = derive(el, mesh, u, res)
+    refused = [f for f, r in out.refusals.items() if r.reason == "nonfinite"]
+    assert refused, out.refusals
+    for family in refused:
+        assert not out.certified[family]
+    for key in ("global_membrane_resultant_tensors", "global_bending_resultant_tensors"):
+        if key in out.arrays:
+            assert np.all(np.isfinite(out.arrays[key]))
