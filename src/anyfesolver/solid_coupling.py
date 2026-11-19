@@ -1139,14 +1139,7 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
                 if scale:
                     worst_compat = max(worst_compat, abs(a - b) / scale)
         lk = lam_q[start:start + side_rows[k]]
-        for r in range(6):
-            shell_side = -sum((CRs[i][r] * lk[i] for i in range(len(lk))), Fraction(0))
-            solid_side = sum((CRv[i][r] * lk[i] for i in range(len(lk))), Fraction(0))
-            reference = sum((abs(CRs[i][r] * lk[i]) + abs(CRv[i][r] * lk[i]) for i in range(len(lk))), Fraction(0))
-            if abs(shell_side + solid_side) > V4_BALANCE_TOLERANCE * reference:
-                raise _refuse('COUPLED_UNCERTIFIED', 'v4_interface_balance', f'side {name!r}: interface forces do not cancel')
-            if reference:
-                worst_balance = max(worst_balance, abs(shell_side + solid_side) / reference)
+        worst_balance = max(worst_balance, _v4_side_balance(name, CRs, CRv, lk))
         Q_rows = [[(n_s + n_v + start + i, -CRs[i][r]) for i in range(len(lk)) if CRs[i][r]] for r in range(6)]
         bounded = _bounded_rows(Q_rows, None, z, shifts, E)
         resultants.append(SideResultant(name, Bounded(bounded.values[:3], bounded.bounds[:3]),
@@ -1189,6 +1182,28 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
         side_resultants=tuple(resultants), reactions=reaction_out[order],
         footprint_centre=np.array([float(v) for v in centre]), echo=echo, ledger=ledger,
         certificate=dict(solved.certificate), verification=verification, sizes=sizes, timings=timings)
+
+
+def _v4_side_balance(name: str, CRs: Sequence[Sequence[Fraction]], CRv: Sequence[Sequence[Fraction]],
+                     lam: Sequence[Fraction]) -> Fraction:
+    """V4 interface balance on one side (owner decision OD8, 2026-11-19): for every rigid component r,
+    |sum_i (C_v R_v - C_s R_s)_ir lam_i| <= 1e-10 ref, exactly, with the per-side normwise reference
+    ref = sum_i max_r (|C_s R_s| + |C_v R_v|)_ir |lam_i| (the OD7 form). Returns the worst ratio; a side
+    with ref = 0 has a zero imbalance and is exempt (a nonzero imbalance there cannot occur)."""
+    reference = sum((max(abs(a) + abs(b) for a, b in zip(CRs[i], CRv[i])) * abs(lam[i]) for i in range(len(lam))),
+                    Fraction(0))
+    worst = Fraction(0)
+    for r in range(6):
+        imbalance = abs(sum(((CRv[i][r] - CRs[i][r]) * lam[i] for i in range(len(lam))), Fraction(0)))
+        if reference == 0:
+            if imbalance:
+                raise _refuse('COUPLED_UNCERTIFIED', 'internal_balance_inconsistency',
+                              f'side {name!r}: a nonzero imbalance with a zero reference')
+            continue
+        if imbalance > V4_BALANCE_TOLERANCE * reference:
+            raise _refuse('COUPLED_UNCERTIFIED', 'v4_interface_balance', f'side {name!r}: interface forces do not cancel')
+        worst = max(worst, imbalance / reference)
+    return worst
 
 
 def _transfer_gate(model, cut, load_case, prepared, f_v, centre, diagonal_lo) -> None:

@@ -12,6 +12,7 @@ from __future__ import annotations
 import math
 import subprocess
 import sys
+from fractions import Fraction
 
 import numpy as np
 import pytest
@@ -195,6 +196,74 @@ def test_r1_r10_mechanism_refuses(supports):
     # the rigid in-plane motions (all of them without supports) are exact null vectors of S
     error = coded(run, supports='none', hook=hook)
     assert error.code in ('COUPLED_UNCERTIFIED', 'COUPLED_MECHANISM')
+
+
+# --- OD8 (2026-11-19): V4 interface balance against the per-side normwise reference ------------------
+
+def _rows(*rows):
+    return [[Fraction(v) for v in row] for row in rows]
+
+
+def test_od8_v4_noise_component_is_judged_against_the_side_norm():
+    # Row 0 carries a large x force; row 1 a noise-sized y force whose two sides differ by 2^-10 of
+    # its own terms. The per-component reference of 862d099d0 refuses (ratio ~4.9e-4 > 1e-10); the
+    # OD8 per-side reference sum_i max_r(|CsRs|+|CvRv|)_ir |lam_i| accepts (ratio ~3.5e-18).
+    CRs = _rows([1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0])
+    CRv = _rows([1, 0, 0, 0, 0, 0], [0, 1 + Fraction(1, 2 ** 10), 0, 0, 0, 0])
+    lam = [Fraction(2 ** 17), Fraction(1, 2 ** 30)]
+    worst = sc._v4_side_balance('side_0', CRs, CRv, lam)
+    reference = 2 * Fraction(2 ** 17) + (2 + Fraction(1, 2 ** 10)) * Fraction(1, 2 ** 30)
+    assert worst == Fraction(1, 2 ** 40) / reference
+
+
+def test_od8_v4_threshold_is_decided_exactly_and_a_real_imbalance_refuses():
+    tol = sc.V4_BALANCE_TOLERANCE
+    delta = 2 * tol / (1 - tol)                 # imbalance == tol * (2 + delta) exactly
+    lam = [Fraction(1)]
+    CRs = _rows([1, 0, 0, 0, 0, 0])
+    assert sc._v4_side_balance('s', CRs, [[1 + delta] + [Fraction(0)] * 5], lam) == tol
+    bump = delta + Fraction(1, 10 ** 30)
+    with pytest.raises(CoupledSolveError) as info:
+        sc._v4_side_balance('s', CRs, [[1 + bump] + [Fraction(0)] * 5], lam)
+    assert (info.value.code, info.value.reason) == ('COUPLED_UNCERTIFIED', 'v4_interface_balance')
+    # a moment imbalance is judged against the same side reference (no per-component exemption)
+    CRm = _rows([1, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 1])
+    with pytest.raises(CoupledSolveError):
+        sc._v4_side_balance('s', CRm, _rows([1, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, Fraction(11, 10)]),
+                            [Fraction(1), Fraction(1)])
+
+
+def test_od8_v4_zero_reference_is_exempt():
+    CRs = _rows([1, 2, 3, 4, 5, 6])
+    assert sc._v4_side_balance('s', CRs, _rows([1, 2, 3, 4, 5, 7]), [Fraction(0)]) == 0
+
+
+def test_nu_zero_patch_test():
+    """Uniform stretch u_x = eps x imposed on the outer edge, nu = 0, no load: the exact solution is
+    u_x = eps x, every other shell DOF zero, the solid coefficients eps x on x and zero otherwise. It
+    refused on 862d099d0 at V4 (OD8); it must be accepted with a patch error <= 1e-13 (1e-9 eps)."""
+    eps = 1e-4
+
+    def hook(model, grid):
+        for (i, j), nid in grid.items():
+            if i in (0, 3) or j in (0, 3):
+                x = model.mesh.nodes[nid].x
+                model.add_boundary_condition(BoundaryCondition(
+                    name=f'p{nid}', node_ids=[nid],
+                    dof_constraints={'ux': eps * x, 'uy': 0.0, 'uz': 0.0, 'rx': 0.0, 'ry': 0.0, 'rz': 0.0}))
+    result = run(supports='none', nu=0.0, skin=None, hook=hook)
+    assert result.certificate['accepted']
+    assert result.verification['v4_balance_max'] <= float(sc.V4_BALANCE_TOLERANCE)
+    model, grid, *_ = small(supports='none', nu=0.0, skin=None)
+    x = np.array([model.mesh.nodes[nid].x for nid in result.shell_node_ids])
+    u = result.shell_displacements.values.reshape(-1, 6)
+    assert np.abs(u[:, 0] - eps * x).max() <= 1e-13
+    assert np.abs(u[:, 1:]).max() <= 1e-13
+    prepared = small(nu=0.0)[3]
+    coords = np.asarray(prepared.coefficient_coordinates)
+    comps = np.asarray(prepared.coefficient_components)
+    expected = np.where(comps == 0, eps * coords[:, 0], 0.0)
+    assert np.abs(result.solid_coefficients.values - expected).max() <= 1e-13
 
 
 # --- further S2 tests ---------------------------------------------------------------------------------
