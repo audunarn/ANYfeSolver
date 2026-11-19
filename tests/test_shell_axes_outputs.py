@@ -914,4 +914,4 @@ def test_nonfinite_metadata_is_refused_not_copied():
     el.reference_surface_offset = 1.7e308
     out = derive(el, mesh, u, res)
     assert out.refusals["metadata"].reason == "nonfinite"
-    assert "physical_top_offset_from_reference" not in out.arrays
+    assert "physical_bottom_offset_from_reference" not in out.arrays
