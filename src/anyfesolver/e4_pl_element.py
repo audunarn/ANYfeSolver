@@ -7069,7 +7069,7 @@ class QualifiedE4PLShellElement(
                         dtype=float,
                     )
                     @ frame.T
-                ) * (thickness * thickness / 6.0)
+                ) * (max(thickness * thickness, 1.0e-12) / 6.0)  # inverts the 6M/max(h^2, _SMALL) of the legacy recovery
             recovered.update(
                 {
                     "global_membrane_resultant_tensors": global_membrane,

@@ -23,6 +23,7 @@ for the four-node elements, so that node order matters.
 from __future__ import annotations
 
 import math
+import pathlib
 
 import numpy as np
 import pytest
@@ -128,7 +129,7 @@ ORDERS = {
 }
 
 
-def build(kind, topo, sec, *, polarity=1, order="std", ref=True, normal=None):
+def build(kind, topo, sec, *, polarity=1, order="std", ref=True, normal=None, thickness=H):
     loc = topology(topo)
     n = len(loc)
     if n in ORDERS:
@@ -140,7 +141,7 @@ def build(kind, topo, sec, *, polarity=1, order="std", ref=True, normal=None):
     mesh = FEMesh()
     for i, p in enumerate(loc, start=1):
         mesh.add_node(i, *(R0 @ np.asarray(p, float) + T0))
-    kw = dict(thickness=H)
+    kw = dict(thickness=thickness)
     if sec == "g":
         kw["shell_section"] = _section()
     ids = list(range(1, n + 1))
@@ -294,8 +295,6 @@ def test_new_keys_only_under_return_global_and_old_keys_identical(branch):
     off = recover(el, mesh, loc, False)
     on = recover(el, mesh, loc, True)
     for key in NEW_KEYS:
-        if key in NEW_FAMILY_KEYS and key in off:
-            continue  # families that already existed without the flag (none)
         assert key not in off, key
         assert key in on, key
     assert on["recovery_station_positions"].shape == (n_p, 3)
@@ -572,3 +571,45 @@ def test_compiled_s4_kernel_new_keys_match_scalar_oracle():
             assert got.shape == expected.shape
             scale = max(float(np.max(np.abs(expected))), 1.0e-300)
             assert np.max(np.abs(got - expected)) <= 1.0e-12 * scale, key
+
+
+# ------------------------------------------------------------- golden (old code)
+GOLDEN = pathlib.Path(__file__).parent / "data" / "shell_global_outputs_d2_golden.npz"
+
+
+@pytest.mark.parametrize("branch", BRANCHES, ids=IDS)
+@pytest.mark.parametrize("flag", (False, True))
+def test_pre_existing_values_bit_identical_to_golden_from_base_code(branch, flag):
+    """Golden arrays were written by the code before D2-1 (origin/main 0dea1cc0f)."""
+
+    bid, kind, topo, sec, n_p = branch
+    el, mesh, loc = build(kind, topo, sec)
+    res = recover(el, mesh, loc, flag)
+    golden = np.load(GOLDEN)
+    prefix = f"{bid}|{int(flag)}|"
+    keys = [k[len(prefix):] for k in golden.files if k.startswith(prefix)]
+    assert keys, "golden has no entries for this branch"
+    assert set(keys) <= set(res)
+    for key in keys:
+        assert np.array_equal(np.asarray(res[key]), golden[prefix + key]), key
+    if not flag:
+        assert not (set(res) & set(NEW_KEYS))
+
+
+def test_warped_homogeneous_resultants_scale_with_thickness_below_the_legacy_floor():
+    """Codex r1 P2: M must be native (h^3 scaling) even for h < 1e-6, where the
+    recovered bending stress used 6M/max(h^2, 1e-12)."""
+
+    thin = 1.0e-7
+    el, mesh, loc = build("e4pl", "q4w", "h")
+    ref = recover(el, mesh, loc, True)
+    el2, mesh2, loc2 = build("e4pl", "q4w", "h", thickness=thin)
+    got = recover(el2, mesh2, loc2, True)
+    ratio = thin / H
+    for key, power in (
+        ("global_membrane_resultant_tensors", 1),
+        ("global_bending_resultant_tensors", 3),
+    ):
+        a = np.asarray(ref[key]) * ratio**power
+        b = np.asarray(got[key])
+        assert np.max(np.abs(a - b)) <= 1.0e-9 * np.max(np.abs(a)), key
