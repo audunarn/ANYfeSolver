@@ -16,6 +16,8 @@ inventory is `dependency-licenses.json`.
 | ANYfeSolver-results | `ANYfeSolver-results>=2.2,<3` | MPL-2.0 | Runtime dependency |
 | ANYhydro | `ANYhydro>=0.1.0` | MPL-2.0 | Optional marine excitation dependency |
 | ANYloads | `ANYloads>=0.1.0` | MPL-2.0 | Optional marine Morison dependency |
+| ANYsolid | `ANYsolid[skfem]>=0.1.0,<0.2` | MPL-2.0 | Optional solid backend of the private shell-solid coupling routes; separately distributed |
+| scikit-fem | `scikit-fem>=12.0.2,<13` through ANYsolid's `skfem` extra | BSD-3-Clause | Optional continuum assembly dependency; not bundled |
 | ANYgeometry | `ANYgeometry>=0.4.3,<0.5` | MPL-2.0 | Optional general-contact dependency; separately distributed |
 | Numba | `numba>=0.59` | BSD | Optional accelerator; not bundled |
 | pypardiso | `pypardiso>=0.4` | BSD-3-Clause | Optional accelerator; not bundled |

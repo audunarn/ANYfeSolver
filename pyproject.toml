@@ -34,6 +34,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+solids = ["ANYsolid[skfem]>=0.1.0,<0.2"]
 marine-excitation = ["ANYhydro>=0.1.0"]
 marine-morison = ["ANYloads>=0.1.0"]
 general-contact = ["ANYgeometry>=0.4.3,<0.5"]
