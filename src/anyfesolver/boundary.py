@@ -20,7 +20,7 @@ import re
 import sys
 import types
 import warnings
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, List, Optional, Sequence, Tuple
 
 import numpy as np
 from numpy._core import _ufunc_config as _NUMPY_ERROR_MODULE
@@ -693,6 +693,72 @@ class LoadCase:
             qualified_runtime_guard=qualified_runtime_guard,
         )
 
+    def _load_contributions(
+        self,
+        mesh: "FEMesh",
+        displacements: Optional[np.ndarray],
+        activity_scale: Callable[[int], float],
+        *,
+        report_skips: bool = False,
+    ) -> Iterator[Tuple[Tuple[Any, ...], Any, Any]]:
+        """Yield ``(record, dof, value)`` of the nodal, element and pressure loops in native order.
+
+        ``record`` is ``(kind, id, component)``. The native load vector is exactly
+        ``F[dof] += value`` over these items. With ``report_skips`` (never set by the
+        native path, which then performs exactly the original operations) every
+        component the native loop leaves out is also yielded, as ``(record, None, None)``
+        with ``kind`` suffixed ``_skipped``: a missing node or element, an element
+        without ``node_ids`` (pressure), and load components past the DOF mapping or
+        DOFs past the computed element vector.
+        """
+        # Nodal loads.
+        for node_id, load in self.nodal_loads.items():
+            node = mesh.get_node(node_id)
+            if node:
+                for i, dof in enumerate(node.dofs):
+                    if i < len(load):
+                        yield ("nodal", node_id, i), dof, load[i]
+                if report_skips and len(load) > len(node.dofs):
+                    yield ("nodal_skipped", node_id, "components_past_dofs"), None, None
+            elif report_skips:
+                yield ("nodal_skipped", node_id, "missing_node"), None, None
+
+        # User-provided element load vectors.
+        for element_id, load in self.element_loads.items():
+            element = mesh.get_element(element_id)
+            if element is None:
+                if report_skips:
+                    yield ("element_skipped", element_id, "missing_element"), None, None
+                continue
+            dof_mapping = element.get_dof_mapping(mesh)
+            load = np.asarray(load, dtype=float)
+            scale = activity_scale(int(element_id))
+            for i, dof in enumerate(dof_mapping):
+                if i < len(load):
+                    yield ("element", element_id, i), dof, scale * load[i]
+            if report_skips and len(load) != len(dof_mapping):
+                yield ("element_skipped", element_id, "length_mismatch"), None, None
+
+        # Consistent pressure loads for shell elements.
+        for element_id, pressure in self.pressure_loads.items():
+            element = mesh.get_element(element_id)
+            if element is None or not hasattr(element, "node_ids"):
+                if report_skips:
+                    yield ("pressure_skipped", element_id, "missing_element"), None, None
+                continue
+            coords = None
+            if self.follower_pressure:
+                self._reject_strict_flat_s3_v2_follower_pressure(element)
+                coords = self._current_element_coordinates(element, mesh, displacements)
+            f_elem = self._consistent_pressure_load(element, mesh, pressure, coords)
+            scale = activity_scale(int(element_id))
+            dof_mapping = element.get_dof_mapping(mesh)
+            for i, dof in enumerate(dof_mapping):
+                if i < len(f_elem):
+                    yield ("pressure", element_id, i), dof, scale * f_elem[i]
+            if report_skips and len(f_elem) != len(dof_mapping):
+                yield ("pressure_skipped", element_id, "length_mismatch"), None, None
+
     def _get_load_vector_core(
         self,
         mesh: "FEMesh",
@@ -714,41 +780,10 @@ class LoadCase:
             qualified_runtime_guard(stage="load activity observation")
             return float(np.asarray(values, dtype=float).reshape(-1)[0])
 
-        # Nodal loads.
-        for node_id, load in self.nodal_loads.items():
-            node = mesh.get_node(node_id)
-            if node:
-                for i, dof in enumerate(node.dofs):
-                    if i < len(load):
-                        F[dof] += load[i]
-
-        # User-provided element load vectors.
-        for element_id, load in self.element_loads.items():
-            element = mesh.get_element(element_id)
-            if element is None:
-                continue
-            dof_mapping = element.get_dof_mapping(mesh)
-            load = np.asarray(load, dtype=float)
-            scale = activity_scale(int(element_id))
-            for i, dof in enumerate(dof_mapping):
-                if i < len(load):
-                    F[dof] += scale * load[i]
-
-        # Consistent pressure loads for shell elements.
-        for element_id, pressure in self.pressure_loads.items():
-            element = mesh.get_element(element_id)
-            if element is None or not hasattr(element, "node_ids"):
-                continue
-            coords = None
-            if self.follower_pressure:
-                self._reject_strict_flat_s3_v2_follower_pressure(element)
-                coords = self._current_element_coordinates(element, mesh, displacements)
-            f_elem = self._consistent_pressure_load(element, mesh, pressure, coords)
-            scale = activity_scale(int(element_id))
-            dof_mapping = element.get_dof_mapping(mesh)
-            for i, dof in enumerate(dof_mapping):
-                if i < len(f_elem):
-                    F[dof] += scale * f_elem[i]
+        # Nodal, element and pressure loads: one shared traversal (also consumed
+        # by the coupled shell-solid ledger), added in native order.
+        for _record, dof, value in self._load_contributions(mesh, displacements, activity_scale):
+            F[dof] += value
 
         # Gravity loads from element mass matrices.
         if self.gravity is not None:
