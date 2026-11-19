@@ -155,6 +155,9 @@ def test_functional_lane_direct_shell_calls_are_non_q4_or_explicit_refusal() -> 
                 "tests/test_submodel_transfer.py",
                 "test_unadmitted_target_shell_and_invalid_controls_refuse",
             ): 1,
+            # D2-1 B2 axes-output probe: builds legacy shells (also Q4) only to
+            # read compute_stresses outputs; no solve admission.
+            ("tests/test_shell_axes_outputs.py", "build"): 1,
         }
     )
     # This explicit negative constructs legacy Q4 only to verify rejection by
