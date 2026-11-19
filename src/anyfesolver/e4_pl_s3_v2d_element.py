@@ -1789,6 +1789,38 @@ class NativeParityE4PLS3V2DShellElement(
             )
 
         reference_coordinates = self._coordinates(mesh)
+        # D2-1 / O5(a): additive outputs.  One constant frame; its normal is
+        # the reference normal (NOT multiplied by the director polarity) and
+        # is the tensor-basis normal of all three families.  The ordinary
+        # homogeneous case (polarity +1, offset 0) takes the V2C shortcut,
+        # which omits the polarity and offset keys; report them here.
+        frame_normals = np.repeat(frame[:, 2][None, :], len(membrane), axis=0)
+        result.update(
+            {
+                "recovery_station_positions": np.asarray(
+                    result["physical_station_coordinates"], dtype=np.float64
+                ).copy(),
+                "membrane_basis_normals": frame_normals.copy(),
+                "bending_basis_normals": frame_normals.copy(),
+                "shear_basis_normals": frame_normals.copy(),
+            }
+        )
+        result.setdefault("director_polarity", int(self.director_polarity))
+        result.setdefault(
+            "reference_surface_offset", float(self.reference_surface_offset)
+        )
+        result.setdefault(
+            "section_origin_offset_from_reference",
+            self.material_mid_surface_offset_from_reference,
+        )
+        result.setdefault(
+            "physical_bottom_offset_from_reference",
+            self.material_surface_offset_from_reference(-1.0),
+        )
+        result.setdefault(
+            "physical_top_offset_from_reference",
+            self.material_surface_offset_from_reference(1.0),
+        )
         result.update(
             {
                 "global_membrane_resultant_tensors": tensor_rows(membrane),

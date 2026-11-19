@@ -6689,6 +6689,50 @@ class QualifiedE4PLShellElement(
                 )
         return recovered
 
+    def _d2_station_positions(
+        self,
+        coordinates: np.ndarray,
+        points: Any,
+    ) -> np.ndarray:
+        """Return physical positions of natural-coordinate recovery stations.
+
+        D2-1 / O5(a): shape-function interpolation of the node coordinates at
+        exactly the stations the recovery uses.
+        """
+
+        nodes = np.asarray(coordinates, dtype=float)
+        positions = np.zeros((len(points), 3), dtype=float)
+        for index, (xi, eta) in enumerate(points):
+            shape = self.compute_shape_functions(float(xi), float(eta))[0]
+            positions[index] = shape @ nodes
+        return positions
+
+    def _d2_basis_outputs(
+        self,
+        coordinates: np.ndarray,
+        points: Any,
+        membrane_bending_normals: np.ndarray,
+        shear_normals: np.ndarray,
+    ) -> Dict[str, Any]:
+        """Return the D2-1 / O5(a) station positions, basis normals, director."""
+
+        outputs: Dict[str, Any] = {
+            "recovery_station_positions": self._d2_station_positions(
+                coordinates, points
+            ),
+            "membrane_basis_normals": np.array(
+                membrane_bending_normals, dtype=float
+            ),
+            "bending_basis_normals": np.array(
+                membrane_bending_normals, dtype=float
+            ),
+            "shear_basis_normals": np.array(shear_normals, dtype=float),
+        }
+        director = self.physical_reference_director
+        if director is not None:
+            outputs["physical_reference_director"] = director
+        return outputs
+
     def _recover_warped_generalized_section(
         self,
         mesh: Any,
@@ -6797,6 +6841,19 @@ class QualifiedE4PLShellElement(
                     "global_bending_resultant_tensors": global_bending,
                     "global_transverse_shear_resultants": global_shear,
                 }
+            )
+            # D2-1 / O5(a): membrane and bending tensors are rotated with the
+            # station physical frames; the shear vector with the CENTRE
+            # physical frame (see the shear expression above).
+            recovered.update(
+                self._d2_basis_outputs(
+                    coordinates,
+                    self.gauss_points,
+                    physical_frames[:, :, 2],
+                    np.repeat(
+                        center_frame[:, 2][None, :], len(physical_frames), axis=0
+                    ),
+                )
             )
         for name, values in recovered.items():
             if isinstance(values, np.ndarray) and not np.all(np.isfinite(values)):
@@ -6978,6 +7035,62 @@ class QualifiedE4PLShellElement(
         recovered["von_mises"] = von_mises
         recovered["equivalent_stress"] = equivalent
         recovered["hill_utilization"] = utilization
+        if return_global:
+            # D2-1 / O5(a): native resultants N = h sigma_m, M = h^2/6 sigma_b,
+            # Q = h tau, taken from the native (physical-director-mapped)
+            # section stresses, never from the top/bottom surface stresses.
+            # Membrane and bending are rotated once with the station physical
+            # frames, the shear vector once with the CENTRE physical frame
+            # (the native shear field is the centre-frame field).
+            thickness = float(self.thickness)
+            global_membrane = np.zeros((len(self.gauss_points), 3, 3), dtype=float)
+            global_bending = np.zeros_like(global_membrane)
+            for index, frame in enumerate(physical_frames):
+                global_membrane[index] = (
+                    frame
+                    @ np.asarray(
+                        (
+                            (membrane[index, 0], membrane[index, 2], 0.0),
+                            (membrane[index, 2], membrane[index, 1], 0.0),
+                            (0.0, 0.0, 0.0),
+                        ),
+                        dtype=float,
+                    )
+                    @ frame.T
+                ) * thickness
+                global_bending[index] = (
+                    frame
+                    @ np.asarray(
+                        (
+                            (bending[index, 0], bending[index, 2], 0.0),
+                            (bending[index, 2], bending[index, 1], 0.0),
+                            (0.0, 0.0, 0.0),
+                        ),
+                        dtype=float,
+                    )
+                    @ frame.T
+                ) * (thickness * thickness / 6.0)
+            recovered.update(
+                {
+                    "global_membrane_resultant_tensors": global_membrane,
+                    "global_bending_resultant_tensors": global_bending,
+                    "global_transverse_shear_resultants": thickness
+                    * (
+                        shear[:, :1] * center_frame[:, 0][None, :]
+                        + shear[:, 1:] * center_frame[:, 1][None, :]
+                    ),
+                }
+            )
+            recovered.update(
+                self._d2_basis_outputs(
+                    coordinates,
+                    self.gauss_points,
+                    physical_frames[:, :, 2],
+                    np.repeat(
+                        center_frame[:, 2][None, :], len(physical_frames), axis=0
+                    ),
+                )
+            )
         for name, values in recovered.items():
             if isinstance(values, np.ndarray) and not np.all(np.isfinite(values)):
                 raise ValueError(
@@ -7155,6 +7268,17 @@ class QualifiedE4PLShellElement(
                     "global_bending_resultant_tensors": global_bending,
                     "global_transverse_shear_resultants": global_shear,
                 }
+            )
+            # D2-1 / O5(a): one constant physical-director frame for all three
+            # families (the equation-7 frame mapped to the physical director);
+            # its normal equals the returned ``physical_director``.
+            recovered.update(
+                self._d2_basis_outputs(
+                    coordinates,
+                    recovery_points,
+                    np.repeat(frame[:, 2][None, :], len(recovery_points), axis=0),
+                    np.repeat(frame[:, 2][None, :], len(recovery_points), axis=0),
+                )
             )
 
         if self.shell_section is None:

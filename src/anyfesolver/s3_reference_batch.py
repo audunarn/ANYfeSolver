@@ -1104,6 +1104,7 @@ def _recover_with_kernel(
     element_displacements: np.ndarray,
     *,
     return_global: bool,
+    node_coordinates: Optional[np.ndarray] = None,
 ) -> Dict[str, Any]:
     """Evaluate the frozen homogeneous reference-elastic S3 recovery map."""
 
@@ -1111,6 +1112,7 @@ def _recover_with_kernel(
         HOMOGENEOUS_ELASTIC_STRESS_PROFILE_ID,
         PHYSICAL_EXTERNAL_INDICES,
         REFERENCE_ELASTIC_BUBBLE_LINEARIZATION_ID,
+        TRIANGLE_QUADRATURE,
     )
     from .e4_pl_s3_state import REFERENCE_SURFACE_OFFSET_POLICY_ID
 
@@ -1194,6 +1196,30 @@ def _recover_with_kernel(
                 "global_membrane_resultant_tensors": global_membrane,
                 "global_bending_resultant_tensors": global_bending,
                 "global_transverse_shear_resultants": global_shear,
+            }
+        )
+        # D2-1 / O5(a): same additive outputs, in the same order, as the
+        # scalar qualified-S3 recovery (owner frame normal, station positions
+        # from the element's own node coordinates, director polarity).
+        if node_coordinates is None:
+            raise ValueError("qualified S3 global recovery requires node coordinates")
+        barycentric = np.asarray(
+            [(1.0 - r - s, r, s) for r, s, _weight in TRIANGLE_QUADRATURE],
+            dtype=float,
+        )
+        owner_normal = np.repeat(
+            np.asarray(frame, dtype=float)[:, 2][None, :],
+            station_count,
+            axis=0,
+        )
+        recovered.update(
+            {
+                "recovery_station_positions": barycentric
+                @ np.asarray(node_coordinates, dtype=float),
+                "membrane_basis_normals": owner_normal.copy(),
+                "bending_basis_normals": owner_normal.copy(),
+                "shear_basis_normals": owner_normal.copy(),
+                "director_polarity": int(kernel.director_polarity),
             }
         )
 
@@ -1310,6 +1336,16 @@ def _recover_reference_s3_under_lease(
             batch.kernels[kernel_index],
             vector[mapping],
             return_global=bool(return_global),
+            node_coordinates=(
+                np.asarray(
+                    model.mesh.elements[element_id].get_node_coordinates(
+                        model.mesh
+                    ),
+                    dtype=float,
+                )
+                if return_global
+                else None
+            ),
         )
     return recovered
 

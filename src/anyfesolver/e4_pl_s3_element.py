@@ -5367,6 +5367,33 @@ class QualifiedE4PLS3ShellElement(
                     "global_transverse_shear_resultants": global_shear,
                 }
             )
+            # D2-1 / O5(a): one constant owner frame (normal = owner
+            # reference_normal, NOT multiplied by the director polarity) for
+            # all three families.  The global bending and shear above already
+            # carry the polarity factor (owner-normal convention).
+            station_coordinates = np.asarray(
+                self.get_node_coordinates(mesh), dtype=float
+            )
+            station_barycentric = np.asarray(
+                [(1.0 - r - s, r, s) for r, s, _weight in TRIANGLE_QUADRATURE],
+                dtype=float,
+            )
+            owner_normal = np.repeat(
+                np.asarray(frame, dtype=float)[:, 2][None, :],
+                len(TRIANGLE_QUADRATURE),
+                axis=0,
+            )
+            recovered.update(
+                {
+                    "recovery_station_positions": (
+                        station_barycentric @ station_coordinates
+                    ),
+                    "membrane_basis_normals": owner_normal.copy(),
+                    "bending_basis_normals": owner_normal.copy(),
+                    "shear_basis_normals": owner_normal.copy(),
+                    "director_polarity": int(self.director_polarity),
+                }
+            )
         if self.shell_section is None:
             membrane_material, shear, _strain_transform, stress_to_local = (
                 _shell_material_matrices(

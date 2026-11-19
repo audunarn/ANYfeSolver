@@ -44,8 +44,13 @@ def _shell_schema(s3):
     if s3:
         numeric.update({key:(3,3) for key in ("_recovery_coordinates","_recovery_stress_frame",
             "_reference_surface_recovery_coordinates","external_barycentric_coordinates",
-            "frame","physical_station_coordinates")})
+            "frame","physical_station_coordinates","recovery_station_positions",
+            "membrane_basis_normals","bending_basis_normals","shear_basis_normals")})
         numeric.update(hammer_points=(3,2),physical_weights=(3,),min3_relaxation_phi_squared=())
+        # D2-1 / O5(a) additive polarity/offset metadata (ordinary homogeneous case)
+        numeric.update({key:() for key in ("reference_surface_offset","section_origin_offset_from_reference",
+            "physical_bottom_offset_from_reference","physical_top_offset_from_reference")})
+        constants.update(director_polarity=1)
         constants.update(formulation_id="CANDIDATE_E4_PL_S3_V2D_NATIVE_PARITY_V1",
             implementation_id="E4_PL_S3_V2D_RECOVERY_CURRENT_EIGEN_GATE_V1",
             internal_order=[0,1,2],physical_layer_recovery_available=True,qualified_recovery=False,
@@ -59,6 +64,10 @@ def _shell_schema(s3):
             "membrane_xx","membrane_xy","membrane_yy","equivalent_stress","hill_utilization",
             "shear_xz","shear_yz","von_mises")})
         numeric["physical_director"]=(3,)
+        # D2-1 / O5(a) additive outputs (planar Q4 with reference normal)
+        numeric["physical_reference_director"]=(3,)
+        numeric.update({key:(4,3) for key in ("recovery_station_positions","membrane_basis_normals",
+            "bending_basis_normals","shear_basis_normals")})
         constants.update(director_polarity_policy_id="Q4_ELEMENT_OWNED_PHYSICAL_DIRECTOR_INDEPENDENT_OF_D4_NUMBERING_V1",
             director_reversal_transform_id="Q4_EPS_S_KAPPA_SIGN_S_SHEAR_SIGN_P_ABD_CONGRUENCE_V1",
             equivalent_stress_measure="von_mises",

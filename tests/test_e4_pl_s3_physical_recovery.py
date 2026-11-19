@@ -312,6 +312,12 @@ def test_recovery_schema_is_frozen_and_nonfinite_values_fail_closed() -> None:
         "global_membrane_resultant_tensors",
         "global_bending_resultant_tensors",
         "global_transverse_shear_resultants",
+        # D2-1 / O5(a) additive outputs (return_global only)
+        "recovery_station_positions",
+        "membrane_basis_normals",
+        "bending_basis_normals",
+        "shear_basis_normals",
+        "director_polarity",
     }
     surface_fields = {
         f"{basis}_{component}_{surface}"

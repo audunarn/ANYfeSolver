@@ -43,6 +43,10 @@ SURFACE_FIELDS = tuple(
 )
 NUMERIC_FIELDS = BASE_FIELDS + SURFACE_FIELDS
 _SURFACE_OFFSET = len(BASE_FIELDS)
+# D2-1 / O5(a) additive return_global outputs, kept in a separate array so the
+# non-global path allocates nothing for them: membrane tensor (9), bending
+# tensor (9), shear vector (3), station position (3), station frame normal (3).
+_D2_COLUMNS = 27
 
 
 @njit(cache=True)
@@ -117,9 +121,14 @@ def _recover_isotropic_s4_jit(
     displacements: np.ndarray,
     gauss_points: np.ndarray,
     return_global: bool,
-) -> np.ndarray:
+    d2_columns: int,
+) -> tuple[np.ndarray, np.ndarray]:
     result = np.zeros(
         (selected_indices.size, gauss_points.shape[0], len(NUMERIC_FIELDS)),
+        dtype=np.float64,
+    )
+    d2_result = np.zeros(
+        (selected_indices.size, gauss_points.shape[0], d2_columns),
         dtype=np.float64,
     )
     for output_row in prange(selected_indices.size):
@@ -206,6 +215,45 @@ def _recover_isotropic_s4_jit(
             result[output_row, gp_index, 9] = equivalent
 
             if return_global:
+                # D2-1 / O5(a): native resultants N = h sigma_m, M = h^3/12 Q
+                # curvature and Q = h tau, rotated once with the station
+                # frame (all three families, like the scalar oracle).
+                moment = _matvec(q_local, curvature)
+                for component in range(3):
+                    moment[component] *= thickness**3 / 12.0
+                membrane_global = _rotate_stress_tensor(
+                    rotation,
+                    thickness * sigma_membrane[0],
+                    thickness * sigma_membrane[1],
+                    thickness * sigma_membrane[2],
+                    0.0,
+                    0.0,
+                )
+                bending_global = _rotate_stress_tensor(
+                    rotation,
+                    moment[0],
+                    moment[1],
+                    moment[2],
+                    0.0,
+                    0.0,
+                )
+                for row in range(3):
+                    for column in range(3):
+                        d2_result[output_row, gp_index, 3 * row + column] = (
+                            membrane_global[row, column]
+                        )
+                        d2_result[output_row, gp_index, 9 + 3 * row + column] = (
+                            bending_global[row, column]
+                        )
+                    d2_result[output_row, gp_index, 18 + row] = thickness * (
+                        tau_shear[0] * rotation[row, 0]
+                        + tau_shear[1] * rotation[row, 1]
+                    )
+                    position = 0.0
+                    for node in range(4):
+                        position += shape[node] * coords[node, row]
+                    d2_result[output_row, gp_index, 21 + row] = position
+                    d2_result[output_row, gp_index, 24 + row] = rotation[row, 2]
                 top_global = _rotate_stress_tensor(
                     rotation,
                     top_x,
@@ -253,7 +301,7 @@ def _recover_isotropic_s4_jit(
                 result[output_row, gp_index, global_offset + 9] = bottom_global[0, 1]
                 result[output_row, gp_index, global_offset + 10] = bottom_global[1, 2]
                 result[output_row, gp_index, global_offset + 11] = bottom_global[0, 2]
-    return result
+    return result, d2_result
 
 
 def recover_isotropic_s4(
@@ -266,7 +314,7 @@ def recover_isotropic_s4(
     """Evaluate selected rows of a ``RecoveryS4Batch`` into public dictionaries."""
 
     indices = np.asarray(selected_indices, dtype=np.intp).reshape(-1)
-    numeric = _recover_isotropic_s4_jit(
+    numeric, d2_numeric = _recover_isotropic_s4_jit(
         batch.coords,
         batch.dof_mappings,
         batch.q_local,
@@ -276,6 +324,7 @@ def recover_isotropic_s4(
         np.asarray(displacements, dtype=float),
         batch.gauss_points,
         bool(return_global),
+        _D2_COLUMNS if return_global else 0,
     )
     field_count = len(NUMERIC_FIELDS) if return_global else len(BASE_FIELDS)
     recovered: Dict[int, Dict[str, np.ndarray]] = {}
@@ -285,5 +334,23 @@ def recover_isotropic_s4(
             for field_index, field in enumerate(NUMERIC_FIELDS[:field_count])
         }
         values["equivalent_stress_measure"] = "von_mises"
+        if return_global:
+            row = d2_numeric[output_row]
+            normals = row[:, 24:27].copy()
+            values.update(
+                {
+                    "global_membrane_resultant_tensors": row[:, 0:9]
+                    .reshape(-1, 3, 3)
+                    .copy(),
+                    "global_bending_resultant_tensors": row[:, 9:18]
+                    .reshape(-1, 3, 3)
+                    .copy(),
+                    "global_transverse_shear_resultants": row[:, 18:21].copy(),
+                    "recovery_station_positions": row[:, 21:24].copy(),
+                    "membrane_basis_normals": normals.copy(),
+                    "bending_basis_normals": normals.copy(),
+                    "shear_basis_normals": normals.copy(),
+                }
+            )
         recovered[int(batch.element_ids[int(batch_row)])] = values
     return recovered

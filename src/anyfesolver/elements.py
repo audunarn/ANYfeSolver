@@ -3283,6 +3283,18 @@ class ShellElement(Element):
         global_shear = (
             np.zeros((num_ip, 3), dtype=float) if return_global else None
         )
+        # D2-1 / O5(a) additive outputs (return_global only).  All three
+        # family tensors of this branch are rotated ONCE with the station
+        # frame R, so the tensor-basis normal of every family is R[:, 2] at
+        # each station.  For 3/4-node elements the shear values are the
+        # centre-frame values but they are placed in the station frame; that
+        # is what is stored, so that is the normal reported.
+        station_positions = (
+            np.zeros((num_ip, 3), dtype=float) if return_global else None
+        )
+        station_normals = (
+            np.zeros((num_ip, 3), dtype=float) if return_global else None
+        )
 
         mitc_planar = None
         mitc_samples = None
@@ -3371,6 +3383,10 @@ class ShellElement(Element):
                 global_shear[index] = (
                     shear_force[0] * R[:, 0] + shear_force[1] * R[:, 1]
                 )
+                assert station_positions is not None
+                assert station_normals is not None
+                station_positions[index] = N @ coords
+                station_normals[index] = R[:, 2]
 
         results: Dict[str, Any] = {
             "generalized_stress_scope": "section_resultants_only",
@@ -3391,6 +3407,10 @@ class ShellElement(Element):
                     "global_membrane_resultant_tensors": global_membrane,
                     "global_bending_resultant_tensors": global_bending,
                     "global_transverse_shear_resultants": global_shear,
+                    "recovery_station_positions": station_positions,
+                    "membrane_basis_normals": station_normals.copy(),
+                    "bending_basis_normals": station_normals.copy(),
+                    "shear_basis_normals": station_normals.copy(),
                 }
             )
         return results
@@ -3465,6 +3485,21 @@ class ShellElement(Element):
                 "global_xy_bot": np.zeros(num_ip),
                 "global_yz_bot": np.zeros(num_ip),
                 "global_xz_bot": np.zeros(num_ip),
+            })
+            # D2-1 / O5(a) additive outputs.  Native resultants N = h sigma_m,
+            # M = moments and Q = h tau_s are rotated ONCE with the station
+            # frame R (same convention as the generalized branch: membrane,
+            # bending and shear all use the station frame; the 3/4-node
+            # shear values are centre-frame values placed in the station
+            # frame).  They are never rebuilt from top/bottom surface stresses.
+            stresses.update({
+                "global_membrane_resultant_tensors": np.zeros((num_ip, 3, 3)),
+                "global_bending_resultant_tensors": np.zeros((num_ip, 3, 3)),
+                "global_transverse_shear_resultants": np.zeros((num_ip, 3)),
+                "recovery_station_positions": np.zeros((num_ip, 3)),
+                "membrane_basis_normals": np.zeros((num_ip, 3)),
+                "bending_basis_normals": np.zeros((num_ip, 3)),
+                "shear_basis_normals": np.zeros((num_ip, 3)),
             })
 
         mitc_planar = None
@@ -3570,6 +3605,22 @@ class ShellElement(Element):
                 stresses["equivalent_stress"][idx] = stresses["von_mises"][idx]
 
             if return_global:
+                stresses["global_membrane_resultant_tensors"][idx] = (
+                    R @ _in_plane_tensor3(h * sigma_m) @ R.T
+                )
+                stresses["global_bending_resultant_tensors"][idx] = (
+                    R @ _in_plane_tensor3(moments) @ R.T
+                )
+                stresses["global_transverse_shear_resultants"][idx] = h * (
+                    tau_s[0] * R[:, 0] + tau_s[1] * R[:, 1]
+                )
+                stresses["recovery_station_positions"][idx] = N @ coords
+                for _normal_key in (
+                    "membrane_basis_normals",
+                    "bending_basis_normals",
+                    "shear_basis_normals",
+                ):
+                    stresses[_normal_key][idx] = R[:, 2]
                 # Top local stress tensor
                 sigma_loc_top = np.array([
                     [sigma_x_top, tau_xy_top, tau_s[0]],
@@ -3616,6 +3667,19 @@ class ShellElement(Element):
                 stresses["global_xz_bot"][idx] = sigma_glob_bot[0, 2]
                 stresses["global_yz_bot"][idx] = sigma_glob_bot[1, 2]
         return stresses
+
+
+def _in_plane_tensor3(values: np.ndarray) -> np.ndarray:
+    """Return the 3x3 local tensor of an in-plane (11, 22, 12) resultant."""
+
+    return np.array(
+        [
+            [values[0], values[2], 0.0],
+            [values[2], values[1], 0.0],
+            [0.0, 0.0, 0.0],
+        ],
+        dtype=float,
+    )
 
 
 def _publish_shell_element_public_signatures() -> None:
