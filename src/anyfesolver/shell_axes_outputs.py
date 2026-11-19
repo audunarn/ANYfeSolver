@@ -682,6 +682,8 @@ def derive_shell_axes_outputs(
     arrays: Dict[str, np.ndarray] = {}
     if _finite(branch.positions):
         arrays["recovery_station_positions"] = _frozen(branch.positions)
+    else:
+        refuse("positions", "nonfinite", "station positions are not finite")
     normals_ok = {}
     for family, normals in (("membrane", station_normals), ("bending", station_normals), ("shear", shear_normals)):
         ok = _finite(normals) and float(np.max(np.abs(np.linalg.norm(normals, axis=1) - 1.0))) <= ROUNDOFF
@@ -695,10 +697,16 @@ def derive_shell_axes_outputs(
             arrays[FAMILY_KEYS[family]] = _frozen(family_arrays[family])
     if "shear" in family_arrays and normals_ok["membrane"] and "shear" not in refusals:
         # nu . Q with the station (membrane/bending) normal: recorded, not required
-        arrays["shear_normal_components"] = _frozen(
-            np.einsum("ni,ni->n", station_normals, family_arrays["shear"])
-        )
+        components = np.einsum("ni,ni->n", station_normals, family_arrays["shear"])
+        if _finite(components):
+            arrays["shear_normal_components"] = _frozen(components)
+        else:
+            refuse("shear", "nonfinite", "nu . Q is not finite")
+            arrays.pop(FAMILY_KEYS["shear"], None)
     for key, value in branch.metadata.items():
+        if not _finite(value):
+            refuse("metadata", "nonfinite", f"{key} is not finite")
+            continue
         arrays[key] = _frozen(value, dtype=int if key == "director_polarity" else float)
 
     certified = {family: family not in refusals for family in FAMILIES}
