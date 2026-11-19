@@ -373,24 +373,45 @@ def _scaled_residual_norm_hi(rows: ExactRows, shifts: np.ndarray) -> Fraction:
     return _sqrt_hi(total, low)
 
 
-def _backward_check(rows: ExactRows) -> dict:
-    """V1-V3: accept iff |r_i| <= 1e-10 ref_i for every row, exactly. A row with ref_i = 0 has every
-    product zero and b_i = 0 (exempt), so r_i = 0; r_i != 0 with ref_i = 0 cannot occur."""
+def _row_abs_sums(system: sparse.csr_matrix) -> list:
+    """sum_j |S_ij| per row, exactly, as Fractions (dyadic rationals)."""
+    ms, es = _decompose(np.abs(system.data))
+    out = []
+    for i in range(system.shape[0]):
+        lo, hi = system.indptr[i], system.indptr[i + 1]
+        mant, expo = ms[lo:hi], es[lo:hi]
+        keep = mant != 0
+        if not keep.any():
+            out.append(Fraction(0))
+            continue
+        mant, expo = mant[keep], expo[keep]
+        low = int(expo.min())
+        out.append(_scaled(sum(int(m) << (int(e) - low) for m, e in zip(mant, expo)), low))
+    return out
+
+
+def _backward_check(rows: ExactRows, system: sparse.csr_matrix, x: np.ndarray, b: np.ndarray) -> dict:
+    """V1-V3 (owner decision OD7, 2026-11-19): accept iff |r_i| <= 1e-10 ref_i for every row, exactly,
+    with the per-row normwise reference ref_i = sum_j |S_ij| * ||x||_inf + |b_i|. A row with ref_i = 0
+    (a zero row or x = 0, and b_i = 0) has r_i = 0 and is exempt; r_i != 0 with ref_i = 0 cannot occur."""
     failing, exempt, worst = [], 0, 0.0
-    num, den = BACKWARD_TOLERANCE.numerator, BACKWARD_TOLERANCE.denominator
-    for i, (r, ref) in enumerate(zip(rows.residual, rows.reference)):
+    x_inf = Fraction(float(np.max(np.abs(x), initial=0.0)))
+    abs_sums = _row_abs_sums(system)
+    for i, (r, row_sum, bi) in enumerate(zip(rows.residual, abs_sums, np.abs(b))):
+        ref = row_sum * x_inf + Fraction(float(bi))
+        residual = rows.residual_fraction(i)
         if ref == 0:
-            if r != 0:
+            if residual != 0:
                 raise _refuse('COUPLED_UNCERTIFIED', 'internal_residual_inconsistency',
                               'a nonzero exact residual with a zero reference')
             exempt += 1
             continue
-        if abs(r) * den > num * ref:
+        if abs(residual) > BACKWARD_TOLERANCE * ref:
             failing.append(i)
         if r:
-            worst = max(worst, abs(r) / ref)
+            worst = max(worst, float(abs(residual) / ref))
     return {'accepted': not failing, 'failing_rows': failing[:20], 'failing_count': len(failing),
-            'exempt_rows': exempt, 'max_ratio': worst}
+            'exempt_rows': exempt, 'max_ratio': worst, 'reference': 'row_normwise_od7'}
 
 
 def _forward_scale(x: np.ndarray, shifts: np.ndarray) -> Fraction:
@@ -508,7 +529,7 @@ def certified_solve(system: Any, rhs: Any, *, raw_load_zero: bool,
     rows = _exact_rows(system, x, b)
     timings['exact_residual'] = clock() - t0
     t0 = clock()
-    backward = _backward_check(rows)
+    backward = _backward_check(rows, system, x, b)
     if not backward['accepted']:
         raise _refuse('COUPLED_UNCERTIFIED', 'backward_error_above_limit',
                       'the exact residual exceeds 1e-10 of its row reference', certificate=public,

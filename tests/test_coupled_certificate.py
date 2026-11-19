@@ -247,13 +247,33 @@ def test_exempt_rows_and_a_stored_zero_against_a_nonzero_x():
     S = _csr([[1., 0., 1.], [0., 1., 1.], [1., 1., 0.]])
     result = cc.certified_solve(S, np.array([1., -1., 0.]), raw_load_zero=False)
     assert result.x.tolist() == [1., -1., 0.] or np.allclose(result.x, [1., -1., 0.])
-    # A row whose every product is zero and b = 0 is exempt.
-    exempt = cc._backward_check(cc._exact_rows(_csr([[0., 1.], [1., 0.]]), np.array([0., 3.]), np.array([3., 0.])))
-    assert exempt['accepted'] and exempt['exempt_rows'] == 1
-    # A stored zero b_i against nonzero products is not exempt and must meet the tolerance.
-    rows = cc._exact_rows(_csr([[1., 1.]]), np.array([1., -1. + 1e-6]), np.zeros(1))
-    check = cc._backward_check(rows)
+    # OD7: the reference is per-row normwise, sum_j |S_ij| ||x||_inf + |b_i|. A row is exempt only when
+    # that reference is zero (x = 0 and b_i = 0 here); zero products against a nonzero x are not exempt.
+    S2 = _csr([[0., 1.], [1., 0.]])
+    x2, b2 = np.array([0., 3.]), np.array([3., 0.])
+    check = cc._backward_check(cc._exact_rows(S2, x2, b2), S2, x2, b2)
+    assert check['accepted'] and check['exempt_rows'] == 0
+    zero = cc._backward_check(cc._exact_rows(S2, np.zeros(2), np.zeros(2)), S2, np.zeros(2), np.zeros(2))
+    assert zero['accepted'] and zero['exempt_rows'] == 2
+    # A stored zero b_i against nonzero products must meet the tolerance.
+    S1, x1, b1 = _csr([[1., 1.]]), np.array([1., -1. + 1e-6]), np.zeros(1)
+    check = cc._backward_check(cc._exact_rows(S1, x1, b1), S1, x1, b1)
     assert check['exempt_rows'] == 0 and check['accepted'] is False
+
+
+def test_od7_noise_row_is_judged_against_the_row_norm_times_x_inf():
+    # Row 2's only product is 1e-20 (a component that is zero up to noise); its residual is 1e-9 of that
+    # product. The old per-product reference refuses (ratio 5e-10); the OD7 normwise reference accepts.
+    S = _csr([[1., 0.], [0., 1.]])
+    x = np.array([1., 1e-20])
+    b = np.array([1., 1e-20 * (1 + 1e-9)])
+    rows = cc._exact_rows(S, x, b)
+    old_ratio = abs(rows.residual[1]) / rows.reference[1]
+    assert old_ratio > 1e-10
+    assert cc._backward_check(rows, S, x, b)['accepted']
+    # a genuine residual on the large row is still refused
+    bad = np.array([1. + 1e-9, 1e-20])
+    assert not cc._backward_check(cc._exact_rows(S, x, bad), S, x, bad)['accepted']
 
 
 def test_forward_error_exactly_at_the_threshold_is_accepted_and_the_next_dyadic_refused():
