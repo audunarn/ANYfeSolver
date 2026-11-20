@@ -1239,7 +1239,7 @@ def solve_shell_solid_coupled(fe_model: Any, prepared: Any, *, removed_element_i
     the cut from ``cut_solid_submodel``). Objects modified after construction are out of scope."""
     try:
         return _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, resources,
-                      clock or time.perf_counter)
+                      time.perf_counter if clock is None else clock)   # identity, no __bool__ (r4 P2)
     except CoupledSolveError:
         raise
     except MemoryError as exc:

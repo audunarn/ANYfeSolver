@@ -173,16 +173,31 @@ def independent_condition(S, dps=50):
 
 # Owner decision OD11 (2026-11-20, review r3): the specified cutoff, exactly; no margin.
 KAPPA_LIMIT = 10 ** 7
+# Review r4: the oracle's kappa is accurate to far below 1e-20 relative (independent_condition); a
+# kappa within 1e-20 relative of the cutoff cannot be classified, so the oracle raises there.
+KAPPA_ACCURACY = Fraction(1, 10 ** 20)
+
+
+def kappa_within_cutoff(kappa):
+    """True for kappa <= 1e7 and False for kappa > 1e7, decided outside the accuracy band; raises
+    (undecided) when |kappa - 1e7| <= 1e-20 * 1e7, where the approximation cannot classify it."""
+    import mpmath
+    with mpmath.workdps(60):
+        distance = abs(mpmath.mpf(kappa) - KAPPA_LIMIT)
+        band = mpmath.mpf(KAPPA_ACCURACY.numerator) / KAPPA_ACCURACY.denominator * KAPPA_LIMIT
+        if distance <= band:
+            raise AssertionError('oracle: kappa lies within the accuracy band of the cutoff 1e7; undecided')
+        return bool(mpmath.mpf(kappa) < KAPPA_LIMIT)
 
 
 def acceptance_warranted(S, b):
     """S2: acceptance is required where kappa(A*) of the specified scaling is at most 1e7 (the exact
-    cutoff, decided on the high-precision kappa) and the mpmath reference has a 100x backward margin
-    (|r_i| <= 1e-12 ref_i, exact)."""
+    cutoff, decided on the high-precision kappa; inside the accuracy band the oracle raises) and the
+    mpmath reference has a 100x backward margin (|r_i| <= 1e-12 ref_i, exact)."""
     x = reference_solution(S, b)
     residual, reference = exact_residual(S, x, b)
     margin = all(abs(r) <= Fraction(1, 10 ** 12) * ref for r, ref in zip(residual, reference))
-    return bool(independent_condition(S) <= KAPPA_LIMIT) and margin, x
+    return kappa_within_cutoff(independent_condition(S)) and margin, x
 
 
 def all_finite(result):

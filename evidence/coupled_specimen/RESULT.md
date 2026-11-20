@@ -1,5 +1,33 @@
 # S3: coupled specimen, references R0–R2 and timing (2026-11-19)
 
+## Update 2026-11-20 (OD12, review r4): refinement 5 — R0 PASS, R1 FAIL, R2 PASS, timing PASS
+
+Owner decision OD12: the route refines the candidate 5 times (2 before). The coupled entries of `run_all.sh`
+(`timing_coupled_t1`, `timing_coupled_default`, `timing_oneway_t1`, `timing_svd_t1`, `peak_coupled_t1`,
+`r0_coupled_n10`) were re-run on the OD12 tip (`raw/runs.log`, load 14–81 %). The shell and solid references do not
+touch the route or the certificate and were not re-run. The OD11 coupled runs (2 steps, and the 5-step diagnostic
+runs) are in `raw_od11/`, their analysis in `summary_od11.json`; `summary.json` `od12_changed_results` compares them.
+Nothing was tuned; gates unchanged (OD10).
+
+| Gate | Outcome |
+|---|---|
+| Both meshes | accepted: h = 0.1 (N 1417) κ_up 5.35e6, E 8.70e-9; h = 0.05 (N 4969) κ_up 6.07e6, E 1.02e-8 |
+| R0 at h = 0.05 (gated) | **PASS**: centre 0.150 %, quarter 0.049 %, reaction 1.9e-11 |
+| R0 at h = 0.1 (reported) | centre 0.79 %, quarter 0.29 % and 0.15 %, reaction 3.1e-11 |
+| R1 (OD10) | **FAIL** (finding R1-4, unchanged): p coupled 0.957, p all-shell 0.539, difference 0.418 > 0.2; e_c/e_s 1.54 at h = 0.1 (fail), 1.15 and 0.96 at h = 0.05 (pass) |
+| R2 (radius 0.25a, 2.7 %) | **PASS**: 0.75 %; the 0.05a set is empty (R2-1) |
+| Single-thread SVD N = 5000 | **PASS**: median 25.8 s (25.8, 25.8, 25.8, 26.0, 26.3, 25.8 s) ≤ 45 s |
+| Specimen h = 0.05 ≤ 60 s | **PASS**: accepted, median total 33.2 s (certificate 27.1 s, candidate 0.47 s) |
+| Peak commit | 830 MiB above post-import (reported) |
+
+**Changed accepted results (OD12).** h = 0.1, the only specimen result accepted before: centre w 2.629919678085051e-05
+→ …0512e-05 (+3.4e-21, 1.3e-16 relative, bound 1.7e-14), quarter x = 0.3 +6.8e-21 (3.1e-16), quarter x = 0.2
+unchanged, reaction_z −999.9999999686454 → …6386 (+6.8e-12), forward error 9.46e-9 → 8.70e-9. h = 0.05 is now
+accepted (it refused `forward_error_above_limit` before). All current numbers are bit-identical to the OD11
+5-step diagnostic runs. Cause: the extra steps change the candidate's last bits; every change is far inside the
+certified bounds.
+
+
 ## Update 2026-11-20 (review r3, OD10 R1 (a)): widened specimen — R0, R1, R2 FAIL (the route refuses at h = 0.05)
 
 The owner's decision for R1-2: widen the solid so that h = 0.1 is resolved, and re-run with the gates unchanged.

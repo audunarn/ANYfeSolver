@@ -1,8 +1,11 @@
 """R0-R2 and the timing table from raw/*.json (spec section 7, rev2 section 5.2). Prints JSON to stdout.
 
 Review r3 / OD10 R1 (a), 2026-11-20: the specimen footprint is [0.3, 0.7]^2 with one P2 layer. A coupled run
-may be a recorded refusal ({'refused': ...}); every gate that needs it then fails. The diag_* runs (candidate
-refined 5 times in the measurement process) are evaluated with the same code and reported as diagnostics only."""
+may be a recorded refusal ({'refused': ...}); every gate that needs it then fails.
+
+OD12 (2026-11-20): the route refines the candidate 5 times (2 before). raw_od11/ holds the OD11 coupled runs
+(production 2 steps, and the diag_* runs refined 5 times in the measurement process); 'od12_changed_results'
+compares the coupled observables of the current runs with them."""
 import json, math
 from pathlib import Path
 raw = Path(__file__).parent / 'raw'
@@ -104,9 +107,25 @@ def gates(c10, c20):
 
 c10, c20 = J('r0_coupled_n10'), J('timing_coupled_t1')
 out.update(gates(c10, c20))
-d10, d20 = J('diag_coupled_n10_ref5'), J('diag_coupled_n20_ref5')
-out['diagnostic_refinement_5'] = {'note': 'NOT A GATE: candidate refined 5 times in the measurement process (finding R1-3)',
-                                  **gates(d10, d20)}
+O = lambda n: json.loads((Path(__file__).parent / 'raw_od11' / f'{n}.json').read_text())  # noqa: E731
+
+
+def changed(new, old):
+    if refused(new) or refused(old):
+        return {'new_refused': refused(new), 'old_refused': refused(old)}
+    rows = {k: {'old': old['observables'][k]['w'], 'new': v['w'], 'diff': v['w'] - old['observables'][k]['w'],
+                'rel': abs(v['w'] - old['observables'][k]['w']) / abs(old['observables'][k]['w']),
+                'bound_new': v['bound']} for k, v in new['observables'].items()}
+    rows['reaction_z'] = {'old': old['reaction_z'], 'new': new['reaction_z'], 'diff': new['reaction_z'] - old['reaction_z']}
+    rows['forward_error'] = {'old': old['verification'].get('forward_error'), 'new': new['verification'].get('forward_error')}
+    return rows
+
+
+out['od12_changed_results'] = {
+    'note': 'refinement 5 (OD12) against the OD11 runs: 2 steps (production then) and 5 steps (diagnostic then)',
+    'h=0.1 vs 2 steps': changed(c10, O('r0_coupled_n10')), 'h=0.05 vs 2 steps': changed(c20, O('timing_coupled_t1')),
+    'h=0.1 vs diag 5 steps': changed(c10, O('diag_coupled_n10_ref5')),
+    'h=0.05 vs diag 5 steps': changed(c20, O('diag_coupled_n20_ref5'))}
 out['R2_solid_checks'] = {f'h={1/k[0]:g},layers={k[1]}': {'ndof': v['ndof'], 'reaction_z': v['reaction_z'],
                           'relative_residual': v['relative_residual'], 'w_centre': v['observables'].get('centre', {}).get('w'),
                           'wall': v['wall']} for k, v in runs.items()}
@@ -115,7 +134,6 @@ ow, svd, dflt, pk = J('timing_oneway_t1'), J('timing_svd_t1'), J('timing_coupled
 specimen_total = c20['wall_to_refusal'] if refused(c20) else c20['timings_median']['total']
 out['timing'] = {'coupled_median_t1': c20.get('timings_median'), 'coupled_runs_wall_t1': [t['wall'] for t in c20.get('timings_all', [])],
                  'coupled_t1_refused': c20.get('refused'), 'coupled_t1_wall_to_refusal': c20.get('wall_to_refusal'),
-                 'diagnostic_ref5_median': d20.get('timings_median'),
                  'coupled_default_threads': dflt.get('timings_all', [None])[0] if not refused(dflt) else dflt,
                  'oneway_median_t1': ow['timings_median'],
                  'svd5000_t1_times': svd['times'], 'svd5000_t1_median': svd['median'],

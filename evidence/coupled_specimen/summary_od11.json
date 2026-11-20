@@ -1,0 +1,490 @@
+﻿{
+ "scales": {
+  "pL4/D": 0.006499999999999999,
+  "pL2": 1000.0
+ },
+ "R0": [
+  {
+   "h": 0.1,
+   "obs": "centre",
+   "coupled": 2.629919678085051e-05,
+   "shell": 2.6507416368999776e-05,
+   "rel": 0.007855144584848301,
+   "gate": 0.005,
+   "gated": false,
+   "pass": false
+  },
+  {
+   "h": 0.1,
+   "obs": "quarter_x0.2",
+   "coupled": 1.607132603688584e-05,
+   "shell": 1.6025481912499052e-05,
+   "rel": 0.0028607017646708893,
+   "gate": 0.005,
+   "gated": false,
+   "pass": true
+  },
+  {
+   "h": 0.1,
+   "obs": "quarter_x0.3",
+   "coupled": 2.1779026849127904e-05,
+   "shell": 2.1745748511269275e-05,
+   "rel": 0.001530337658479903,
+   "gate": 0.005,
+   "gated": false,
+   "pass": true
+  },
+  {
+   "h": 0.1,
+   "obs": "reaction_z",
+   "coupled": -999.9999999686454,
+   "shell": -1000.0000000000271,
+   "rel": 3.1381659937323156e-11,
+   "gate": 1e-09,
+   "gated": false,
+   "pass": true
+  },
+  {
+   "h": 0.05,
+   "obs": "all",
+   "refused": {
+    "code": "COUPLED_UNCERTIFIED",
+    "reason": "forward_error_above_limit"
+   },
+   "gated": true,
+   "pass": false
+  }
+ ],
+ "R0_gate_pass": false,
+ "R1_od10": {
+  "gate": "R(h/8)",
+  "pass": false,
+  "status": "FAIL: the coupled route refused at h = 0.05 (COUPLED_UNCERTIFIED forward_error_above_limit)"
+ },
+ "R2": [
+  {
+   "sample": "kappa_protocol",
+   "runs": {
+    "h=0.05,layers=2": null,
+    "h=0.05,layers=4": null,
+    "h=0.025,layers=2": 0.0002366944010352115,
+    "h=0.025,layers=4": 0.0002367924009698463
+   },
+   "counts": {
+    "h=0.05,layers=2": 0,
+    "h=0.05,layers=4": 0,
+    "h=0.025,layers=2": 6,
+    "h=0.025,layers=4": 6
+   },
+   "status": "FAIL: the coupled route refused at h = 0.05 (forward_error_above_limit)",
+   "pass": false
+  },
+  {
+   "sample": "kappa_diagnostic",
+   "runs": {
+    "h=0.05,layers=2": 0.00023119100416915203,
+    "h=0.05,layers=4": 0.000231304293016802,
+    "h=0.025,layers=2": 0.00023272248649114255,
+    "h=0.025,layers=4": 0.00023282124610091693
+   },
+   "counts": {
+    "h=0.05,layers=2": 26,
+    "h=0.05,layers=4": 26,
+    "h=0.025,layers=2": 100,
+    "h=0.025,layers=4": 100
+   },
+   "status": "FAIL: the coupled route refused at h = 0.05 (forward_error_above_limit)",
+   "pass": false
+  }
+ ],
+ "R2_gate": "kappa_diagnostic (radius 0.25a, OD10); kappa_protocol (0.05a) reported only",
+ "sizes": {
+  "h=0.1": {
+   "n_s": 628,
+   "n_v": 729,
+   "m": 60,
+   "N": 1417,
+   "n_full": 672
+  },
+  "h=0.05": null
+ },
+ "certificates": {
+  "h=0.1": [
+   {
+    "accepted": true,
+    "condition_upper_bound": 5350346.485571031
+   },
+   {
+    "forward_error": 9.464148326510898e-09,
+    "v4_compatibility_max": 7.772399703269785e-17,
+    "v4_balance_max": 1.8505911303123275e-15,
+    "v5_balance": 9.384579436604837e-12
+   },
+   1.943530753196532e-27
+  ],
+  "h=0.05": {
+   "refused": {
+    "code": "COUPLED_UNCERTIFIED",
+    "reason": "forward_error_above_limit"
+   },
+   "forward_error": 0.44536199743920574,
+   "certificate": {
+    "accepted": true,
+    "condition_upper_bound": 6065244.258212095,
+    "sigma_min": 7.062167986474099e-07,
+    "sigma_max": 4.145527504061619,
+    "size": 4969
+   }
+  }
+ },
+ "diagnostic_refinement_5": {
+  "note": "NOT A GATE: candidate refined 5 times in the measurement process (finding R1-3)",
+  "R0": [
+   {
+    "h": 0.1,
+    "obs": "centre",
+    "coupled": 2.6299196780850512e-05,
+    "shell": 2.6507416368999776e-05,
+    "rel": 0.007855144584848175,
+    "gate": 0.005,
+    "gated": false,
+    "pass": false
+   },
+   {
+    "h": 0.1,
+    "obs": "quarter_x0.2",
+    "coupled": 1.607132603688584e-05,
+    "shell": 1.6025481912499052e-05,
+    "rel": 0.0028607017646708893,
+    "gate": 0.005,
+    "gated": false,
+    "pass": true
+   },
+   {
+    "h": 0.1,
+    "obs": "quarter_x0.3",
+    "coupled": 2.177902684912791e-05,
+    "shell": 2.1745748511269275e-05,
+    "rel": 0.0015303376584802147,
+    "gate": 0.005,
+    "gated": false,
+    "pass": true
+   },
+   {
+    "h": 0.1,
+    "obs": "reaction_z",
+    "coupled": -999.9999999686386,
+    "shell": -1000.0000000000271,
+    "rel": 3.138848114758645e-11,
+    "gate": 1e-09,
+    "gated": false,
+    "pass": true
+   },
+   {
+    "h": 0.05,
+    "obs": "centre",
+    "coupled": 2.658854905565201e-05,
+    "shell": 2.662860478560319e-05,
+    "rel": 0.0015042369013953767,
+    "gate": 0.005,
+    "gated": true,
+    "pass": true
+   },
+   {
+    "h": 0.05,
+    "obs": "quarter_x0.25",
+    "coupled": 1.9271544725643165e-05,
+    "shell": 1.9262202252778076e-05,
+    "rel": 0.00048501582230773784,
+    "gate": 0.005,
+    "gated": true,
+    "pass": true
+   },
+   {
+    "h": 0.05,
+    "obs": "reaction_z",
+    "coupled": -1000.0000000180096,
+    "shell": -999.9999999989411,
+    "rel": 1.9068465917391406e-11,
+    "gate": 1e-09,
+    "gated": true,
+    "pass": true
+   }
+  ],
+  "R0_gate_pass": true,
+  "R1_od10": {
+   "gate": "R(h/8)",
+   "p_fine_40_80_160": 1.1737165628193895,
+   "R(h/8)": {
+    "reference_centre": 2.6895881070498944e-05,
+    "p_coupled": 0.9571697314339603,
+    "p_shell": 0.5394516770096865,
+    "order_difference": 0.4177180544242738,
+    "order_pass": false,
+    "ratios": [
+     {
+      "h": 0.1,
+      "obs": "centre",
+      "e_coupled": 5.966842896484323e-07,
+      "e_shell": 3.884647014991679e-07,
+      "ratio": 1.5360064565601477,
+      "pass": false
+     },
+     {
+      "h": 0.05,
+      "obs": "centre",
+      "e_coupled": 3.073320148469329e-07,
+      "e_shell": 2.6727628489575504e-07,
+      "ratio": 1.149866382521744,
+      "pass": true
+     },
+     {
+      "h": 0.05,
+      "obs": "quarter_x0.25",
+      "e_coupled": 2.08409167126669e-07,
+      "e_shell": 2.1775163999175813e-07,
+      "ratio": 0.9570957405168442,
+      "pass": true
+     }
+    ],
+    "pass": false
+   },
+   "Richardson(p_fine) [sensitivity]": {
+    "reference_centre": 2.6930452541164245e-05,
+    "p_coupled": 0.8846355173394431,
+    "p_shell": 0.4869599540232581,
+    "order_difference": 0.39767556331618503,
+    "order_pass": false,
+    "ratios": [
+     {
+      "h": 0.1,
+      "obs": "centre",
+      "e_coupled": 6.312557603137332e-07,
+      "e_shell": 4.2303617216446875e-07,
+      "ratio": 1.492202799311243,
+      "pass": false
+     },
+     {
+      "h": 0.05,
+      "obs": "centre",
+      "e_coupled": 3.4190348551223375e-07,
+      "e_shell": 3.018477555610559e-07,
+      "ratio": 1.1327017650892408,
+      "pass": true
+     }
+    ],
+    "pass": false
+   },
+   "pass": false
+  },
+  "R2": [
+   {
+    "sample": "kappa_protocol",
+    "runs": {
+     "h=0.05,layers=2": null,
+     "h=0.05,layers=4": null,
+     "h=0.025,layers=2": 0.0002366944010352115,
+     "h=0.025,layers=4": 0.0002367924009698463
+    },
+    "counts": {
+     "h=0.05,layers=2": 0,
+     "h=0.05,layers=4": 0,
+     "h=0.025,layers=2": 6,
+     "h=0.025,layers=4": 6
+    },
+    "coupled": null,
+    "status": "FAIL (protocol): fewer than 2 skin triangles in a sample set",
+    "pass": false
+   },
+   {
+    "sample": "kappa_diagnostic",
+    "runs": {
+     "h=0.05,layers=2": 0.00023119100416915203,
+     "h=0.05,layers=4": 0.000231304293016802,
+     "h=0.025,layers=2": 0.00023272248649114255,
+     "h=0.025,layers=4": 0.00023282124610091693
+    },
+    "counts": {
+     "h=0.05,layers=2": 26,
+     "h=0.05,layers=4": 26,
+     "h=0.025,layers=2": 100,
+     "h=0.025,layers=4": 100
+    },
+    "coupled": 0.00023108101956478385,
+    "kappa_ref": 0.00023282124610091693,
+    "U": 1.5169530841149294e-06,
+    "dev": 1.7402265361330803e-06,
+    "limit": 6.2861736447247576e-06,
+    "rel": 0.007474517748173098,
+    "pass": true,
+    "status": "PASS"
+   }
+  ],
+  "R2_gate": "kappa_diagnostic (radius 0.25a, OD10); kappa_protocol (0.05a) reported only",
+  "sizes": {
+   "h=0.1": {
+    "n_s": 628,
+    "n_v": 729,
+    "m": 60,
+    "N": 1417,
+    "n_full": 672
+   },
+   "h=0.05": {
+    "n_s": 2268,
+    "n_v": 2601,
+    "m": 100,
+    "N": 4969,
+    "n_full": 2352
+   }
+  },
+  "certificates": {
+   "h=0.1": [
+    {
+     "accepted": true,
+     "condition_upper_bound": 5350346.485571031
+    },
+    {
+     "forward_error": 8.698881924025121e-09,
+     "v4_compatibility_max": 7.772399703269785e-17,
+     "v4_balance_max": 1.8505911303122506e-15,
+     "v5_balance": 9.38663379632449e-12
+    },
+    1.5523537548710017e-27
+   ],
+   "h=0.05": [
+    {
+     "accepted": true,
+     "condition_upper_bound": 6065244.258212095
+    },
+    {
+     "forward_error": 1.0218739819988044e-08,
+     "v4_compatibility_max": 1.1107611542748686e-16,
+     "v4_balance_max": 6.455942824996395e-16,
+     "v5_balance": 4.8974431655868175e-12
+    },
+    8.902040641850564e-27
+   ]
+  }
+ },
+ "R2_solid_checks": {
+  "h=0.05,layers=2": {
+   "ndof": 25215,
+   "reaction_z": -999.9999997222592,
+   "relative_residual": 4.3694618643033905e-09,
+   "w_centre": 2.662669791255019e-05,
+   "wall": 9.26521079998929
+  },
+  "h=0.05,layers=4": {
+   "ndof": 45387,
+   "reaction_z": -1000.0000004560854,
+   "relative_residual": 1.19964614159195e-08,
+   "w_centre": 2.664146168352027e-05,
+   "wall": 32.32664439990185
+  },
+  "h=0.025,layers=2": {
+   "ndof": 98415,
+   "reaction_z": -1000.0000002337442,
+   "relative_residual": 6.086378634895534e-09,
+   "w_centre": 2.6827741133763205e-05,
+   "wall": 59.40888260002248
+  },
+  "h=0.025,layers=4": {
+   "ndof": 177147,
+   "reaction_z": -999.9999987507913,
+   "relative_residual": 1.2474697716323215e-08,
+   "w_centre": 2.6841366594117414e-05,
+   "wall": 388.68215919996146
+  }
+ },
+ "timing": {
+  "coupled_median_t1": null,
+  "coupled_runs_wall_t1": [],
+  "coupled_t1_refused": {
+   "code": "COUPLED_UNCERTIFIED",
+   "reason": "forward_error_above_limit"
+  },
+  "coupled_t1_wall_to_refusal": 32.05292869999539,
+  "diagnostic_ref5_median": {
+   "provenance": 0.037492299976293,
+   "native": 1.784450699982699,
+   "connector": 1.45722039998509,
+   "formation": 0.03550745005486533,
+   "certified_certificate": 26.836460250022355,
+   "certified_candidate": 0.4659111999790184,
+   "certified_exact_residual": 0.07874394993996248,
+   "certified_verification": 0.19326909992378205,
+   "recovery": 0.5727947999839671,
+   "total": 33.00442379998276,
+   "wall": 33.00797410000814
+  },
+  "coupled_default_threads": {
+   "cmd": "coupled",
+   "n": 20,
+   "h": 0.05,
+   "refused": {
+    "code": "COUPLED_UNCERTIFIED",
+    "reason": "forward_error_above_limit"
+   },
+   "forward_error": 0.44536199743920574,
+   "certificate": {
+    "accepted": true,
+    "condition_upper_bound": 6065244.258212095,
+    "sigma_min": 7.062167986474099e-07,
+    "sigma_max": 4.145527504061619,
+    "size": 4969
+   },
+   "wall_to_refusal": 32.20895839994773,
+   "diagnostic_refinement": null,
+   "environment": {
+    "python": "3.11.9",
+    "numpy": "2.4.6",
+    "scipy": "1.17.1",
+    "skfem": "12.0.2",
+    "anysolid": "0.1.0",
+    "blas": [
+     "scipy-openblas 0.3.31.188.0",
+     "scipy-openblas 0.3.31.188.0"
+    ],
+    "threads": "default",
+    "machine": "AMD64",
+    "cpu_count": 32
+   },
+   "cpu_load_note": "machine shared with other sessions; see RESULT.md"
+  },
+  "oneway_median_t1": {
+   "native_shell": 0.3728650000412017,
+   "one_way_solid": 0.08669759996701032,
+   "total": 0.4605147000402212
+  },
+  "svd5000_t1_times": [
+   26.044682100065984,
+   27.774273799965158,
+   26.63727830001153,
+   25.936270899954252,
+   25.930228700046428,
+   25.880045700003393
+  ],
+  "svd5000_t1_median": 25.936270899954252,
+  "gate_svd_45s": true,
+  "gate_specimen_60s": false,
+  "peak_commit_minus_post_import_mib": 828.7265625,
+  "peak_run_refused": {
+   "code": "COUPLED_UNCERTIFIED",
+   "reason": "forward_error_above_limit"
+  },
+  "environment": {
+   "python": "3.11.9",
+   "numpy": "2.4.6",
+   "scipy": "1.17.1",
+   "skfem": "12.0.2",
+   "anysolid": "0.1.0",
+   "blas": [
+    "scipy-openblas 0.3.31.188.0",
+    "scipy-openblas 0.3.31.188.0"
+   ],
+   "threads": "1",
+   "machine": "AMD64",
+   "cpu_count": 32
+  }
+ }
+}

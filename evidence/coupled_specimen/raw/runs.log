@@ -16,3 +16,10 @@ solid_n40_l2 rc=0 64s load=76
 solid_n40_l4 rc=0 393s load=10
 diag_coupled_n10_ref5 rc=0 5s load=71
 diag_coupled_n20_ref5 rc=0 101s load=22
+--- OD12 rerun (refinement 5), coupled entries only, 2026-11-20T19:35:30+01:00
+timing_coupled_t1 rc=0 201s load=17
+timing_coupled_default rc=0 35s load=64
+timing_oneway_t1 rc=0 9s load=51
+timing_svd_t1 rc=0 158s load=14
+peak_coupled_t1 rc=0 35s load=73
+r0_coupled_n10 rc=0 5s load=81

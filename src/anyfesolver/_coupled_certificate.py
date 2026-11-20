@@ -191,6 +191,9 @@ def _require_fp_environment() -> None:
 
 
 _SVD_THREAD_STATUSES = ('limited', 'inherited_limit')
+# Review r4 P2: the longest wait for the thread coordinator before the certificate refuses
+# blas_threads (another solve's single-thread SVD window at the equation cap takes up to ~45 s).
+_COORDINATOR_WAIT_SECONDS = 120.0
 
 
 @contextlib.contextmanager
@@ -204,20 +207,77 @@ def _single_thread_blas():
     P1): it holds the exclusive writer for the whole window from the first probe to the post-check,
     so no other ``native_thread_scope`` (or ``solver_thread_scope``) on any thread can change the
     process-wide pool limits inside it; such a scope waits until the window ends. Anything that
-    cannot be established refuses ``COUPLED_UNCERTIFIED`` (``blas_threads``)."""
+    cannot be established refuses ``COUPLED_UNCERTIFIED`` (``blas_threads``).
+
+    Review r4: (1) the window is sealed. Ambient caller code (trace, profile and audit hooks, garbage
+    collector callbacks, finalizers) can run on this thread inside it and cannot be excluded, so any
+    explicit ``native_thread_scope`` such code opens on this thread inside the window raises, and the
+    window refuses ``blas_threads`` whether or not that code caught the exception. (2) The wait for the
+    coordinator is bounded by ``_COORDINATOR_WAIT_SECONDS``: a scope held elsewhere for longer (for
+    example by a parent thread that joins this solve) refuses ``blas_threads`` instead of waiting for
+    ever. (3) Any error from the coordinator itself (its pool snapshots, the limiter) refuses
+    ``blas_threads``."""
     try:
         from threadpoolctl import threadpool_info
-    except ImportError as exc:
+        from .threading_policy import NativeThreadScopeSealed, _sealed_native_window, native_thread_scope
+    except Exception as exc:  # noqa: BLE001  (ImportError or a failing import: no limiter)
         raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
                       'threadpoolctl is required to run the certificate SVD on one thread') from exc
-    from .threading_policy import native_thread_scope
-    with native_thread_scope(1, phase='coupled_certificate_svd') as policy:
-        if policy.get('status') not in _SVD_THREAD_STATUSES:
+    scope = native_thread_scope(1, phase='coupled_certificate_svd', wait_timeout=_COORDINATOR_WAIT_SECONDS)
+    try:
+        policy = scope.__enter__()
+    except CoupledSolveError:
+        raise
+    except Exception as exc:  # noqa: BLE001  (timeout, snapshot or limiter failure)
+        raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
+                      f'the solver thread coordinator could not be entered ({_type_name(exc)})') from exc
+    in_body = False
+    try:
+        if type(policy) is not dict or policy.get('status') not in _SVD_THREAD_STATUSES:
             raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
                           'the solver thread coordinator could not limit the native pools to one thread '
-                          f"(status {policy.get('status')!r})")
-        _require_single_thread_blas(threadpool_info)
-        yield functools.partial(_require_single_thread_blas, threadpool_info)
+                          f"(status {policy.get('status') if type(policy) is dict else None!r})")
+        try:
+            seal_window = _sealed_native_window()
+            seal = seal_window.__enter__()
+        except Exception as exc:  # noqa: BLE001
+            raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
+                          f'the certificate SVD window could not be sealed ({_type_name(exc)})') from exc
+        with contextlib.ExitStack() as unseal:
+            unseal.push(seal_window.__exit__)
+            try:
+                _require_single_thread_blas(threadpool_info)
+                in_body = True
+                yield functools.partial(_require_single_thread_blas, threadpool_info)
+                in_body = False
+            except NativeThreadScopeSealed as exc:
+                raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
+                              'code inside the certificate SVD window requested another native thread '
+                              'limit') from exc
+        if seal['violated']:
+            raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
+                          'code inside the certificate SVD window requested another native thread limit')
+    except BaseException as body:
+        if not in_body and isinstance(body, Exception) and not isinstance(body, CoupledSolveError):
+            refusal = _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
+                              f'the certificate SVD window failed ({_type_name(body)})')
+            refusal.__cause__ = body
+            body = refusal
+        try:
+            scope.__exit__(type(body), body, body.__traceback__)
+        except CoupledSolveError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            if exc is body or isinstance(body, CoupledSolveError) or not isinstance(body, Exception):
+                raise body
+            raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
+                          f'the solver thread coordinator failed on exit ({_type_name(exc)})') from exc
+        raise body
+    try:
+        scope.__exit__(None, None, None)
+    except Exception as exc:  # noqa: BLE001
+        raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
+                      f'the solver thread coordinator failed on exit ({_type_name(exc)})') from exc
 
 
 def _numpy_blas_dirs() -> tuple:
@@ -251,7 +311,7 @@ _DENSE_COPIES = 4
 # Backward (V1-V3) and forward (V6) tolerances, decided exactly as rationals.
 BACKWARD_TOLERANCE = Fraction(1, 10 ** 10)
 FORWARD_TOLERANCE = Fraction(1, 10 ** 6)
-_REFINEMENT_STEPS = 2
+_REFINEMENT_STEPS = 5   # owner decision OD12 (2026-11-20): 2 -> 5
 # Nonzero |components| in this range cannot over- or underflow when squared and summed (n < 2^23).
 _PLAIN_NORM_RANGE = (2.0 ** -500, 2.0 ** 500)
 
@@ -760,7 +820,12 @@ def certified_solve(system: Any, rhs: Any, *, raw_load_zero: bool,
     load whose stored b is all zero refuses COUPLED_FORMATION_LOSS.
     """
     import time
-    clock = _checked_clock(clock or time.perf_counter)
+    # Review r4 P2: only identity tests on the caller's arguments before the checks (no __bool__).
+    clock = _checked_clock(time.perf_counter if clock is None else clock)
+    if type(raw_load_zero) is not bool:
+        raise _refuse('COUPLED_UNCERTIFIED', 'invalid_arguments', 'raw_load_zero must be a bool')
+    if memory_limit_bytes is not None and type(memory_limit_bytes) is not int:
+        raise _refuse('COUPLED_UNCERTIFIED', 'invalid_arguments', 'memory_limit_bytes must be None or an int')
     timings: dict[str, float] = {}
     system = _require_system(system)
     b = rhs

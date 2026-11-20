@@ -151,14 +151,24 @@ round-to-nearest-even with gradual underflow, as A1 and A2 do.
   - the cancellation check: the `is_set` lookup, then each flag read (every poll);
   - the `resources.memory_limit_bytes` lookup and its single integer conversion;
   - the iteration and integer conversion of `removed_element_ids` (materialised once) and of the box divisions.
-  The clock value must be an exact `float` or `int` (`COUPLED_NATIVE_INVALID`, `clock_invalid`), so the route's
+  Before these callbacks the route tests the caller's arguments by identity only (`clock is None`, `cancel is
+  None`; review r4): no `__bool__`, `__len__`, `__eq__` or `__index__` of a caller object runs outside the places
+  listed. The clock value must be an exact `float` or `int` (`COUPLED_NATIVE_INVALID`, `clock_invalid`), so the route's
   own timing arithmetic runs no caller code. A callback that changes the environment and restores it before it
   returns leaves no trace and affects no route step.
 - **One thread.** The SVD runs inside the solver's own thread-scope coordinator, `native_thread_scope(1)` (review
   r3). It holds the coordinator's exclusive writer for the whole window from the first probe to the post-check, so
   no other `native_thread_scope` or `solver_thread_scope`, on any thread, can change the process-wide pool limits
   inside it: such a scope waits until the window ends, and a running default-thread scope on another thread makes
-  the SVD wait instead. Same-thread nesting stays reentrant. A probe then requires that NumPy's own BLAS (a library
+  the SVD wait instead. The wait is bounded (review r4): if the coordinator is not free within 120 s (for example
+  because a parent thread holds a scope and joins this solve), the solve refuses `blas_threads` instead of waiting
+  for ever. Same-thread nesting outside the window stays reentrant. Inside the window the coordinator is sealed
+  (review r4): ambient caller code on the calling thread (trace, profile or audit hooks, garbage-collector
+  callbacks, finalizers) cannot be excluded from the window, so any explicit `native_thread_scope` that such code
+  opens there raises, and the solve refuses `blas_threads` even if that code caught the exception. A request for
+  the window's own limit (one thread, in the same context) changes nothing and is admitted. Any error from the
+  coordinator itself (its pool snapshots or the limiter, for example a `PermissionError` from an audit policy
+  that denies threadpoolctl's library handles) also refuses `blas_threads`. A probe then requires that NumPy's own BLAS (a library
   under NumPy's package directory or `numpy.libs`) is among the controlled pools and that every BLAS pool reports
   exactly one thread, before and after the call. With one thread the BLAS runs inline on the calling thread, whose
   environment is the one probed, so no worker thread with its own MXCSR takes part. If threadpoolctl is missing,
@@ -174,7 +184,8 @@ round-to-nearest-even with gradual underflow, as A1 and A2 do.
   not detected.
 
 ### Candidate (spec §2.5)
-`splu(csc(S))` is called directly, with up to two refinement steps on the exact residual. The candidate carries no
+`splu(csc(S))` is called directly, with up to five refinement steps on the exact residual (owner decision OD12,
+2026-11-20; two before, which left the h = 0.05 specimen refusing `forward_error_above_limit`). The candidate carries no
 claim. A `MemoryError` maps to `COUPLED_TOO_LARGE`. Any other failure, including an exactly singular factor, maps to
 `COUPLED_UNCERTIFIED` (`candidate_failed`).
 
