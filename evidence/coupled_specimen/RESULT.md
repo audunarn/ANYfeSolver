@@ -1,5 +1,30 @@
 # S3: coupled specimen, references R0–R2 and timing (2026-11-19)
 
+## Update 2026-11-20 (OD13, review r5): certificate SVD in a worker process — results bit-identical, timing PASS
+
+Owner decision OD13: the certificate SVD runs in a child process (`docs/SOLID_COUPLING.md`, "Certificate SVD
+process"). The same coupled entries were re-run on the OD13 tree (`raw/runs.log`, load 27–87 %; the runner did not
+capture exit codes, every `.err` is empty and every JSON is complete). `timing_svd_t1` now times
+`_svd_in_worker` (start-up, transfer and SVD) with one warm-up and 3 runs. Nothing was tuned; gates unchanged.
+
+**Results.** Every non-timing field of every re-run JSON (observables, bounds, certificates, forward errors,
+reactions, κ samples) is bit-identical to the OD12 runs, and so are R0, R1 and R2 in `summary.json`: the worker's
+singular values equal the in-process one-thread SVD bit for bit (same NumPy and OpenBLAS, one thread).
+
+| Gate | Outcome |
+|---|---|
+| R0 at h = 0.05 (gated) | **PASS**, unchanged: centre 0.150 %, quarter 0.049 %, reaction 1.9e-11 |
+| R1 (OD10) | **FAIL**, unchanged (finding R1-4): order difference 0.418 > 0.2; e_c/e_s 1.54 at h = 0.1 |
+| R2 (radius 0.25a, 2.7 %) | **PASS**, unchanged: 0.75 % |
+| Certificate SVD N = 5000, incl. worker | **PASS**: median 28.2 s (27.8 warm-up; 28.3, 28.0, 28.2 s) ≤ 45 s; the worker's own SVD 27.6–28.0 s |
+| Worker overhead (N = 5000) | median 0.26 s per run: start-up to NumPy imported 0.10 s, reading the 200 MB matrix 0.04 s, the rest pipe writing, result and exit |
+| Specimen h = 0.05 ≤ 60 s | **PASS**: accepted, median total 35.3 s (34.7–36.1 s; certificate 28.9 s), N 4969 |
+| Peak commit | parent 830 MiB above post-import (unchanged), worker 431 MiB at N 4969; sum 1362 MiB total commit (the two peaks bound the simultaneous use) |
+
+The worker holds the matrix it read and LAPACK's working copy (2 × 188 MiB at N 4969); the parent's peak is in
+the equilibration (original and scaled copy), before the worker starts. The timings vary with the shared
+machine's load (35.3 s here against 33.2 s for OD12 at load 14–81 %).
+
 ## Update 2026-11-20 (OD12, review r4): refinement 5 — R0 PASS, R1 FAIL, R2 PASS, timing PASS
 
 Owner decision OD12: the route refines the candidate 5 times (2 before). The coupled entries of `run_all.sh`

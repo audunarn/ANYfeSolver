@@ -6,7 +6,6 @@ from __future__ import annotations
 import contextlib
 import inspect
 import linecache
-import threading
 from fractions import Fraction
 
 import numpy as np
@@ -22,89 +21,7 @@ from test_coupled_review_r1 import refused, small, solve  # noqa: E402
 from test_coupled_review_r2 import rounding  # noqa: E402
 
 
-# --- P1: a concurrent solver thread scope cannot change the BLAS pools inside the SVD window -------------
-
-def _numpy_proxy(on_svd):
-    class Linalg:                     # a proxy seen only by the certificate module: numpy is unchanged
-        def __getattr__(self, name):
-            return getattr(np.linalg, name)
-
-        @staticmethod
-        def svd(*args, **kwargs):
-            on_svd()
-            return np.linalg.svd(*args, **kwargs)
-
-    class Numpy:
-        linalg = Linalg()
-
-        def __getattr__(self, name):
-            return getattr(np, name)
-    return Numpy()
-
-
-def test_r3_p1_concurrent_native_thread_scope_between_the_probes(monkeypatch):
-    """The reviewer's schedule: a native_thread_scope(4) on another thread starts right after the first
-    probe. It must wait until the SVD window ends (or the solve refuses blas_threads); an acceptance
-    with four BLAS threads at the call must not happen."""
-    from threadpoolctl import threadpool_info
-    from anyfesolver.threading_policy import native_thread_scope
-    entered, release, finished = threading.Event(), threading.Event(), threading.Event()
-    state = {'probes': 0, 'svd_threads': [], 'entered_at_svd': []}
-
-    def concurrent():
-        try:
-            with native_thread_scope(4, phase='r3-concurrent'):
-                entered.set()
-                release.wait(60)
-        finally:
-            finished.set()
-
-    original = cc._require_single_thread_blas
-
-    def probe(info):
-        original(info)
-        state['probes'] += 1
-        if state['probes'] == 1:
-            threading.Thread(target=concurrent, daemon=True).start()
-            entered.wait(1.0)          # long enough for an uncoordinated scope to take the pools
-
-    def on_svd():
-        state['svd_threads'].append([p['num_threads'] for p in threadpool_info() if p['user_api'] == 'blas'])
-        state['entered_at_svd'].append(entered.is_set())
-        release.set()
-    monkeypatch.setattr(cc, '_require_single_thread_blas', probe)
-    monkeypatch.setattr(cc, 'np', _numpy_proxy(on_svd))
-    model, grid, removed, prepared, case, box = small()
-    try:
-        try:
-            result = solve(model, prepared, removed, box, case)
-        except cc.CoupledSolveError as exc:
-            assert exc.code == 'COUPLED_UNCERTIFIED' and exc.reason == 'blas_threads', (exc.code, exc.reason)
-            result = None
-    finally:
-        release.set()
-        assert finished.wait(60), 'the concurrent scope never completed'
-    assert state['probes'] >= 1
-    if result is not None:
-        assert state['svd_threads'] and all(set(t) == {1} for t in state['svd_threads']), state
-        assert state['entered_at_svd'] == [False], 'the concurrent scope ran inside the SVD window'
-
-
-def test_r3_p1_concurrent_scope_after_the_solve_is_unaffected():
-    """Control: the coordinator is released after the window; a later scope on another thread runs."""
-    from anyfesolver.threading_policy import native_thread_scope
-    model, grid, removed, prepared, case, box = small()
-    solve(model, prepared, removed, box, case)
-    ran = threading.Event()
-
-    def later():
-        with native_thread_scope(4, phase='r3-later'):
-            ran.set()
-    worker = threading.Thread(target=later, daemon=True)
-    worker.start()
-    worker.join(30)
-    assert ran.is_set()
-
+# --- P1 (moot under OD13, the SVD runs in a child process): an outer scope neither deadlocks nor leaks ---
 
 def test_r3_p1_svd_inside_an_outer_scope_on_the_same_thread():
     """Same-thread nesting stays reentrant: an outer native_thread_scope(4) or default scope on the
@@ -120,14 +37,6 @@ def test_r3_p1_svd_inside_an_outer_scope_on_the_same_thread():
             after = [p['num_threads'] for p in threadpool_info() if p['user_api'] == 'blas']
         assert before == after
         assert np.array_equal(result.shell_displacements.values, reference.shell_displacements.values)
-
-
-def test_r3_p1_coordinator_unavailable_refuses(monkeypatch):
-    """A thread scope that cannot limit the pools (backend unavailable) refuses blas_threads."""
-    from anyfesolver import threading_policy as tp
-    monkeypatch.setattr(tp, '_HAS_THREADPOOLCTL', False)
-    model, grid, removed, prepared, case, box = small()
-    refused('COUPLED_UNCERTIFIED', solve, model, prepared, removed, box, case, reason='blas_threads')
 
 
 # --- P2: the FP environment after every caller callback -----------------------------------------------------

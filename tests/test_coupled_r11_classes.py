@@ -78,24 +78,32 @@ def exact_residual(S, x, b):
     return residual, reference
 
 
+def private_mp(dps):
+    """A private mpmath context at ``dps`` digits (review r5 #5): the oracle never reads or changes the
+    shared global context, so another thread's ``mpmath.mp`` or ``workdps`` cannot alter its precision."""
+    from mpmath.ctx_mp import MPContext
+    ctx = MPContext()
+    ctx.dps = dps
+    return ctx
+
+
 def reference_solution(S, b, steps=4, dps=60):
     """The S2 mpmath reference (review r2): x is held in mpmath at ``dps`` digits; each step adds a
     binary64 dense correction for the residual b - S x evaluated in mpmath at that precision. With
     kappa <= 1e7 every step gains about 9 digits, so 4 steps reach far below binary64; the reference
     is returned rounded to nearest binary64."""
-    import mpmath
-    with mpmath.workdps(dps):
-        S = S.tocsr()
-        dense = S.toarray()
-        x = [mpmath.mpf(float(v)) for v in np.linalg.solve(dense, b)]
-        entries = [[(int(S.indices[k]), mpmath.mpf(float(S.data[k]))) for k in range(S.indptr[i], S.indptr[i + 1])]
-                   for i in range(S.shape[0])]
-        bq = [mpmath.mpf(float(v)) for v in b]
-        for _ in range(steps):
-            r = [bq[i] - mpmath.fsum(s * x[j] for j, s in row) for i, row in enumerate(entries)]
-            correction = np.linalg.solve(dense, np.array([float(v) for v in r]))
-            x = [xi + mpmath.mpf(float(c)) for xi, c in zip(x, correction)]
-        return np.array([float(v) for v in x])
+    mpmath = private_mp(dps)
+    S = S.tocsr()
+    dense = S.toarray()
+    x = [mpmath.mpf(float(v)) for v in np.linalg.solve(dense, b)]
+    entries = [[(int(S.indices[k]), mpmath.mpf(float(S.data[k]))) for k in range(S.indptr[i], S.indptr[i + 1])]
+               for i in range(S.shape[0])]
+    bq = [mpmath.mpf(float(v)) for v in b]
+    for _ in range(steps):
+        r = [bq[i] - mpmath.fsum(s * x[j] for j, s in row) for i, row in enumerate(entries)]
+        correction = np.linalg.solve(dense, np.array([float(v) for v in r]))
+        x = [xi + mpmath.mpf(float(c)) for xi, c in zip(x, correction)]
+    return np.array([float(v) for v in x])
 
 
 def independent_condition(S, dps=50):
@@ -112,7 +120,7 @@ def independent_condition(S, dps=50):
     oracle raises (never decides) when a triplet does not converge or the extreme singular values
     are not separated from their neighbours, so the refined triplet is the extreme one."""
     import math
-    import mpmath
+    mpmath = private_mp(dps)
     S = S.tocsr()
     rows = [[(int(S.indices[k]), float(S.data[k])) for k in range(S.indptr[i], S.indptr[i + 1])]
             for i in range(S.shape[0])]
@@ -135,40 +143,39 @@ def independent_condition(S, dps=50):
     separation = 1e-10 * s[0]
     if n > 1 and not (s[0] - s[1] > separation and s[-2] - s[-1] > separation):
         raise AssertionError('oracle: the extreme singular values are not separated; kappa undecided')
-    with mpmath.workdps(dps):
-        entries = [[(j, mpmath.mpf(v)) for j, v in row] for row in scaled]
-        transposed = [[] for _ in range(n)]
-        for i, row in enumerate(entries):
-            for j, v in row:
-                transposed[j].append((i, v))
-        tolerance = mpmath.mpf(10) ** (8 - dps) * mpmath.mpf(float(s[0]))
+    entries = [[(j, mpmath.mpf(v)) for j, v in row] for row in scaled]
+    transposed = [[] for _ in range(n)]
+    for i, row in enumerate(entries):
+        for j, v in row:
+            transposed[j].append((i, v))
+    tolerance = mpmath.mpf(10) ** (8 - dps) * mpmath.mpf(float(s[0]))
 
-        def triplet(k):
-            u = [mpmath.mpf(float(v)) for v in U[:, k]]
-            v = [mpmath.mpf(float(w)) for w in Vt[k]]
-            sigma = mpmath.mpf(float(s[k]))
-            for _ in range(8):
-                r1 = [mpmath.fsum(a * v[j] for j, a in row) - sigma * u[i] for i, row in enumerate(entries)]
-                r2 = [mpmath.fsum(a * u[i] for i, a in col) - sigma * v[j] for j, col in enumerate(transposed)]
-                r3 = (mpmath.fsum(w * w for w in v) - 1) / 2
-                if max(max(abs(x) for x in r1 + r2), abs(r3)) <= tolerance:
-                    return sigma
-                sf, uf, vf = float(sigma), np.array([float(x) for x in u]), np.array([float(x) for x in v])
-                J = np.zeros((2 * n + 1, 2 * n + 1))
-                J[:n, :n] = -sf * np.eye(n)
-                J[:n, n:2 * n] = A
-                J[:n, 2 * n] = -uf
-                J[n:2 * n, :n] = A.T
-                J[n:2 * n, n:2 * n] = -sf * np.eye(n)
-                J[n:2 * n, 2 * n] = -vf
-                J[2 * n, n:2 * n] = vf
-                rhs = -np.array([float(x) for x in r1 + r2 + [r3]])
-                step = np.linalg.solve(J, rhs)
-                u = [a + mpmath.mpf(float(d)) for a, d in zip(u, step[:n])]
-                v = [a + mpmath.mpf(float(d)) for a, d in zip(v, step[n:2 * n])]
-                sigma = sigma + mpmath.mpf(float(step[2 * n]))
-            raise AssertionError(f'oracle: singular triplet {k} did not converge; kappa undecided')
-        return triplet(0) / triplet(n - 1)
+    def triplet(k):
+        u = [mpmath.mpf(float(v)) for v in U[:, k]]
+        v = [mpmath.mpf(float(w)) for w in Vt[k]]
+        sigma = mpmath.mpf(float(s[k]))
+        for _ in range(8):
+            r1 = [mpmath.fsum(a * v[j] for j, a in row) - sigma * u[i] for i, row in enumerate(entries)]
+            r2 = [mpmath.fsum(a * u[i] for i, a in col) - sigma * v[j] for j, col in enumerate(transposed)]
+            r3 = (mpmath.fsum(w * w for w in v) - 1) / 2
+            if max(max(abs(x) for x in r1 + r2), abs(r3)) <= tolerance:
+                return sigma
+            sf, uf, vf = float(sigma), np.array([float(x) for x in u]), np.array([float(x) for x in v])
+            J = np.zeros((2 * n + 1, 2 * n + 1))
+            J[:n, :n] = -sf * np.eye(n)
+            J[:n, n:2 * n] = A
+            J[:n, 2 * n] = -uf
+            J[n:2 * n, :n] = A.T
+            J[n:2 * n, n:2 * n] = -sf * np.eye(n)
+            J[n:2 * n, 2 * n] = -vf
+            J[2 * n, n:2 * n] = vf
+            rhs = -np.array([float(x) for x in r1 + r2 + [r3]])
+            step = np.linalg.solve(J, rhs)
+            u = [a + mpmath.mpf(float(d)) for a, d in zip(u, step[:n])]
+            v = [a + mpmath.mpf(float(d)) for a, d in zip(v, step[n:2 * n])]
+            sigma = sigma + mpmath.mpf(float(step[2 * n]))
+        raise AssertionError(f'oracle: singular triplet {k} did not converge; kappa undecided')
+    return triplet(0) / triplet(n - 1)
 
 
 # Owner decision OD11 (2026-11-20, review r3): the specified cutoff, exactly; no margin.
@@ -181,13 +188,12 @@ KAPPA_ACCURACY = Fraction(1, 10 ** 20)
 def kappa_within_cutoff(kappa):
     """True for kappa <= 1e7 and False for kappa > 1e7, decided outside the accuracy band; raises
     (undecided) when |kappa - 1e7| <= 1e-20 * 1e7, where the approximation cannot classify it."""
-    import mpmath
-    with mpmath.workdps(60):
-        distance = abs(mpmath.mpf(kappa) - KAPPA_LIMIT)
-        band = mpmath.mpf(KAPPA_ACCURACY.numerator) / KAPPA_ACCURACY.denominator * KAPPA_LIMIT
-        if distance <= band:
-            raise AssertionError('oracle: kappa lies within the accuracy band of the cutoff 1e7; undecided')
-        return bool(mpmath.mpf(kappa) < KAPPA_LIMIT)
+    mpmath = private_mp(60)
+    distance = abs(mpmath.mpf(kappa) - KAPPA_LIMIT)
+    band = mpmath.mpf(KAPPA_ACCURACY.numerator) / KAPPA_ACCURACY.denominator * KAPPA_LIMIT
+    if distance <= band:
+        raise AssertionError('oracle: kappa lies within the accuracy band of the cutoff 1e7; undecided')
+    return bool(mpmath.mpf(kappa) < KAPPA_LIMIT)
 
 
 def acceptance_warranted(S, b):

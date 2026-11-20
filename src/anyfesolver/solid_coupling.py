@@ -34,6 +34,7 @@ from ._coupled_certificate import (
     _checked_clock,
     _dense_bytes,
     _exact,
+    _TRANSLATION_ATTEMPTS,
     _exception_text,
     _float_bits,
     _type_name,
@@ -1208,6 +1209,86 @@ def _check_footprint_partition(model: Any, removed: Sequence[int], orphans: Sequ
 
 # --- the entry ------------------------------------------------------------------------------------
 
+_INT_TYPES = frozenset((int, np.int8, np.int16, np.int32, np.int64, np.intc, np.intp,
+                        np.uint8, np.uint16, np.uint32, np.uint64, np.uintc, np.uintp))
+_RAW_VALUE_TYPES = frozenset((float, np.float64, int))
+
+
+def _check_containers(model: Any, load_case: Any) -> None:
+    """Review r5 #4 (class inventory): every container of the LoadCase and the FEModel that the route
+    reads has its exact built-in type, and so have its keys and the entries the route iterates, before
+    any protocol method (``__len__``, ``__bool__``, ``__iter__``, ``items``, ``__contains__``,
+    ``__hash__``, ``__eq__``) of a caller object can run. Iterating an exact ``dict``, ``list`` or
+    ``tuple`` and reading the attributes of exact anyfesolver objects run no caller code. Only exact
+    type tests run here.
+
+    Inventory (what the route reads): LoadCase ``nodal_loads``, ``element_loads``, ``pressure_loads``,
+    ``added_node_masses`` (dicts with integer keys; mass values float or int), ``follower_pressure``
+    (bool), ``gravity`` (identity test only); FEModel ``mesh`` (FEMesh) with ``nodes`` and ``elements``
+    (the mesh's own mappings, integer keys), every node's ``dofs`` (list of integers), every element's
+    ``node_ids`` (tuple or list of integers), ``point_masses`` and ``concentrated_masses`` (dicts);
+    ``materials`` (dict with str keys); ``boundary_conditions`` (list of anyfesolver supports, each with
+    ``node_ids`` a list or tuple of integers and ``dof_constraints`` a dict with str keys);
+    ``constraint_equations`` (list of ConstraintEquation, ``coefficients`` a tuple of (dof, value)
+    pairs). Value types of loads, supports and MPCs are checked by _check_raw_scalars."""
+    from .boundary import BoundaryCondition, FixedSupport, PinnedSupport, RollerSupport, SymmetryBC
+    from .constraint_audit import ConstraintEquation
+    from .fe_core import FEMesh, Node, _QualifiedStateMapping
+
+    def bad(what: str) -> CoupledSolveError:
+        return _refuse('COUPLED_NATIVE_INVALID', 'container_type', f'{what} has an unsupported container type')
+
+    def int_keys(mapping: dict) -> bool:
+        return all(type(key) in _INT_TYPES for key in mapping)
+
+    for name in ('nodal_loads', 'element_loads', 'pressure_loads', 'added_node_masses'):
+        value = getattr(load_case, name)
+        if type(value) is not dict or not int_keys(value):
+            raise bad(f'load_case.{name}')
+    if not all(type(v) in _RAW_VALUE_TYPES for v in load_case.added_node_masses.values()):
+        raise bad('load_case.added_node_masses')
+    if type(load_case.follower_pressure) is not bool:
+        raise bad('load_case.follower_pressure')
+    mesh = model.mesh
+    if type(mesh) is not FEMesh:
+        raise bad('fe_model.mesh')
+    for name in ('nodes', 'elements'):
+        mapping = getattr(mesh, name)
+        if type(mapping) is not _QualifiedStateMapping or not int_keys(mapping):
+            raise bad(f'fe_model.mesh.{name}')
+    for node in mesh.nodes.values():
+        if type(node) is not Node or type(node.dofs) is not list or not all(type(d) in _INT_TYPES for d in node.dofs):
+            raise bad('a node DOF list')
+    for element in mesh.elements.values():
+        ids = element.node_ids
+        if type(ids) not in (tuple, list) or not all(type(n) in _INT_TYPES for n in ids):
+            raise bad('an element node list')
+    for name in ('point_masses', 'concentrated_masses'):
+        if type(getattr(mesh, name)) is not dict:
+            raise bad(f'fe_model.mesh.{name}')
+    if type(model.materials) is not dict or not all(type(k) is str for k in model.materials):
+        raise bad('fe_model.materials')
+    supports = model.boundary_conditions
+    if type(supports) is not list:
+        raise bad('fe_model.boundary_conditions')
+    for bc in supports:
+        if type(bc) not in (BoundaryCondition, FixedSupport, PinnedSupport, RollerSupport, SymmetryBC):
+            raise bad('a support')
+        if type(bc.node_ids) not in (list, tuple) or not all(type(n) in _INT_TYPES for n in bc.node_ids):
+            raise bad(f'the node list of support {bc.name!r}' if type(bc.name) is str else 'a support node list')
+        if type(bc.dof_constraints) is not dict or not all(type(k) is str for k in bc.dof_constraints):
+            raise bad('a support DOF mapping')
+    equations = model.constraint_equations
+    if type(equations) is not list:
+        raise bad('fe_model.constraint_equations')
+    for equation in equations:
+        if type(equation) is not ConstraintEquation or type(equation.dependent_dof) not in _INT_TYPES \
+                or type(equation.coefficients) is not tuple \
+                or not all(type(term) is tuple and len(term) == 2 and type(term[0]) in _INT_TYPES
+                           for term in equation.coefficients):
+            raise bad('an MPC')
+
+
 _NATIVE_ERRORS = (ValueError, ArithmeticError, FloatingPointError, np.linalg.LinAlgError, KeyError, TypeError,
                   IndexError, AttributeError, RuntimeError)
 
@@ -1217,11 +1298,20 @@ def _native(call, *args):
         return call(*args)
     except CoupledSolveError:
         raise
-    except MemoryError as exc:
-        raise _refuse('COUPLED_TOO_LARGE', 'memory_error', 'out of memory in native assembly') from exc
-    except _NATIVE_ERRORS as exc:
-        raise _refuse('COUPLED_NATIVE_INVALID', _safe_name(exc),
-                      f'native shell assembly refused: {_safe_text(exc)}') from exc
+    except (MemoryError,) + _NATIVE_ERRORS as exc:
+        for _ in range(_TRANSLATION_ATTEMPTS):          # review r5 #3: a hook raising while it is built
+            try:
+                if isinstance(exc, MemoryError):
+                    refusal = _refuse('COUPLED_TOO_LARGE', 'memory_error', 'out of memory in native assembly')
+                else:
+                    refusal = _refuse('COUPLED_NATIVE_INVALID', _safe_name(exc),
+                                      f'native shell assembly refused: {_safe_text(exc)}')
+                break
+            except Exception:  # noqa: BLE001
+                continue
+        else:
+            raise
+        raise refusal from exc
 
 
 def solve_shell_solid_coupled(fe_model: Any, prepared: Any, *, removed_element_ids: Sequence[int], box: BoxFaces,
@@ -1242,11 +1332,23 @@ def solve_shell_solid_coupled(fe_model: Any, prepared: Any, *, removed_element_i
                       time.perf_counter if clock is None else clock)   # identity, no __bool__ (r4 P2)
     except CoupledSolveError:
         raise
-    except MemoryError as exc:
-        raise _refuse('COUPLED_TOO_LARGE', 'memory_error', 'out of memory in the coupled solve') from exc
-    except Exception as exc:  # no uncoded exception escapes; the translation itself cannot raise (r1 #9)
-        raise _refuse('COUPLED_NATIVE_INVALID', f'unexpected:{_safe_name(exc)}',
-                      f'the coupled solve failed unexpectedly ({_safe_text(exc)})') from exc
+    except Exception as exc:  # no uncoded exception escapes (r1 #9)
+        # Review r5 #3: the refusal is built in a bounded retry. A trace or profile hook that raises while
+        # it is built is unset by the interpreter after that exception, so it costs one attempt; the
+        # code and reason stay those of the original exception.
+        for _ in range(_TRANSLATION_ATTEMPTS):
+            try:
+                if isinstance(exc, MemoryError):
+                    refusal = _refuse('COUPLED_TOO_LARGE', 'memory_error', 'out of memory in the coupled solve')
+                else:
+                    refusal = _refuse('COUPLED_NATIVE_INVALID', f'unexpected:{_safe_name(exc)}',
+                                      f'the coupled solve failed unexpectedly ({_safe_text(exc)})')
+                break
+            except Exception:  # noqa: BLE001
+                continue
+        else:
+            raise
+        raise refusal from exc
 
 
 def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, resources, clock) -> CoupledSolution:
@@ -1280,6 +1382,7 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
         raise _refuse('COUPLED_NATIVE_INVALID', 'prepared_type', 'prepared must be an anysolid PreparedSolid')
     if type(load_case) is not LoadCase:
         raise _refuse('COUPLED_NATIVE_INVALID', 'load_case_type', 'load_case must be one anyfesolver LoadCase')
+    _check_containers(fe_model, load_case)     # review r5 #4: before any protocol call on them
     if type(box) is not BoxFaces or type(box.sides) is not tuple or len(box.sides) != 4 \
             or not all(type(s) is str for s in box.sides) or len(set(box.sides)) != 4 \
             or not (box.skin is None or (type(box.skin) is str and box.skin in _SKINS)) \

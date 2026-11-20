@@ -23,3 +23,10 @@ timing_oneway_t1 rc=0 9s load=51
 timing_svd_t1 rc=0 158s load=14
 peak_coupled_t1 rc=0 35s load=73
 r0_coupled_n10 rc=0 5s load=81
+--- OD13 rerun (certificate SVD in a worker process; svd 3 runs), coupled entries only, 2026-11-20T22:40+01:00
+timing_coupled_t1 rc=0 216s load=73
+timing_coupled_default rc=0 38s load=41
+timing_oneway_t1 rc=0 10s load=87
+timing_svd_t1 rc=0 116s load=73
+peak_coupled_t1 rc=0 39s load=81
+r0_coupled_n10 rc=0 5s load=27

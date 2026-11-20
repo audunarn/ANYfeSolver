@@ -9,7 +9,7 @@ weakly along the four cut sides. The result is either a `CoupledSolution` with c
 
 The module is private. `import anyfesolver` neither imports nor exports it. ANYfem is its only intended caller.
 The certificate lives in `anyfesolver._coupled_certificate`. The spec is
-`SOLVER-PR67-DENSE-SPEC-20261119.md`, which applies owner decisions OD1–OD11. `threadpoolctl` is a core dependency of
+`SOLVER-PR67-DENSE-SPEC-20261119.md`, which applies owner decisions OD1–OD13. `threadpoolctl` is a core dependency of
 ANYfeSolver and is also listed in the `solids` extra (OD11).
 
 ## Trusted-construction boundary (OD9)
@@ -140,10 +140,12 @@ round-to-nearest-even with gradual underflow, as A1 and A2 do.
 - **Probe.** `_require_fp_environment` checks, for Python floats and NumPy vector loops, that subnormal operands
   and results survive (no FTZ/DAZ) and that the rounding is to nearest-even (ties `1 + 2^-53 → 1` and
   `(1 + 2^-52) + 2^-53 → 1 + 2^-51`, and their negations, which exclude rounding up, down and toward zero). It
-  refuses `COUPLED_UNCERTIFIED` with `subnormal_flush` or `rounding_mode`.
+  refuses `COUPLED_UNCERTIFIED` with `subnormal_flush` or `rounding_mode`. The probe itself never raises, so an
+  exception from inside it was raised by caller code running there (a trace, profile or audit hook), including a
+  forged `CoupledSolveError`; it refuses `COUPLED_UNCERTIFIED` (`fp_probe`, review r5 #3).
 - **Where.** At entry, after every cancellation poll, at the start of the certificate (before the power-of-two
-  equilibration), immediately before and after the SVD, after the outward-rounded κ bound, and immediately before
-  and after the exact residual.
+  equilibration), after the outward-rounded κ bound, and immediately before and after the exact residual. The SVD
+  worker runs the same probe in its own process before and after the SVD (see below).
 - **After every caller callback (review r3).** Caller code runs only in these places, and each is followed by the
   probe before any float step of the route runs:
   - every `clock()` call, in the route and inside the certified solve (the checked clock; a clock that selects
@@ -156,32 +158,80 @@ round-to-nearest-even with gradual underflow, as A1 and A2 do.
   listed. The clock value must be an exact `float` or `int` (`COUPLED_NATIVE_INVALID`, `clock_invalid`), so the route's
   own timing arithmetic runs no caller code. A callback that changes the environment and restores it before it
   returns leaves no trace and affects no route step.
-- **One thread.** The SVD runs inside the solver's own thread-scope coordinator, `native_thread_scope(1)` (review
-  r3). It holds the coordinator's exclusive writer for the whole window from the first probe to the post-check, so
-  no other `native_thread_scope` or `solver_thread_scope`, on any thread, can change the process-wide pool limits
-  inside it: such a scope waits until the window ends, and a running default-thread scope on another thread makes
-  the SVD wait instead. The wait is bounded (review r4): if the coordinator is not free within 120 s (for example
-  because a parent thread holds a scope and joins this solve), the solve refuses `blas_threads` instead of waiting
-  for ever. Same-thread nesting outside the window stays reentrant. Inside the window the coordinator is sealed
-  (review r4): ambient caller code on the calling thread (trace, profile or audit hooks, garbage-collector
-  callbacks, finalizers) cannot be excluded from the window, so any explicit `native_thread_scope` that such code
-  opens there raises, and the solve refuses `blas_threads` even if that code caught the exception. A request for
-  the window's own limit (one thread, in the same context) changes nothing and is admitted. Any error from the
-  coordinator itself (its pool snapshots or the limiter, for example a `PermissionError` from an audit policy
-  that denies threadpoolctl's library handles) also refuses `blas_threads`. A probe then requires that NumPy's own BLAS (a library
-  under NumPy's package directory or `numpy.libs`) is among the controlled pools and that every BLAS pool reports
-  exactly one thread, before and after the call. With one thread the BLAS runs inline on the calling thread, whose
-  environment is the one probed, so no worker thread with its own MXCSR takes part. If threadpoolctl is missing,
-  the coordinator cannot limit the pools, NumPy's BLAS is not found (for example a vendor that threadpoolctl cannot
-  control) or a pool reports another count, the solve refuses `COUPLED_UNCERTIFIED` (`blas_threads`). The
-  single-thread SVD is slower than the default; RESULT.md reports the measured time.
-- **Process-wide state (review r3 class inventory).** The pool limits are the only process-wide state a certified
-  premise depends on, and they are held as above. The FP environment is per thread. NumPy's `errstate` is
-  per context. Other BLAS or LAPACK calls (`matrix_rank` in the rigid-rank check, a small Gram solve, SuperLU)
-  carry no premise: a different thread count changes their bits only, and their outcomes are refusals or a
-  candidate that the exact checks judge. Code on another thread that calls `threadpoolctl` directly, bypassing
-  the coordinator, is outside the contract: a change still present at the post-check refuses, a transient one is
-  not detected.
+- **Containers (review r5 #4).** Right after the exact-type checks of the model and the load case, every container
+  the route reads is checked by exact built-in type before any protocol method of a caller object can run
+  (`__len__`, `__bool__`, `__iter__`, `items`, `__contains__`, `__hash__`, `__eq__`, `__deepcopy__`): the
+  LoadCase `nodal_loads`, `element_loads`, `pressure_loads` and `added_node_masses` (exact `dict`, integer keys
+  of type `int` or a NumPy integer, mass values `float`, `np.float64` or `int`) and `follower_pressure` (exact
+  `bool`); the FEModel `mesh` (`FEMesh`), its `nodes` and `elements` (the mesh's own mappings, integer keys),
+  every node (`Node`, `dofs` an exact `list` of integers), every element's `node_ids` (`tuple` or `list` of
+  integers), `point_masses` and `concentrated_masses` (`dict`), `materials` (`dict`, `str` keys),
+  `boundary_conditions` (`list` of the anyfesolver support classes, each with `node_ids` a `list` or `tuple` of
+  integers and `dof_constraints` a `dict` with `str` keys) and `constraint_equations` (`list` of
+  `ConstraintEquation`, integer `dependent_dof`, `coefficients` a `tuple` of `(dof, value)` pairs). Anything
+  else refuses `COUPLED_NATIVE_INVALID` (`container_type`). Value types are checked as before (`raw_scalar_type`).
+- **Process-wide state.** The certificate premise A1 depends on the SVD's environment only, and that runs in its
+  own process (below). The FP environment of the solving thread is probed as above. NumPy's `errstate` is per
+  context. Other BLAS or LAPACK calls in the solving process (`matrix_rank` in the rigid-rank check, a small Gram
+  solve, SuperLU) carry no premise: a different thread count or a hook changes their bits only, and their
+  outcomes are refusals or a candidate that the exact checks judge.
+
+### Certificate SVD process (owner decision OD13, 2026-11-20)
+Review r5 showed that an in-process single-thread window cannot be closed against same-process caller code: a
+profile hook or another thread can change the process-wide BLAS pool limits inside it (directly through
+threadpoolctl, bypassing any coordinator) and restore them before a post-check. The certificate SVD therefore
+runs in a short-lived child process; the solver's thread coordinator (`threading_policy`) is not used by the
+route and is unchanged from the base.
+
+- **Start.** `subprocess.Popen` (a new interpreter, never a fork) of `sys.executable -I -S
+  anyfesolver/_coupled_svd_worker.py <NumPy package dir> <path>...`. `-I` ignores every `PYTHON*` variable and the
+  user site and keeps the script and working directories off `sys.path`; `-S` skips `site`, so no `.pth` file,
+  `sitecustomize` or `usercustomize` runs. `sys.path` is the standard library plus the directory that holds NumPy
+  (and threadpoolctl's, if it is loaded from elsewhere). The environment is exactly `OPENBLAS_NUM_THREADS=1`,
+  `OMP_NUM_THREADS=1`, `MKL_NUM_THREADS=1` and, on Windows, `SYSTEMROOT` (the interpreter needs it to start). The
+  working directory is the anyfesolver package directory. The worker module imports nothing from anyfesolver and
+  receives no callable, so no caller code runs in the child. (A Windows venv's `python.exe` is a launcher that
+  starts the base interpreter in a job object that ends with the launcher; terminating the launcher ends both,
+  verified by PID in the tests.)
+- **Transfer.** The equilibrated matrix goes to the worker's stdin as raw little-endian float64 bytes in C order
+  after an 8-byte magic and the size N (`uint64`); three threads feed stdin and drain stdout and stderr, so the
+  solving thread stays free. The worker returns only what the certificate uses: the singular values (it uses
+  `σ_1` and `σ_N`; no `U` or `V`). Equilibration, the κ bound, δ, `σ⁻` and the exact integer residual stay in the
+  solving process.
+- **The worker's own checks.** After importing NumPy (which must be the parent's: the package directory is
+  compared) and before reading the matrix, immediately before the SVD and immediately after it, the worker runs
+  the route's FP probe (round-to-nearest-even, gradual underflow) and the thread probe: threadpoolctl must be
+  importable, NumPy's own BLAS (a library under NumPy's package directory or `numpy.libs`) must be among the pools
+  and every BLAS pool must report exactly one thread. A failure ends the worker with an `EN` record and refuses
+  `COUPLED_UNCERTIFIED` with the worker's reason (`blas_threads`, `subnormal_flush`, `rounding_mode`). With one
+  thread the BLAS runs inline on the worker's main thread, whose environment is the one probed. The parent's own
+  FP environment, profile and trace hooks and thread limits do not reach the worker, which starts with the
+  process defaults.
+- **Validation in the parent.** An `OK` record must have exactly `10 + 8N` bytes, echo N, and hold N float64
+  values that are all finite, non-negative and in descending order, decided on the bit patterns (a `-0.0` is
+  taken as `+0.0`). Anything else refuses `COUPLED_UNCERTIFIED` (`svd_worker`).
+- **Failures.** Every worker failure refuses `COUPLED_UNCERTIFIED` with reason `svd_worker`; the diagnostic
+  `worker_failure` names it: `start_failed` (the process could not be created, for example an audit policy that
+  denies `subprocess.Popen`), `io` (the transfer failed), `timeout` (no result within 600 s), `exit` (a crash,
+  a kill or any other nonzero exit), `bad_output` (a malformed record or a zero exit without one) and
+  `environment` (an unknown environment record, or another NumPy). A `MemoryError` in the worker (`MM` record)
+  refuses `COUPLED_TOO_LARGE` (`memory_error`). A LAPACK non-convergence (`LA` record) is the certificate reason
+  `numerical_failure:LinAlgError`, as before.
+- **Cancellation.** While the worker runs, the parent polls the caller's cancellation (then its own FP
+  environment) every 50 ms. On a cancellation, a callback error or any other exception it terminates its own
+  worker by the handle it created (never by image name), waits for it, closes the pipes and re-raises: a
+  cancellation refuses `COUPLED_CANCELLED`.
+- **Guarantee.** Under A1 the singular values are those of LAPACK's `gesdd` path in NumPy, run on one verified
+  BLAS thread with verified round-to-nearest and gradual underflow, in a process in which no caller code ran.
+  Not covered: an attacker who can replace the interpreter, NumPy, OpenBLAS or the worker file on disk, or who
+  can write into another process's memory; those are outside the trusted-construction boundary (OD9).
+- **Measured overhead.** At N = 5000 (one thread, shared machine at 73 % load): median 28.2 s for the whole worker run against 27.6–28.0 s for
+  the worker's own SVD; the overhead is about 0.26 s per run (start-up to NumPy imported 0.10 s, reading the 200 MB
+  matrix 0.04 s, writing it, the result and the exit). Peak commit at N = 4969: parent 830 MiB above post-import
+  (unchanged; reached in the equilibration), worker 431 MiB (the matrix it read and LAPACK's copy). The
+  `COUPLED_TOO_LARGE` memory estimate 4·N²·8 bytes still bounds the dense copies held at once (two in the parent
+  during the equilibration; one in the parent and two in the worker during the SVD).
+  `evidence/coupled_specimen/RESULT.md` has the runs.
 
 ### Candidate (spec §2.5)
 `splu(csc(S))` is called directly, with up to five refinement steps on the exact residual (owner decision OD12,
@@ -279,18 +329,24 @@ Added by review r1:
   integer, converted once) are type-checked before any conversion. Each `clock()` value must be an exact `float`
   or `int` (`clock_invalid`, review r3).
 - **Ledger (#10).** Every nodal and pressure record of the case has a row, also when it yields no component.
-- **Cancellation (#8, #9, r2 (d)).** The flag is polled after recovery, after each side's V4, inside the certified
-  solve after verification, and last after the result object is built, so a cancellation during result
-  construction refuses. Translating an exception never runs user code: the class name is read from the type
-  slot and only exact `str` arguments are shown (anything else is `<not shown>`); no `__str__`, `__repr__` or
-  `__format__` is called.
+- **Cancellation (#8, #9, r2 (d)).** The flag is polled after recovery, after each side's V4, every 50 ms while the
+  SVD worker runs (OD13), inside the certified solve after verification, and last after the result object is
+  built, so a cancellation during result construction refuses. Translating an exception never runs user code: the
+  class name is read from the type slot and only exact `str` arguments are shown (anything else is `<not shown>`);
+  no `__str__`, `__repr__` or `__format__` is called.
+- **Hooks during translation (review r5 #3).** Each refusal built from a caught exception (the top-level
+  translation, native assembly, the candidate, the FP probe) is built in a bounded retry (4 attempts). The
+  interpreter unsets a trace or profile function that raises, so a hook that raises while the refusal is built (on
+  the call or return of a helper) costs one attempt, and the refusal keeps the code and reason of the original
+  exception. Not covered: a local line-trace function that raises on the final `raise` statement itself, and
+  `sys.monitoring` callbacks (Python 3.12+), which the interpreter does not unset.
 
 ## Refusal codes
 
 | Code | Meaning |
 |---|---|
 | `COUPLED_TOO_LARGE` | `N > 5000`, the memory limit, or a `MemoryError` anywhere |
-| `COUPLED_UNCERTIFIED` | The certificate or a check failed. Reasons include `zero_row`, `equilibration_not_converged`, `nonfinite_entry`, `singular_within_svd_error`, `condition_above_limit`, `svd_error_bound_invalid`, `numerical_failure:*`, `candidate_failed`, `backward_error_above_limit`, `forward_error_above_limit`, `asymmetric_stiffness`, `v4_rigid_compatibility`, `v4_interface_balance`, `v5_global_balance`, `subnormal_flush`, `rounding_mode` and `blas_threads` |
+| `COUPLED_UNCERTIFIED` | The certificate or a check failed. Reasons include `zero_row`, `equilibration_not_converged`, `nonfinite_entry`, `singular_within_svd_error`, `condition_above_limit`, `svd_error_bound_invalid`, `numerical_failure:*`, `candidate_failed`, `backward_error_above_limit`, `forward_error_above_limit`, `asymmetric_stiffness`, `v4_rigid_compatibility`, `v4_interface_balance`, `v5_global_balance`, `subnormal_flush`, `rounding_mode`, `fp_probe`, `blas_threads` and `svd_worker` (diagnostic `worker_failure`: `start_failed`, `io`, `timeout`, `exit`, `bad_output`, `environment`) |
 | `COUPLED_FORMATION_RANGE` | An input has the wrong type, or a raw operand lies outside `W_raw` |
 | `COUPLED_FORMATION_LOSS` | An exactly nonzero `B_s` or `g` entry rounds outside `W_raw`, or a raw load is stored as zero |
 | `COUPLED_MESH_PROVENANCE` | The plane, lattice, facet-count or skin checks failed |
@@ -302,7 +358,7 @@ Added by review r1:
 | `COUPLED_MECHANISM` | A zero row, or `solid_rigid_mode_free` |
 | `COUPLED_CONNECTOR_PARTITION` / `_GROUP` / `_RANK` | The connector prechecks failed |
 | `COUPLED_CONNECTOR_INVALID` | Any other connector `ValueError` |
-| `COUPLED_NATIVE_INVALID` | The native assembly or reduction failed, a contract property of the solid or the model does not hold, an argument has the wrong type (including `clock_invalid`), or an unexpected exception was caught |
+| `COUPLED_NATIVE_INVALID` | The native assembly or reduction failed, a contract property of the solid or the model does not hold, an argument has the wrong type (including `clock_invalid`), a container has the wrong type (`container_type`), or an unexpected exception was caught |
 | `COUPLED_CANCELLED` | The `cancel` callable or event fired |
 
 ## Evidence
@@ -314,9 +370,10 @@ ceilings. The tests are:
 - `tests/test_coupled_r11_classes.py`, which includes the OD7 and OD8 tests and the ν = 0 patch test; its oracle
   uses an independent implementation of the specified power-of-two Ruiz scaling, an mpmath reference solution,
   and a high-precision κ (binary64 SVD triplets refined by Newton steps on mpmath residuals) judged against the
-  exact cutoff 1e7 with no margin (review r3);
-- `tests/test_coupled_review_r1.py`, `tests/test_coupled_review_r2.py` and `tests/test_coupled_review_r3.py`
-  (the Codex review rounds);
+  exact cutoff 1e7 with no margin (review r3), in private mpmath contexts (review r5 #5);
+- `tests/test_coupled_review_r1.py` to `tests/test_coupled_review_r5.py` (the review rounds; r5 holds the OD13
+  worker tests: parent hooks, thread limits and FP environment do not reach the worker, isolation, cancellation and
+  timeout by PID, every malformed worker record);
 - `tests/test_solid_trace_extensions.py`;
 - `tests/test_load_contributions.py`.
 

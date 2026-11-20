@@ -14,18 +14,28 @@ Not exported from :mod:`anyfesolver`; the sole caller is :mod:`anyfesolver.solid
 
 from __future__ import annotations
 
-import contextlib
 from dataclasses import dataclass, field
 from fractions import Fraction
 import functools
 import math
 import os
 import struct
+import sys
 from typing import Any, Callable, Mapping, Optional
 
 import numpy as np
 from scipy import sparse
 from scipy.sparse import linalg as sparse_linalg
+
+from . import _coupled_svd_worker as _worker
+from ._coupled_svd_worker import (  # noqa: F401  (re-exported for solid_coupling and the tests)
+    _bits_of,
+    _float_bits,
+    _float_from_bits,
+    _fp_environment_reason,
+    _nearest_rounding,
+    _subnormals_preserved,
+)
 
 __all__: list[str] = []
 
@@ -40,20 +50,8 @@ _SIGN_BIT = 1 << 63
 _FRACTION_BITS = (1 << 52) - 1
 _INF_BITS = 0x7FF << 52
 _ABS_MASK = np.int64(0x7FFF_FFFF_FFFF_FFFF)
-
-
-def _float_from_bits(bits: int) -> float:
-    return struct.unpack('<d', struct.pack('<Q', bits & 0xFFFF_FFFF_FFFF_FFFF))[0]
-
-
-def _bits_of(value: float) -> int:
-    """The signed int64 bit pattern of one binary64 value (a byte copy)."""
-    return struct.unpack('<q', struct.pack('<d', value))[0]
-
-
-def _float_bits(values: Any) -> np.ndarray:
-    """int64 bit patterns of a float64 array (a byte copy; callers pass float64 only)."""
-    return np.ascontiguousarray(values, dtype=np.float64).view(np.int64)
+# _float_from_bits, _bits_of and _float_bits come from the SVD worker module (one source for the
+# parent and the child, owner decision OD13).
 
 
 def _nonzero_mask(values: Any) -> np.ndarray:
@@ -137,165 +135,272 @@ def _out_up(value: Fraction) -> float:
     return _ratio_to_float(value.numerator, value.denominator, up=True)
 
 
-def _subnormals_preserved() -> bool:
-    """False when this thread flushes subnormal operands or results (DAZ/FTZ), for Python floats
-    or for NumPy's vector loops. The certificate premises (A2) and every float comparison of the
-    route assume IEEE gradual underflow."""
-    tiny = _float_from_bits(1)
-    if _bits_of(tiny * 3.0) != 3 or not tiny != 0.0:
-        return False
-    vector = np.full(64, tiny)
-    return bool((_float_bits(vector * 3.0) == 3).all()) and bool((vector != 0.0).all())
-
-
-_ONE_BITS = 0x3FF0_0000_0000_0000
-_HALF_ULP_BITS = 0x3CA0_0000_0000_0000          # 2^-53, half an ulp of 1.0
-
-
-def _nearest_rounding() -> bool:
-    """False unless this thread rounds to nearest-even, for Python floats and NumPy's vector loops
-    (review r2 (a)). 1 + 2^-53 is a tie that rounds down to 1 and (1 + 2^-52) + 2^-53 a tie that
-    rounds up to 1 + 2^-51; the negated pair rules out rounding toward zero. Operands come from bit
-    patterns at run time, so nothing is folded at compile time."""
-    one, half = _float_from_bits(_ONE_BITS), _float_from_bits(_HALF_ULP_BITS)
-    odd = _float_from_bits(_ONE_BITS + 1)
-    expected = (_ONE_BITS, _ONE_BITS + 2, _ONE_BITS | _SIGN_BIT, (_ONE_BITS + 2) | _SIGN_BIT)
-    scalar = (one + half, odd + half, -one - half, -odd - half)
-    if tuple(_bits_of(v) & 0xFFFF_FFFF_FFFF_FFFF for v in scalar) != expected:
-        return False
-    a = np.array([one, odd, -one, -odd] * 16)
-    b = np.array([half, half, -half, -half] * 16)
-    got = _float_bits(a + b).view(np.uint64).tolist()
-    return got == list(expected) * 16
-
-
-def _fp_environment_reason() -> Optional[str]:
-    if not _subnormals_preserved():
-        return 'subnormal_flush'
-    if not _nearest_rounding():
-        return 'rounding_mode'
-    return None
+# Review r5 #3: a refusal is built inside a bounded retry. A trace or profile function that raises is
+# unset by the interpreter after that one exception, so a hook raising while a refusal is built (on
+# the call or return of a helper) costs one attempt, not the refusal's code.
+_TRANSLATION_ATTEMPTS = 4
 
 
 def _require_fp_environment() -> None:
-    """Gradual underflow and round-to-nearest-even on this thread, else a coded refusal."""
-    reason = _fp_environment_reason()
-    if reason == 'subnormal_flush':
-        raise _refuse('COUPLED_UNCERTIFIED', 'subnormal_flush',
-                      'the floating-point environment flushes subnormals (FTZ/DAZ); the certificate '
-                      'premise A2 and exact float comparisons do not hold')
-    if reason is not None:
-        raise _refuse('COUPLED_UNCERTIFIED', 'rounding_mode',
-                      'the floating-point environment does not round to nearest-even; the certificate '
-                      'premises A1/A2 do not hold')
+    """Gradual underflow and round-to-nearest-even on this thread, else a coded refusal.
 
-
-_SVD_THREAD_STATUSES = ('limited', 'inherited_limit')
-# Review r4 P2: the longest wait for the thread coordinator before the certificate refuses
-# blas_threads (another solve's single-thread SVD window at the equation cap takes up to ~45 s).
-_COORDINATOR_WAIT_SECONDS = 120.0
-
-
-@contextlib.contextmanager
-def _single_thread_blas():
-    """Run the enclosed LAPACK work on the calling thread only (review r2 (a), owner decision OD9):
-    the native pools are limited to one thread, and a probe confirms that NumPy's own BLAS is among
-    the controlled libraries and that every BLAS pool reports exactly one thread. With one thread the
-    BLAS runs inline on the caller, whose FP environment the route verifies before and after.
-
-    The limit is taken through the solver's own coordinator, ``native_thread_scope(1)`` (review r3
-    P1): it holds the exclusive writer for the whole window from the first probe to the post-check,
-    so no other ``native_thread_scope`` (or ``solver_thread_scope``) on any thread can change the
-    process-wide pool limits inside it; such a scope waits until the window ends. Anything that
-    cannot be established refuses ``COUPLED_UNCERTIFIED`` (``blas_threads``).
-
-    Review r4: (1) the window is sealed. Ambient caller code (trace, profile and audit hooks, garbage
-    collector callbacks, finalizers) can run on this thread inside it and cannot be excluded, so any
-    explicit ``native_thread_scope`` such code opens on this thread inside the window raises, and the
-    window refuses ``blas_threads`` whether or not that code caught the exception. (2) The wait for the
-    coordinator is bounded by ``_COORDINATOR_WAIT_SECONDS``: a scope held elsewhere for longer (for
-    example by a parent thread that joins this solve) refuses ``blas_threads`` instead of waiting for
-    ever. (3) Any error from the coordinator itself (its pool snapshots, the limiter) refuses
-    ``blas_threads``."""
+    Review r5 #3: the probe itself never raises, so any exception from inside it was raised by caller
+    code running there (a trace, profile or audit hook), including a forged CoupledSolveError; it
+    refuses ``COUPLED_UNCERTIFIED`` (``fp_probe``): the environment is not verified."""
     try:
-        from threadpoolctl import threadpool_info
-        from .threading_policy import NativeThreadScopeSealed, _sealed_native_window, native_thread_scope
-    except Exception as exc:  # noqa: BLE001  (ImportError or a failing import: no limiter)
-        raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
-                      'threadpoolctl is required to run the certificate SVD on one thread') from exc
-    scope = native_thread_scope(1, phase='coupled_certificate_svd', wait_timeout=_COORDINATOR_WAIT_SECONDS)
-    try:
-        policy = scope.__enter__()
-    except CoupledSolveError:
-        raise
-    except Exception as exc:  # noqa: BLE001  (timeout, snapshot or limiter failure)
-        raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
-                      f'the solver thread coordinator could not be entered ({_type_name(exc)})') from exc
-    in_body = False
-    try:
-        if type(policy) is not dict or policy.get('status') not in _SVD_THREAD_STATUSES:
-            raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
-                          'the solver thread coordinator could not limit the native pools to one thread '
-                          f"(status {policy.get('status') if type(policy) is dict else None!r})")
-        try:
-            seal_window = _sealed_native_window()
-            seal = seal_window.__enter__()
-        except Exception as exc:  # noqa: BLE001
-            raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
-                          f'the certificate SVD window could not be sealed ({_type_name(exc)})') from exc
-        with contextlib.ExitStack() as unseal:
-            unseal.push(seal_window.__exit__)
-            try:
-                _require_single_thread_blas(threadpool_info)
-                in_body = True
-                yield functools.partial(_require_single_thread_blas, threadpool_info)
-                in_body = False
-            except NativeThreadScopeSealed as exc:
-                raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
-                              'code inside the certificate SVD window requested another native thread '
-                              'limit') from exc
-        if seal['violated']:
-            raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
-                          'code inside the certificate SVD window requested another native thread limit')
-    except BaseException as body:
-        if not in_body and isinstance(body, Exception) and not isinstance(body, CoupledSolveError):
-            refusal = _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
-                              f'the certificate SVD window failed ({_type_name(body)})')
-            refusal.__cause__ = body
-            body = refusal
-        try:
-            scope.__exit__(type(body), body, body.__traceback__)
-        except CoupledSolveError:
-            raise
-        except Exception as exc:  # noqa: BLE001
-            if exc is body or isinstance(body, CoupledSolveError) or not isinstance(body, Exception):
-                raise body
-            raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
-                          f'the solver thread coordinator failed on exit ({_type_name(exc)})') from exc
-        raise body
-    try:
-        scope.__exit__(None, None, None)
+        reason = _fp_environment_reason()
+        failure = None
     except Exception as exc:  # noqa: BLE001
-        raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
-                      f'the solver thread coordinator failed on exit ({_type_name(exc)})') from exc
+        reason, failure = 'fp_probe', exc
+    if reason is None:
+        return
+    for _ in range(_TRANSLATION_ATTEMPTS):
+        try:
+            if reason == 'subnormal_flush':
+                refusal = _refuse('COUPLED_UNCERTIFIED', 'subnormal_flush',
+                                  'the floating-point environment flushes subnormals (FTZ/DAZ); the certificate '
+                                  'premise A2 and exact float comparisons do not hold')
+            elif reason == 'rounding_mode':
+                refusal = _refuse('COUPLED_UNCERTIFIED', 'rounding_mode',
+                                  'the floating-point environment does not round to nearest-even; the '
+                                  'certificate premises A1/A2 do not hold')
+            else:
+                refusal = _refuse('COUPLED_UNCERTIFIED', 'fp_probe',
+                                  'the floating-point environment probe was interrupted by caller code '
+                                  f'({_type_name(failure)}); the environment is not verified')
+            break
+        except Exception:  # noqa: BLE001  (a hook raised while the refusal was built)
+            continue
+    else:
+        raise _refuse('COUPLED_UNCERTIFIED', 'fp_probe', 'the floating-point environment is not verified')
+    raise refusal from failure
 
 
-def _numpy_blas_dirs() -> tuple:
-    root = os.path.normcase(os.path.dirname(os.path.abspath(np.__file__)))
-    return (root + os.sep, root + '.libs' + os.sep)
+# --- The certificate SVD in a child process (owner decision OD13, 2026-11-20) --------------------------
+# The in-process single-thread window could not be closed against same-process hooks and threads
+# (review r5). The SVD now runs in a short-lived child interpreter (_coupled_svd_worker): started from
+# sys.executable with -I -S and a minimal environment, it verifies its own environment (one BLAS
+# thread, round-to-nearest, gradual underflow) before and after the call and returns the singular
+# values only. Equilibration, the kappa bound, delta and the exact residual stay in this process.
+
+_SVD_WORKER_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '_coupled_svd_worker.py')
+# Hard bound on one worker run (start-up, transfer and the SVD; N = 5000 takes about 30 s on one thread).
+_SVD_WORKER_TIMEOUT_SECONDS = 600.0
+# Interval of the cancellation polls while the worker runs.
+_SVD_WORKER_POLL_SECONDS = 0.05
+# Longest wait for the transfer threads once the worker has exited.
+_SVD_WORKER_IO_SECONDS = 60.0
+_SVD_WORKER_STDERR_LIMIT = 1 << 16
+_SVD_WORKER_ENVIRONMENT_REASONS = ('blas_threads', 'subnormal_flush', 'rounding_mode')
 
 
-def _require_single_thread_blas(threadpool_info) -> None:
+def _svd_worker_command() -> list:
+    """argv of the worker: this interpreter, isolated (-I: no PYTHON* variables, no user site, no script
+    or working directory on sys.path) and without site (-S: no .pth, sitecustomize or usercustomize),
+    then the worker script, NumPy's package directory and the sys.path entries NumPy and threadpoolctl
+    need (the directory that holds NumPy; threadpoolctl's, when it is loaded from elsewhere)."""
+    numpy_dir = os.path.dirname(os.path.abspath(np.__file__))
+    paths = [os.path.dirname(numpy_dir)]
+    loaded = sys.modules.get('threadpoolctl')
+    location = getattr(loaded, '__file__', None) if loaded is not None else None
+    if type(location) is str and os.path.dirname(os.path.abspath(location)) not in paths:
+        paths.append(os.path.dirname(os.path.abspath(location)))
+    return [sys.executable, '-I', '-S', _SVD_WORKER_PATH, numpy_dir, *paths]
+
+
+def _svd_worker_environment() -> dict:
+    """The worker's whole environment: one BLAS, OpenMP and MKL thread, plus SYSTEMROOT on Windows
+    (the interpreter needs it to start)."""
+    environment = {'OPENBLAS_NUM_THREADS': '1', 'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1'}
+    if sys.platform == 'win32':
+        root = os.environ.get('SYSTEMROOT')
+        if type(root) is str and root:
+            environment['SYSTEMROOT'] = root
+    return environment
+
+
+def _worker_refusal(detail: str, message: str, **diagnostics: Any) -> CoupledSolveError:
+    return _refuse('COUPLED_UNCERTIFIED', 'svd_worker', f'the certificate SVD worker failed: {message}',
+                   worker_failure=detail, **diagnostics)
+
+
+class _WorkerIO:
+    """Feeds the matrix to the worker's stdin and drains its stdout and stderr on three threads, so
+    the calling thread stays free to poll the cancellation and the timeout."""
+
+    def __init__(self, process: Any, header: bytes, payload: memoryview, stdout_limit: int) -> None:
+        import threading
+        self.stdout = bytearray()
+        self.stderr = bytearray()
+        self.overflow = False
+        self.errors: list = []
+        self._threads = [threading.Thread(target=self._write, args=(process.stdin, header, payload), daemon=True),
+                         threading.Thread(target=self._read, args=(process.stdout, self.stdout, stdout_limit),
+                                          daemon=True),
+                         threading.Thread(target=self._read, args=(process.stderr, self.stderr,
+                                                                  _SVD_WORKER_STDERR_LIMIT), daemon=True)]
+        for thread in self._threads:
+            thread.start()
+
+    def _write(self, stream: Any, header: bytes, payload: memoryview) -> None:
+        try:
+            stream.write(header)
+            step = 1 << 24
+            for start in range(0, len(payload), step):
+                stream.write(payload[start:start + step])
+        except (BrokenPipeError, OSError, ValueError):
+            pass                                  # the worker exited early; its exit status decides
+        except BaseException as exc:  # noqa: BLE001
+            self.errors.append(exc)
+        finally:
+            try:
+                stream.close()
+            except BaseException:  # noqa: BLE001
+                pass
+
+    def _read(self, stream: Any, sink: bytearray, limit: int) -> None:
+        try:
+            while True:
+                chunk = stream.read1(1 << 16)
+                if not chunk:
+                    break
+                room = limit - len(sink)
+                if room > 0:
+                    sink += chunk[:room]
+                if len(chunk) > room:
+                    self.overflow = self.overflow or sink is self.stdout
+        except BaseException as exc:  # noqa: BLE001
+            self.errors.append(exc)
+
+    def join(self, timeout: float) -> bool:
+        import time
+        deadline = time.monotonic() + timeout
+        for thread in self._threads:
+            thread.join(max(0.0, deadline - time.monotonic()))
+        return not any(thread.is_alive() for thread in self._threads)
+
+
+def _stop(process: Any) -> None:
+    """Terminate this solve's own worker, by the handle it was started with (never by image name)."""
     try:
-        pools = [p for p in threadpool_info() if p.get('user_api') == 'blas']
-    except Exception as exc:  # noqa: BLE001  (an introspection failure is a refusal)
-        raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads', 'the BLAS thread pools cannot be inspected') from exc
-    dirs = _numpy_blas_dirs()
-    numpy_pools = [p for p in pools if os.path.normcase(str(p.get('filepath', ''))).startswith(dirs)]
-    if not numpy_pools or any(p.get('num_threads') != 1 for p in pools):
-        raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
-                      'the certificate SVD cannot be verified to run on one thread '
-                      f'({len(numpy_pools)} NumPy BLAS pool(s), threads {[p.get("num_threads") for p in pools]})')
+        if process.poll() is None:
+            process.kill()
+        process.wait(timeout=30)
+    except BaseException:  # noqa: BLE001
+        pass
+    for stream in (process.stdin, process.stdout, process.stderr):
+        try:
+            if stream is not None:
+                stream.close()
+        except BaseException:  # noqa: BLE001
+            pass
+
+
+def _worker_report(stderr: bytes) -> Optional[dict]:
+    import json
+    for line in bytes(stderr).decode('utf-8', 'replace').splitlines():
+        if line.startswith(_worker.REPORT_PREFIX):
+            try:
+                value = json.loads(line[len(_worker.REPORT_PREFIX):])
+            except ValueError:
+                return None
+            return value if type(value) is dict else None
+    return None
+
+
+def _checked_singular_values(output: bytearray, size: int) -> Optional[np.ndarray]:
+    """The singular values from the worker's 'OK' record, or None when the record is malformed: exact
+    byte length, the echoed size, float64 of shape (N,), every value finite and non-negative, in
+    descending order. Decided on the bit patterns (no float comparison)."""
+    if len(output) != 10 + 8 * size or bytes(output[:2]) != b'OK':
+        return None
+    if struct.unpack('<Q', bytes(output[2:10]))[0] != size:
+        return None
+    sigma = np.frombuffer(bytes(output[10:]), dtype='<f8').astype(np.float64, copy=True)
+    if sigma.dtype != np.float64 or sigma.shape != (size,):
+        return None
+    bits = sigma.view(np.int64)
+    magnitude = bits & _ABS_MASK
+    if not bool((magnitude < _INF_BITS).all()):            # inf and nan
+        return None
+    if bool(((bits < 0) & (magnitude != 0)).any()):         # negative (a -0.0 is zero)
+        return None
+    if size > 1 and not bool((magnitude[:-1] >= magnitude[1:]).all()):
+        return None
+    return magnitude.view(np.float64).copy()               # -0.0 -> +0.0, exactly
+
+
+def _svd_in_worker(matrix: np.ndarray, cancel: Optional[Callable[[], None]] = None):
+    """Singular values of ``matrix`` computed by the worker: returns (sigma, failure, report).
+
+    ``failure`` is None or the certificate reason 'numerical_failure:LinAlgError' (the worker's SVD did
+    not converge). Refusals: the worker's own environment check -> COUPLED_UNCERTIFIED with its reason
+    (blas_threads, subnormal_flush, rounding_mode); a MemoryError in the worker -> COUPLED_TOO_LARGE
+    (memory_error); a start failure, crash, nonzero exit, timeout or malformed output ->
+    COUPLED_UNCERTIFIED (svd_worker). While the worker runs, ``cancel`` (when given) is polled, then
+    this thread's FP environment, since the callback may have changed it; whatever they raise
+    propagates after this solve's worker has been terminated. This thread's FP environment does not
+    reach the worker, which starts with the process defaults and verifies its own.
+    ``report`` is the worker's diagnostic record (never decided on)."""
+    import subprocess
+    import time
+    size = int(matrix.shape[0])
+    try:
+        payload = memoryview(np.ascontiguousarray(matrix, dtype='<f8')).cast('B')
+        header = _worker.MAGIC + struct.pack('<Q', size)
+        command, environment = _svd_worker_command(), _svd_worker_environment()
+        flags = 0x08000000 if sys.platform == 'win32' else 0          # CREATE_NO_WINDOW
+        process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                   env=environment, cwd=os.path.dirname(_SVD_WORKER_PATH), close_fds=True,
+                                   creationflags=flags)
+    except MemoryError as exc:
+        raise _refuse('COUPLED_TOO_LARGE', 'memory_error', 'out of memory starting the certificate SVD worker') from exc
+    except Exception as exc:  # noqa: BLE001  (including an audit hook that denies process creation)
+        raise _worker_refusal('start_failed', f'it could not be started ({_type_name(exc)})') from exc
+    try:
+        try:
+            io = _WorkerIO(process, header, payload, 10 + 8 * size + 1)
+        except MemoryError as exc:
+            raise _refuse('COUPLED_TOO_LARGE', 'memory_error', 'out of memory feeding the certificate SVD worker') from exc
+        except Exception as exc:  # noqa: BLE001
+            raise _worker_refusal('io', f'its transfer could not be started ({_type_name(exc)})') from exc
+        deadline = time.monotonic() + _SVD_WORKER_TIMEOUT_SECONDS
+        while True:
+            if cancel is not None:
+                _poll(cancel)                   # caller code; anything it raises propagates (finally: stop)
+            try:
+                process.wait(timeout=_SVD_WORKER_POLL_SECONDS)
+                break
+            except subprocess.TimeoutExpired:
+                if time.monotonic() > deadline:
+                    raise _worker_refusal('timeout', f'no result within {_SVD_WORKER_TIMEOUT_SECONDS:.0f} s') from None
+        complete = io.join(_SVD_WORKER_IO_SECONDS)
+        code = process.returncode
+    finally:
+        _stop(process)
+    report = _worker_report(io.stderr)
+    if not complete or io.errors:
+        raise _worker_refusal('io', 'its output could not be read', exit_code=code)
+    output = io.stdout
+    tag = bytes(output[:2])
+    if code == _worker.EXIT_OK and not io.overflow:
+        sigma = _checked_singular_values(output, size)
+        if sigma is None:
+            raise _worker_refusal('bad_output', 'its result is malformed', exit_code=code, output_bytes=len(output))
+        return sigma, None, report
+    if code == _worker.EXIT_ENVIRONMENT and tag == b'EN':
+        reason = bytes(output[2:66]).decode('ascii', 'replace')
+        if reason in _SVD_WORKER_ENVIRONMENT_REASONS and len(output) == 2 + len(reason):
+            raise _refuse('COUPLED_UNCERTIFIED', reason,
+                          f'the certificate SVD worker could not verify its environment ({reason})',
+                          worker_report=report)
+        raise _worker_refusal('environment', f'its environment check failed ({reason[:32]})', exit_code=code)
+    if code == _worker.EXIT_MEMORY and bytes(output) == b'MM':
+        raise _refuse('COUPLED_TOO_LARGE', 'memory_error', 'out of memory in the certificate SVD worker', size=size)
+    if code == _worker.EXIT_LINALG and bytes(output) == b'LA':
+        return None, 'numerical_failure:LinAlgError', report
+    raise _worker_refusal('exit' if code != 0 else 'bad_output', f'it ended with exit code {code}', exit_code=code,
+                          output_bytes=len(output))
 
 
 COUPLED_MAX_EQUATIONS = 5000
@@ -481,23 +586,27 @@ def _require_system(system: Any) -> sparse.csr_matrix:
     return system
 
 
-def _svd_values(matrix: np.ndarray) -> np.ndarray:
+def _svd_values(matrix: np.ndarray, cancel: Optional[Callable[[], None]] = None) -> np.ndarray:
     """Singular values of the dense equilibrated matrix (the one LAPACK call the certificate relies on),
-    on one verified BLAS thread under verified round-to-nearest and gradual underflow, checked
-    immediately before and after the call (review r2 (a))."""
-    with _single_thread_blas() as recheck:
-        _require_fp_environment()
-        sigma = np.linalg.svd(matrix, compute_uv=False)
-        _require_fp_environment()
-        recheck()
+    computed in the SVD worker process on one verified BLAS thread under verified round-to-nearest and
+    gradual underflow (owner decision OD13). Raises _SvdNotConverged (a LinAlgError) when the worker's
+    SVD did not converge."""
+    sigma, failure, _report = _svd_in_worker(matrix, cancel)
+    if failure is not None:
+        raise _SvdNotConverged('the certificate SVD did not converge')
     return sigma
+
+
+class _SvdNotConverged(np.linalg.LinAlgError):
+    """The worker's SVD did not converge (certificate reason numerical_failure:LinAlgError)."""
 
 
 def _dense_bytes(size: int) -> int:
     return _DENSE_COPIES * size * size * 8
 
 
-def _certify_solve_matrix(system: Any, *, memory_limit_bytes: Optional[int] = None) -> dict:
+def _certify_solve_matrix(system: Any, *, memory_limit_bytes: Optional[int] = None,
+                          cancel: Optional[Callable[[], None]] = None) -> dict:
     """Condition certificate of the stored system S (the matrix the candidate factorises).
 
     Refuses COUPLED_TOO_LARGE above COUPLED_MAX_EQUATIONS, above the memory limit or on MemoryError,
@@ -520,13 +629,13 @@ def _certify_solve_matrix(system: Any, *, memory_limit_bytes: Optional[int] = No
                 'shifts': np.zeros(0, dtype=np.int64), 'accepted': True, 'reason': None}
     try:
         with np.errstate(all='ignore'):
-            return _certificate_numbers(system, size)
+            return _certificate_numbers(system, size, cancel)
     except MemoryError as exc:
         raise _refuse('COUPLED_TOO_LARGE', 'memory_error',
                       'out of memory in the dense certificate', size=size) from exc
 
 
-def _certificate_numbers(system: sparse.csr_matrix, size: int) -> dict:
+def _certificate_numbers(system: sparse.csr_matrix, size: int, cancel: Optional[Callable[[], None]] = None) -> dict:
     certificate = {'matrix': 'kkt_stored', 'size': size, 'method': 'power_of_two_ruiz_dense_svd',
                    'condition_limit': CONDITION_LIMIT, 'condition_number': float('inf'),
                    'condition_upper_bound': float('inf'), 'equilibration_sweeps': 0,
@@ -556,13 +665,19 @@ def _certificate_numbers(system: sparse.csr_matrix, size: int) -> dict:
             certificate['equilibration_sweeps'] = sweep + 1
         del original
         certificate['shifts'] = total
-        sigma = _svd_values(A)
-        del A
     except MemoryError:
         raise
     except (np.linalg.LinAlgError, ValueError, FloatingPointError, OverflowError) as exc:
         certificate['reason'] = f'numerical_failure:{type(exc).__name__}'
         return certificate
+    # OD13: the SVD runs in the worker process; the caller's cancellation is polled while it runs and
+    # whatever the cancellation raises propagates (outside the numerical-failure mapping above).
+    try:
+        sigma = _svd_values(A, cancel)
+    except _SvdNotConverged:
+        certificate['reason'] = 'numerical_failure:LinAlgError'
+        return certificate
+    del A
     sigma = np.asarray(sigma, dtype=float)
     if not sigma.size or not np.isfinite(sigma).all():
         certificate['reason'] = 'nonfinite_singular_values'
@@ -759,11 +874,20 @@ def _candidate(system: sparse.csr_matrix, b: np.ndarray) -> np.ndarray:
                 if not r.any():
                     break
                 x = x + lu.solve(r)
-    except MemoryError as exc:
-        raise _refuse('COUPLED_TOO_LARGE', 'memory_error', 'out of memory in the candidate solve') from exc
     except Exception as exc:  # includes SuperLU's exact-singular RuntimeError
-        raise _refuse('COUPLED_UNCERTIFIED', 'candidate_failed',
-                      f'the candidate solve failed ({_type_name(exc)})') from exc
+        for _ in range(_TRANSLATION_ATTEMPTS):          # review r5 #3: a hook raising while it is built
+            try:
+                if isinstance(exc, MemoryError):
+                    refusal = _refuse('COUPLED_TOO_LARGE', 'memory_error', 'out of memory in the candidate solve')
+                else:
+                    refusal = _refuse('COUPLED_UNCERTIFIED', 'candidate_failed',
+                                      f'the candidate solve failed ({_type_name(exc)})')
+                break
+            except Exception:  # noqa: BLE001
+                continue
+        else:
+            raise
+        raise refusal from exc
     x = np.asarray(x, dtype=float)
     if not np.isfinite(x).all():
         raise _refuse('COUPLED_UNCERTIFIED', 'candidate_failed', 'the candidate solve is not finite')
@@ -843,7 +967,7 @@ def certified_solve(system: Any, rhs: Any, *, raw_load_zero: bool,
                       'a nonzero raw load was stored as an all-zero right-hand side')
     _poll(cancel)
     t0 = clock()
-    certificate = _certify_solve_matrix(system, memory_limit_bytes=memory_limit_bytes)
+    certificate = _certify_solve_matrix(system, memory_limit_bytes=memory_limit_bytes, cancel=cancel)
     timings['certificate'] = clock() - t0
     public = {k: v for k, v in certificate.items() if k != 'shifts'}
     if not certificate['accepted']:

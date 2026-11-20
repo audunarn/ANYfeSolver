@@ -183,42 +183,6 @@ def test_r2_fp_flush_enabled_only_during_certification_refuses():
         stack.close()
 
 
-def test_r2_fp_svd_runs_on_one_verified_thread(monkeypatch):
-    from threadpoolctl import threadpool_info, threadpool_limits
-    seen = []
-
-    class Linalg:                     # a proxy seen only by the certificate module: numpy is unchanged
-        def __getattr__(self, name):
-            return getattr(np.linalg, name)
-
-        @staticmethod
-        def svd(*args, **kwargs):
-            seen.append([p['num_threads'] for p in threadpool_info() if p['user_api'] == 'blas'])
-            return np.linalg.svd(*args, **kwargs)
-
-    class Numpy:
-        linalg = Linalg()
-
-        def __getattr__(self, name):
-            return getattr(np, name)
-    model, grid, removed, prepared, case, box = small()
-    monkeypatch.setattr(cc, 'np', Numpy())
-    with threadpool_limits(limits=4, user_api='blas'):
-        solve(model, prepared, removed, box, case)
-    assert seen and all(threads and set(threads) == {1} for threads in seen), seen
-
-
-def test_r2_fp_unverifiable_blas_threads_refuse(monkeypatch):
-    import threadpoolctl
-    original = threadpoolctl.threadpool_info
-    monkeypatch.setattr(threadpoolctl, 'threadpool_info',
-                        lambda: [dict(p, num_threads=4) for p in original()])
-    model, grid, removed, prepared, case, box = small()
-    refused('COUPLED_UNCERTIFIED', solve, model, prepared, removed, box, case, reason='blas_threads')
-    monkeypatch.setitem(sys.modules, 'threadpoolctl', None)          # not importable
-    refused('COUPLED_UNCERTIFIED', solve, model, prepared, removed, box, case, reason='blas_threads')
-
-
 # --- P2: overlap without positive tolerance, with a geometric prefilter -------------------------------------
 
 def test_r2_overlap_a_loaded_kept_q4_past_the_rim_refuses():

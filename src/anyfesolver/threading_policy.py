@@ -7,7 +7,6 @@ import contextvars
 import functools
 import inspect
 import threading
-import time
 from typing import Any, Callable, Dict, Iterator, Mapping, Optional, TypeVar
 
 try:
@@ -37,15 +36,6 @@ _ACTIVE_NATIVE_DEFAULT_OWNER: contextvars.ContextVar[Optional[int]] = contextvar
 )
 
 
-class NativeThreadScopeSealed(RuntimeError):
-    """A writer scope was requested on the thread that holds a sealed window (see
-    :func:`_sealed_native_window`); the pool limits must not change inside it."""
-
-
-class NativeThreadScopeTimeout(TimeoutError):
-    """A bounded writer acquisition (``wait_timeout``) did not obtain the coordinator in time."""
-
-
 class _NativeScopeCoordinator:
     """Coordinate process-global native-pool mutations across Python threads.
 
@@ -53,9 +43,7 @@ class _NativeScopeCoordinator:
     exclusive writers because ``threadpoolctl`` changes process-global native
     pools. A reader may upgrade in-place: its read depth is temporarily
     removed while it owns the writer and restored when the explicit scope
-    exits. Same-thread nesting remains reentrant, except inside a sealed
-    window: there a same-thread writer request raises
-    :class:`NativeThreadScopeSealed` and is counted as a violation.
+    exits. Same-thread nesting remains reentrant.
     """
 
     def __init__(self) -> None:
@@ -65,26 +53,6 @@ class _NativeScopeCoordinator:
         self._writer_owner: Optional[int] = None
         self._writer_depth = 0
         self._waiting_writers = 0
-        self._seal_depth = 0
-        self._seal_violations = 0
-
-    def seal(self) -> int:
-        """Seal the writer the calling thread holds; returns the violation mark for :meth:`unseal`."""
-        owner = threading.get_ident()
-        with self._condition:
-            if self._writer_owner != owner:
-                raise RuntimeError("only the writer owner can seal the native thread scope")
-            self._seal_depth += 1
-            return self._seal_violations
-
-    def unseal(self, mark: int) -> bool:
-        """End one seal level; True when a writer request was refused since ``mark``."""
-        owner = threading.get_ident()
-        with self._condition:
-            if self._writer_owner != owner or self._seal_depth <= 0:  # pragma: no cover - misuse guard
-                raise RuntimeError("native thread scope unsealed by non-owner")
-            self._seal_depth -= 1
-            return self._seal_violations != mark
 
     def acquire_reader(self) -> tuple[str, int]:
         owner = threading.get_ident()
@@ -117,16 +85,10 @@ class _NativeScopeCoordinator:
             if self._reader_count == 0:
                 self._condition.notify_all()
 
-    def acquire_writer(self, timeout: Optional[float] = None) -> tuple[str, int]:
+    def acquire_writer(self) -> tuple[str, int]:
         owner = threading.get_ident()
         with self._condition:
             if self._writer_owner == owner:
-                if self._seal_depth:
-                    self._seal_violations += 1
-                    raise NativeThreadScopeSealed(
-                        "the native thread pools are sealed on this thread; a nested "
-                        "explicit native_thread_scope is refused"
-                    )
                 self._writer_depth += 1
                 return ("writer_reentrant", 0)
 
@@ -135,21 +97,11 @@ class _NativeScopeCoordinator:
                 self._reader_count -= restore_depth
                 self._condition.notify_all()
 
-            deadline = None if timeout is None else time.monotonic() + float(timeout)
             self._waiting_writers += 1
             acquired = False
             try:
                 while self._writer_owner is not None or self._reader_count > 0:
-                    if deadline is None:
-                        self._condition.wait()
-                        continue
-                    remaining = deadline - time.monotonic()
-                    if remaining <= 0.0:
-                        raise NativeThreadScopeTimeout(
-                            "the native thread scope coordinator was not available within "
-                            f"{float(timeout):g} s"
-                        )
-                    self._condition.wait(remaining)
+                    self._condition.wait()
                 self._writer_owner = owner
                 self._writer_depth = 1
                 acquired = True
@@ -279,33 +231,10 @@ def _inherited_native_thread_policy(
 
 
 @contextlib.contextmanager
-def _sealed_native_window() -> Iterator[Dict[str, bool]]:
-    """Seal the explicit scope the calling thread holds for the enclosed window.
-
-    Inside the window any further explicit ``native_thread_scope`` on this thread
-    whose limit is not already active (and so would reach the coordinator) raises
-    :class:`NativeThreadScopeSealed`; other threads keep waiting as before. The
-    yielded mapping's ``violated`` is True after the window when such a request
-    was made, even if the caller's code caught the exception.
-    """
-
-    mark = _NATIVE_SCOPE_COORDINATOR.seal()
-    state = {"violated": False}
-    try:
-        yield state
-    finally:
-        state["violated"] = _NATIVE_SCOPE_COORDINATOR.unseal(mark)
-
-
-@contextlib.contextmanager
 def native_thread_scope(
-    requested_threads: Optional[int], *, phase: str, wait_timeout: Optional[float] = None
+    requested_threads: Optional[int], *, phase: str
 ) -> Iterator[Dict[str, Any]]:
-    """Temporarily limit BLAS/OpenMP pools and expose the effective policy.
-
-    ``wait_timeout`` bounds the wait for an explicit limit's exclusive writer
-    (:class:`NativeThreadScopeTimeout`); ``None`` waits without bound.
-    """
+    """Temporarily limit BLAS/OpenMP pools and expose the effective policy."""
 
     requested = None if requested_threads is None else int(requested_threads)
     if requested is not None and requested <= 0:
@@ -397,11 +326,7 @@ def native_thread_scope(
                 _NATIVE_SCOPE_COORDINATOR.release_reader(coordinator_token)
         return
 
-    coordinator_token = (
-        _NATIVE_SCOPE_COORDINATOR.acquire_writer()
-        if wait_timeout is None
-        else _NATIVE_SCOPE_COORDINATOR.acquire_writer(wait_timeout)
-    )
+    coordinator_token = _NATIVE_SCOPE_COORDINATOR.acquire_writer()
     report = {
         "phase": str(phase),
         "requested_threads": requested,

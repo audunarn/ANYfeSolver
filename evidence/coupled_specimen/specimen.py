@@ -287,25 +287,55 @@ def oneway(n, runs):
 
 
 def svd(runs):
+    """The production certificate SVD (OD13: in the worker process, one verified BLAS thread) at N = 5000,
+    timed in the parent including the worker's start-up and the transfer; the worker reports its own
+    start-up, read and SVD seconds and its peak commit."""
     rng = np.random.default_rng(0)
     matrix = rng.standard_normal((5000, 5000))
     matrix = matrix + matrix.T
     from anyfesolver import _coupled_certificate as cc
-    times = []
+    times, reports = [], []
     for _ in range(runs + 1):
         t0 = time.perf_counter()
-        cc._svd_values(matrix)      # the production call: one verified BLAS thread (review r2 (a))
+        _sigma, failure, report = cc._svd_in_worker(matrix)
         times.append(time.perf_counter() - t0)
-    return {'cmd': 'svd', 'N': 5000, 'runs': runs, 'times': times,
-            'median': statistics.median(times[1:] if runs else times)}
+        assert failure is None
+        reports.append(report)
+    measured = slice(1, None) if runs else slice(None)
+    overhead = [t - r['seconds_svd'] for t, r in zip(times, reports)]
+    return {'cmd': 'svd', 'N': 5000, 'runs': runs, 'times': times, 'median': statistics.median(times[measured]),
+            'worker_svd_seconds': [r['seconds_svd'] for r in reports],
+            'worker_startup_seconds': [r['seconds_startup'] for r in reports],
+            'worker_read_seconds': [r['seconds_read'] for r in reports],
+            'overhead_seconds': overhead, 'overhead_median': statistics.median(overhead[measured]),
+            'worker_peak_commit_mib': max(r['peak_commit_bytes'] for r in reports) / 2 ** 20,
+            'parent_peak_commit_mib': peak_pagefile() / 2 ** 20}
 
 
 def peak(n):
-    base = POST_IMPORT_PEAK
-    out = coupled(n, 0)
+    """Peak commit of one coupled solve: the parent's (fresh process) plus the SVD worker's own peak
+    (OD13). Their sum bounds the simultaneous commit of the two processes."""
+    from anyfesolver import _coupled_certificate as cc
+    reports = []
+    original = cc._svd_in_worker
+
+    def recorded(*args, **kwargs):          # evidence only: records the worker's report, result unchanged
+        sigma, failure, report = original(*args, **kwargs)
+        reports.append(report)
+        return sigma, failure, report
+    cc._svd_in_worker = recorded
+    try:
+        base = POST_IMPORT_PEAK
+        out = coupled(n, 0)
+    finally:
+        cc._svd_in_worker = original
+    parent = peak_pagefile()
+    child = max((r or {}).get('peak_commit_bytes') or 0 for r in reports) if reports else 0
     return {'cmd': 'peak', 'n': n, 'N': out['sizes']['N'] if 'sizes' in out else out['certificate']['size'],
             'refused': out.get('refused'), 'post_import_peak_bytes': base,
-            'peak_commit_bytes': peak_pagefile(), 'peak_commit_minus_post_import_mib': (peak_pagefile() - base) / 2 ** 20}
+            'peak_commit_bytes': parent, 'peak_commit_minus_post_import_mib': (parent - base) / 2 ** 20,
+            'worker_peak_commit_bytes': child, 'worker_peak_commit_mib': child / 2 ** 20,
+            'parent_plus_worker_peak_mib': (parent + child) / 2 ** 20}
 
 
 def main():

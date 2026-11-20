@@ -130,7 +130,7 @@ def test_sigma_n_equal_to_delta_is_refused_singular_within_svd_error():
 def test_injected_singular_values_at_delta_refuse_the_solve(monkeypatch):
     S = _csr(np.eye(3))
     delta = cc._condition_upper_bound(1.0, 1.0, 3)['svd_error_bound']
-    monkeypatch.setattr(cc, '_svd_values', lambda A: np.array([1.0, 1.0, delta]))
+    monkeypatch.setattr(cc, '_svd_values', lambda A, cancel=None: np.array([1.0, 1.0, delta]))
     error = _refusal(lambda: cc.certified_solve(S, np.ones(3), raw_load_zero=False))
     assert (error.code, error.reason) == ('COUPLED_UNCERTIFIED', 'singular_within_svd_error')
 
@@ -145,7 +145,7 @@ def test_cap_admits_5000_and_refuses_5001_before_any_dense_allocation(monkeypatc
         calls.append(self.shape)
         return original(self, *args, **kwargs)
     monkeypatch.setattr(sparse.csr_matrix, 'toarray', spy)
-    monkeypatch.setattr(cc, '_svd_values', lambda A: np.ones(A.shape[0]))  # no 45 s SVD in a unit test
+    monkeypatch.setattr(cc, '_svd_values', lambda A, cancel=None: np.ones(A.shape[0]))  # no 45 s SVD in a unit test
     accepted = cc._certify_solve_matrix(sparse.identity(5000, format='csr'))
     assert accepted['accepted'] is True and accepted['size'] == 5000
     assert calls == [(5000, 5000)]
