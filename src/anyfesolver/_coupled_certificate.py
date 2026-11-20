@@ -190,19 +190,32 @@ def _require_fp_environment() -> None:
                       'premises A1/A2 do not hold')
 
 
+_SVD_THREAD_STATUSES = ('limited', 'inherited_limit')
+
+
 @contextlib.contextmanager
 def _single_thread_blas():
     """Run the enclosed LAPACK work on the calling thread only (review r2 (a), owner decision OD9):
-    threadpoolctl limits every BLAS pool to one thread, and a probe confirms that NumPy's own BLAS
-    is among the controlled libraries and that every BLAS pool reports exactly one thread. With one
-    thread the BLAS runs inline on the caller, whose FP environment the route verifies before and
-    after. Anything that cannot be established refuses ``COUPLED_UNCERTIFIED`` (``blas_threads``)."""
+    the native pools are limited to one thread, and a probe confirms that NumPy's own BLAS is among
+    the controlled libraries and that every BLAS pool reports exactly one thread. With one thread the
+    BLAS runs inline on the caller, whose FP environment the route verifies before and after.
+
+    The limit is taken through the solver's own coordinator, ``native_thread_scope(1)`` (review r3
+    P1): it holds the exclusive writer for the whole window from the first probe to the post-check,
+    so no other ``native_thread_scope`` (or ``solver_thread_scope``) on any thread can change the
+    process-wide pool limits inside it; such a scope waits until the window ends. Anything that
+    cannot be established refuses ``COUPLED_UNCERTIFIED`` (``blas_threads``)."""
     try:
-        from threadpoolctl import threadpool_info, threadpool_limits
+        from threadpoolctl import threadpool_info
     except ImportError as exc:
         raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
                       'threadpoolctl is required to run the certificate SVD on one thread') from exc
-    with threadpool_limits(limits=1, user_api='blas'):
+    from .threading_policy import native_thread_scope
+    with native_thread_scope(1, phase='coupled_certificate_svd') as policy:
+        if policy.get('status') not in _SVD_THREAD_STATUSES:
+            raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
+                          'the solver thread coordinator could not limit the native pools to one thread '
+                          f"(status {policy.get('status')!r})")
         _require_single_thread_blas(threadpool_info)
         yield functools.partial(_require_single_thread_blas, threadpool_info)
 
@@ -722,6 +735,20 @@ def _poll(cancel: Optional[Callable[[], None]]) -> None:
     _require_fp_environment()
 
 
+def _checked_clock(clock: Callable[[], Any]) -> Callable[[], Any]:
+    """The caller's timing callback, followed by the FP-environment probe on every call (review r3 P2):
+    a clock that switches the rounding mode or FTZ/DAZ before a stage and back at the next timing call
+    refuses at the first call, before the stage runs. The value must be an exact ``float`` or ``int``,
+    so the route's own subtraction runs no caller code."""
+    def tick():
+        value = clock()
+        _require_fp_environment()
+        if type(value) is not float and type(value) is not int:
+            raise _refuse('COUPLED_NATIVE_INVALID', 'clock_invalid', 'the clock must return a float or an int')
+        return value
+    return tick
+
+
 def certified_solve(system: Any, rhs: Any, *, raw_load_zero: bool,
                     memory_limit_bytes: Optional[int] = None,
                     cancel: Optional[Callable[[], None]] = None,
@@ -733,7 +760,7 @@ def certified_solve(system: Any, rhs: Any, *, raw_load_zero: bool,
     load whose stored b is all zero refuses COUPLED_FORMATION_LOSS.
     """
     import time
-    clock = clock or time.perf_counter
+    clock = _checked_clock(clock or time.perf_counter)
     timings: dict[str, float] = {}
     system = _require_system(system)
     b = rhs

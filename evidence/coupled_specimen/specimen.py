@@ -26,6 +26,13 @@ if ARGS[:1] == ['--threads']:
 if THREADS == '1':
     for name in ('OMP_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'MKL_NUM_THREADS'):
         os.environ[name] = '1'
+# DIAGNOSTIC ONLY (never a gate): --diagnostic-refinement K sets the candidate's refinement-step count
+# in this measurement process, to show what the widened specimen gives if the candidate were refined
+# further. The production route uses its own count (2); see RESULT.md, finding R1-3.
+DIAGNOSTIC_REFINEMENT = None
+if ARGS[:1] == ['--diagnostic-refinement']:
+    DIAGNOSTIC_REFINEMENT = int(ARGS[1])
+    ARGS = ARGS[2:]
 
 import ctypes  # noqa: E402
 import platform  # noqa: E402
@@ -45,8 +52,13 @@ from anyfesolver.solid_submodel import solve_shell_driven_solid  # noqa: E402
 
 L, T, P = 1.0, 0.02, 1000.0
 SIDES = ('side_0', 'side_1', 'side_2', 'side_3')
-A = 0.2                                   # footprint side, centred
-SAMPLE_POINT = (0.4 + 0.25 * A, 0.5)      # 0.25 a inside the footprint edge, on the centre line
+# Footprint (OD11, 2026-11-20, review r3 / OD10 R1 (a)): widened from [0.4, 0.6]^2 to [0.3, 0.7]^2 so that
+# h = 0.1 has 4 x 4 lattice cells across the solid. Two layers would give N = 6703 > 5000 at h = 0.05
+# (measured), so the lattice has one P2 layer through the thickness.
+X0, X1 = 0.3, 0.7
+A = X1 - X0                               # footprint side, centred
+LAYERS = 1
+SAMPLE_POINT = (X0 + 0.25 * A, 0.5)       # 0.25 a inside the footprint edge, on the centre line
 PROTOCOL_RADIUS = 0.05 * A                # rev2 section 5.2
 DIAGNOSTIC_RADIUS = 0.25 * A              # non-gating diagnostic (the protocol set is empty, see RESULT.md)
 
@@ -83,8 +95,8 @@ def environment():
 
 
 def hole(n):
-    k0, k1 = round(0.4 * n), round(0.6 * n)
-    assert abs(k0 / n - 0.4) < 1e-12 and abs(k1 / n - 0.6) < 1e-12, 'the footprint must lie on element edges'
+    k0, k1 = round(X0 * n), round(X1 * n)
+    assert abs(k0 / n - X0) < 1e-12 and abs(k1 / n - X1) < 1e-12, 'the footprint must lie on element edges'
     return (k0, k1, k0, k1)
 
 
@@ -143,12 +155,25 @@ def coupled(n, runs):
     nx = k1 - k0
     model, grid, removed, footprint = fx.plate(n, thickness=T, hole=hole(n))
     case = fx.pressure_case(removed, model, P)
-    prepared = fx.prepare(fx.box_mesh(footprint, T, nx, nx, 2))
-    box = sc.BoxFaces((nx, nx, 2), 'end', SIDES)
+    prepared = fx.prepare(fx.box_mesh(footprint, T, nx, nx, LAYERS))
+    box = sc.BoxFaces((nx, nx, LAYERS), 'end', SIDES)
+    if DIAGNOSTIC_REFINEMENT is not None:
+        from anyfesolver import _coupled_certificate as cc
+        cc._REFINEMENT_STEPS = DIAGNOSTIC_REFINEMENT
     timings, result = [], None
     for _ in range(runs + 1):
         t0 = time.perf_counter()
-        result = sc.solve_shell_solid_coupled(model, prepared, removed_element_ids=removed, box=box, load_case=case)
+        try:
+            result = sc.solve_shell_solid_coupled(model, prepared, removed_element_ids=removed, box=box,
+                                                  load_case=case)
+        except sc.CoupledSolveError as exc:          # a refusal is a result: record it, never retry
+            wall = time.perf_counter() - t0
+            d = exc.diagnostics
+            return {'cmd': 'coupled', 'n': n, 'h': 1 / n, 'refused': {'code': exc.code, 'reason': exc.reason},
+                    'forward_error': d.get('forward_error'),
+                    'certificate': {k: d.get('certificate', {}).get(k) for k in
+                                    ('accepted', 'condition_upper_bound', 'sigma_min', 'sigma_max', 'size')},
+                    'wall_to_refusal': wall, 'diagnostic_refinement': DIAGNOSTIC_REFINEMENT}
         wall = time.perf_counter() - t0
         timings.append({**{k: float(v) for k, v in result.timings.items()}, 'wall': wall})
     measured = timings[1:] if runs else timings
@@ -167,6 +192,7 @@ def coupled(n, runs):
     reaction = float(result.reactions.reshape(-1, 6)[:, 2].sum())
     q = result.solid_coefficients.values
     return {'cmd': 'coupled', 'n': n, 'h': 1 / n, 'sizes': result.sizes, 'runs': runs,
+            'diagnostic_refinement': DIAGNOSTIC_REFINEMENT,
             'certificate': {k: result.certificate.get(k) for k in ('accepted', 'condition_upper_bound')},
             'verification': {k: v for k, v in result.verification.items() if k != 'backward'},
             'backward_max_ratio': result.verification['backward']['max_ratio'], 'traction': result.echo['traction'],
@@ -193,9 +219,10 @@ def shell(n):
 
 def traction_vector():
     model, grid, removed, footprint = fx.plate(10, thickness=T, hole=hole(10))
+    nx = hole(10)[1] - hole(10)[0]
     return np.asarray(sc.solve_shell_solid_coupled(
-        model, fx.prepare(fx.box_mesh(footprint, T, 2, 2, 2)), removed_element_ids=removed,
-        box=sc.BoxFaces((2, 2, 2), 'end', SIDES), load_case=fx.pressure_case(removed, model, P)).echo['traction'])
+        model, fx.prepare(fx.box_mesh(footprint, T, nx, nx, LAYERS)), removed_element_ids=removed,
+        box=sc.BoxFaces((nx, nx, LAYERS), 'end', SIDES), load_case=fx.pressure_case(removed, model, P)).echo['traction'])
 
 
 def solid(n, layers):
@@ -239,7 +266,7 @@ def oneway(n, runs):
     model, grid, _, _ = fx.plate(n, thickness=T, hole=(0, 0, 0, 0))
     case = fx.pressure_case([], model, P)
     footprint = (k0 / n, k1 / n, k0 / n, k1 / n)
-    prepared = fx.prepare(fx.box_mesh(footprint, T, nx, nx, 2))
+    prepared = fx.prepare(fx.box_mesh(footprint, T, nx, nx, LAYERS))
     h = L / n
 
     def locate(point):
@@ -276,7 +303,8 @@ def svd(runs):
 def peak(n):
     base = POST_IMPORT_PEAK
     out = coupled(n, 0)
-    return {'cmd': 'peak', 'n': n, 'N': out['sizes']['N'], 'post_import_peak_bytes': base,
+    return {'cmd': 'peak', 'n': n, 'N': out['sizes']['N'] if 'sizes' in out else out['certificate']['size'],
+            'refused': out.get('refused'), 'post_import_peak_bytes': base,
             'peak_commit_bytes': peak_pagefile(), 'peak_commit_minus_post_import_mib': (peak_pagefile() - base) / 2 ** 20}
 
 

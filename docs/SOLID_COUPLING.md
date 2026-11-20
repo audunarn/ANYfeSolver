@@ -9,7 +9,8 @@ weakly along the four cut sides. The result is either a `CoupledSolution` with c
 
 The module is private. `import anyfesolver` neither imports nor exports it. ANYfem is its only intended caller.
 The certificate lives in `anyfesolver._coupled_certificate`. The spec is
-`SOLVER-PR67-DENSE-SPEC-20261119.md`, which applies owner decisions OD1–OD10.
+`SOLVER-PR67-DENSE-SPEC-20261119.md`, which applies owner decisions OD1–OD11. `threadpoolctl` is a core dependency of
+ANYfeSolver and is also listed in the `solids` extra (OD11).
 
 ## Trusted-construction boundary (OD9)
 
@@ -143,13 +144,34 @@ round-to-nearest-even with gradual underflow, as A1 and A2 do.
 - **Where.** At entry, after every cancellation poll, at the start of the certificate (before the power-of-two
   equilibration), immediately before and after the SVD, after the outward-rounded κ bound, and immediately before
   and after the exact residual.
-- **One thread.** The SVD runs inside `threadpoolctl.threadpool_limits(limits=1, user_api='blas')`. A probe then
-  requires that NumPy's own BLAS (a library under NumPy's package directory or `numpy.libs`) is among the
-  controlled pools and that every BLAS pool reports exactly one thread, before and after the call. With one thread
-  the BLAS runs inline on the calling thread, whose environment is the one probed, so no worker thread with its
-  own MXCSR takes part. If threadpoolctl is missing, NumPy's BLAS is not found (for example a vendor that
-  threadpoolctl cannot control) or a pool reports another count, the solve refuses `COUPLED_UNCERTIFIED`
-  (`blas_threads`). The single-thread SVD is slower than the default; RESULT.md reports the measured time.
+- **After every caller callback (review r3).** Caller code runs only in these places, and each is followed by the
+  probe before any float step of the route runs:
+  - every `clock()` call, in the route and inside the certified solve (the checked clock; a clock that selects
+    another rounding mode before a stage and restores it at the next timing call refuses at the first call);
+  - the cancellation check: the `is_set` lookup, then each flag read (every poll);
+  - the `resources.memory_limit_bytes` lookup and its single integer conversion;
+  - the iteration and integer conversion of `removed_element_ids` (materialised once) and of the box divisions.
+  The clock value must be an exact `float` or `int` (`COUPLED_NATIVE_INVALID`, `clock_invalid`), so the route's
+  own timing arithmetic runs no caller code. A callback that changes the environment and restores it before it
+  returns leaves no trace and affects no route step.
+- **One thread.** The SVD runs inside the solver's own thread-scope coordinator, `native_thread_scope(1)` (review
+  r3). It holds the coordinator's exclusive writer for the whole window from the first probe to the post-check, so
+  no other `native_thread_scope` or `solver_thread_scope`, on any thread, can change the process-wide pool limits
+  inside it: such a scope waits until the window ends, and a running default-thread scope on another thread makes
+  the SVD wait instead. Same-thread nesting stays reentrant. A probe then requires that NumPy's own BLAS (a library
+  under NumPy's package directory or `numpy.libs`) is among the controlled pools and that every BLAS pool reports
+  exactly one thread, before and after the call. With one thread the BLAS runs inline on the calling thread, whose
+  environment is the one probed, so no worker thread with its own MXCSR takes part. If threadpoolctl is missing,
+  the coordinator cannot limit the pools, NumPy's BLAS is not found (for example a vendor that threadpoolctl cannot
+  control) or a pool reports another count, the solve refuses `COUPLED_UNCERTIFIED` (`blas_threads`). The
+  single-thread SVD is slower than the default; RESULT.md reports the measured time.
+- **Process-wide state (review r3 class inventory).** The pool limits are the only process-wide state a certified
+  premise depends on, and they are held as above. The FP environment is per thread. NumPy's `errstate` is
+  per context. Other BLAS or LAPACK calls (`matrix_rank` in the rigid-rank check, a small Gram solve, SuperLU)
+  carry no premise: a different thread count changes their bits only, and their outcomes are refusals or a
+  candidate that the exact checks judge. Code on another thread that calls `threadpoolctl` directly, bypassing
+  the coordinator, is outside the contract: a change still present at the post-check refuses, a transient one is
+  not detected.
 
 ### Candidate (spec §2.5)
 `splu(csc(S))` is called directly, with up to two refinement steps on the exact residual. The candidate carries no
@@ -215,6 +237,10 @@ Added by review r1:
     separating-axis test). A warped kept element whose hull crosses `P` refuses, even when its bilinear surface
     clears the solid. So does a kept element that enters `P` by any positive amount, including a cut-edge node
     displaced inward by rounding on a rotated plane.
+  - **Accepted v1 limit (owner decision OD11, 2026-11-20).** The overlap tolerance is zero. On a footprint whose
+    plane is rotated against the axes, binary64 coordinates of cut-edge nodes can round inward by an ulp, and such a
+    model refuses `COUPLED_CUT_MISMATCH` (`kept_inside_footprint`) although it is geometrically conforming. This
+    is fail-closed and stays as the v1 behaviour; axis-aligned footprints are not affected.
   - The removed set is derived from the geometry: every removed element must have all its nodes in the closed
     prism and meet `P`, and every element that meets `P` must be removed. A caller-supplied set that differs
     refuses `COUPLED_CUT_MISMATCH` (`removed_set_geometry`); a kept element or kept node meeting `P` refuses
@@ -239,7 +265,8 @@ Added by review r1:
   each exactly once (`COUPLED_LOAD_UNCOVERED`, `ledger_inventory`).
 - **Types before coercion (#7).** The skin traction, each side's connector blocks, the native `F`, `T`, `u0` and the
   independent list, the cancellation flag (an exact `bool`) and `memory_limit_bytes` (an exact non-negative
-  integer) are type-checked before any conversion.
+  integer, converted once) are type-checked before any conversion. Each `clock()` value must be an exact `float`
+  or `int` (`clock_invalid`, review r3).
 - **Ledger (#10).** Every nodal and pressure record of the case has a row, also when it yields no component.
 - **Cancellation (#8, #9, r2 (d)).** The flag is polled after recovery, after each side's V4, inside the certified
   solve after verification, and last after the result object is built, so a cancellation during result
@@ -264,7 +291,7 @@ Added by review r1:
 | `COUPLED_MECHANISM` | A zero row, or `solid_rigid_mode_free` |
 | `COUPLED_CONNECTOR_PARTITION` / `_GROUP` / `_RANK` | The connector prechecks failed |
 | `COUPLED_CONNECTOR_INVALID` | Any other connector `ValueError` |
-| `COUPLED_NATIVE_INVALID` | The native assembly or reduction failed, a contract property of the solid or the model does not hold, an argument has the wrong type, or an unexpected exception was caught |
+| `COUPLED_NATIVE_INVALID` | The native assembly or reduction failed, a contract property of the solid or the model does not hold, an argument has the wrong type (including `clock_invalid`), or an unexpected exception was caught |
 | `COUPLED_CANCELLED` | The `cancel` callable or event fired |
 
 ## Evidence
@@ -274,8 +301,11 @@ ceilings. The tests are:
 - `tests/test_coupled_certificate.py`;
 - `tests/test_coupled_formation.py`;
 - `tests/test_coupled_r11_classes.py`, which includes the OD7 and OD8 tests and the ν = 0 patch test; its oracle
-  uses an independent implementation of the specified power-of-two Ruiz scaling and an mpmath reference solution;
-- `tests/test_coupled_review_r1.py` and `tests/test_coupled_review_r2.py` (the Codex review rounds);
+  uses an independent implementation of the specified power-of-two Ruiz scaling, an mpmath reference solution,
+  and a high-precision κ (binary64 SVD triplets refined by Newton steps on mpmath residuals) judged against the
+  exact cutoff 1e7 with no margin (review r3);
+- `tests/test_coupled_review_r1.py`, `tests/test_coupled_review_r2.py` and `tests/test_coupled_review_r3.py`
+  (the Codex review rounds);
 - `tests/test_solid_trace_extensions.py`;
 - `tests/test_load_contributions.py`.
 

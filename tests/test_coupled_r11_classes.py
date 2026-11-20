@@ -98,11 +98,21 @@ def reference_solution(S, b, steps=4, dps=60):
         return np.array([float(v) for v in x])
 
 
-def independent_condition(S):
-    """kappa_2 of the specified power-of-two Ruiz scaling (review r2: the spec's scaling, implemented
-    here independently in pure Python per row): t_i -= floor(e_i / 2) with e_i the frexp exponent of
-    the row maximum of 2^(t_i + t_j) |S_ij|, until no shift changes, applied to the original entries."""
+def independent_condition(S, dps=50):
+    """kappa_2 of the specified power-of-two Ruiz scaling A* = D S D, in high precision (review r3).
+
+    The scaling (review r2: the spec's scaling, implemented here independently in pure Python per
+    row): t_i -= floor(e_i / 2) with e_i the frexp exponent of the row maximum of 2^(t_i + t_j) |S_ij|,
+    until no shift changes, applied to the original entries (exact: powers of two).
+
+    The extreme singular values are computed as the r2 reference solution is: a binary64 SVD gives
+    the starting triplets (u, sigma, v), and Newton steps on A v = sigma u, A^T u = sigma v,
+    (v.v - 1)/2 = 0 use binary64 corrections of residuals evaluated in mpmath at ``dps`` digits. The
+    returned kappa = sigma_1 / sigma_N is an mpmath number accurate to far below 1e-20 relative; the
+    oracle raises (never decides) when a triplet does not converge or the extreme singular values
+    are not separated from their neighbours, so the refined triplet is the extreme one."""
     import math
+    import mpmath
     S = S.tocsr()
     rows = [[(int(S.indices[k]), float(S.data[k])) for k in range(S.indptr[i], S.indptr[i + 1])]
             for i in range(S.shape[0])]
@@ -115,27 +125,64 @@ def independent_condition(S):
         if not any(shifts):
             break
         t = [a + s for a, s in zip(t, shifts)]
+    n = len(rows)
+    scaled = [[(j, math.ldexp(v, t[i] + t[j])) for j, v in row if v != 0.0] for i, row in enumerate(rows)]
     A = np.zeros(S.shape)
-    for i, row in enumerate(rows):
+    for i, row in enumerate(scaled):
         for j, v in row:
-            A[i, j] = math.ldexp(v, t[i] + t[j])
-    s = np.linalg.svd(A, compute_uv=False)
-    return s[0] / s[-1]
+            A[i, j] = v
+    U, s, Vt = np.linalg.svd(A)
+    separation = 1e-10 * s[0]
+    if n > 1 and not (s[0] - s[1] > separation and s[-2] - s[-1] > separation):
+        raise AssertionError('oracle: the extreme singular values are not separated; kappa undecided')
+    with mpmath.workdps(dps):
+        entries = [[(j, mpmath.mpf(v)) for j, v in row] for row in scaled]
+        transposed = [[] for _ in range(n)]
+        for i, row in enumerate(entries):
+            for j, v in row:
+                transposed[j].append((i, v))
+        tolerance = mpmath.mpf(10) ** (8 - dps) * mpmath.mpf(float(s[0]))
+
+        def triplet(k):
+            u = [mpmath.mpf(float(v)) for v in U[:, k]]
+            v = [mpmath.mpf(float(w)) for w in Vt[k]]
+            sigma = mpmath.mpf(float(s[k]))
+            for _ in range(8):
+                r1 = [mpmath.fsum(a * v[j] for j, a in row) - sigma * u[i] for i, row in enumerate(entries)]
+                r2 = [mpmath.fsum(a * u[i] for i, a in col) - sigma * v[j] for j, col in enumerate(transposed)]
+                r3 = (mpmath.fsum(w * w for w in v) - 1) / 2
+                if max(max(abs(x) for x in r1 + r2), abs(r3)) <= tolerance:
+                    return sigma
+                sf, uf, vf = float(sigma), np.array([float(x) for x in u]), np.array([float(x) for x in v])
+                J = np.zeros((2 * n + 1, 2 * n + 1))
+                J[:n, :n] = -sf * np.eye(n)
+                J[:n, n:2 * n] = A
+                J[:n, 2 * n] = -uf
+                J[n:2 * n, :n] = A.T
+                J[n:2 * n, n:2 * n] = -sf * np.eye(n)
+                J[n:2 * n, 2 * n] = -vf
+                J[2 * n, n:2 * n] = vf
+                rhs = -np.array([float(x) for x in r1 + r2 + [r3]])
+                step = np.linalg.solve(J, rhs)
+                u = [a + mpmath.mpf(float(d)) for a, d in zip(u, step[:n])]
+                v = [a + mpmath.mpf(float(d)) for a, d in zip(v, step[n:2 * n])]
+                sigma = sigma + mpmath.mpf(float(step[2 * n]))
+            raise AssertionError(f'oracle: singular triplet {k} did not converge; kappa undecided')
+        return triplet(0) / triplet(n - 1)
 
 
-# Binary64 SVD of A* gives sigma_N to about N eps sigma_1 absolutely, i.e. kappa to a relative
-# kappa N eps <= 1e7 * 5000 * 2.2e-16 ~ 1.1e-5 here; acceptance is required only below the margin.
-_KAPPA_MARGIN = 1 - 1e-4
+# Owner decision OD11 (2026-11-20, review r3): the specified cutoff, exactly; no margin.
+KAPPA_LIMIT = 10 ** 7
 
 
 def acceptance_warranted(S, b):
-    """S2: acceptance is required where kappa(A*) of the specified scaling is at most 1e7 (decided
-    with a margin that covers the binary64 SVD error) and the mpmath reference has a 100x backward
-    margin (|r_i| <= 1e-12 ref_i, exact)."""
+    """S2: acceptance is required where kappa(A*) of the specified scaling is at most 1e7 (the exact
+    cutoff, decided on the high-precision kappa) and the mpmath reference has a 100x backward margin
+    (|r_i| <= 1e-12 ref_i, exact)."""
     x = reference_solution(S, b)
     residual, reference = exact_residual(S, x, b)
     margin = all(abs(r) <= Fraction(1, 10 ** 12) * ref for r, ref in zip(residual, reference))
-    return independent_condition(S) <= 1e7 * _KAPPA_MARGIN and margin, x
+    return bool(independent_condition(S) <= KAPPA_LIMIT) and margin, x
 
 
 def all_finite(result):

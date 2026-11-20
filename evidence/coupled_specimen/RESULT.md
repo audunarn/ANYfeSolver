@@ -1,6 +1,59 @@
 # S3: coupled specimen, references R0–R2 and timing (2026-11-19)
 
-Branch `claude/coupled-dense-20261119`. The code under test was f9382e7ce (OD8) for the first runs.
+## Update 2026-11-20 (review r3, OD10 R1 (a)): widened specimen — R0, R1, R2 FAIL (the route refuses at h = 0.05)
+
+The owner's decision for R1-2: widen the solid so that h = 0.1 is resolved, and re-run with the gates unchanged.
+Code under test: the r3 tip (this commit). `raw/` now holds the widened runs; the earlier a = 0.2 runs are in
+`raw_a02/` and their analysis in `summary_a02.json`. Machine load 4–79 % during the runs (`raw/runs.log`).
+
+**Specimen change.** The footprint is [0.3, 0.7]², a = 0.4, so h = 0.1 has 4 × 4 lattice cells (was 2 × 2). Equation
+counts measured first, at h = 0.05: two layers give N = 6703 > 5000 (and the off-centre [0.4, 0.7]² gives 5027),
+so the only centred widening under the cap has **one P2 layer** through the thickness. That is a second change to
+the specimen, forced by the cap. R2 sample point and radii follow a: (x0 + 0.25a, 0.5) = (0.4, 0.5), radii 0.05a and
+0.25a.
+
+| h | n_s | n_v | m | N | Outcome (production route) |
+|---|---|---|---|---|---|
+| 0.1 | 628 | 729 | 60 | 1417 | accepted: κ_up 5.35e6, E 9.46e-9 |
+| 0.05 | 2268 | 2601 | 100 | 4969 | **refused** `COUPLED_UNCERTIFIED forward_error_above_limit`: κ_up 6.07e6 (certificate accepted), E = 0.445 |
+
+**Finding R1-3 (route, fail closed).** At h = 0.05 the SuperLU candidate converges slowly under refinement on this
+system: the D-scaled residual falls by about 1e-3 per step. With the route's 2 steps, E / max|x/d| = 0.064, far
+above V6's 1e-6, so the solve refuses. Measured (`<scratch>\r3\probe_cand.py`): steps 0–5 give E / scale = 5.3e4,
+34, 0.064, 2.2e-4, 1.2e-7, 1.5e-9; a dense LAPACK solve gives 1.7e-7. The refusal is correct (V6 is the authority).
+Accepting this specimen would need a production change to the candidate (for example more refinement steps), which
+changes the bits of accepted results elsewhere: an owner decision, not made here.
+
+**Gates (OD10, unchanged), production route: FAIL.**
+
+| Gate | Outcome |
+|---|---|
+| R0 at h = 0.05 (gated) | **FAIL**: no coupled result (refusal R1-3) |
+| R0 at h = 0.1 (reported only) | centre 0.79 % (was 0.66 % with a = 0.2); quarter points 0.29 % and 0.15 %; reaction 3.1e-11 |
+| R1 | **FAIL**: no coupled result at h = 0.05 |
+| R2 (radius 0.25a, 2.7 %) | **FAIL**: no coupled result at h = 0.05 |
+| Single-thread SVD at N = 5000 | **pass**: median 25.9 s (26.0, 27.8, 26.6, 25.9, 25.7 s) ≤ 45 s |
+| Specimen ≤ 60 s | **FAIL** as a gate (no accepted solve); time to the refusal 32.1 s; the diagnostic accepted solve 33.0 s |
+| Peak commit | 829 MiB above post-import (reported; N = 4969, was 505 MiB at N = 3783) |
+
+**Diagnostic only (not a gate): the candidate refined 5 times in the measurement process** (`--diagnostic-refinement
+5`, runs `diag_coupled_n10_ref5`, `diag_coupled_n20_ref5`; `summary.json` `diagnostic_refinement_5`). Both meshes are
+then accepted (h = 0.05: E 1.02e-8). With that:
+- R0 at h = 0.05: pass (centre 0.150 %, quarter 0.049 %, reaction 1.9e-11).
+- **R1 still fails**: p coupled 0.957, p all-shell 0.539, difference 0.418 > 0.2; e_c/e_s = 1.54 at h = 0.1 (fail),
+  1.15 at h = 0.05 (pass), quarter 0.96 (pass). The Richardson sensitivity also fails (0.885 vs 0.487).
+- R2 at radius 0.25a: pass, 0.75 % ≤ 2.7 %. The 0.05a set is empty again (finding R2-1).
+
+**Finding R1-4.** Widening did not remove R1-2: with 4 × 4 cells at h = 0.1 the coupled centre error relative to the
+all-shell error grew (1.45 → 1.54) and the order difference grew (0.33 → 0.42). So the 2 × 2-cell resolution was not
+the cause. The coupled h = 0.1 centre is read on the solid mid-plane, where the 3-D field differs from the shell
+model; the coupled error at h = 0.05 stays within 1.2× of the all-shell error in both specimens. R1 needs a new
+owner decision (for example whether the order and ratio gates should apply at h = 0.1, or a different observable).
+
+---
+
+Branch `claude/coupled-dense-20261119`. The code under test was f9382e7ce (OD8) for the first runs. Everything below
+refers to the a = 0.2, two-layer specimen; its raw runs are now in `raw_a02/` and its analysis in `summary_a02.json`.
 
 **Update 2026-11-20 (review r2, OD9/OD10).** The runs that use the coupled route or the certificate SVD were
 re-run on the r2 tip: `timing_coupled_t1`, `timing_coupled_default`, `timing_svd_t1` (now the production

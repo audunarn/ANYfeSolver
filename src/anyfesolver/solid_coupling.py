@@ -31,6 +31,7 @@ from ._coupled_certificate import (
     _any_nonzero,
     _asymmetric,
     _bits_of,
+    _checked_clock,
     _dense_bytes,
     _exact,
     _exception_text,
@@ -256,9 +257,12 @@ class _Cut:
 
 def _analyse_cut(model: Any, removed_ids: Sequence[int]) -> _Cut:
     elements = model.mesh.elements
+    # The caller's sequence is iterated and converted once, then the FP environment is re-checked
+    # (review r3 P2: iteration and int conversion can run caller code).
+    ids = [_exact_int(value, 'removed element id', 'COUPLED_CUT_MISMATCH') for value in removed_ids]
+    _require_fp_environment()
     removed = []
-    for value in removed_ids:
-        eid = _exact_int(value, 'removed element id', 'COUPLED_CUT_MISMATCH')
+    for eid in ids:
         if eid not in elements:
             raise _refuse('COUPLED_CUT_MISMATCH', 'unknown_element', f'removed element {eid} is not in the model')
         removed.append(eid)
@@ -1061,9 +1065,12 @@ def _resources_limit(resources: Any) -> Optional[int]:
     limit = getattr(resources, 'memory_limit_bytes', None)
     if limit is None:
         return None
-    if not _is_int(limit) or int(limit) < 0:
+    if not _is_int(limit):
         raise _refuse('COUPLED_NATIVE_INVALID', 'resources', 'memory_limit_bytes must be a non-negative integer')
-    return int(limit)
+    value = int(limit)                  # converted once; an exact int from here on (review r3 P2)
+    if type(value) is not int or value < 0:
+        raise _refuse('COUPLED_NATIVE_INVALID', 'resources', 'memory_limit_bytes must be a non-negative integer')
+    return value
 
 
 def _float_nonzero(value: Any) -> bool:
@@ -1249,6 +1256,11 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
     from .assembly import assemble_system, build_constraint_transformation
     from .solid_trace import ShellEdgeTrace
 
+    # Caller code runs only in the callbacks (review r3 P2): every clock call, the cancellation
+    # check (getattr of is_set, then each flag read), the resources attribute and its integer
+    # conversion, and the iteration and integer conversion of removed_element_ids and the box
+    # divisions. Each is followed by the FP-environment probe before any float step runs.
+    clock = _checked_clock(clock)
     timings: Dict[str, float] = {}
     t_start = clock()
     check = _cancel_probe(cancel)
@@ -1279,6 +1291,7 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
     if set(box.sides) & set(_SKINS):
         raise _refuse('COUPLED_MESH_PROVENANCE', 'box', 'side names must differ from the skin names')
     memory_limit = _resources_limit(resources)
+    _require_fp_environment()          # after the box divisions and the resources callback (review r3 P2)
     # Contract properties the formulation assumes (r1 #2, class 2), before any of them is used.
     n_v = _check_prepared(prepared)
     _check_model_dofs(fe_model)

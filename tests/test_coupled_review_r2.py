@@ -165,7 +165,10 @@ def test_r2_fp_flush_enabled_only_during_certification_refuses():
     state = {'calls': 0}
 
     def clock():
-        if inspect.currentframe().f_back.f_code.co_name == 'certified_solve':
+        caller = inspect.currentframe().f_back
+        while caller.f_code.co_name == 'tick':          # the route's checked-clock wrapper (review r3)
+            caller = caller.f_back
+        if caller.f_code.co_name == 'certified_solve':
             state['calls'] += 1
             if state['calls'] == 1:
                 stack.enter_context(flushing())
