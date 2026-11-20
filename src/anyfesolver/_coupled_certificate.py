@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from fractions import Fraction
 import functools
 import math
+import struct
 from typing import Any, Callable, Mapping, Optional
 
 import numpy as np
@@ -26,14 +27,140 @@ from scipy.sparse import linalg as sparse_linalg
 
 __all__: list[str] = []
 
+
+# --- Exact float <-> rational conversion by IEEE bit extraction (review r1 #1, class 1) ---------------
+# frexp, float.as_integer_ratio, Fraction(float), float(Fraction), ldexp, comparisons and any() all
+# change their result for subnormals when the thread flushes denormals (FTZ/DAZ). These helpers read
+# and write the IEEE binary64 bit pattern with integer operations only, so their results do not
+# depend on the floating-point environment.
+
+_SIGN_BIT = 1 << 63
+_FRACTION_BITS = (1 << 52) - 1
+_INF_BITS = 0x7FF << 52
+_ABS_MASK = np.int64(0x7FFF_FFFF_FFFF_FFFF)
+
+
+def _float_from_bits(bits: int) -> float:
+    return struct.unpack('<d', struct.pack('<Q', bits & 0xFFFF_FFFF_FFFF_FFFF))[0]
+
+
+def _bits_of(value: float) -> int:
+    """The signed int64 bit pattern of one binary64 value (a byte copy)."""
+    return struct.unpack('<q', struct.pack('<d', value))[0]
+
+
+def _float_bits(values: Any) -> np.ndarray:
+    """int64 bit patterns of a float64 array (a byte copy; callers pass float64 only)."""
+    return np.ascontiguousarray(values, dtype=np.float64).view(np.int64)
+
+
+def _nonzero_mask(values: Any) -> np.ndarray:
+    """values != 0 decided on the bit pattern (+-0 are zero; a subnormal is nonzero)."""
+    return (_float_bits(values) & _ABS_MASK) != 0
+
+
+def _any_nonzero(values: Any) -> bool:
+    return bool(_nonzero_mask(values).any())
+
+
+def _decompose(values: Any) -> tuple[np.ndarray, np.ndarray]:
+    """Exact (integer mantissa, exponent) with value = m * 2^e; m is a signed integer below 2^53.
+
+    Integer bit extraction (no frexp): a subnormal keeps its bits under FTZ/DAZ. Callers pass
+    finite float64 arrays."""
+    bits = _float_bits(values)
+    biased = (bits >> 52) & 0x7FF
+    fraction = bits & _FRACTION_BITS
+    normal = biased != 0
+    mantissa = np.where(normal, fraction | (1 << 52), fraction)
+    exponent = np.where(normal, biased - 1075, -1074)
+    mantissa = np.where(bits < 0, -mantissa, mantissa)
+    return mantissa.astype(np.int64), exponent.astype(np.int64)
+
+
+def _exact(value: Any) -> Fraction:
+    """The exact rational value of one finite binary64 value, by bit extraction."""
+    bits = _bits_of(float(value))
+    biased = (bits >> 52) & 0x7FF
+    if biased == 0x7FF:
+        raise ValueError('a non-finite value has no exact rational value')
+    mantissa = (bits & _FRACTION_BITS) | (1 << 52) if biased else bits & _FRACTION_BITS
+    exponent = biased - 1075 if biased else -1074
+    if bits < 0:
+        mantissa = -mantissa
+    return _scaled(mantissa, exponent)
+
+
+def _ratio_to_float(numerator: int, denominator: int, *, up: bool = False) -> float:
+    """numerator / denominator (denominator > 0) as binary64, rounded to nearest-even or, with
+    ``up``, toward +inf; integer arithmetic and bit assembly only (no floating-point operation)."""
+    if numerator == 0:
+        return 0.0
+    negative = numerator < 0
+    n = -numerator if negative else numerator
+    k = n.bit_length() - denominator.bit_length()
+    if (n < (denominator << k)) if k >= 0 else ((n << -k) < denominator):
+        k -= 1                                    # now 2^k <= n / d < 2^(k+1)
+    unit = max(k - 52, -1074)                     # the exponent of one ulp at this magnitude
+    if unit >= 0:
+        scale = denominator << unit
+        q, r = divmod(n, scale)
+    else:
+        scale = denominator
+        q, r = divmod(n << -unit, denominator)
+    if r:
+        if up:
+            if not negative:
+                q += 1
+        elif 2 * r > scale or (2 * r == scale and q & 1):
+            q += 1
+    bits = ((unit + 1074) << 52) + q              # continuous across the subnormal/normal boundary
+    if bits >= _INF_BITS:
+        if negative and up:
+            bits = _INF_BITS - 1                  # toward +inf, a negative overflow stays finite
+        else:
+            return -math.inf if negative else math.inf
+    return _float_from_bits(bits | _SIGN_BIT if negative else bits)
+
+
+def _to_float(value: Fraction) -> float:
+    """value rounded to nearest-even binary64 (independent of the FP environment)."""
+    value = Fraction(value)
+    return _ratio_to_float(value.numerator, value.denominator)
+
+
+def _out_up(value: Fraction) -> float:
+    """The smallest binary64 >= value, or inf (independent of the FP environment)."""
+    value = Fraction(value)
+    return _ratio_to_float(value.numerator, value.denominator, up=True)
+
+
+def _subnormals_preserved() -> bool:
+    """False when this thread flushes subnormal operands or results (DAZ/FTZ), for Python floats
+    or for NumPy's vector loops. The certificate premises (A2) and every float comparison of the
+    route assume IEEE gradual underflow."""
+    tiny = _float_from_bits(1)
+    if _bits_of(tiny * 3.0) != 3 or not tiny != 0.0:
+        return False
+    vector = np.full(64, tiny)
+    return bool((_float_bits(vector * 3.0) == 3).all()) and bool((vector != 0.0).all())
+
+
+def _require_fp_environment() -> None:
+    if not _subnormals_preserved():
+        raise _refuse('COUPLED_UNCERTIFIED', 'subnormal_flush',
+                      'the floating-point environment flushes subnormals (FTZ/DAZ); the certificate '
+                      'premise A2 and exact float comparisons do not hold')
+
+
 COUPLED_MAX_EQUATIONS = 5000
 # Accept only kappa_up * eps <= 1e-6 of the equilibrated stored matrix (kappa_up <= ~4.5e9).
 CONDITION_LIMIT = 1e-6 / np.finfo(float).eps
 _EQUILIBRATION_MAX_SWEEPS = 64
 # SVD error constant: alpha = c N eps with c = max(1000, N) (assumption A1).
 _SVD_ERROR_CONSTANT_MIN = 1000
-_SMALLEST_SUBNORMAL = 2.0 ** -1074
-_EPS = Fraction(float(np.finfo(float).eps))
+_SMALLEST_SUBNORMAL = _float_from_bits(1)
+_EPS = Fraction(1, 2 ** 52)
 # Bytes per dense working copy of an N x N float64 matrix, times the copies held at once.
 _DENSE_COPIES = 4
 # Backward (V1-V3) and forward (V6) tolerances, decided exactly as rationals.
@@ -123,6 +250,9 @@ def _condition_upper_bound(sigma_max: float, sigma_min: float, size: int) -> dic
     beta = alpha / (1 - alpha), delta = beta * sigma_max + N 2^-1074,
     kappa(A*) <= (sigma_max + delta) / (sigma_min - delta) if sigma_min > delta,
     every operation rounded outward. Refuses for alpha >= 1/2, sigma_min <= delta or invalid inputs.
+
+    The outward rounding (nextafter, the subnormal tau) assumes IEEE gradual underflow; the only
+    caller, certified_solve, refuses first when the thread flushes subnormals (review r1 class 1).
     """
     with np.errstate(all='ignore'):
         result = {'svd_error_constant': None, 'svd_error_alpha': None, 'svd_error_bound': float('inf'),
@@ -276,16 +406,10 @@ def _sigma_lower(sigma_max: float, sigma_min: float, size: int) -> Fraction:
     constant = max(_SVD_ERROR_CONSTANT_MIN, int(size))
     alpha = Fraction(constant * int(size)) * _EPS
     beta = alpha / (1 - alpha)
-    return Fraction(sigma_min) - (beta * Fraction(sigma_max) + int(size) * Fraction(1, 2 ** 1074))
+    return _exact(sigma_min) - (beta * _exact(sigma_max) + int(size) * Fraction(1, 2 ** 1074))
 
 
 # --- Section 2.3: exact residual -------------------------------------------------------------------------
-
-def _decompose(values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Exact (integer mantissa, exponent) with value = m * 2^e; m is a signed integer below 2^53."""
-    mantissa, exponent = np.frexp(np.asarray(values, dtype=float))
-    return np.ldexp(mantissa, 53).astype(np.int64), exponent.astype(np.int64) - 53
-
 
 @dataclass(frozen=True)
 class ExactRows:
@@ -309,11 +433,12 @@ def _scaled(value: int, exponent: int) -> Fraction:
 
 
 def _int_to_float(value: int, exponent: int) -> float:
+    """value * 2^exponent rounded to nearest binary64 (bit assembly, FP-environment independent)."""
     if value == 0:
         return 0.0
     if exponent >= 0:
-        return float(value << exponent)
-    return value / (1 << -exponent)
+        return _ratio_to_float(value << exponent, 1)
+    return _ratio_to_float(value, 1 << -exponent)
 
 
 def _exact_rows(system: sparse.csr_matrix, x: np.ndarray, b: np.ndarray) -> ExactRows:
@@ -375,7 +500,8 @@ def _scaled_residual_norm_hi(rows: ExactRows, shifts: np.ndarray) -> Fraction:
 
 def _row_abs_sums(system: sparse.csr_matrix) -> list:
     """sum_j |S_ij| per row, exactly, as Fractions (dyadic rationals)."""
-    ms, es = _decompose(np.abs(system.data))
+    ms, es = _decompose(system.data)
+    ms = np.abs(ms)                     # integer magnitude: no float abs of a subnormal
     out = []
     for i in range(system.shape[0]):
         lo, hi = system.indptr[i], system.indptr[i + 1]
@@ -395,10 +521,10 @@ def _backward_check(rows: ExactRows, system: sparse.csr_matrix, x: np.ndarray, b
     with the per-row normwise reference ref_i = sum_j |S_ij| * ||x||_inf + |b_i|. A row with ref_i = 0
     (a zero row or x = 0, and b_i = 0) has r_i = 0 and is exempt; r_i != 0 with ref_i = 0 cannot occur."""
     failing, exempt, worst = [], 0, 0.0
-    x_inf = Fraction(float(np.max(np.abs(x), initial=0.0)))
+    x_inf = _abs_max_exact(x)
     abs_sums = _row_abs_sums(system)
-    for i, (r, row_sum, bi) in enumerate(zip(rows.residual, abs_sums, np.abs(b))):
-        ref = row_sum * x_inf + Fraction(float(bi))
+    for i, (r, row_sum, bi) in enumerate(zip(rows.residual, abs_sums, b)):
+        ref = row_sum * x_inf + abs(_exact(bi))
         residual = rows.residual_fraction(i)
         if ref == 0:
             if residual != 0:
@@ -409,7 +535,7 @@ def _backward_check(rows: ExactRows, system: sparse.csr_matrix, x: np.ndarray, b
         if abs(residual) > BACKWARD_TOLERANCE * ref:
             failing.append(i)
         if r:
-            worst = max(worst, float(abs(residual) / ref))
+            worst = max(worst, _to_float(abs(residual) / ref))
     return {'accepted': not failing, 'failing_rows': failing[:20], 'failing_count': len(failing),
             'exempt_rows': exempt, 'max_ratio': worst, 'reference': 'row_normwise_od7'}
 
@@ -417,12 +543,21 @@ def _backward_check(rows: ExactRows, system: sparse.csr_matrix, x: np.ndarray, b
 def _forward_scale(x: np.ndarray, shifts: np.ndarray) -> Fraction:
     """max_i |x_i / d_i|, exactly."""
     best = Fraction(0)
-    for value, t in zip(np.abs(np.asarray(x, dtype=float)), shifts):
-        if value:
-            candidate = Fraction(float(value)) * (Fraction(2) ** -int(t))
+    nonzero = _nonzero_mask(x)
+    for value, t, keep in zip(x, shifts, nonzero):
+        if keep:
+            candidate = abs(_exact(value)) * (Fraction(2) ** -int(t))
             if candidate > best:
                 best = candidate
     return best
+
+
+def _abs_max_exact(x: np.ndarray) -> Fraction:
+    """max_i |x_i| exactly: binary64 magnitudes order as their bit patterns without the sign bit."""
+    bits = _float_bits(x) & _ABS_MASK
+    if not bits.size:
+        return Fraction(0)
+    return _exact(_float_from_bits(int(bits.max())))
 
 
 def _forward_error_accepts(error: Fraction, x: np.ndarray, shifts: np.ndarray) -> bool:
@@ -473,6 +608,14 @@ class CertifiedSolve:
         return self.forward_error * (Fraction(2) ** int(self.shifts[i]))
 
 
+def _poll(cancel: Optional[Callable[[], None]]) -> None:
+    """Run the caller's cancellation check, then re-check the FP environment (a callback may have
+    changed it)."""
+    if cancel is not None:
+        cancel()
+    _require_fp_environment()
+
+
 def certified_solve(system: Any, rhs: Any, *, raw_load_zero: bool,
                     memory_limit_bytes: Optional[int] = None,
                     cancel: Optional[Callable[[], None]] = None,
@@ -492,15 +635,15 @@ def certified_solve(system: Any, rhs: Any, *, raw_load_zero: bool,
         raise _refuse('COUPLED_UNCERTIFIED', 'invalid_rhs', 'the right-hand side must be float64 of length N')
     if not np.isfinite(system.data).all() or not np.isfinite(b).all():
         raise _refuse('COUPLED_UNCERTIFIED', 'nonfinite_entry', 'the coupled system is not finite')
-    b_zero = not b.any()
+    _require_fp_environment()
+    b_zero = not _any_nonzero(b)
     if raw_load_zero and not b_zero:
         raise _refuse('COUPLED_UNCERTIFIED', 'zero_load_inconsistent',
                       'the zero-load path requires an exactly zero stored right-hand side')
     if not raw_load_zero and b_zero:
         raise _refuse('COUPLED_FORMATION_LOSS', 'load_stored_as_zero',
                       'a nonzero raw load was stored as an all-zero right-hand side')
-    if cancel is not None:
-        cancel()
+    _poll(cancel)
     t0 = clock()
     certificate = _certify_solve_matrix(system, memory_limit_bytes=memory_limit_bytes)
     timings['certificate'] = clock() - t0
@@ -518,13 +661,11 @@ def certified_solve(system: Any, rhs: Any, *, raw_load_zero: bool,
     if not sigma_lower > 0:
         raise _refuse('COUPLED_UNCERTIFIED', 'singular_within_svd_error',
                       'the exact singular-value lower bound is not positive', certificate=public)
-    if cancel is not None:
-        cancel()
+    _poll(cancel)
     t0 = clock()
     x = np.zeros(size) if raw_load_zero else _candidate(system, b)
     timings['candidate'] = clock() - t0
-    if cancel is not None:
-        cancel()
+    _poll(cancel)
     t0 = clock()
     rows = _exact_rows(system, x, b)
     timings['exact_residual'] = clock() - t0
@@ -538,6 +679,9 @@ def certified_solve(system: Any, rhs: Any, *, raw_load_zero: bool,
     if not _forward_error_accepts(error, x, shifts):
         raise _refuse('COUPLED_UNCERTIFIED', 'forward_error_above_limit',
                       'the certified forward error exceeds 1e-6 of the solution scale', certificate=public,
-                      forward_error=float(error))
+                      forward_error=_out_up(error))
     timings['verification'] = clock() - t0
+    # Review r1 #8 (class 7): a cancellation during verification never returns success, and the
+    # environment must still preserve subnormals after any callback.
+    _poll(cancel)
     return CertifiedSolve(x, shifts, error, sigma_lower, public, backward, raw_load_zero, timings)

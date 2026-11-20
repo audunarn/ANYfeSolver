@@ -3,9 +3,10 @@ offset (u0 on a cut DOF) against a monolithic reference, the import rule
 and coded refusals only. Every test fails on 642c43d64 (solid_coupling.py absent).
 
 Outcome rules (spec S2): a refusal is required only where the test exhibits an exact S v = 0;
-acceptance is required only where the certificate's own rigorous kappa upper bound (A1/A2) is at
-most 1e7 and the backward residual has a 100x margin; otherwise an accepted result must lie within
-its returned bounds of the reference."""
+acceptance is required only where an independent kappa (the test's own equilibration and SVD) is at
+most 1e7 and an independent candidate's exact backward residual has a 100x margin (review r1 #11: the
+oracle never reads the route's diagnostics); otherwise an accepted result must lie within its
+returned bounds of the reference."""
 
 from __future__ import annotations
 
@@ -24,7 +25,7 @@ pytest.importorskip('anysolid')
 import _coupled_fixtures as fx  # noqa: E402
 from anyfesolver import BoundaryCondition  # noqa: E402
 from anyfesolver import solid_coupling as sc  # noqa: E402
-from anyfesolver._coupled_certificate import CoupledSolveError, _exact_rows  # noqa: E402
+from anyfesolver._coupled_certificate import CoupledSolveError  # noqa: E402
 from anyfesolver.boundary import LoadCase  # noqa: E402
 
 SIDES = ('side_0', 'side_1', 'side_2', 'side_3')
@@ -56,8 +57,53 @@ def coded(call, *args, **kwargs):
     return info.value
 
 
-def acceptance_warranted(result):
-    return result.certificate['condition_upper_bound'] <= 1e7 and result.verification['backward']['max_ratio'] <= 1e-12
+# --- independent oracle (review r1 #11, class 9): nothing below reads the route's diagnostics ----------
+
+def exact_residual(S, x, b):
+    """r = b - S x and the OD7 row reference sum_j |S_ij| ||x||_inf + |b_i|, in Fractions (test-local)."""
+    S = S.tocsr()
+    xq = [Fraction(float(v)) for v in x]
+    x_inf = max((abs(v) for v in xq), default=Fraction(0))
+    residual, reference = [], []
+    for i in range(S.shape[0]):
+        lo, hi = S.indptr[i], S.indptr[i + 1]
+        acc = Fraction(float(b[i]))
+        row = Fraction(0)
+        for k in range(lo, hi):
+            s = Fraction(float(S.data[k]))
+            acc -= s * xq[S.indices[k]]
+            row += abs(s)
+        residual.append(acc)
+        reference.append(row * x_inf + abs(Fraction(float(b[i]))))
+    return residual, reference
+
+
+def reference_solution(S, b, steps=3):
+    dense = S.toarray()
+    x = np.linalg.solve(dense, b)
+    for _ in range(steps):
+        x = x + np.linalg.solve(dense, np.array([float(r) for r in exact_residual(S, x, b)[0]]))
+    return x
+
+
+def independent_condition(S):
+    """kappa_2 of a symmetric Ruiz-equilibrated copy (real scalings, the test's own; not the route's)."""
+    A = S.toarray()
+    d = np.ones(len(A))
+    for _ in range(30):
+        scale = 1 / np.sqrt(np.abs(A * d[:, None] * d[None, :]).max(axis=1))
+        d *= scale
+    s = np.linalg.svd(A * d[:, None] * d[None, :], compute_uv=False)
+    return s[0] / s[-1]
+
+
+def acceptance_warranted(S, b):
+    """S2: acceptance is required where the independent kappa is at most 1e7 and an independent
+    candidate (dense solve + 3 exact refinements) has a 100x backward margin (|r_i| <= 1e-12 ref_i)."""
+    x = reference_solution(S, b)
+    residual, reference = exact_residual(S, x, b)
+    margin = all(abs(r) <= Fraction(1, 10 ** 12) * ref for r, ref in zip(residual, reference))
+    return independent_condition(S) <= 1e7 and margin, x
 
 
 def all_finite(result):
@@ -131,9 +177,7 @@ def test_r11_2_offset_on_cut_dof_matches_monolithic_reference(monkeypatch):
                      [G, None, None, None]], format='csr')
     A.sum_duplicates()
     b = np.concatenate([F, f_v, np.zeros(m), u0[dependent]])
-    x = np.linalg.solve(A.toarray(), b)
-    for _ in range(3):
-        x = x + np.linalg.solve(A.toarray(), _exact_rows(A, x, b).residual_float())
+    x = reference_solution(A, b)                 # test-local exact residual (r1 #11: no route code)
     assert u0[captured['C_shell'].indices].any(), 'the prescribed DOF must be a connector column'
     order = np.concatenate([np.arange(6 * i, 6 * i + 6) for i in range(len(result.shell_node_ids))])
     u = result.shell_displacements
@@ -148,13 +192,55 @@ def test_r11_2_offset_on_cut_dof_matches_monolithic_reference(monkeypatch):
 
 # --- r11 #3, #4, #11: reactions carry no claim; accepted results are finite --------------------------
 
-def test_r11_3_reactions_carry_no_claim_and_4_11_accepted_result_is_finite():
-    result = run()
+def test_r11_3_reactions_carry_no_claim_and_4_11_accepted_result_is_finite(monkeypatch):
+    captured = {}
+    original = sc.certified_solve
+
+    def spy(system, rhs, **kwargs):
+        captured.update(S=system.copy(), b=rhs.copy())
+        return original(system, rhs, **kwargs)
+    monkeypatch.setattr(sc, 'certified_solve', spy)
+    model, grid, removed, prepared, case, box = small()
+    try:
+        result = sc.solve_shell_solid_coupled(model, prepared, removed_element_ids=removed, box=box, load_case=case)
+    except CoupledSolveError as exc:
+        result = exc
+    warranted, x = acceptance_warranted(captured['S'], captured['b'])
+    assert warranted, 'the fixture must be independently well conditioned (S2 acceptance case)'
+    assert not isinstance(result, CoupledSolveError), (result.code, result.reason)
     assert type(result.reactions) is np.ndarray            # no bounds: not a claim (O12)
     assert np.abs(result.reactions).max() > 0
     assert all_finite(result)
-    if acceptance_warranted(result):
-        assert result.certificate['accepted']
+    # The claims against the independent reference solution of the stored system.
+    n_s, n_v, m = result.sizes['n_s'], result.sizes['n_v'], result.sizes['m']
+    for bounded, exact in ((result.solid_coefficients, x[n_s:n_s + n_v]), (result.multipliers, x[n_s + n_v:])):
+        assert np.all(np.abs(bounded.values - exact) <= bounded.bounds * (1 + 1e-6) + 1e-15 * np.abs(exact).max())
+
+
+def test_r1_11_claims_cover_a_perturbed_candidate(monkeypatch):
+    """Review r1 #11: the bounds are judged against an independent reference, for a candidate that
+    is wrong by +-100 ulp per entry (still backward stable), so a bound that is too small fails."""
+    from anyfesolver import _coupled_certificate as cc
+    captured = {}
+    original = sc.certified_solve
+
+    def spy(system, rhs, **kwargs):
+        captured.update(S=system.copy(), b=rhs.copy())
+        return original(system, rhs, **kwargs)
+
+    def perturbed(system, rhs):
+        x = reference_solution(system, rhs)
+        signs = np.where(np.arange(len(x)) % 2, 1.0, -1.0)
+        return x + 100 * signs * np.spacing(np.abs(x))
+    monkeypatch.setattr(sc, 'certified_solve', spy)
+    monkeypatch.setattr(cc, '_candidate', perturbed)
+    result = run()
+    x = reference_solution(captured['S'], captured['b'])
+    n_s, n_v = result.sizes['n_s'], result.sizes['n_v']
+    for bounded, exact in ((result.solid_coefficients, x[n_s:n_s + n_v]), (result.multipliers, x[n_s + n_v:])):
+        error = np.abs(bounded.values - exact)
+        assert error.max() > 0
+        assert np.all(error <= bounded.bounds + 2 * np.spacing(np.abs(exact)))
 
 
 def test_power_of_two_scaling_keeps_the_decision_and_the_bounds():

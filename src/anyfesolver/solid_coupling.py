@@ -25,11 +25,20 @@ import numpy as np
 from scipy import sparse
 
 from ._coupled_certificate import (
+    _ABS_MASK,
     COUPLED_MAX_EQUATIONS,
     CoupledSolveError,
+    _any_nonzero,
     _asymmetric,
+    _bits_of,
     _dense_bytes,
+    _exact,
+    _float_bits,
+    _nonzero_mask,
+    _out_up,
     _refuse,
+    _require_fp_environment,
+    _to_float,
     certified_solve,
 )
 
@@ -57,8 +66,8 @@ _SKINS = ('start', 'end')
 # --- exact rational helpers ----------------------------------------------------------------------
 
 def _q(value: Any) -> Fraction:
-    """The exact rational value of a finite float64."""
-    return Fraction(float(value))
+    """The exact rational value of a finite float64 (IEEE bit extraction, review r1 class 1)."""
+    return _exact(value)
 
 
 def _sqrt_lo(value: Fraction) -> Fraction:
@@ -93,15 +102,23 @@ def _ratio_ge(a: Fraction, nn: Fraction, c: Fraction) -> bool:
     return _ratio_le(-a, nn, -c)
 
 
-def _out_up(value: Fraction) -> float:
-    """The smallest float64 >= value (value >= 0), or inf."""
+def _safe_text(exc: BaseException) -> str:
+    """'TypeName: message' of an exception without letting its __str__ or name raise (r1 #9)."""
     try:
-        result = float(value)
-    except OverflowError:
-        return math.inf
-    if math.isfinite(result) and Fraction(result) < value:
-        result = math.nextafter(result, math.inf)
-    return result
+        name = type(exc).__name__
+        name = name if type(name) is str else 'Exception'
+    except Exception:  # noqa: BLE001  (a hostile metaclass)
+        name = 'Exception'
+    try:
+        text = str(exc)
+        text = text if type(text) is str else '<unprintable>'
+    except Exception:  # noqa: BLE001
+        text = '<unprintable>'
+    return f'{name}: {text}'
+
+
+def _safe_name(exc: BaseException) -> str:
+    return _safe_text(exc).split(':', 1)[0]
 
 
 def _vec(point: Sequence[float]) -> Tuple[Fraction, Fraction, Fraction]:
@@ -191,15 +208,19 @@ def _cancel_probe(cancel: Any) -> Optional[Callable[[], None]]:
         return None
     is_set = getattr(cancel, 'is_set', None)
     if callable(is_set):
-        flag = lambda: bool(is_set())  # noqa: E731
+        flag_value = is_set
     elif callable(cancel):
-        flag = lambda: bool(cancel())  # noqa: E731
+        flag_value = cancel
     else:
         raise _refuse('COUPLED_NATIVE_INVALID', 'cancel_invalid',
                       'cancel must be None, a callable returning a flag, or an object with is_set()')
 
     def check() -> None:
-        if flag():
+        value = flag_value()
+        # The flag's exact type is checked before it is used (r1 class 6): no truthiness coercion.
+        if type(value) is not bool and type(value) is not np.bool_:
+            raise _refuse('COUPLED_NATIVE_INVALID', 'cancel_invalid', 'the cancellation flag must be a bool')
+        if value:
             raise _refuse('COUPLED_CANCELLED', None, 'the coupled solve was cancelled')
     return check
 
@@ -453,7 +474,12 @@ def _skin_pressure(model: Any, cut: _Cut, load_case: Any, box: BoxFaces) -> Opti
 def _ledger(holed: Any, holed_case: Any, active: int, F_native: np.ndarray) -> Tuple[Mapping[str, Any], ...]:
     """Consume the shared native traversal with ``report_skips``; refuse any skipped component or
     inactive DOF, and require the stored F to be exactly the sum of the ledger contributions."""
+    # Review r1 #10 (class 8): every load record gets a row, in native traversal order (nodal, then
+    # pressure), also when it yields no component (an empty nodal vector contributes nothing).
     rows: Dict[Tuple[Any, Any], Dict[str, Any]] = {}
+    for kind, records in (('nodal', holed_case.nodal_loads), ('pressure', holed_case.pressure_loads)):
+        for ident in records:
+            rows[(kind, ident)] = {'record': kind, 'id': ident, 'fate': 'kept', 'contributions': []}
     replay = np.zeros(active)
     one = lambda element_id: 1.0  # noqa: E731  (element_activity is None: native scale is 1.0)
     for record, dof, value in holed_case._load_contributions(holed.mesh, None, one, report_skips=True):
@@ -463,8 +489,9 @@ def _ledger(holed: Any, holed_case: Any, active: int, F_native: np.ndarray) -> T
         if isinstance(dof, (bool, np.bool_)) or not isinstance(dof, (int, np.integer)) or not 0 <= int(dof) < active:
             raise _refuse('COUPLED_LOAD_UNCOVERED', 'inactive_dof', f'{kind} {ident} targets an inactive DOF')
         replay[int(dof)] += value
-        row = rows.setdefault((kind, ident), {'record': kind, 'id': ident, 'fate': 'kept', 'contributions': []})
-        row['contributions'].append((int(dof), component, float(value)))
+        if (kind, ident) not in rows:
+            raise _refuse('COUPLED_LOAD_UNCOVERED', 'ledger_record', f'{kind} {ident} is not a load record of the case')
+        rows[(kind, ident)]['contributions'].append((int(dof), component, float(value)))
     if replay.shape != F_native.shape or not np.array_equal(replay.view(np.int64), F_native.view(np.int64)):
         raise _refuse('COUPLED_LOAD_UNCOVERED', 'ledger_binding', 'the stored native load is not the ledger sum')
     return tuple(rows.values())
@@ -480,6 +507,8 @@ def _transferred(model: Any, cut: _Cut, load_case: Any) -> List[Tuple[int, int, 
     for record, dof, value in replay._load_contributions(model.mesh, None, one, report_skips=True):
         if record[0].endswith('_skipped'):
             raise _refuse('COUPLED_LOAD_UNCOVERED', record[0], 'a transferred pressure component is not assembled')
+        if type(value) not in (float, np.float64) or not math.isfinite(float(value)):
+            raise _refuse('COUPLED_LOAD_UNCOVERED', 'transferred_value', 'a transferred component is not a finite float64')
         out.append((int(record[1]), int(dof), float(value)))
     return out
 
@@ -628,7 +657,7 @@ def _check_box(mesh: Any, box: BoxFaces, frame: _Frame, outwards: Sequence[np.nd
     t = frame.thickness
     c = frame.corners
     nn = _norm2(_vec(n))
-    half = Fraction(t) / 2
+    half = _q(t) / 2
     tau = PLANE_TOLERANCE * frame.diagonal_lo
     lower = [ck - (t / 2) * n for ck in c]
     upper = [ck + (t / 2) * n for ck in c]
@@ -667,7 +696,7 @@ def _check_box(mesh: Any, box: BoxFaces, frame: _Frame, outwards: Sequence[np.nd
             corner_k = int(np.argmin([np.linalg.norm(expect - (ck + s * (t / 2) * n)) for ck in c for s in (-1, 1)]))
             ck, s = c[corner_k // 2], (-1, 1)[corner_k % 2]
             w = _sub(_vec(coordinates[index]), _vec(ck))
-            if not _ratio_ge(s * Fraction(t) * _dot(w, normal_q), nn, _norm2(w) + half * half - tol2):
+            if not _ratio_ge(s * _q(t) * _dot(w, normal_q), nn, _norm2(w) + half * half - tol2):
                 raise _provenance('corner', f'face {name!r} corner is off the shell frame')
     return grids
 
@@ -697,9 +726,16 @@ def _require_vector(vector: Any, size: int, what: str) -> np.ndarray:
     return vector
 
 
+_WINDOW_LOW_BITS = _bits_of(2.0 ** -400)
+_WINDOW_HIGH_BITS = _bits_of(2.0 ** 64)
+
+
 def _check_window(values: np.ndarray, what: str) -> None:
-    nonzero = np.abs(values[values != 0])
-    if nonzero.size and (nonzero.min() < 2.0 ** -400 or nonzero.max() > 2.0 ** 64):
+    """Every nonzero lies in [2^-400, 2^64], decided on the bit patterns (magnitudes of binary64
+    values order as their sign-cleared bits), so a subnormal is never mistaken for zero."""
+    magnitude = _float_bits(values) & _ABS_MASK
+    magnitude = magnitude[magnitude != 0]
+    if magnitude.size and (int(magnitude.min()) < _WINDOW_LOW_BITS or int(magnitude.max()) > _WINDOW_HIGH_BITS):
         raise _refuse('COUPLED_FORMATION_RANGE', 'raw_window', f'a nonzero of {what} lies outside [2^-400, 2^64]')
 
 
@@ -719,8 +755,8 @@ def _exact_product(C: sparse.csr_matrix, T: sparse.csr_matrix) -> List[Dict[int,
 
 
 def _rounded(value: Fraction, what: str) -> float:
-    result = float(value)
-    if value != 0 and not (2.0 ** -400 <= abs(result) <= 2.0 ** 64):
+    result = _to_float(value)
+    if value != 0 and not (W_RAW_LOW <= abs(_q(result)) <= W_RAW_HIGH if math.isfinite(result) else False):
         raise _refuse('COUPLED_FORMATION_LOSS', 'formation_loss',
                       f'an exactly nonzero entry of {what} rounds outside the raw window')
     return result
@@ -766,12 +802,13 @@ def _form_system(*, K, F, K_s, f_s, T, u0, C_shell, C_solid, K_v, f_v) -> _Forme
                 data.append(_rounded(acc[j], 'B_s'))
     B_s = sparse.csr_matrix((np.asarray(data, dtype=float), (rows, cols)), shape=(m, n_s))
     g = np.zeros(m)
+    u0_nonzero = _nonzero_mask(u0)
     for i in range(m):
         acc = Fraction(0)
         for k in range(C_shell.indptr[i], C_shell.indptr[i + 1]):
-            u = u0[C_shell.indices[k]]
-            if u:
-                acc -= _q(C_shell.data[k]) * _q(u)
+            j = C_shell.indices[k]
+            if u0_nonzero[j]:
+                acc -= _q(C_shell.data[k]) * _q(u0[j])
         g[i] = _rounded(acc, 'g')
     blocks = []
     for name, block in (('K_s', K_s), ('K_v', K_v)):
@@ -792,7 +829,8 @@ def _form_system(*, K, F, K_s, f_s, T, u0, C_shell, C_solid, K_v, f_v) -> _Forme
 
 def _check_zero_rows(S: sparse.csr_matrix) -> None:
     counts = np.diff(S.indptr)
-    zero = [i for i in range(S.shape[0]) if counts[i] == 0 or not S.data[S.indptr[i]:S.indptr[i + 1]].any()]
+    nonzero = _nonzero_mask(S.data)
+    zero = [i for i in range(S.shape[0]) if counts[i] == 0 or not nonzero[S.indptr[i]:S.indptr[i + 1]].any()]
     if zero:
         raise _refuse('COUPLED_MECHANISM', 'zero_row', f'{len(zero)} rows of the coupled system are zero',
                       rows=zero[:20])
@@ -851,10 +889,12 @@ def _build_connector(trace, prepared, name, knots):
     except MemoryError as exc:
         raise _refuse('COUPLED_TOO_LARGE', 'memory_error', 'out of memory in the connector') from exc
     except ValueError as exc:
-        raise _refuse('COUPLED_CONNECTOR_INVALID', 'connector', f'connector refused: {exc}') from exc
-    if type(operator.affine) is not np.ndarray or np.any(operator.affine != 0):
+        raise _refuse('COUPLED_CONNECTOR_INVALID', 'connector', f'connector refused: {_safe_text(exc)}') from exc
+    affine = operator.affine
+    if type(affine) is not np.ndarray or affine.dtype != np.float64 or _any_nonzero(affine):
         raise _refuse('COUPLED_CONNECTOR_INVALID', 'affine', 'the connector affine term is not exactly zero')
-    return operator
+    # Exact types before any conversion (r1 class 6): vstack would upcast a float32 block.
+    return _require_csr(operator.C_shell, f'C_shell of {name!r}'), _require_csr(operator.C_solid, f'C_solid of {name!r}')
 
 
 # --- recovery bounds ------------------------------------------------------------------------------
@@ -873,9 +913,10 @@ def _bounded_rows(matrix_rows: Sequence[Sequence[Tuple[int, Fraction]]], offsets
                 zq[j] = _q(z[j])
             exact += coefficient * zq[j]
             square += (coefficient * Fraction(2) ** int(shifts[j])) ** 2
-        value = float(exact)
+        value = _to_float(exact)
         values.append(value)
-        bounds.append(_out_up(abs(Fraction(value) - exact) + _sqrt_hi(square) * error))
+        rounding = abs(_q(value) - exact) if math.isfinite(value) else Fraction(0)
+        bounds.append(_out_up(rounding + _sqrt_hi(square) * error))
     values = np.asarray(values, dtype=float)
     bounds = np.asarray(bounds, dtype=float)
     if not (np.isfinite(values).all() and np.isfinite(bounds).all()):
@@ -887,6 +928,169 @@ def _csr_rows(matrix: sparse.csr_matrix, col_offset: int = 0) -> List[List[Tuple
     matrix = matrix.tocsr()
     return [[(int(matrix.indices[k]) + col_offset, _q(matrix.data[k])) for k in range(matrix.indptr[i], matrix.indptr[i + 1])]
             for i in range(matrix.shape[0])]
+
+
+# --- contract properties the route assumes (review r1 #2, class 2) --------------------------------
+
+def _is_int(value: Any) -> bool:
+    return not isinstance(value, (bool, np.bool_)) and isinstance(value, (int, np.integer))
+
+
+def _array(value: Any, dtype: Any, shape: Tuple[Optional[int], ...]) -> bool:
+    return (type(value) is np.ndarray and value.dtype == dtype and value.ndim == len(shape)
+            and all(s is None or s == d for s, d in zip(shape, value.shape)))
+
+
+def _check_prepared(prepared: Any) -> int:
+    """The PreparedSolid properties the formulation assumes, checked before any of them is used:
+    P2 (order 2) on straight tetrahedra in metres, and consistent coefficient arrays. Returns
+    the number of solid coefficients."""
+    def bad(reason: str, message: str) -> CoupledSolveError:
+        return _refuse('COUPLED_NATIVE_INVALID', reason, message)
+    order = prepared.order
+    if not _is_int(order) or int(order) != 2:
+        raise bad('prepared_order', 'the coupled route is formulated for a P2 solid (prepared.order == 2)')
+    mesh = prepared.mesh
+    geometry_order = mesh.geometry_order
+    if not _is_int(geometry_order) or int(geometry_order) != 1 or type(mesh.units) is not str or mesh.units != 'm':
+        raise bad('prepared_mesh', "the solid mesh must have geometry_order 1 and units 'm'")
+    if not (_array(mesh.coordinates, np.float64, (None, 3)) and np.isfinite(mesh.coordinates).all()
+            and _array(mesh.cells, np.int64, (None, 4)) and _array(mesh.boundary_facets, np.int64, (None, 3))
+            and _array(mesh.boundary_ids, np.int64, (len(mesh.boundary_facets),))):
+        raise bad('prepared_mesh', 'the solid mesh arrays have unexpected types or shapes')
+    ndof = prepared.ndof
+    if not _is_int(ndof) or int(ndof) < 1:
+        raise bad('prepared_ndof', 'prepared.ndof must be a positive integer')
+    ndof = int(ndof)
+    coordinates, components = prepared.coefficient_coordinates, prepared.coefficient_components
+    if not (_array(coordinates, np.float64, (ndof, 3)) and np.isfinite(coordinates).all()
+            and _array(components, np.int64, (ndof,)) and np.isin(components, (0, 1, 2)).all()):
+        raise bad('prepared_coefficients', 'the solid coefficient coordinates/components are inconsistent')
+    return ndof
+
+
+def _check_model_dofs(model: Any) -> None:
+    """Every node carries six distinct DOFs equal to the model's DOF manager mapping (MPC terms
+    and the holed renumbering are read through it)."""
+    manager = model.mesh.dof_manager
+    seen = set()
+    for nid, node in model.mesh.nodes.items():
+        dofs = list(node.dofs)
+        if len(dofs) != 6 or not all(_is_int(d) for d in dofs) or dofs != list(manager.get_node_dofs(nid)):
+            raise _refuse('COUPLED_NATIVE_INVALID', 'dof_map', f'node {nid} has an inconsistent DOF mapping')
+        seen.update(int(d) for d in dofs)
+    if len(seen) != 6 * len(model.mesh.nodes):
+        raise _refuse('COUPLED_NATIVE_INVALID', 'dof_map', 'two nodes share a DOF')
+
+
+def _resources_limit(resources: Any) -> Optional[int]:
+    if resources is None:
+        return None
+    limit = getattr(resources, 'memory_limit_bytes', None)
+    if limit is None:
+        return None
+    if not _is_int(limit) or int(limit) < 0:
+        raise _refuse('COUPLED_NATIVE_INVALID', 'resources', 'memory_limit_bytes must be a non-negative integer')
+    return int(limit)
+
+
+def _float_nonzero(value: Any) -> bool:
+    return bool(_bits_of(float(value)) & 0x7FFF_FFFF_FFFF_FFFF)
+
+
+def _raw_inputs_zero(holed: Any, holed_case: Any, pressure: Optional[float], ledger: Sequence[Mapping[str, Any]],
+                     F: np.ndarray, u0: np.ndarray) -> bool:
+    """True iff every raw input the route consumes is exactly zero (decided on bit patterns)."""
+    if _any_nonzero(F) or _any_nonzero(u0):
+        return False
+    if pressure is not None and _float_nonzero(pressure):
+        return False
+    if any(_float_nonzero(p) for p in holed_case.pressure_loads.values()):
+        return False
+    for row in ledger:
+        if any(_float_nonzero(value) for _, _, value in row.get('contributions', ())):
+            return False
+    for bc in holed.boundary_conditions:
+        if any(_float_nonzero(value) for value in bc.dof_constraints.values()):
+            return False
+    return not any(_float_nonzero(equation.value) for equation in holed.constraint_equations)
+
+
+# --- footprint overlap by geometry (review r1 #3, class 3) ------------------------------------------
+
+OVERLAP_TOLERANCE = Fraction(1, 10 ** 9)     # in footprint (affine) coordinates
+
+
+def _hull_meets_open_box(points: Sequence[Tuple[Fraction, ...]], lo: Sequence[Fraction],
+                         hi: Sequence[Fraction]) -> bool:
+    """True iff the convex hull of ``points`` meets the open box (lo, hi), decided exactly by the
+    separating-axis theorem: the box faces, the hull faces (all point triples and their in-plane
+    edge normals, for a flat hull) and edge x box-axis directions are a complete axis set; an axis
+    with touching projections separates the hull from the open box."""
+    units = ((Fraction(1), Fraction(0), Fraction(0)), (Fraction(0), Fraction(1), Fraction(0)),
+             (Fraction(0), Fraction(0), Fraction(1)))
+    pts = list(points)
+    edges = [_sub(q, p) for i, p in enumerate(pts) for q in pts[i + 1:]]
+    normals = [_cross(_sub(pts[j], pts[i]), _sub(pts[k], pts[i]))
+               for i in range(len(pts)) for j in range(i + 1, len(pts)) for k in range(j + 1, len(pts))]
+    axes = list(units) + [_cross(e, u) for e in edges for u in units] + normals \
+        + [_cross(nu, e) for nu in normals for e in edges]
+    for w in axes:
+        if not any(w):
+            continue
+        projection = [_dot(w, p) for p in pts]
+        box_lo = sum((min(w[k] * lo[k], w[k] * hi[k]) for k in range(3)), Fraction(0))
+        box_hi = sum((max(w[k] * lo[k], w[k] * hi[k]) for k in range(3)), Fraction(0))
+        if max(projection) <= box_lo or box_hi <= min(projection):
+            return False
+    return True
+
+
+def _check_footprint_overlap(holed: Any, corners: Sequence[np.ndarray], normal: np.ndarray, thickness: float) -> None:
+    """No kept element (its convex hull) and no kept node meets the open footprint prism
+    {c0 + s a + t b + h n : s, t in (tol, 1 - tol), |h| < thickness / 2}, decided by geometry, not
+    by node or edge membership. Floats only pre-select candidates with a 1e-6 margin."""
+    c0 = _vec(corners[0])
+    a, b, nq = _sub(_vec(corners[1]), c0), _sub(_vec(corners[3]), c0), _vec(normal)
+    det = _dot(a, _cross(b, nq))
+    if det == 0:
+        raise _refuse('COUPLED_CUT_MISMATCH', 'degenerate_footprint', 'the footprint frame is degenerate')
+    duals = (_cross(b, nq), _cross(nq, a), _cross(a, b))
+    half = _q(thickness) / 2
+    lo = (OVERLAP_TOLERANCE, OVERLAP_TOLERANCE, -half)
+    hi = (1 - OVERLAP_TOLERANCE, 1 - OVERLAP_TOLERANCE, half)
+    nodes = holed.mesh.nodes
+    ids = list(nodes)
+    xyz = np.array([nodes[nid].coords() for nid in ids], dtype=float).reshape(-1, 3)
+    frame = np.array([[float(v) for v in (a[k], b[k], nq[k])] for k in range(3)])
+    local = np.linalg.solve(frame, (xyz - np.asarray(corners[0], dtype=float)).T).T if len(ids) else xyz
+    where = {nid: i for i, nid in enumerate(ids)}
+    margin = 1e-6
+    t_half = float(thickness) / 2 * (1 + margin)
+    cache: Dict[int, Tuple[Fraction, Fraction, Fraction]] = {}
+
+    def exact(nid: int):
+        if nid not in cache:
+            r = _sub(_vec(nodes[nid].coords()), c0)
+            cache[nid] = tuple(_dot(r, d) / det for d in duals)
+        return cache[nid]
+
+    def candidate(rows: np.ndarray) -> bool:
+        s, t, h = rows[:, 0], rows[:, 1], rows[:, 2]
+        return not (s.max() < -margin or s.min() > 1 + margin or t.max() < -margin or t.min() > 1 + margin
+                    or h.max() < -t_half or h.min() > t_half)
+
+    groups = [(f'node {nid}', (nid,)) for nid in ids]
+    for eid, element in holed.mesh.elements.items():
+        node_ids = getattr(element, 'node_ids', None)
+        if node_ids is None or not len(node_ids) or not all(_is_int(n) and int(n) in where for n in node_ids):
+            raise _refuse('COUPLED_CUT_MISMATCH', 'kept_element_geometry', f'kept element {eid} has no checkable nodes')
+        groups.append((f'kept element {eid}', tuple(int(n) for n in node_ids)))
+    for label, members in groups:
+        if not candidate(local[[where[n] for n in members]]):
+            continue
+        if _hull_meets_open_box([exact(n) for n in dict.fromkeys(members)], lo, hi):
+            raise _refuse('COUPLED_CUT_MISMATCH', 'kept_inside_footprint', f'{label} overlaps the footprint interior')
 
 
 # --- the entry ------------------------------------------------------------------------------------
@@ -903,7 +1107,8 @@ def _native(call, *args):
     except MemoryError as exc:
         raise _refuse('COUPLED_TOO_LARGE', 'memory_error', 'out of memory in native assembly') from exc
     except _NATIVE_ERRORS as exc:
-        raise _refuse('COUPLED_NATIVE_INVALID', type(exc).__name__, f'native shell assembly refused: {exc}') from exc
+        raise _refuse('COUPLED_NATIVE_INVALID', _safe_name(exc),
+                      f'native shell assembly refused: {_safe_text(exc)}') from exc
 
 
 def solve_shell_solid_coupled(fe_model: Any, prepared: Any, *, removed_element_ids: Sequence[int], box: BoxFaces,
@@ -920,9 +1125,9 @@ def solve_shell_solid_coupled(fe_model: Any, prepared: Any, *, removed_element_i
         raise
     except MemoryError as exc:
         raise _refuse('COUPLED_TOO_LARGE', 'memory_error', 'out of memory in the coupled solve') from exc
-    except Exception as exc:  # no uncoded exception escapes
-        raise _refuse('COUPLED_NATIVE_INVALID', f'unexpected:{type(exc).__name__}',
-                      f'the coupled solve failed unexpectedly: {exc}') from exc
+    except Exception as exc:  # no uncoded exception escapes; the translation itself cannot raise (r1 #9)
+        raise _refuse('COUPLED_NATIVE_INVALID', f'unexpected:{_safe_name(exc)}',
+                      f'the coupled solve failed unexpectedly ({_safe_text(exc)})') from exc
 
 
 def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, resources, clock) -> CoupledSolution:
@@ -937,9 +1142,13 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
     check = _cancel_probe(cancel)
 
     def poll():
+        # Cancellation, then the FP environment (a callback or a lazily imported extension may have
+        # switched on FTZ/DAZ; r1 class 1).
         if check is not None:
             check()
+        _require_fp_environment()
 
+    _require_fp_environment()
     # Exact types (r11 #5, #8-#10): no caller arrays or protocol objects reach the route.
     if type(fe_model) is not FEModel:
         raise _refuse('COUPLED_NATIVE_INVALID', 'model_type', 'fe_model must be an anyfesolver FEModel')
@@ -948,7 +1157,8 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
     if type(load_case) is not LoadCase:
         raise _refuse('COUPLED_NATIVE_INVALID', 'load_case_type', 'load_case must be one anyfesolver LoadCase')
     if type(box) is not BoxFaces or type(box.sides) is not tuple or len(box.sides) != 4 \
-            or len(set(box.sides)) != 4 or box.skin not in (None, *_SKINS) \
+            or not all(type(s) is str for s in box.sides) or len(set(box.sides)) != 4 \
+            or not (box.skin is None or (type(box.skin) is str and box.skin in _SKINS)) \
             or type(box.divisions) is not tuple or len(box.divisions) != 3:
         raise _refuse('COUPLED_MESH_PROVENANCE', 'box', 'box must be BoxFaces with 3 divisions, a skin and 4 sides')
     divisions = tuple(_exact_int(v, 'box division', 'COUPLED_MESH_PROVENANCE') for v in box.divisions)
@@ -956,7 +1166,10 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
         raise _refuse('COUPLED_MESH_PROVENANCE', 'box', 'box divisions must be positive')
     if set(box.sides) & set(_SKINS):
         raise _refuse('COUPLED_MESH_PROVENANCE', 'box', 'side names must differ from the skin names')
-    memory_limit = None if resources is None else getattr(resources, 'memory_limit_bytes', None)
+    memory_limit = _resources_limit(resources)
+    # Contract properties the formulation assumes (r1 #2, class 2), before any of them is used.
+    n_v = _check_prepared(prepared)
+    _check_model_dofs(fe_model)
     poll()
 
     # Section 3.2 load route, section 4 cut and targets.
@@ -1010,10 +1223,14 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
     j0 = int(np.argmin(distances))
     corners = tuple(node_xyz(ccw_corner[(j0 + k) % 4]) for k in range(4))
     side_traces = [traces[ccw_chains[(j0 + k) % 4]] for k in range(4)]
-    centre = tuple(sum((_q(c[i]) for c in corners), Fraction(0)) / 4 for i in range(3))
+    # The stored footprint centre (r1 #6, class 5): the corner mean rounded once to binary64; the
+    # exported centre is exactly the point every moment, V4 and the transfer gate refer to.
+    centre_float = np.array([_to_float(sum((_q(c[i]) for c in corners), Fraction(0)) / 4) for i in range(3)])
+    centre = _vec(centre_float)
     diagonal_lo = _sqrt_lo(_norm2(_sub(_vec(corners[2]), _vec(corners[0]))))
     frame = _Frame(corners, centre, n, thickness, diagonal_lo, tuple(cut.chains[ccw_chains[(j0 + k) % 4]] for k in range(4)))
     _check_footprint_interior(fe_model, cut, corners)
+    _check_footprint_overlap(holed, corners, n, thickness)
     outwards = [np.asarray(tr.solid_outward, dtype=float) for tr in side_traces]
     t0 = clock()
     box_checked = BoxFaces(divisions, box.skin, box.sides)
@@ -1023,14 +1240,15 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
 
     # Skin traction, echo and the transfer resultant gates.
     echo: Dict[str, Any] = {'skin': box.skin, 'pressure': pressure, 'offset': None, 'traction': None}
-    n_v = int(prepared.ndof)
     if pressure is None:
         f_v = np.zeros(n_v)
     else:
         q = pressure * n
         echo.update(offset=(-0.5 if box.skin == 'start' else 0.5) * thickness, traction=q.tolist())
-        f_v = np.asarray(prepared.traction(box.skin, q), dtype=float)
+        # The exact type is checked before any use or conversion (r1 #7, class 6).
+        f_v = _require_vector(prepared.traction(box.skin, q), n_v, 'the skin traction f_v')
         _transfer_gate(copy.deepcopy(fe_model), cut, load_case, prepared, f_v, centre, diagonal_lo)
+    poll()
 
     # Native shell: unchanged assembly and reduction on the holed model.
     t0 = clock()
@@ -1038,10 +1256,17 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
     K_s, f_s, T, u0, independent, _reduction = _native(build_constraint_transformation, K, F, holed)
     timings['native'] = clock() - t0
     active = int(holed.mesh.dof_manager.total_dofs)
-    if type(F) is not np.ndarray or F.dtype != np.float64:
-        raise _refuse('COUPLED_FORMATION_RANGE', 'type', 'the native load must be float64')
+    # Native outputs: exact types before any use (r1 class 6; previously T.tocsr() ran first).
+    F = _require_vector(F, active, 'the native load F')
+    T = _require_csr(T, 'T')
+    if T.shape[0] != active:
+        raise _refuse('COUPLED_FORMATION_RANGE', 'shape', 'T does not match the holed shell DOFs')
+    u0 = _require_vector(u0, active, 'u0')
+    if type(independent) is not np.ndarray or not np.issubdtype(independent.dtype, np.integer) \
+            or independent.shape != (T.shape[1],):
+        raise _refuse('COUPLED_FORMATION_RANGE', 'type', 'the independent DOF list must be an integer array')
     ledger = list(_ledger(holed, holed_case, active, F))
-    skin_entries = [(int(i), float(f_v[i])) for i in np.flatnonzero(f_v)]
+    skin_entries = [(int(i), float(f_v[i])) for i in np.flatnonzero(_nonzero_mask(f_v))]
     for eid in cut.removed:
         if eid in load_case.pressure_loads:
             ledger.append({'record': 'pressure', 'id': eid, 'fate': 'transferred', 'group': box.skin,
@@ -1062,18 +1287,19 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
         if stations[0] > stations[-1]:
             stations = stations[::-1]
         _connector_prechecks(knots, stations, float(trace.length), float(trace.tolerance))
-        operator = _build_connector(trace, prepared, name, knots)
-        shell_rows.append(operator.C_shell.tocsr())
-        solid_rows.append(operator.C_solid.tocsr())
-        side_rows.append(operator.C_shell.shape[0])
+        Ck_shell, Ck_solid = _build_connector(trace, prepared, name, knots)
+        shell_rows.append(Ck_shell)
+        solid_rows.append(Ck_solid)
+        side_rows.append(Ck_shell.shape[0])
+        poll()
     C_shell = sparse.vstack(shell_rows, format='csr')
     C_solid = sparse.vstack(solid_rows, format='csr')
     timings['connector'] = clock() - t0
     # The C_shell column rule.
-    T = T.tocsr()
     t_rows = np.diff(T.indptr)
-    for j in np.unique(C_shell.indices[C_shell.data != 0]):
-        if t_rows[j] == 0 and u0[j] == 0:
+    u0_nonzero = _nonzero_mask(u0)
+    for j in np.unique(C_shell.indices[_nonzero_mask(C_shell.data)]):
+        if t_rows[j] == 0 and not u0_nonzero[j]:
             raise _refuse('COUPLED_TARGET_REMOVED', 'connector_column', f'connector DOF {int(j)} is inactive')
     poll()
 
@@ -1088,10 +1314,16 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
     K_v = prepared.assemble_linear()
     formed = _form_system(K=K, F=F, K_s=K_s, f_s=f_s, T=T, u0=u0, C_shell=C_shell, C_solid=C_solid, K_v=K_v, f_v=f_v)
     _check_zero_rows(formed.system)
-    _check_solid_rigid_rank(C_solid, np.asarray(prepared.rigid_modes(), dtype=float))
+    modes = prepared.rigid_modes()
+    if not (_array(modes, np.float64, (n_v, None)) and modes.shape[1] % 6 == 0 and np.isfinite(modes).all()):
+        raise _refuse('COUPLED_NATIVE_INVALID', 'prepared_rigid_modes', 'the solid rigid modes are not float64 (n_v, 6k)')
+    _check_solid_rigid_rank(C_solid, modes)
     timings['formation'] = clock() - t0
     sizes = dict(formed.sizes)
-    raw_zero = (not F.any()) and (not u0.any()) and (pressure is None or pressure == 0.0)
+    # Zero-load path only when every consumed raw input is exactly zero (r1 #4, class 4): the native
+    # F and u0, every pressure (kept and transferred), every consumed nodal component, every
+    # prescribed support value and MPC right-hand side.
+    raw_zero = _raw_inputs_zero(holed, holed_case, pressure, ledger, F, u0)
     poll()
     solved = certified_solve(formed.system, formed.rhs, raw_load_zero=raw_zero, memory_limit_bytes=memory_limit,
                              cancel=check, clock=clock)
@@ -1109,6 +1341,7 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
     shell = _bounded_rows(_csr_rows(T), [_q(v) for v in u0], z, shifts, E)
     shell_force = _bounded_rows(_csr_rows(C_shell.T.tocsr(), n_s + n_v), None, z, shifts, E)
     solid_force = _bounded_rows(_csr_rows(C_solid.T.tocsr(), n_s + n_v), None, z, shifts, E)
+    poll()
 
     # Common rigid basis; V4 and the per-side resultants.
     manager = holed.mesh.dof_manager
@@ -1118,9 +1351,10 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
         shell_coords.append(holed.mesh.nodes[nid].coords())
         shell_names.append(name)
     R_s = _rigid_basis(shell_coords, shell_names, centre)
-    solid_coords = np.asarray(prepared.coefficient_coordinates, dtype=float)
+    solid_coords = prepared.coefficient_coordinates      # float64 (n_v, 3) by _check_prepared
     R_v = _rigid_basis(solid_coords, [_DOF_NAMES[int(c)] for c in prepared.coefficient_components], centre)
-    verification: Dict[str, Any] = {'backward': dict(solved.backward), 'forward_error': float(E)}
+    # The exported forward error is the bounded E rounded up, never below it (r1 class 5).
+    verification: Dict[str, Any] = {'backward': dict(solved.backward), 'forward_error': _out_up(E)}
     resultants = []
     start = 0
     lam_q = [_q(v) for v in z[sl_l]]
@@ -1145,19 +1379,25 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
         resultants.append(SideResultant(name, Bounded(bounded.values[:3], bounded.bounds[:3]),
                                         Bounded(bounded.values[3:], bounded.bounds[3:])))
         start += side_rows[k]
-    verification['v4_compatibility_max'] = float(worst_compat)
-    verification['v4_balance_max'] = float(worst_balance)
+        poll()
+    verification['v4_compatibility_max'] = _to_float(worst_compat)
+    verification['v4_balance_max'] = _to_float(worst_balance)
 
     # V5: kept loads, reactions and the skin load balance (diagnostic, only adds refusals).
     u_full = shell.values
     reactions = np.asarray(K @ u_full + C_shell.T @ z[sl_l] - F, dtype=float)
-    dependent = np.setdiff1d(np.arange(active), np.asarray(independent, dtype=np.int64))
+    independent = np.asarray(independent, dtype=np.int64)
+    dependent = np.setdiff1d(np.arange(active), independent)
     external = F.copy()
     external[dependent] += reactions[dependent]
+    # Review r1 #5: an MPC slave's constraint force r_d acts on its masters as -T_dj r_d (reduced
+    # equilibrium T^T r = 0); supports have empty T rows and add nothing here.
+    master_forces = np.asarray(T[dependent].T @ reactions[dependent], dtype=float)
+    external[independent] -= master_forces
     total = [Fraction(0)] * 6
     reference = Fraction(0)
     for vector, basis in ((external, R_s), (f_v, R_v)):
-        for i in np.flatnonzero(vector):
+        for i in np.flatnonzero(_nonzero_mask(vector)):
             value = _q(vector[i])
             for r in range(6):
                 term = value * basis[i][r]
@@ -1166,9 +1406,11 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
     imbalance = max(abs(v) for v in total)
     if reference and imbalance > V5_BALANCE_TOLERANCE * reference:
         raise _refuse('COUPLED_UNCERTIFIED', 'v5_global_balance', 'reactions, loads and the skin load do not balance')
-    verification['v5_balance'] = float(imbalance / reference) if reference else 0.0
+    verification['v5_balance'] = _to_float(imbalance / reference) if reference else 0.0
     timings['recovery'] = clock() - t0
     timings['total'] = clock() - t_start
+    # r1 #8 (class 7): a cancellation during recovery or verification never returns success.
+    poll()
 
     node_ids = tuple(int(nid) for nid in holed.mesh.nodes)
     order = np.concatenate([np.asarray(holed.mesh.nodes[nid].dofs, dtype=np.int64) for nid in node_ids]) \
@@ -1180,7 +1422,7 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
         shell_node_ids=node_ids, shell_displacements=pick(shell), solid_coefficients=solid, multipliers=lam,
         shell_interface_forces=pick(shell_force), solid_interface_forces=solid_force,
         side_resultants=tuple(resultants), reactions=reaction_out[order],
-        footprint_centre=np.array([float(v) for v in centre]), echo=echo, ledger=ledger,
+        footprint_centre=centre_float.copy(), echo=echo, ledger=ledger,
         certificate=dict(solved.certificate), verification=verification, sizes=sizes, timings=timings)
 
 
@@ -1226,9 +1468,9 @@ def _transfer_gate(model, cut, load_case, prepared, f_v, centre, diagonal_lo) ->
             M_ref[local - 3] += v
     F_sol = [Fraction(0)] * 3
     M_sol = [Fraction(0)] * 3
-    coords = np.asarray(prepared.coefficient_coordinates, dtype=float)
-    components = np.asarray(prepared.coefficient_components)
-    for i in np.flatnonzero(f_v):
+    coords = prepared.coefficient_coordinates      # float64 / int64 by _check_prepared
+    components = prepared.coefficient_components
+    for i in np.flatnonzero(_nonzero_mask(f_v)):
         c = int(components[i])
         v = _q(f_v[i])
         F_sol[c] += v

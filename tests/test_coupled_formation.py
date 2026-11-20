@@ -169,6 +169,9 @@ def test_dropped_pair_component_past_dofs_refuses():
 
 def test_inactive_dof_refuses():
     class Stub:
+        nodal_loads = {1: [1.0, 1.0]}     # the case's records (every yielded record must be one)
+        pressure_loads: dict = {}
+
         def _load_contributions(self, mesh, displacements, scale, *, report_skips):
             yield ('nodal', 1, 0), 10, 1.0
     refused('COUPLED_LOAD_UNCOVERED', sc._ledger, HOLED, Stub(), 6, np.zeros(6))
@@ -176,6 +179,9 @@ def test_inactive_dof_refuses():
 
 def test_ledger_binding_requires_bitwise_native_sum():
     class Stub:
+        nodal_loads = {1: [1.0, 1.0]}     # the case's records (every yielded record must be one)
+        pressure_loads: dict = {}
+
         def _load_contributions(self, mesh, displacements, scale, *, report_skips):
             yield ('nodal', 1, 0), 0, 0.1
             yield ('nodal', 1, 1), 0, 0.2

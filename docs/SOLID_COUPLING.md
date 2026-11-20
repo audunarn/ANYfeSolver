@@ -97,8 +97,18 @@ summation order or the FP environment.
   asserts.
 
 ### Zero-load path (spec §2.4)
-The path is taken when native `F = 0`, `u0 = 0` and every consumed `p = 0`. Then `x = 0`, and the full certificate
-must still accept. A nonzero raw input whose stored `b` is all zero refuses `COUPLED_FORMATION_LOSS`.
+The path is taken when native `F = 0`, `u0 = 0` and every consumed raw input is exactly zero: every pressure, kept
+and transferred, every consumed nodal component, every prescribed support value and every MPC right-hand side
+(review r1 #4). Then `x = 0`, and the full certificate must still accept. A nonzero raw input whose stored `b` is all
+zero refuses `COUPLED_FORMATION_LOSS` (`load_stored_as_zero`), for example a kept pressure of `2^-1074` whose native
+contributions round to zero.
+
+### Floating-point environment (review r1 #1)
+Every exact step reads and writes binary64 values by IEEE bit extraction (`_decompose`, `_exact`, `_to_float`,
+`_out_up`, the nonzero masks and the raw window), so its result does not depend on FTZ/DAZ. The remaining float steps
+(equilibration, the SVD, outward rounding, comparisons, native assembly) assume gradual underflow, as A2 does. The
+route therefore probes the thread at entry, after every cancellation poll and around the certified solve, and refuses
+`COUPLED_UNCERTIFIED` (`subnormal_flush`) when subnormal operands or results are flushed.
 
 ### Candidate (spec §2.5)
 `splu(csc(S))` is called directly, with up to two refinement steps on the exact residual. The candidate carries no
@@ -115,12 +125,15 @@ or a side, never by one component's own terms. OD8 inventoried every a posterior
 | V1–V3 backward error, per row | `Σ_j|S_ij|·‖x‖∞ + |b_i|` | OD7 (it was `Σ_j|S_ij x_j| + |b_i|`) |
 | V4 rigid compatibility `C_shell R_s = C_solid R_v`, per side | `1e-12·max(‖|C_s||R_s|‖∞, ‖|C_v||R_v|‖∞)` | already normwise, unchanged |
 | V4 interface balance, per side and per rigid component `r` | `1e-10·Σ_i max_r(|C_sR_s|+|C_vR_v|)_ir·|λ_i|` | OD8 (it was each component against its own `Σ_i|C_sR_s λ|_ir+|C_vR_v λ|_ir`) |
-| V5 global balance: kept loads, reactions and skin load | `1e-9·Σ_{i,r}|v_i R_ir|` over every component | already normwise, unchanged |
+| V5 global balance: kept loads, reactions (with the MPC master forces `−T_Dᵀ r_D`, review r1 #5) and skin load | `1e-9·Σ_{i,r}|v_i R_ir|` over every component | already normwise, unchanged |
 | Transfer force and moment gates | `1e-12‖F_ref‖`, `1e-12(‖F_ref‖d + ‖M_ref‖)` (vector norms) | not per component, unchanged |
 | V6 forward error | `1e-6·max_i|x_i/d_i|` | normwise, the authority |
 
 `R_s` and `R_v` come from one routine, `_rigid_basis`. It builds the unscaled rigid motions about the footprint
-centre: `e` on the translations, and `e × r` with `r = x − x_c` exact. It is never centred or normalised.
+centre: `e` on the translations, and `e × r` with `r = x − x_c` exact. It is never centred or normalised. The stored
+centre `x_c` is the corner mean rounded once to binary64; the exported `footprint_centre` is exactly that point, so
+every moment, V4 and the transfer gate refer to the exported value (review r1 #6). The exported `forward_error` is
+`E` rounded up.
 
 ## Claims (C5)
 
@@ -149,12 +162,27 @@ Otherwise it refuses `COUPLED_LOAD_UNSUPPORTED`. The partition rules are carried
 - each segment meets at least 2 lattice columns;
 - `rank(C_solid R_v) = 6`.
 
+Added by review r1:
+- **Geometry, not membership (#3).** No kept element (its convex hull, by an exact separating-axis test) and no kept
+  node may meet the open footprint prism `{c0 + s a + t b + h n : s, t ∈ (1e-9, 1 − 1e-9), |h| < t/2}`
+  (`COUPLED_CUT_MISMATCH`, `kept_inside_footprint`).
+- **Contract properties (#2).** `prepared.order == 2`, `geometry_order == 1`, units `'m'`, integer `ndof` and
+  consistent float64/int64 coefficient arrays, float64 `(n_v, 6k)` rigid modes, and node DOFs equal to the DOF
+  manager's mapping; otherwise `COUPLED_NATIVE_INVALID` (`prepared_order`, `prepared_mesh`, `prepared_ndof`,
+  `prepared_coefficients`, `prepared_rigid_modes`, `dof_map`).
+- **Types before coercion (#7).** The skin traction, each side's connector blocks, the native `F`, `T`, `u0` and the
+  independent list, the cancellation flag (an exact `bool`) and `memory_limit_bytes` (an exact non-negative
+  integer) are type-checked before any conversion.
+- **Ledger (#10).** Every nodal and pressure record of the case has a row, also when it yields no component.
+- **Cancellation (#8, #9).** The flag is polled after recovery, after each side's V4 and before return, and inside the
+  certified solve after verification; no exception's text or name can make the translation itself raise.
+
 ## Refusal codes
 
 | Code | Meaning |
 |---|---|
 | `COUPLED_TOO_LARGE` | `N > 5000`, the memory limit, or a `MemoryError` anywhere |
-| `COUPLED_UNCERTIFIED` | The certificate or a check failed. Reasons include `zero_row`, `equilibration_not_converged`, `nonfinite_entry`, `singular_within_svd_error`, `condition_above_limit`, `svd_error_bound_invalid`, `numerical_failure:*`, `candidate_failed`, `backward_error_above_limit`, `forward_error_above_limit`, `asymmetric_stiffness`, `v4_rigid_compatibility`, `v4_interface_balance` and `v5_global_balance` |
+| `COUPLED_UNCERTIFIED` | The certificate or a check failed. Reasons include `zero_row`, `equilibration_not_converged`, `nonfinite_entry`, `singular_within_svd_error`, `condition_above_limit`, `svd_error_bound_invalid`, `numerical_failure:*`, `candidate_failed`, `backward_error_above_limit`, `forward_error_above_limit`, `asymmetric_stiffness`, `v4_rigid_compatibility`, `v4_interface_balance`, `v5_global_balance` and `subnormal_flush` |
 | `COUPLED_FORMATION_RANGE` | An input has the wrong type, or a raw operand lies outside `W_raw` |
 | `COUPLED_FORMATION_LOSS` | An exactly nonzero `B_s` or `g` entry rounds outside `W_raw`, or a raw load is stored as zero |
 | `COUPLED_MESH_PROVENANCE` | The plane, lattice, facet-count or skin checks failed |
@@ -166,7 +194,7 @@ Otherwise it refuses `COUPLED_LOAD_UNSUPPORTED`. The partition rules are carried
 | `COUPLED_MECHANISM` | A zero row, or `solid_rigid_mode_free` |
 | `COUPLED_CONNECTOR_PARTITION` / `_GROUP` / `_RANK` | The connector prechecks failed |
 | `COUPLED_CONNECTOR_INVALID` | Any other connector `ValueError` |
-| `COUPLED_NATIVE_INVALID` | The native assembly or reduction failed, or an unexpected exception was caught |
+| `COUPLED_NATIVE_INVALID` | The native assembly or reduction failed, a contract property of the solid or the model does not hold, an argument has the wrong type, or an unexpected exception was caught |
 | `COUPLED_CANCELLED` | The `cancel` callable or event fired |
 
 ## Evidence
