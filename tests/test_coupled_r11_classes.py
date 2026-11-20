@@ -78,32 +78,64 @@ def exact_residual(S, x, b):
     return residual, reference
 
 
-def reference_solution(S, b, steps=3):
-    dense = S.toarray()
-    x = np.linalg.solve(dense, b)
-    for _ in range(steps):
-        x = x + np.linalg.solve(dense, np.array([float(r) for r in exact_residual(S, x, b)[0]]))
-    return x
+def reference_solution(S, b, steps=4, dps=60):
+    """The S2 mpmath reference (review r2): x is held in mpmath at ``dps`` digits; each step adds a
+    binary64 dense correction for the residual b - S x evaluated in mpmath at that precision. With
+    kappa <= 1e7 every step gains about 9 digits, so 4 steps reach far below binary64; the reference
+    is returned rounded to nearest binary64."""
+    import mpmath
+    with mpmath.workdps(dps):
+        S = S.tocsr()
+        dense = S.toarray()
+        x = [mpmath.mpf(float(v)) for v in np.linalg.solve(dense, b)]
+        entries = [[(int(S.indices[k]), mpmath.mpf(float(S.data[k]))) for k in range(S.indptr[i], S.indptr[i + 1])]
+                   for i in range(S.shape[0])]
+        bq = [mpmath.mpf(float(v)) for v in b]
+        for _ in range(steps):
+            r = [bq[i] - mpmath.fsum(s * x[j] for j, s in row) for i, row in enumerate(entries)]
+            correction = np.linalg.solve(dense, np.array([float(v) for v in r]))
+            x = [xi + mpmath.mpf(float(c)) for xi, c in zip(x, correction)]
+        return np.array([float(v) for v in x])
 
 
 def independent_condition(S):
-    """kappa_2 of a symmetric Ruiz-equilibrated copy (real scalings, the test's own; not the route's)."""
-    A = S.toarray()
-    d = np.ones(len(A))
-    for _ in range(30):
-        scale = 1 / np.sqrt(np.abs(A * d[:, None] * d[None, :]).max(axis=1))
-        d *= scale
-    s = np.linalg.svd(A * d[:, None] * d[None, :], compute_uv=False)
+    """kappa_2 of the specified power-of-two Ruiz scaling (review r2: the spec's scaling, implemented
+    here independently in pure Python per row): t_i -= floor(e_i / 2) with e_i the frexp exponent of
+    the row maximum of 2^(t_i + t_j) |S_ij|, until no shift changes, applied to the original entries."""
+    import math
+    S = S.tocsr()
+    rows = [[(int(S.indices[k]), float(S.data[k])) for k in range(S.indptr[i], S.indptr[i + 1])]
+            for i in range(S.shape[0])]
+    t = [0] * len(rows)
+    for _ in range(65):
+        shifts = []
+        for i, row in enumerate(rows):
+            largest = max(abs(math.ldexp(v, t[i] + t[j])) for j, v in row)
+            shifts.append(-(math.frexp(largest)[1] // 2))
+        if not any(shifts):
+            break
+        t = [a + s for a, s in zip(t, shifts)]
+    A = np.zeros(S.shape)
+    for i, row in enumerate(rows):
+        for j, v in row:
+            A[i, j] = math.ldexp(v, t[i] + t[j])
+    s = np.linalg.svd(A, compute_uv=False)
     return s[0] / s[-1]
 
 
+# Binary64 SVD of A* gives sigma_N to about N eps sigma_1 absolutely, i.e. kappa to a relative
+# kappa N eps <= 1e7 * 5000 * 2.2e-16 ~ 1.1e-5 here; acceptance is required only below the margin.
+_KAPPA_MARGIN = 1 - 1e-4
+
+
 def acceptance_warranted(S, b):
-    """S2: acceptance is required where the independent kappa is at most 1e7 and an independent
-    candidate (dense solve + 3 exact refinements) has a 100x backward margin (|r_i| <= 1e-12 ref_i)."""
+    """S2: acceptance is required where kappa(A*) of the specified scaling is at most 1e7 (decided
+    with a margin that covers the binary64 SVD error) and the mpmath reference has a 100x backward
+    margin (|r_i| <= 1e-12 ref_i, exact)."""
     x = reference_solution(S, b)
     residual, reference = exact_residual(S, x, b)
     margin = all(abs(r) <= Fraction(1, 10 ** 12) * ref for r, ref in zip(residual, reference))
-    return independent_condition(S) <= 1e7 and margin, x
+    return independent_condition(S) <= 1e7 * _KAPPA_MARGIN and margin, x
 
 
 def all_finite(result):

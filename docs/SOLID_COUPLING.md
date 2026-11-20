@@ -3,11 +3,27 @@
 `anyfesolver.solid_coupling.solve_shell_solid_coupled` solves a Q4 shell, with a rectangular set of elements
 removed, together with a floating P2 solid detail (ANYsolid `PreparedSolid`) that fills the hole. The two are tied
 weakly along the four cut sides. The result is either a `CoupledSolution` with certified bounds, or a
-`CoupledSolveError` with a `COUPLED_*` code. No other exception escapes.
+`CoupledSolveError` with a `COUPLED_*` code. Every `Exception` raised inside the route becomes a
+`CoupledSolveError`. `KeyboardInterrupt`, `SystemExit` and the other `BaseException` subclasses that are not
+`Exception` are not translated: they propagate unchanged, also when a callback raises them (OD9).
 
 The module is private. `import anyfesolver` neither imports nor exports it. ANYfem is its only intended caller.
 The certificate lives in `anyfesolver._coupled_certificate`. The spec is
-`SOLVER-PR67-DENSE-SPEC-20261119.md`, which applies owner decisions OD1–OD8.
+`SOLVER-PR67-DENSE-SPEC-20261119.md`, which applies owner decisions OD1–OD10.
+
+## Trusted-construction boundary (OD9)
+
+The route certifies only untouched objects built by ANYfem's pipeline:
+- the `PreparedSolid` from `anysolid.prepare`;
+- the `FEModel` from ANYfem's builder;
+- the cut (the removed elements and the box faces) from `cut_solid_submodel`.
+
+Objects modified after they are built are out of scope: for example a relabelled `order`, a DOF list swapped behind
+the DOF manager, a replaced connector or native output, or a monkeypatched library function. The claims below are
+not made for them, even where a check happens to refuse them. The route still keeps cheap structural checks that
+also catch some such changes: the removed set is derived from the footprint geometry, the solid coefficients must
+have the P2 layout, every nonzero test reads value bits, raw load scalars are type-checked before assembly, and
+CSR structure, connector dimensions and native `K`/`F` are checked before use.
 
 ```python
 from anyfesolver import solid_coupling as sc
@@ -47,8 +63,10 @@ No row is normalised. Equilibration uses exact powers of two only, so the certif
 - **C2, C3, arithmetic.** There is no enclosure kernel. Every certified number is one of two things:
   - an exact rational, from Python integers or `Fraction`;
   - a float rounded outward from one, with `_out_up`.
-  So the floating-point environment adds no premise. The SVD and SuperLU calls are the only floating-point library
-  calls. The SVD is covered by A1/A2 below. SuperLU supplies a candidate only.
+  The exact steps do not depend on the floating-point environment. The SVD and SuperLU calls are the only
+  floating-point library calls. The SVD is covered by A1/A2 below, which assume round-to-nearest with gradual
+  underflow on the thread that runs it; the route verifies that environment and the single BLAS thread instead
+  of assuming them (see "Floating-point environment"). SuperLU supplies a candidate only.
 - **C4, pressure provenance and the ledger.**
   - The skin and the four sides must be faces of an affine structured box lattice. This is checked in exact
     arithmetic: the plane to `1e-12·d`, the lattice positions to `1e-9·h_min`, and positively oriented split cells.
@@ -97,18 +115,41 @@ summation order or the FP environment.
   asserts.
 
 ### Zero-load path (spec §2.4)
-The path is taken when native `F = 0`, `u0 = 0` and every consumed raw input is exactly zero: every pressure, kept
-and transferred, every consumed nodal component, every prescribed support value and every MPC right-hand side
-(review r1 #4). Then `x = 0`, and the full certificate must still accept. A nonzero raw input whose stored `b` is all
+The path is taken when native `F = 0`, `u0 = 0` and every consumed raw input is exactly zero (review r1 #4). The
+zero test reads the original values of the case and the model, never a float image of them (review r2 (d)), and
+counts only what native assembly and reduction consume (review r2 (c)):
+- every pressure, kept and transferred;
+- the first `min(L, 6)` components of every nodal record of length `L` on a kept node;
+- the prescribed values of every support that names at least one node (a support with no nodes prescribes
+  nothing);
+- every MPC right-hand side.
+
+Raw scalars are type-checked before native assembly: a nodal record is a 1-D float64 ndarray, or a list or tuple of
+exact `float`, `np.float64` or `int`; support values and MPC terms are exact `float`, `np.float64` or `int`. Anything
+else (a `Fraction`, a `bool`, a string, a float32 array) refuses `COUPLED_LOAD_UNSUPPORTED` (`raw_scalar_type`).
+The path is otherwise unchanged. Then `x = 0`, and the full certificate must still accept. A nonzero raw input whose stored `b` is all
 zero refuses `COUPLED_FORMATION_LOSS` (`load_stored_as_zero`), for example a kept pressure of `2^-1074` whose native
 contributions round to zero.
 
-### Floating-point environment (review r1 #1)
+### Floating-point environment (review r1 #1, r2 (a))
 Every exact step reads and writes binary64 values by IEEE bit extraction (`_decompose`, `_exact`, `_to_float`,
-`_out_up`, the nonzero masks and the raw window), so its result does not depend on FTZ/DAZ. The remaining float steps
-(equilibration, the SVD, outward rounding, comparisons, native assembly) assume gradual underflow, as A2 does. The
-route therefore probes the thread at entry, after every cancellation poll and around the certified solve, and refuses
-`COUPLED_UNCERTIFIED` (`subnormal_flush`) when subnormal operands or results are flushed.
+`_out_up`, the nonzero masks and the raw window), so its result does not depend on FTZ/DAZ or the rounding mode. The
+remaining float steps (equilibration, the SVD, outward rounding, comparisons, native assembly) assume IEEE
+round-to-nearest-even with gradual underflow, as A1 and A2 do.
+- **Probe.** `_require_fp_environment` checks, for Python floats and NumPy vector loops, that subnormal operands
+  and results survive (no FTZ/DAZ) and that the rounding is to nearest-even (ties `1 + 2^-53 → 1` and
+  `(1 + 2^-52) + 2^-53 → 1 + 2^-51`, and their negations, which exclude rounding up, down and toward zero). It
+  refuses `COUPLED_UNCERTIFIED` with `subnormal_flush` or `rounding_mode`.
+- **Where.** At entry, after every cancellation poll, at the start of the certificate (before the power-of-two
+  equilibration), immediately before and after the SVD, after the outward-rounded κ bound, and immediately before
+  and after the exact residual.
+- **One thread.** The SVD runs inside `threadpoolctl.threadpool_limits(limits=1, user_api='blas')`. A probe then
+  requires that NumPy's own BLAS (a library under NumPy's package directory or `numpy.libs`) is among the
+  controlled pools and that every BLAS pool reports exactly one thread, before and after the call. With one thread
+  the BLAS runs inline on the calling thread, whose environment is the one probed, so no worker thread with its
+  own MXCSR takes part. If threadpoolctl is missing, NumPy's BLAS is not found (for example a vendor that
+  threadpoolctl cannot control) or a pool reports another count, the solve refuses `COUPLED_UNCERTIFIED`
+  (`blas_threads`). The single-thread SVD is slower than the default; RESULT.md reports the measured time.
 
 ### Candidate (spec §2.5)
 `splu(csc(S))` is called directly, with up to two refinement steps on the exact residual. The candidate carries no
@@ -143,7 +184,12 @@ every moment, V4 and the transfer gate refer to the exported value (review r1 #6
 | `shell_displacements` (`u = T x_s + u0`) | `|float(u_i) − u_i| + sqrt_hi(Σ_j (T_ij d_j)²)·E` |
 | `shell_interface_forces` (`C_shellᵀλ`), `solid_interface_forces` (`C_solidᵀλ`) | the same form, with `Cᵀ D_λ` |
 | `side_resultants`: force, and moment about the footprint centre | `|float − exact| + sqrt_hi(Σ_k (Q_rk d_k)²)·E` |
-| `reactions` | none; a plain array |
+| `reactions` | none; a plain array of the dependent (supported or MPC-slave) DOFs only |
+
+`reactions` holds `r_D = (K u + C_shellᵀλ − F)_D` on the dependent DOFs and zero elsewhere. An MPC slave's
+constraint force also acts on its masters as `−T_Dᵀ r_D` (V5 includes it, review r1 #5), and that master force is
+not part of `reactions`: a consumer that sums `reactions` alone sees the support reactions plus the slave-side MPC
+forces, not a balance with the applied load when MPCs are present.
 
 `Q_side = −(C_shell R_s)ᵀ`, so `Q_side λ` is the resultant the solid exerts on the shell, couples included.
 
@@ -163,32 +209,56 @@ Otherwise it refuses `COUPLED_LOAD_UNSUPPORTED`. The partition rules are carried
 - `rank(C_solid R_v) = 6`.
 
 Added by review r1:
-- **Geometry, not membership (#3).** No kept element (its convex hull, by an exact separating-axis test) and no kept
-  node may meet the open footprint prism `{c0 + s a + t b + h n : s, t ∈ (1e-9, 1 − 1e-9), |h| < t/2}`
-  (`COUPLED_CUT_MISMATCH`, `kept_inside_footprint`).
-- **Contract properties (#2).** `prepared.order == 2`, `geometry_order == 1`, units `'m'`, integer `ndof` and
-  consistent float64/int64 coefficient arrays, float64 `(n_v, 6k)` rigid modes, and node DOFs equal to the DOF
-  manager's mapping; otherwise `COUPLED_NATIVE_INVALID` (`prepared_order`, `prepared_mesh`, `prepared_ndof`,
-  `prepared_coefficients`, `prepared_rigid_modes`, `dof_map`).
+- **Geometry, not membership (#3, r2 P1 (a), r2 (b)).** Let `P = {c0 + s a + t b + h n : 0 < s < 1, 0 < t < 1,
+  |h| < t/2}` be the open prism over the corner rectangle, with no tolerance. Every test is exact.
+  - The rule is **hull exclusion**: an element meets `P` iff the convex hull of its nodes does (exact
+    separating-axis test). A warped kept element whose hull crosses `P` refuses, even when its bilinear surface
+    clears the solid. So does a kept element that enters `P` by any positive amount, including a cut-edge node
+    displaced inward by rounding on a rotated plane.
+  - The removed set is derived from the geometry: every removed element must have all its nodes in the closed
+    prism and meet `P`, and every element that meets `P` must be removed. A caller-supplied set that differs
+    refuses `COUPLED_CUT_MISMATCH` (`removed_set_geometry`); a kept element or kept node meeting `P` refuses
+    `kept_inside_footprint`.
+  - The prefilter is geometric: an element whose node bounding box misses the bounding box of `P` (its 8
+    vertices, exact, rounded outward to binary64) cannot meet `P` and is skipped. No float solve decides anything.
+- **Contract properties (#2, r2 P1 (b)).** `prepared.order == 2`, `geometry_order == 1`, units `'m'`, integer
+  `ndof` and consistent float64/int64 coefficient arrays, float64 `(n_v, 6k)` rigid modes, and node DOFs equal to
+  the DOF manager's mapping; otherwise `COUPLED_NATIVE_INVALID` (`prepared_order`, `prepared_mesh`, `prepared_ndof`,
+  `prepared_coefficients`, `prepared_rigid_modes`, `dof_map`). The coefficient layout must be that of vector P2
+  on the mesh: `ndof = 3(V + E)` with `V` vertices and `E` unique cell edges, `V + E` coefficients per component,
+  and three coefficients at every vertex (`prepared_layout`).
+- **Nonzero tests read bits (r2 P1 (c)).** Every "is nonzero" or "has entries" decision reads value bits, never
+  stored structure: a `T` row holding only an explicit `0.0` is an inactive DOF for the connector-column rule.
+- **C1 structure (r2).** Each CSR input has valid structure before any use (integer 1-D `indptr`/`indices`,
+  `indptr` from 0 to `nnz` and nondecreasing, every column index in range; `csr_structure`). Each side's connector
+  blocks have `rows ≥ 1`, shapes `(rows, n_shell)` and `(rows, n_v)`, and an affine vector of shape `(rows,)`.
+  The native `K` and `F` are type-, structure-, shape-, finiteness- and window-checked before native reduction
+  consumes them.
+- **Ledger inventory (r2).** Besides the bitwise replay, each record's components are checked against the raw
+  record: components `0..min(L, 6)−1` for a nodal record of length `L`, one per element DOF for a pressure record,
+  each exactly once (`COUPLED_LOAD_UNCOVERED`, `ledger_inventory`).
 - **Types before coercion (#7).** The skin traction, each side's connector blocks, the native `F`, `T`, `u0` and the
   independent list, the cancellation flag (an exact `bool`) and `memory_limit_bytes` (an exact non-negative
   integer) are type-checked before any conversion.
 - **Ledger (#10).** Every nodal and pressure record of the case has a row, also when it yields no component.
-- **Cancellation (#8, #9).** The flag is polled after recovery, after each side's V4 and before return, and inside the
-  certified solve after verification; no exception's text or name can make the translation itself raise.
+- **Cancellation (#8, #9, r2 (d)).** The flag is polled after recovery, after each side's V4, inside the certified
+  solve after verification, and last after the result object is built, so a cancellation during result
+  construction refuses. Translating an exception never runs user code: the class name is read from the type
+  slot and only exact `str` arguments are shown (anything else is `<not shown>`); no `__str__`, `__repr__` or
+  `__format__` is called.
 
 ## Refusal codes
 
 | Code | Meaning |
 |---|---|
 | `COUPLED_TOO_LARGE` | `N > 5000`, the memory limit, or a `MemoryError` anywhere |
-| `COUPLED_UNCERTIFIED` | The certificate or a check failed. Reasons include `zero_row`, `equilibration_not_converged`, `nonfinite_entry`, `singular_within_svd_error`, `condition_above_limit`, `svd_error_bound_invalid`, `numerical_failure:*`, `candidate_failed`, `backward_error_above_limit`, `forward_error_above_limit`, `asymmetric_stiffness`, `v4_rigid_compatibility`, `v4_interface_balance`, `v5_global_balance` and `subnormal_flush` |
+| `COUPLED_UNCERTIFIED` | The certificate or a check failed. Reasons include `zero_row`, `equilibration_not_converged`, `nonfinite_entry`, `singular_within_svd_error`, `condition_above_limit`, `svd_error_bound_invalid`, `numerical_failure:*`, `candidate_failed`, `backward_error_above_limit`, `forward_error_above_limit`, `asymmetric_stiffness`, `v4_rigid_compatibility`, `v4_interface_balance`, `v5_global_balance`, `subnormal_flush`, `rounding_mode` and `blas_threads` |
 | `COUPLED_FORMATION_RANGE` | An input has the wrong type, or a raw operand lies outside `W_raw` |
 | `COUPLED_FORMATION_LOSS` | An exactly nonzero `B_s` or `g` entry rounds outside `W_raw`, or a raw load is stored as zero |
 | `COUPLED_MESH_PROVENANCE` | The plane, lattice, facet-count or skin checks failed |
-| `COUPLED_LOAD_UNSUPPORTED` | The load route is not admitted, or the transfer gates failed (`transfer_resultant`) |
-| `COUPLED_LOAD_UNCOVERED` | The ledger skipped a load component |
-| `COUPLED_CUT_MISMATCH` | The removed set is invalid, the cut is not one rectangular loop, or the shell faces differ in director or thickness |
+| `COUPLED_LOAD_UNSUPPORTED` | The load route is not admitted, a raw scalar has an unsupported type (`raw_scalar_type`), or the transfer gates failed (`transfer_resultant`) |
+| `COUPLED_LOAD_UNCOVERED` | The ledger skipped a load component, or a record's components differ from its raw inventory (`ledger_inventory`) |
+| `COUPLED_CUT_MISMATCH` | The removed set is invalid or not the geometric one (`removed_set_geometry`), a kept element or node meets the footprint (`kept_inside_footprint`), the cut is not one rectangular loop, or the shell faces differ in director or thickness |
 | `COUPLED_FREE_NODE` | A support, MPC or nodal load names a node that the cut freed |
 | `COUPLED_TARGET_REMOVED` | A load or mass target was removed or is inactive, or a DOF has no rigid motion |
 | `COUPLED_MECHANISM` | A zero row, or `solid_rigid_mode_free` |
@@ -203,7 +273,9 @@ Added by review r1:
 ceilings. The tests are:
 - `tests/test_coupled_certificate.py`;
 - `tests/test_coupled_formation.py`;
-- `tests/test_coupled_r11_classes.py`, which includes the OD7 and OD8 tests and the ν = 0 patch test;
+- `tests/test_coupled_r11_classes.py`, which includes the OD7 and OD8 tests and the ν = 0 patch test; its oracle
+  uses an independent implementation of the specified power-of-two Ruiz scaling and an mpmath reference solution;
+- `tests/test_coupled_review_r1.py` and `tests/test_coupled_review_r2.py` (the Codex review rounds);
 - `tests/test_solid_trace_extensions.py`;
 - `tests/test_load_contributions.py`.
 

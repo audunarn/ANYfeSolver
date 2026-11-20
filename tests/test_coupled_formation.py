@@ -17,7 +17,9 @@ from anyfesolver import solid_coupling as sc  # noqa: E402
 from anyfesolver._coupled_certificate import CoupledSolveError  # noqa: E402
 from anyfesolver.boundary import LoadCase  # noqa: E402
 
-HOLED = __import__('types').SimpleNamespace(mesh=None)
+# Ledger stubs: node 1 carries six DOFs (the r2 component inventory reads the node's DOF count).
+_NS = __import__('types').SimpleNamespace
+HOLED = _NS(mesh=_NS(nodes={1: _NS(dofs=[0, 1, 2, 3, 4, 5])}, elements={}))
 SIDES = ('side_0', 'side_1', 'side_2', 'side_3')
 T = 0.02
 

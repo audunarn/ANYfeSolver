@@ -13,3 +13,9 @@ solid_n20_l2 rc=0 12s load=59
 solid_n20_l4 rc=0 30s load=62
 solid_n40_l2 rc=0 56s load=48
 solid_n40_l4 rc=0 251s load=44
+--- r2 re-run 2026-11-20T05:41:48+01:00
+timing_coupled_t1 rc=0 102s load=78
+timing_coupled_default rc=0 18s load=8
+timing_svd_t1 rc=0 166s load=87
+peak_coupled_t1 rc=0 19s load=9
+r0_coupled_n10 rc=0 4s load=73

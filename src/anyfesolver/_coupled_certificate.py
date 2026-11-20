@@ -14,10 +14,12 @@ Not exported from :mod:`anyfesolver`; the sole caller is :mod:`anyfesolver.solid
 
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass, field
 from fractions import Fraction
 import functools
 import math
+import os
 import struct
 from typing import Any, Callable, Mapping, Optional
 
@@ -146,11 +148,81 @@ def _subnormals_preserved() -> bool:
     return bool((_float_bits(vector * 3.0) == 3).all()) and bool((vector != 0.0).all())
 
 
-def _require_fp_environment() -> None:
+_ONE_BITS = 0x3FF0_0000_0000_0000
+_HALF_ULP_BITS = 0x3CA0_0000_0000_0000          # 2^-53, half an ulp of 1.0
+
+
+def _nearest_rounding() -> bool:
+    """False unless this thread rounds to nearest-even, for Python floats and NumPy's vector loops
+    (review r2 (a)). 1 + 2^-53 is a tie that rounds down to 1 and (1 + 2^-52) + 2^-53 a tie that
+    rounds up to 1 + 2^-51; the negated pair rules out rounding toward zero. Operands come from bit
+    patterns at run time, so nothing is folded at compile time."""
+    one, half = _float_from_bits(_ONE_BITS), _float_from_bits(_HALF_ULP_BITS)
+    odd = _float_from_bits(_ONE_BITS + 1)
+    expected = (_ONE_BITS, _ONE_BITS + 2, _ONE_BITS | _SIGN_BIT, (_ONE_BITS + 2) | _SIGN_BIT)
+    scalar = (one + half, odd + half, -one - half, -odd - half)
+    if tuple(_bits_of(v) & 0xFFFF_FFFF_FFFF_FFFF for v in scalar) != expected:
+        return False
+    a = np.array([one, odd, -one, -odd] * 16)
+    b = np.array([half, half, -half, -half] * 16)
+    got = _float_bits(a + b).view(np.uint64).tolist()
+    return got == list(expected) * 16
+
+
+def _fp_environment_reason() -> Optional[str]:
     if not _subnormals_preserved():
+        return 'subnormal_flush'
+    if not _nearest_rounding():
+        return 'rounding_mode'
+    return None
+
+
+def _require_fp_environment() -> None:
+    """Gradual underflow and round-to-nearest-even on this thread, else a coded refusal."""
+    reason = _fp_environment_reason()
+    if reason == 'subnormal_flush':
         raise _refuse('COUPLED_UNCERTIFIED', 'subnormal_flush',
                       'the floating-point environment flushes subnormals (FTZ/DAZ); the certificate '
                       'premise A2 and exact float comparisons do not hold')
+    if reason is not None:
+        raise _refuse('COUPLED_UNCERTIFIED', 'rounding_mode',
+                      'the floating-point environment does not round to nearest-even; the certificate '
+                      'premises A1/A2 do not hold')
+
+
+@contextlib.contextmanager
+def _single_thread_blas():
+    """Run the enclosed LAPACK work on the calling thread only (review r2 (a), owner decision OD9):
+    threadpoolctl limits every BLAS pool to one thread, and a probe confirms that NumPy's own BLAS
+    is among the controlled libraries and that every BLAS pool reports exactly one thread. With one
+    thread the BLAS runs inline on the caller, whose FP environment the route verifies before and
+    after. Anything that cannot be established refuses ``COUPLED_UNCERTIFIED`` (``blas_threads``)."""
+    try:
+        from threadpoolctl import threadpool_info, threadpool_limits
+    except ImportError as exc:
+        raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
+                      'threadpoolctl is required to run the certificate SVD on one thread') from exc
+    with threadpool_limits(limits=1, user_api='blas'):
+        _require_single_thread_blas(threadpool_info)
+        yield functools.partial(_require_single_thread_blas, threadpool_info)
+
+
+def _numpy_blas_dirs() -> tuple:
+    root = os.path.normcase(os.path.dirname(os.path.abspath(np.__file__)))
+    return (root + os.sep, root + '.libs' + os.sep)
+
+
+def _require_single_thread_blas(threadpool_info) -> None:
+    try:
+        pools = [p for p in threadpool_info() if p.get('user_api') == 'blas']
+    except Exception as exc:  # noqa: BLE001  (an introspection failure is a refusal)
+        raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads', 'the BLAS thread pools cannot be inspected') from exc
+    dirs = _numpy_blas_dirs()
+    numpy_pools = [p for p in pools if os.path.normcase(str(p.get('filepath', ''))).startswith(dirs)]
+    if not numpy_pools or any(p.get('num_threads') != 1 for p in pools):
+        raise _refuse('COUPLED_UNCERTIFIED', 'blas_threads',
+                      'the certificate SVD cannot be verified to run on one thread '
+                      f'({len(numpy_pools)} NumPy BLAS pool(s), threads {[p.get("num_threads") for p in pools]})')
 
 
 COUPLED_MAX_EQUATIONS = 5000
@@ -185,6 +257,31 @@ class CoupledSolveError(Exception):
 
 def _refuse(code: str, reason: Optional[str], message: str, **diagnostics: Any) -> CoupledSolveError:
     return CoupledSolveError(message, code=code, reason=reason, diagnostics=diagnostics)
+
+
+_TYPE_NAME = type.__dict__['__name__']          # reads tp_name: no metaclass hook runs
+_EXCEPTION_ARGS = BaseException.__dict__['args']
+
+
+def _type_name(exc: BaseException) -> str:
+    """The class name of an exception, read without running any user-defined code (review r2 (d))."""
+    try:
+        name = _TYPE_NAME.__get__(type(exc), type)
+    except Exception:  # noqa: BLE001
+        return 'Exception'
+    return name if type(name) is str else 'Exception'
+
+
+def _exception_text(exc: BaseException) -> str:
+    """'TypeName: message' without calling any __str__, __repr__ or __format__ (review r2 (d)): only
+    arguments that are exact ``str`` objects are shown; anything else is '<not shown>'."""
+    try:
+        args = _EXCEPTION_ARGS.__get__(exc, BaseException)
+    except Exception:  # noqa: BLE001
+        args = ()
+    parts = [a for a in args if type(a) is str] if type(args) is tuple else []
+    text = '; '.join(parts) if parts else '<not shown>'
+    return _type_name(exc) + ': ' + text
 
 
 # --- Ported helpers (b94c9179f solids.py, unchanged) -------------------------------------------------
@@ -312,8 +409,15 @@ def _require_system(system: Any) -> sparse.csr_matrix:
 
 
 def _svd_values(matrix: np.ndarray) -> np.ndarray:
-    """Singular values of the dense equilibrated matrix (the one LAPACK call the certificate relies on)."""
-    return np.linalg.svd(matrix, compute_uv=False)
+    """Singular values of the dense equilibrated matrix (the one LAPACK call the certificate relies on),
+    on one verified BLAS thread under verified round-to-nearest and gradual underflow, checked
+    immediately before and after the call (review r2 (a))."""
+    with _single_thread_blas() as recheck:
+        _require_fp_environment()
+        sigma = np.linalg.svd(matrix, compute_uv=False)
+        _require_fp_environment()
+        recheck()
+    return sigma
 
 
 def _dense_bytes(size: int) -> int:
@@ -354,6 +458,7 @@ def _certificate_numbers(system: sparse.csr_matrix, size: int) -> dict:
                    'condition_limit': CONDITION_LIMIT, 'condition_number': float('inf'),
                    'condition_upper_bound': float('inf'), 'equilibration_sweeps': 0,
                    'shifts': None, 'accepted': False, 'reason': None}
+    _require_fp_environment()            # the equilibration's ldexp is premise A2 (review r2 (a))
     try:
         original = np.array(system.toarray(), dtype=float)
         if not np.isfinite(original).all():
@@ -394,6 +499,7 @@ def _certificate_numbers(system: sparse.csr_matrix, size: int) -> dict:
     if sigma_min > 0.0:
         certificate['condition_number'] = sigma_max / sigma_min  # reported only, never decided on
     certificate.update(_condition_upper_bound(sigma_max, sigma_min, size))
+    _require_fp_environment()            # the outward rounding above assumed it
     return certificate
 
 
@@ -584,7 +690,7 @@ def _candidate(system: sparse.csr_matrix, b: np.ndarray) -> np.ndarray:
         raise _refuse('COUPLED_TOO_LARGE', 'memory_error', 'out of memory in the candidate solve') from exc
     except Exception as exc:  # includes SuperLU's exact-singular RuntimeError
         raise _refuse('COUPLED_UNCERTIFIED', 'candidate_failed',
-                      f'the candidate solve failed ({type(exc).__name__})') from exc
+                      f'the candidate solve failed ({_type_name(exc)})') from exc
     x = np.asarray(x, dtype=float)
     if not np.isfinite(x).all():
         raise _refuse('COUPLED_UNCERTIFIED', 'candidate_failed', 'the candidate solve is not finite')
@@ -667,7 +773,9 @@ def certified_solve(system: Any, rhs: Any, *, raw_load_zero: bool,
     timings['candidate'] = clock() - t0
     _poll(cancel)
     t0 = clock()
+    _require_fp_environment()            # immediately around the exact residual (review r2 (a))
     rows = _exact_rows(system, x, b)
+    _require_fp_environment()
     timings['exact_residual'] = clock() - t0
     t0 = clock()
     backward = _backward_check(rows, system, x, b)

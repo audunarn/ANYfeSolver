@@ -263,10 +263,11 @@ def svd(runs):
     rng = np.random.default_rng(0)
     matrix = rng.standard_normal((5000, 5000))
     matrix = matrix + matrix.T
+    from anyfesolver import _coupled_certificate as cc
     times = []
     for _ in range(runs + 1):
         t0 = time.perf_counter()
-        np.linalg.svd(matrix, compute_uv=False)
+        cc._svd_values(matrix)      # the production call: one verified BLAS thread (review r2 (a))
         times.append(time.perf_counter() - t0)
     return {'cmd': 'svd', 'N': 5000, 'runs': runs, 'times': times,
             'median': statistics.median(times[1:] if runs else times)}

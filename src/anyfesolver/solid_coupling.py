@@ -33,7 +33,9 @@ from ._coupled_certificate import (
     _bits_of,
     _dense_bytes,
     _exact,
+    _exception_text,
     _float_bits,
+    _type_name,
     _nonzero_mask,
     _out_up,
     _refuse,
@@ -103,22 +105,13 @@ def _ratio_ge(a: Fraction, nn: Fraction, c: Fraction) -> bool:
 
 
 def _safe_text(exc: BaseException) -> str:
-    """'TypeName: message' of an exception without letting its __str__ or name raise (r1 #9)."""
-    try:
-        name = type(exc).__name__
-        name = name if type(name) is str else 'Exception'
-    except Exception:  # noqa: BLE001  (a hostile metaclass)
-        name = 'Exception'
-    try:
-        text = str(exc)
-        text = text if type(text) is str else '<unprintable>'
-    except Exception:  # noqa: BLE001
-        text = '<unprintable>'
-    return f'{name}: {text}'
+    """'TypeName: message' of an exception; never calls a user-defined __str__/__repr__ or a
+    metaclass hook (r1 #9, r2 (d))."""
+    return _exception_text(exc)
 
 
 def _safe_name(exc: BaseException) -> str:
-    return _safe_text(exc).split(':', 1)[0]
+    return _type_name(exc)
 
 
 def _vec(point: Sequence[float]) -> Tuple[Fraction, Fraction, Fraction]:
@@ -356,23 +349,6 @@ def _analyse_cut(model: Any, removed_ids: Sequence[int]) -> _Cut:
     return _Cut(tuple(removed), orphans, tuple(chains), tuple(corners), n0, thicknesses[0])
 
 
-def _check_footprint_interior(model: Any, cut: _Cut, corners_ccw: Sequence[np.ndarray]) -> None:
-    """No kept element node lies strictly inside the footprint prism."""
-    removed = set(cut.removed)
-    c0 = corners_ccw[0]
-    a, b = corners_ccw[1] - c0, corners_ccw[3] - c0
-    for eid, element in model.mesh.elements.items():
-        if eid in removed:
-            continue
-        for nid in element.node_ids:
-            v = np.asarray(model.mesh.nodes[int(nid)].coords(), dtype=float) - c0
-            s, t = v @ a / (a @ a), v @ b / (b @ b)
-            h = abs(v @ cut.normal)
-            if 1e-9 < s < 1 - 1e-9 and 1e-9 < t < 1 - 1e-9 and h <= cut.thickness / 2:
-                raise _refuse('COUPLED_CUT_MISMATCH', 'kept_inside_footprint',
-                              f'kept element {eid} reaches inside the footprint')
-
-
 def _holed_model(model: Any, cut: _Cut):
     """A deep copy minus the removed elements and the orphan nodes, DOFs renumbered in node order.
     Returns (holed, old_to_new) with old_to_new mapping original DOFs of kept nodes."""
@@ -454,6 +430,42 @@ def _check_load_route(model: Any, load_case: Any) -> None:
         if type(pressure) not in (float, np.float64) or not math.isfinite(float(pressure)):
             raise _refuse('COUPLED_LOAD_UNSUPPORTED', 'pressure_kind',
                           f'pressure on element {eid} must be a finite scalar float64')
+    _check_raw_scalars(model, load_case)
+
+
+_RAW_SCALAR_TYPES = (float, np.float64, int)
+
+
+def _raw_scalar(value: Any) -> bool:
+    """A raw load, support or MPC scalar as ANYfem emits it: an exact float, np.float64 or int
+    (never bool, Fraction, Decimal or another numeric type that native code would round)."""
+    return type(value) in _RAW_SCALAR_TYPES
+
+
+def _check_raw_scalars(model: Any, load_case: Any) -> None:
+    """Review r2 P1 (d): the raw scalar types are validated before native assembly, so that the
+    zero-load decision below sees the values native code consumes, not a rounded image of them."""
+    def bad(what: str) -> CoupledSolveError:
+        return _refuse('COUPLED_LOAD_UNSUPPORTED', 'raw_scalar_type', f'{what} must be float or int scalars')
+    for nid, load in load_case.nodal_loads.items():
+        if type(load) is np.ndarray:
+            if load.dtype != np.float64 or load.ndim != 1:
+                raise bad(f'the nodal load on node {nid}')
+        elif type(load) not in (list, tuple) or not all(_raw_scalar(v) for v in load):
+            raise bad(f'the nodal load on node {nid}')
+    for bc in model.boundary_conditions:
+        if not all(_raw_scalar(v) for v in bc.dof_constraints.values()):
+            raise bad(f'the prescribed values of support {bc.name!r}')
+    for equation in model.constraint_equations:
+        if not _raw_scalar(equation.value) or not all(_raw_scalar(c) for _, c in equation.coefficients):
+            raise bad('an MPC right-hand side or coefficient')
+
+
+def _scalar_nonzero(value: Any) -> bool:
+    """value != 0 for a validated raw scalar, on the bit pattern for floats (a subnormal is nonzero)."""
+    if type(value) is int:
+        return value != 0
+    return bool(_bits_of(float(value)) & 0x7FFF_FFFF_FFFF_FFFF)
 
 
 def _skin_pressure(model: Any, cut: _Cut, load_case: Any, box: BoxFaces) -> Optional[float]:
@@ -494,6 +506,18 @@ def _ledger(holed: Any, holed_case: Any, active: int, F_native: np.ndarray) -> T
         rows[(kind, ident)]['contributions'].append((int(dof), component, float(value)))
     if replay.shape != F_native.shape or not np.array_equal(replay.view(np.int64), F_native.view(np.int64)):
         raise _refuse('COUPLED_LOAD_UNCOVERED', 'ledger_binding', 'the stored native load is not the ledger sum')
+    # Review r2 (ledger): the component inventory against the raw records, not only the replay. A
+    # nodal record of length L yields components 0..min(L, 6)-1, a pressure record one component
+    # per DOF of its element's mapping, each exactly once.
+    for (kind, ident), row in rows.items():
+        if kind == 'nodal':
+            expected = list(range(min(len(holed_case.nodal_loads[ident]), len(holed.mesh.nodes[ident].dofs))))
+        else:
+            expected = list(range(len(holed.mesh.elements[ident].get_dof_mapping(holed.mesh))))
+        seen = sorted(component for _, component, _ in row['contributions'])
+        if seen != expected:
+            raise _refuse('COUPLED_LOAD_UNCOVERED', 'ledger_inventory',
+                          f'{kind} {ident}: components {seen[:12]} do not match the raw record ({len(expected)})')
     return tuple(rows.values())
 
 
@@ -706,6 +730,7 @@ def _check_box(mesh: Any, box: BoxFaces, frame: _Frame, outwards: Sequence[np.nd
 def _require_csr(matrix: Any, what: str) -> sparse.csr_matrix:
     if type(matrix) is not sparse.csr_matrix or matrix.dtype != np.float64:
         raise _refuse('COUPLED_FORMATION_RANGE', 'type', f'{what} must be a float64 scipy.sparse.csr_matrix')
+    _check_csr_structure(matrix, what)
     matrix = matrix.copy()
     matrix.sum_duplicates()
     steps = np.diff(matrix.indices.astype(np.int64))
@@ -716,6 +741,31 @@ def _require_csr(matrix: Any, what: str) -> sparse.csr_matrix:
     if not np.isfinite(matrix.data).all():
         raise _refuse('COUPLED_FORMATION_RANGE', 'nonfinite', f'{what} is not finite')
     return matrix
+
+
+def _check_csr_structure(matrix: sparse.csr_matrix, what: str) -> None:
+    """CSR index validity before any use of the matrix (review r2, C1 structure): integer 1-D index
+    arrays, indptr from 0 to nnz and nondecreasing, data and indices of length nnz, and every column
+    index in [0, ncols)."""
+    def bad(message: str) -> CoupledSolveError:
+        return _refuse('COUPLED_FORMATION_RANGE', 'csr_structure', f'{what}: {message}')
+    shape = matrix.shape
+    if type(shape) is not tuple or len(shape) != 2 or not all(_is_int(s) and int(s) >= 0 for s in shape):
+        raise bad('invalid shape')
+    rows, cols = int(shape[0]), int(shape[1])
+    indptr, indices, data = matrix.indptr, matrix.indices, matrix.data
+    for array in (indptr, indices, data):
+        if type(array) is not np.ndarray or array.ndim != 1:
+            raise bad('index arrays must be 1-D ndarrays')
+    if not (np.issubdtype(indptr.dtype, np.integer) and np.issubdtype(indices.dtype, np.integer)):
+        raise bad('index arrays must be integer')
+    if len(indptr) != rows + 1 or int(indptr[0]) != 0 or np.any(np.diff(indptr.astype(np.int64)) < 0):
+        raise bad('indptr is not a valid row pointer')
+    nnz = int(indptr[-1])
+    if len(indices) != nnz or len(data) != nnz:
+        raise bad('indices/data do not have indptr[-1] entries')
+    if nnz and (int(indices.min()) < 0 or int(indices.max()) >= cols):
+        raise bad('a column index lies outside the matrix')
 
 
 def _require_vector(vector: Any, size: int, what: str) -> np.ndarray:
@@ -880,7 +930,7 @@ def _group_precheck(mesh: Any, name: Any) -> None:
                       f'group {name!r} has {count} facets (1..{_MAX_CONNECTOR_FACETS} allowed)')
 
 
-def _build_connector(trace, prepared, name, knots):
+def _build_connector(trace, prepared, name, knots, n_shell, n_solid):
     from anysolid.coupling import build_weak_connector
     try:
         operator = build_weak_connector(trace, prepared, name, multiplier_breakpoints=knots)
@@ -890,11 +940,17 @@ def _build_connector(trace, prepared, name, knots):
         raise _refuse('COUPLED_TOO_LARGE', 'memory_error', 'out of memory in the connector') from exc
     except ValueError as exc:
         raise _refuse('COUPLED_CONNECTOR_INVALID', 'connector', f'connector refused: {_safe_text(exc)}') from exc
-    affine = operator.affine
-    if type(affine) is not np.ndarray or affine.dtype != np.float64 or _any_nonzero(affine):
-        raise _refuse('COUPLED_CONNECTOR_INVALID', 'affine', 'the connector affine term is not exactly zero')
     # Exact types before any conversion (r1 class 6): vstack would upcast a float32 block.
-    return _require_csr(operator.C_shell, f'C_shell of {name!r}'), _require_csr(operator.C_solid, f'C_solid of {name!r}')
+    C_shell = _require_csr(operator.C_shell, f'C_shell of {name!r}')
+    C_solid = _require_csr(operator.C_solid, f'C_solid of {name!r}')
+    rows = C_shell.shape[0]
+    # Dimensions before use (review r2, C1 structure): one affine entry per multiplier row.
+    if rows < 1 or C_shell.shape != (rows, n_shell) or C_solid.shape != (rows, n_solid):
+        raise _refuse('COUPLED_CONNECTOR_INVALID', 'dimensions', f'the connector blocks of {name!r} have wrong shapes')
+    affine = operator.affine
+    if type(affine) is not np.ndarray or affine.dtype != np.float64 or affine.shape != (rows,) or _any_nonzero(affine):
+        raise _refuse('COUPLED_CONNECTOR_INVALID', 'affine', 'the connector affine term is not exactly zero')
+    return C_shell, C_solid
 
 
 # --- recovery bounds ------------------------------------------------------------------------------
@@ -966,6 +1022,22 @@ def _check_prepared(prepared: Any) -> int:
     if not (_array(coordinates, np.float64, (ndof, 3)) and np.isfinite(coordinates).all()
             and _array(components, np.int64, (ndof,)) and np.isin(components, (0, 1, 2)).all()):
         raise bad('prepared_coefficients', 'the solid coefficient coordinates/components are inconsistent')
+    # Review r2 P1: the coefficient layout of the P2 topology, not only the order label. Vector P2 on
+    # tetrahedra has one coefficient per vertex and per edge for each of the 3 components, and the
+    # vertex coefficients sit at the vertices (a relabelled P1 basis has 3 V coefficients).
+    cells = mesh.cells
+    vertices = np.unique(cells)
+    if len(vertices) != len(mesh.coordinates) or (len(vertices) and (vertices[0] != 0 or vertices[-1] != len(vertices) - 1)):
+        raise bad('prepared_layout', 'every solid vertex must belong to a cell')
+    edges = np.unique(np.sort(cells[:, [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]]].reshape(-1, 2), axis=1), axis=0)
+    per_component = len(vertices) + len(edges)
+    if ndof != 3 * per_component or any(int(np.count_nonzero(components == c)) != per_component for c in range(3)):
+        raise bad('prepared_layout', f'{ndof} solid coefficients do not match the P2 layout 3 x ({len(vertices)} '
+                                     f'vertices + {len(edges)} edges)')
+    keys = {tuple(_float_bits(row).tolist()) for row in mesh.coordinates}
+    at_vertex = sum(1 for row in coordinates if tuple(_float_bits(row).tolist()) in keys)
+    if at_vertex < 3 * len(vertices):
+        raise bad('prepared_layout', 'the solid coefficients do not include the 3 vertex coefficients per vertex')
     return ndof
 
 
@@ -998,27 +1070,38 @@ def _float_nonzero(value: Any) -> bool:
     return bool(_bits_of(float(value)) & 0x7FFF_FFFF_FFFF_FFFF)
 
 
-def _raw_inputs_zero(holed: Any, holed_case: Any, pressure: Optional[float], ledger: Sequence[Mapping[str, Any]],
-                     F: np.ndarray, u0: np.ndarray) -> bool:
-    """True iff every raw input the route consumes is exactly zero (decided on bit patterns)."""
+def _raw_inputs_zero(model: Any, load_case: Any, holed: Any, pressure: Optional[float],
+                     ledger: Sequence[Mapping[str, Any]], F: np.ndarray, u0: np.ndarray) -> bool:
+    """True iff every raw input the route consumes is exactly zero, decided on the original values
+    (review r2 (d): never on a float image of them) and on bit patterns for floats.
+
+    Consumed: the native F and u0; every pressure of the case (kept and transferred); the first
+    min(L, 6) components of every nodal record on a kept node; the prescribed values of every
+    support that names at least one node (review r2 (c): a support with no nodes prescribes
+    nothing, so native reduction consumes none of its values); every MPC right-hand side."""
     if _any_nonzero(F) or _any_nonzero(u0):
         return False
-    if pressure is not None and _float_nonzero(pressure):
+    if pressure is not None and _scalar_nonzero(pressure):
         return False
-    if any(_float_nonzero(p) for p in holed_case.pressure_loads.values()):
+    if any(_scalar_nonzero(p) for p in load_case.pressure_loads.values()):
         return False
+    for nid, load in load_case.nodal_loads.items():
+        if nid in holed.mesh.nodes and any(_scalar_nonzero(v) for v in list(load)[:6]):
+            return False
     for row in ledger:
         if any(_float_nonzero(value) for _, _, value in row.get('contributions', ())):
             return False
-    for bc in holed.boundary_conditions:
-        if any(_float_nonzero(value) for value in bc.dof_constraints.values()):
+    for bc in model.boundary_conditions:
+        if len(bc.node_ids) and any(_scalar_nonzero(value) for value in bc.dof_constraints.values()):
             return False
-    return not any(_float_nonzero(equation.value) for equation in holed.constraint_equations)
+    return not any(_scalar_nonzero(equation.value) for equation in model.constraint_equations)
 
 
 # --- footprint overlap by geometry (review r1 #3, class 3) ------------------------------------------
 
-OVERLAP_TOLERANCE = Fraction(1, 10 ** 9)     # in footprint (affine) coordinates
+def _out_down(value: Fraction) -> float:
+    """The largest binary64 <= value (independent of the FP environment)."""
+    return -_out_up(-value)
 
 
 def _hull_meets_open_box(points: Sequence[Tuple[Fraction, ...]], lo: Sequence[Fraction],
@@ -1046,10 +1129,23 @@ def _hull_meets_open_box(points: Sequence[Tuple[Fraction, ...]], lo: Sequence[Fr
     return True
 
 
-def _check_footprint_overlap(holed: Any, corners: Sequence[np.ndarray], normal: np.ndarray, thickness: float) -> None:
-    """No kept element (its convex hull) and no kept node meets the open footprint prism
-    {c0 + s a + t b + h n : s, t in (tol, 1 - tol), |h| < thickness / 2}, decided by geometry, not
-    by node or edge membership. Floats only pre-select candidates with a 1e-6 margin."""
+def _check_footprint_partition(model: Any, removed: Sequence[int], orphans: Sequence[int],
+                               corners: Sequence[np.ndarray], normal: np.ndarray, thickness: float) -> None:
+    """The removed set is derived from the footprint geometry (review r2 P1 (a)) and no kept shell
+    reaches into the footprint (review r1 #3, r2 (b)), both decided exactly against the open prism
+
+        P = {c0 + s a + t b + h n : 0 < s < 1, 0 < t < 1, |h| < thickness / 2}
+
+    of the corner rectangle, with no tolerance. The rule is hull exclusion: an element meets P iff
+    the convex hull of its nodes does (exact separating-axis test), so a warped kept element whose
+    hull crosses P is refused even when its curved surface would clear it.
+
+    - A removed element must have every node in the closed prism and meet P; the removed set must
+      be exactly the elements that do (``removed_set_geometry``).
+    - A kept element must not meet P, and a kept node must not lie in P (``kept_inside_footprint``).
+
+    The prefilter is geometric and sound: an element whose node bounding box misses the bounding box
+    of P (its 8 vertices exactly, rounded outward to binary64) cannot meet P."""
     c0 = _vec(corners[0])
     a, b, nq = _sub(_vec(corners[1]), c0), _sub(_vec(corners[3]), c0), _vec(normal)
     det = _dot(a, _cross(b, nq))
@@ -1057,40 +1153,50 @@ def _check_footprint_overlap(holed: Any, corners: Sequence[np.ndarray], normal: 
         raise _refuse('COUPLED_CUT_MISMATCH', 'degenerate_footprint', 'the footprint frame is degenerate')
     duals = (_cross(b, nq), _cross(nq, a), _cross(a, b))
     half = _q(thickness) / 2
-    lo = (OVERLAP_TOLERANCE, OVERLAP_TOLERANCE, -half)
-    hi = (1 - OVERLAP_TOLERANCE, 1 - OVERLAP_TOLERANCE, half)
-    nodes = holed.mesh.nodes
+    lo, hi = (Fraction(0), Fraction(0), -half), (Fraction(1), Fraction(1), half)
+    vertices = [tuple(c0[k] + s * a[k] + t * b[k] + h * nq[k] for k in range(3))
+                for s in (0, 1) for t in (0, 1) for h in (-half, half)]
+    box_lo = np.array([_out_down(min(v[k] for v in vertices)) for k in range(3)])
+    box_hi = np.array([_out_up(max(v[k] for v in vertices)) for k in range(3)])
+    nodes = model.mesh.nodes
     ids = list(nodes)
     xyz = np.array([nodes[nid].coords() for nid in ids], dtype=float).reshape(-1, 3)
-    frame = np.array([[float(v) for v in (a[k], b[k], nq[k])] for k in range(3)])
-    local = np.linalg.solve(frame, (xyz - np.asarray(corners[0], dtype=float)).T).T if len(ids) else xyz
+    if not np.isfinite(xyz).all():
+        raise _refuse('COUPLED_CUT_MISMATCH', 'kept_element_geometry', 'a shell node coordinate is not finite')
     where = {nid: i for i, nid in enumerate(ids)}
-    margin = 1e-6
-    t_half = float(thickness) / 2 * (1 + margin)
     cache: Dict[int, Tuple[Fraction, Fraction, Fraction]] = {}
 
-    def exact(nid: int):
+    def local(nid: int):
         if nid not in cache:
-            r = _sub(_vec(nodes[nid].coords()), c0)
+            r = _sub(_vec(xyz[where[nid]]), c0)
             cache[nid] = tuple(_dot(r, d) / det for d in duals)
         return cache[nid]
 
-    def candidate(rows: np.ndarray) -> bool:
-        s, t, h = rows[:, 0], rows[:, 1], rows[:, 2]
-        return not (s.max() < -margin or s.min() > 1 + margin or t.max() < -margin or t.min() > 1 + margin
-                    or h.max() < -t_half or h.min() > t_half)
+    def near(members: Sequence[int]) -> bool:
+        rows = xyz[[where[n] for n in members]]
+        return bool((rows.max(axis=0) >= box_lo).all() and (rows.min(axis=0) <= box_hi).all())
 
-    groups = [(f'node {nid}', (nid,)) for nid in ids]
-    for eid, element in holed.mesh.elements.items():
+    removed_set = set(removed)
+    orphan_set = set(orphans)
+    for eid, element in model.mesh.elements.items():
         node_ids = getattr(element, 'node_ids', None)
         if node_ids is None or not len(node_ids) or not all(_is_int(n) and int(n) in where for n in node_ids):
-            raise _refuse('COUPLED_CUT_MISMATCH', 'kept_element_geometry', f'kept element {eid} has no checkable nodes')
-        groups.append((f'kept element {eid}', tuple(int(n) for n in node_ids)))
-    for label, members in groups:
-        if not candidate(local[[where[n] for n in members]]):
+            raise _refuse('COUPLED_CUT_MISMATCH', 'kept_element_geometry', f'element {eid} has no checkable nodes')
+        members = tuple(dict.fromkeys(int(n) for n in node_ids))
+        meets = near(members) and _hull_meets_open_box([local(n) for n in members], lo, hi)
+        if eid in removed_set:
+            closed = meets and all(lo[k] <= p[k] <= hi[k] for p in map(local, members) for k in range(3))
+            if not closed:
+                raise _refuse('COUPLED_CUT_MISMATCH', 'removed_set_geometry',
+                              f'removed element {eid} is not an element of the footprint')
+        elif meets:
+            raise _refuse('COUPLED_CUT_MISMATCH', 'kept_inside_footprint', f'kept element {eid} overlaps the footprint interior')
+    for nid in ids:
+        if nid in orphan_set or not near((nid,)):
             continue
-        if _hull_meets_open_box([exact(n) for n in dict.fromkeys(members)], lo, hi):
-            raise _refuse('COUPLED_CUT_MISMATCH', 'kept_inside_footprint', f'{label} overlaps the footprint interior')
+        p = local(nid)
+        if all(lo[k] < p[k] < hi[k] for k in range(3)):
+            raise _refuse('COUPLED_CUT_MISMATCH', 'kept_inside_footprint', f'node {nid} lies in the footprint interior')
 
 
 # --- the entry ------------------------------------------------------------------------------------
@@ -1117,7 +1223,13 @@ def solve_shell_solid_coupled(fe_model: Any, prepared: Any, *, removed_element_i
     """Solve the shell (minus the removed elements) and the floating solid detail coupled along the
     cut; certify and verify the stored system exactly, or refuse with a ``COUPLED_*`` code.
 
-    Every refusal is a :class:`CoupledSolveError`; no other exception escapes."""
+    Every refusal is a :class:`CoupledSolveError`. Every ``Exception`` is translated into one;
+    ``KeyboardInterrupt``, ``SystemExit`` and other ``BaseException`` subclasses that are not
+    ``Exception`` propagate unchanged (owner decision OD9, docs/SOLID_COUPLING.md).
+
+    Trusted-construction boundary (OD9): the claims cover untouched objects built by ANYfem's
+    pipeline only (``PreparedSolid`` from ``anysolid.prepare``, the FEModel from ANYfem's builder,
+    the cut from ``cut_solid_submodel``). Objects modified after construction are out of scope."""
     try:
         return _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, resources,
                       clock or time.perf_counter)
@@ -1229,8 +1341,7 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
     centre = _vec(centre_float)
     diagonal_lo = _sqrt_lo(_norm2(_sub(_vec(corners[2]), _vec(corners[0]))))
     frame = _Frame(corners, centre, n, thickness, diagonal_lo, tuple(cut.chains[ccw_chains[(j0 + k) % 4]] for k in range(4)))
-    _check_footprint_interior(fe_model, cut, corners)
-    _check_footprint_overlap(holed, corners, n, thickness)
+    _check_footprint_partition(fe_model, cut.removed, cut.orphans, corners, n, thickness)
     outwards = [np.asarray(tr.solid_outward, dtype=float) for tr in side_traces]
     t0 = clock()
     box_checked = BoxFaces(divisions, box.skin, box.sides)
@@ -1253,11 +1364,19 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
     # Native shell: unchanged assembly and reduction on the holed model.
     t0 = clock()
     K, F, _info = _native(assemble_system, holed, holed_case)
+    active = int(holed.mesh.dof_manager.total_dofs)
+    # K and F are validated before native reduction consumes them (review r2, C1 structure): exact
+    # types, CSR structure, shape, finiteness and the raw window. The original objects go on.
+    K_checked = _require_csr(K, 'K')
+    if K_checked.shape != (active, active):
+        raise _refuse('COUPLED_FORMATION_RANGE', 'shape', 'K does not match the holed shell DOFs')
+    _check_window(K_checked.data, 'K')
+    F = _require_vector(F, active, 'the native load F')
+    _check_window(F, 'F')
+    del K_checked
     K_s, f_s, T, u0, independent, _reduction = _native(build_constraint_transformation, K, F, holed)
     timings['native'] = clock() - t0
-    active = int(holed.mesh.dof_manager.total_dofs)
     # Native outputs: exact types before any use (r1 class 6; previously T.tocsr() ran first).
-    F = _require_vector(F, active, 'the native load F')
     T = _require_csr(T, 'T')
     if T.shape[0] != active:
         raise _refuse('COUPLED_FORMATION_RANGE', 'shape', 'T does not match the holed shell DOFs')
@@ -1287,7 +1406,7 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
         if stations[0] > stations[-1]:
             stations = stations[::-1]
         _connector_prechecks(knots, stations, float(trace.length), float(trace.tolerance))
-        Ck_shell, Ck_solid = _build_connector(trace, prepared, name, knots)
+        Ck_shell, Ck_solid = _build_connector(trace, prepared, name, knots, active, n_v)
         shell_rows.append(Ck_shell)
         solid_rows.append(Ck_solid)
         side_rows.append(Ck_shell.shape[0])
@@ -1295,11 +1414,13 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
     C_shell = sparse.vstack(shell_rows, format='csr')
     C_solid = sparse.vstack(solid_rows, format='csr')
     timings['connector'] = clock() - t0
-    # The C_shell column rule.
-    t_rows = np.diff(T.indptr)
+    # The C_shell column rule. A T row is active iff it holds a nonzero value, decided on the bits
+    # (review r2 P1 (c)): a stored explicit 0.0 must not make an inactive DOF look active.
+    t_rows = np.zeros(T.shape[0], dtype=bool)
+    t_rows[np.repeat(np.arange(T.shape[0]), np.diff(T.indptr))[_nonzero_mask(T.data)]] = True
     u0_nonzero = _nonzero_mask(u0)
     for j in np.unique(C_shell.indices[_nonzero_mask(C_shell.data)]):
-        if t_rows[j] == 0 and not u0_nonzero[j]:
+        if not t_rows[j] and not u0_nonzero[j]:
             raise _refuse('COUPLED_TARGET_REMOVED', 'connector_column', f'connector DOF {int(j)} is inactive')
     poll()
 
@@ -1323,7 +1444,7 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
     # Zero-load path only when every consumed raw input is exactly zero (r1 #4, class 4): the native
     # F and u0, every pressure (kept and transferred), every consumed nodal component, every
     # prescribed support value and MPC right-hand side.
-    raw_zero = _raw_inputs_zero(holed, holed_case, pressure, ledger, F, u0)
+    raw_zero = _raw_inputs_zero(fe_model, load_case, holed, pressure, ledger, F, u0)
     poll()
     solved = certified_solve(formed.system, formed.rhs, raw_load_zero=raw_zero, memory_limit_bytes=memory_limit,
                              cancel=check, clock=clock)
@@ -1409,8 +1530,6 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
     verification['v5_balance'] = _to_float(imbalance / reference) if reference else 0.0
     timings['recovery'] = clock() - t0
     timings['total'] = clock() - t_start
-    # r1 #8 (class 7): a cancellation during recovery or verification never returns success.
-    poll()
 
     node_ids = tuple(int(nid) for nid in holed.mesh.nodes)
     order = np.concatenate([np.asarray(holed.mesh.nodes[nid].dofs, dtype=np.int64) for nid in node_ids]) \
@@ -1418,12 +1537,16 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
     pick = lambda b: Bounded(b.values[order], b.bounds[order])  # noqa: E731
     reaction_out = np.zeros(active)
     reaction_out[dependent] = reactions[dependent]
-    return CoupledSolution(
+    result = CoupledSolution(
         shell_node_ids=node_ids, shell_displacements=pick(shell), solid_coefficients=solid, multipliers=lam,
         shell_interface_forces=pick(shell_force), solid_interface_forces=solid_force,
         side_resultants=tuple(resultants), reactions=reaction_out[order],
         footprint_centre=centre_float.copy(), echo=echo, ledger=ledger,
         certificate=dict(solved.certificate), verification=verification, sizes=sizes, timings=timings)
+    # r1 #8 (class 7), r2 (d): the result is built first, then the last poll, so a cancellation during
+    # recovery, verification or result construction never returns success.
+    poll()
+    return result
 
 
 def _v4_side_balance(name: str, CRs: Sequence[Sequence[Fraction]], CRv: Sequence[Sequence[Fraction]],
