@@ -255,19 +255,17 @@ def test_od13_worker_refuses_more_than_one_blas_thread(monkeypatch):
 
 def test_od13_worker_refuses_without_threadpoolctl(monkeypatch, tmp_path):
     """threadpoolctl not importable in the worker: the thread count cannot be verified, so it refuses."""
-    (tmp_path / 'threadpoolctl.py').write_text("raise ImportError('blocked for the test')\n")
-    # Review r7: the parent passes its threadpoolctl file and that file's digest; the seam is the
-    # parent's resolved module (as in test_r6_p2_child_blas_probe_memory_error_is_too_large).
-    module = types.ModuleType('threadpoolctl')
-    module.__file__ = str(tmp_path / 'threadpoolctl.py')
-    monkeypatch.setitem(sys.modules, 'threadpoolctl', module)
+    # Review r8: the parent sends the RECORD-checked bytes of the installed threadpoolctl and the child
+    # runs exactly those; the seam is the bytes sent (sys.modules no longer selects the file).
+    from _coupled_worker_patch import patch_threadpoolctl
+    patch_threadpoolctl(monkeypatch, cc, "raise ImportError('blocked for the test')\n")
     S = sparse.csr_matrix(np.diag([4.0, 2.0, 1.0]))
     refused('COUPLED_UNCERTIFIED', cc._certify_solve_matrix, S, reason='blas_threads')
 
 
 def test_od13_worker_refuses_another_numpy(monkeypatch, tmp_path):
     original = cc._svd_worker_command
-    monkeypatch.setattr(cc, '_svd_worker_command', lambda: original()[:4] + [str(tmp_path)] + original()[5:])
+    monkeypatch.setattr(cc, '_svd_worker_command', lambda *args: original()[:4] + [str(tmp_path)] + original()[5:])
     S = sparse.csr_matrix(np.diag([4.0, 2.0, 1.0]))
     error = refused('COUPLED_UNCERTIFIED', cc._certify_solve_matrix, S, reason='svd_worker')
     assert error.diagnostics['worker_failure'] == 'environment'
@@ -335,7 +333,7 @@ def test_od13_cancel_mid_svd_is_prompt():
 def test_od13_worker_timeout_refuses_and_terminates(monkeypatch):
     monkeypatch.setattr(cc, '_SVD_WORKER_TIMEOUT_SECONDS', 1.0)
     monkeypatch.setattr(cc, '_svd_worker_command',
-                        lambda: [sys.executable, '-I', '-S', '-c', 'import time; time.sleep(60)'])
+                        lambda *args: [sys.executable, '-I', '-S', '-c', 'import time; time.sleep(60)'])
     seen = []
     original_poll = cc._poll
 
@@ -434,7 +432,7 @@ def test_od13_bad_worker_output_refuses(monkeypatch, case):
     refusal or MemoryError keeps its code."""
     body, (code, reason) = _CASES[case]
     script = _SCRIPT.format(body=body.format())
-    monkeypatch.setattr(cc, '_svd_worker_command', lambda: [sys.executable, '-I', '-S', '-c', script])
+    monkeypatch.setattr(cc, '_svd_worker_command', lambda *args: [sys.executable, '-I', '-S', '-c', script])
     S = sparse.csr_matrix(np.diag([4.0, 2.0, 1.0]))
     refused(code, cc._certify_solve_matrix, S, reason=reason)
 
@@ -443,7 +441,7 @@ def test_od13_worker_linalg_failure_is_a_numerical_failure(monkeypatch):
     body = ("reply({{'verdict': 'certificate', 'certificate': cert(drop=" + _SVD_KEYS +
             ", accepted=False, reason='numerical_failure:LinAlgError')}}, [('shifts', SHIFTS)])")
     script = _SCRIPT.format(body=body.format())
-    monkeypatch.setattr(cc, '_svd_worker_command', lambda: [sys.executable, '-I', '-S', '-c', script])
+    monkeypatch.setattr(cc, '_svd_worker_command', lambda *args: [sys.executable, '-I', '-S', '-c', script])
     certificate = cc._certify_solve_matrix(sparse.csr_matrix(np.diag([4.0, 2.0, 1.0])))
     assert certificate['accepted'] is False and certificate['reason'] == 'numerical_failure:LinAlgError'
 
@@ -462,7 +460,7 @@ def test_od13_worker_linalg_failure_in_the_real_worker(monkeypatch):
 def test_od13_valid_worker_record_is_accepted(monkeypatch):
     """Control for the cases above: a well-formed record from the same harness is used as is."""
     script = _SCRIPT.format(body=_OK.format())
-    monkeypatch.setattr(cc, '_svd_worker_command', lambda: [sys.executable, '-I', '-S', '-c', script])
+    monkeypatch.setattr(cc, '_svd_worker_command', lambda *args: [sys.executable, '-I', '-S', '-c', script])
     certificate = cc._certify_solve_matrix(sparse.csr_matrix(np.eye(3)))
     assert certificate['accepted'] is True and certificate['sigma_max'] == 1.0 == certificate['sigma_min']
 

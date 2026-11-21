@@ -6,26 +6,33 @@ profile and audit hooks, other threads changing the BLAS pools or the floating-p
 review r6 showed a trace hook toggling FTZ/DAZ around the parent's equilibration. So every certificate
 decision runs in a fresh interpreter that this module is the whole program of:
 
-    <sys.executable> -I -S _coupled_svd_worker.py <numpy package dir> <threadpoolctl file>
-                                                  <numpy version> <threadpoolctl sha256>
+    <sys.executable> -I -S _coupled_svd_worker.py <numpy package dir> <numpy version> <threadpoolctl sha256>
 
 ``-I`` ignores every ``PYTHON*`` variable and the user site and keeps the script and working
 directories off ``sys.path``; ``-S`` skips ``site``, so no ``.pth`` file, ``sitecustomize`` or
 ``usercustomize`` runs. ``sys.path`` stays the standard library only. A finder appended to
 ``sys.meta_path`` (after the standard ones) resolves exactly one top-level name, ``numpy``, from the
 directory that holds the given NumPy package; the loaded package must be that directory and have the
-parent's version. ``threadpoolctl`` is executed from the bytes of exactly the given file, whose SHA-256
-must equal the parent's (review r7 P1: a same-name package next to the file no longer wins). No other
-module of those directories can be imported and no standard-library module can be shadowed (review r6
-P1). The arithmetic module ``_coupled_certificate_math.py`` next to this file is loaded by path; nothing
-else from anyfesolver is imported. The environment is minimal (one BLAS, OpenMP and MKL thread).
+parent's version. The parent resolved both NumPy and threadpoolctl through the RECORD of their installed
+distributions (review r8 P1, never through ``sys.modules`` or ``sys.path``), and it sends threadpoolctl's
+RECORD-checked bytes in the request: the child executes exactly those bytes, after checking their
+SHA-256 against the argument; it opens no threadpoolctl file. No other module of NumPy's directory can
+be imported and no standard-library module can be shadowed (review r6 P1). The arithmetic module
+``_coupled_certificate_math.py`` next to this file is loaded by path; nothing else from anyfesolver is
+imported. The environment is minimal (one BLAS, OpenMP and MKL thread).
+
+Review r8: the whole request is read and validated before any verdict, the candidate and the end of
+the stream included, on every path (an early refusal such as ``zero_row`` too). The one exception is a
+NumPy that cannot be loaded or is not the parent's: the request cannot be parsed without NumPy and the
+arithmetic module, so ``numpy_mismatch`` is sent first (the parent's RECORD check precedes it).
 
 The child checks its environment (one BLAS thread, round-to-nearest, gradual underflow) at start,
 after reading the request, between the equilibration and the SVD, after the SVD, after reading the
 candidate and before replying. Protocol (little endian; docs/SOLID_COUPLING.md, "Certificate process"):
 
-  stdin   b'ANYCRT02' | u64 L | header (L bytes of JSON) | arrays in header order
-          [then, for candidate 'follows': b'XV' | n float64  or  b'XF' (no candidate)]
+  stdin   b'ANYCRT03' | u64 L | header (L bytes of JSON) | threadpoolctl source (header bytes)
+          | arrays in header order
+          [then, for candidate 'follows': b'XV' | n float64  or  b'XF' (no candidate)] | end of stream
   stdout  b'ANYCRR02' | u64 L | reply (L bytes of JSON) | the sections the reply lists
   exit    0 verdict (accept, refuse, certificate, no_candidate); 3 environment; 4 memory; 2 protocol
   stderr  one line 'ANYSVD-REPORT {json}' (diagnostics and timings, never decided on).
@@ -40,19 +47,16 @@ import time
 
 _STARTED = time.perf_counter()
 
-REQUEST_MAGIC = b'ANYCRT02'
+REQUEST_MAGIC = b'ANYCRT03'
+REQUEST_VERSION = 3
 REPLY_MAGIC = b'ANYCRR02'
 REPORT_PREFIX = 'ANYSVD-REPORT '
 EXIT_OK, EXIT_PROTOCOL, EXIT_ENVIRONMENT, EXIT_MEMORY = 0, 2, 3, 4
 ENVIRONMENT_REASONS = ('blas_threads', 'subnormal_flush', 'rounding_mode', 'numpy_mismatch',
                        'threadpoolctl_mismatch')
-# The digest the parent sends when it found no readable threadpoolctl file (the child then has none).
-NO_DIGEST = 'none'
 MATH_FILE = '_coupled_certificate_math.py'
-# Upper bounds on the request, checked before any allocation (the parent sends far less).
-MAX_HEADER_BYTES = 1 << 24
-MAX_EXPORTS = 64
-MAX_EXPORT_ENTRIES = 1 << 26
+# The request limits are the arithmetic module's MAX_* constants (review r8: one source; the parent
+# refuses above them before starting the child).
 
 
 class _ProtocolError(Exception):
@@ -90,32 +94,22 @@ def _install_finder(numpy_dir: str) -> None:
     sys.meta_path.append(_ExactFinder({'numpy': os.path.dirname(os.path.abspath(numpy_dir))}))
 
 
-def _load_threadpoolctl(path: str, digest: str) -> None:
-    """Execute threadpoolctl from the bytes of exactly ``path`` (one read: the bytes hashed are the
-    bytes run) after checking their SHA-256 against the parent's ``digest`` (review r7 P1). Without a
-    readable file, or when the module fails to execute, ``threadpoolctl`` stays unimportable and the
-    thread probe refuses ``blas_threads`` (as before). A different file refuses
-    ``threadpoolctl_mismatch``. A MemoryError propagates."""
+def _load_threadpoolctl(source: bytes, digest: str) -> None:
+    """Execute threadpoolctl from exactly the bytes the parent sent in the request (review r8 P1: the
+    parent read them from the installed distribution and checked them against its RECORD) after
+    checking their SHA-256 against ``digest`` (``threadpoolctl_mismatch`` otherwise). No file is opened.
+    When the module fails to execute, ``threadpoolctl`` stays unimportable and the thread probe refuses
+    ``blas_threads``. A MemoryError propagates."""
     import hashlib
-    from importlib.util import module_from_spec, spec_from_file_location
+    import types
     sys.modules['threadpoolctl'] = None                      # unimportable unless loaded below
-    path = os.path.abspath(path)
-    if digest == NO_DIGEST:
-        return
-    try:
-        with open(path, 'rb') as handle:
-            source = handle.read()
-    except OSError:
-        return
     if hashlib.sha256(source).hexdigest() != digest:
         raise _Environment('threadpoolctl_mismatch')
-    package = os.path.basename(path) == '__init__.py'
-    spec = spec_from_file_location('threadpoolctl', path,
-                                   submodule_search_locations=[os.path.dirname(path)] if package else None)
-    module = module_from_spec(spec)
+    module = types.ModuleType('threadpoolctl')
+    module.__file__ = 'threadpoolctl.py'
     sys.modules['threadpoolctl'] = module
     try:
-        exec(compile(source, path, 'exec'), module.__dict__)
+        exec(compile(source, 'threadpoolctl.py', 'exec'), module.__dict__)
     except MemoryError:
         raise
     except Exception:  # noqa: BLE001  (a failing threadpoolctl: not verifiable, blas_threads)
@@ -168,6 +162,66 @@ def _check(math_module, np, report: dict, stage: str) -> None:
 
 # --- request -------------------------------------------------------------------------------------------
 
+class _Input:
+    """stdin with a byte count and the request plan (review r8): once the header is known, ``planned``
+    is the length of the request up to the candidate, and :meth:`complete` reads (and discards) what
+    is left of it, then the candidate when one follows, then checks the end of the stream. Every
+    verdict is written only after :meth:`complete`, so a trailing byte is a protocol error on every
+    path, early refusals included."""
+
+    def __init__(self, raw) -> None:
+        self._raw = raw
+        self.consumed = 0
+        self.planned = None
+        self.follows = False
+        self.size = 0
+        self.candidate = None            # (tag, bytes or None) once read
+        self.ended = False
+
+    def readinto(self, view) -> int:
+        got = self._raw.readinto(view) or 0
+        self.consumed += got
+        return got
+
+    def end(self) -> None:
+        """The parent closes stdin after its last byte: anything more is malformed (review r7)."""
+        if not self.ended:
+            if self.readinto(memoryview(bytearray(1))):
+                raise _ProtocolError('trailing bytes')
+            self.ended = True
+
+    def take_candidate(self) -> tuple:
+        """The candidate section (b'XF', or b'XV' and n float64), read once, then the end of stream."""
+        if self.candidate is None:
+            tag = bytes(_read_exact(self, 2))
+            if tag == b'XF':
+                payload = None
+            elif tag == b'XV':
+                payload = _read_exact(self, 8 * self.size)
+            else:
+                raise _ProtocolError('candidate tag')
+            self.end()
+            self.candidate = (tag, payload)
+        return self.candidate
+
+    def complete(self) -> None:
+        """The rest of the request before a verdict (no allocation beyond one small buffer)."""
+        if self.planned is None:
+            return                       # the header was never read (numpy_mismatch only)
+        left = self.planned - self.consumed
+        if left > 0:
+            scratch = memoryview(bytearray(min(left, 1 << 16)))
+            while left > 0:
+                got = self.readinto(scratch[:min(left, len(scratch))])
+                if not got:
+                    raise _ProtocolError('short read')
+                left -= got
+        if self.follows:
+            self.take_candidate()
+        else:
+            self.end()
+
+
 def _read_exact(stream, count: int) -> bytearray:
     buffer = bytearray(count)
     view, done = memoryview(buffer), 0
@@ -196,7 +250,8 @@ def _expected_constants(m) -> dict:
             'dense_copies': m.DENSE_COPIES, 'sqrt_bits': m.SQRT_BITS}
 
 
-_HEADER_KEYS = {'version', 'mode', 'n', 'nnz', 'raw_load_zero', 'candidate', 'memory_limit', 'constants', 'exports'}
+_HEADER_KEYS = {'version', 'mode', 'n', 'nnz', 'raw_load_zero', 'candidate', 'memory_limit', 'constants', 'exports',
+                'threadpoolctl_bytes'}
 _EXPORT_KEYS = {'rows', 'nnz', 'coefficients', 'text_bytes', 'offsets'}
 
 
@@ -233,12 +288,14 @@ def _header(m, raw: bytes) -> dict:
         header = _strict_json(raw)
     except (UnicodeDecodeError, ValueError) as exc:
         raise _ProtocolError('header') from exc
-    if type(header) is not dict or set(header) != _HEADER_KEYS or header['version'] != 2 \
+    if type(header) is not dict or set(header) != _HEADER_KEYS or header['version'] != REQUEST_VERSION \
             or type(header['version']) is not int:
         raise _ProtocolError('header keys')
     n, nnz = header['n'], header['nnz']
     if not (_is_int(n) and _is_int(nnz) and 0 <= n and 0 <= nnz <= n * n):
         raise _ProtocolError('sizes')
+    if not _is_int(header['threadpoolctl_bytes']) or not 0 < header['threadpoolctl_bytes'] <= m.MAX_THREADPOOLCTL_BYTES:
+        raise _ProtocolError('threadpoolctl bytes')
     if header['mode'] not in ('certificate', 'solve') or type(header['mode']) is not str:
         raise _ProtocolError('mode')
     if type(header['raw_load_zero']) is not bool or type(header['candidate']) is not str:
@@ -249,7 +306,7 @@ def _header(m, raw: bytes) -> dict:
     if not _same(header['constants'], _expected_constants(m)):
         raise _ProtocolError('constants')
     exports = header['exports']
-    if type(exports) is not list or len(exports) > MAX_EXPORTS:
+    if type(exports) is not list or len(exports) > m.MAX_EXPORTS:
         raise _ProtocolError('exports')
     if header['mode'] == 'certificate':
         if header['candidate'] != 'none' or exports or header['raw_load_zero']:
@@ -260,12 +317,23 @@ def _header(m, raw: bytes) -> dict:
         if type(item) is not dict or set(item) != _EXPORT_KEYS or not _is_int(item['rows']) \
                 or not _is_int(item['nnz']) or not _is_int(item['text_bytes']) or type(item['offsets']) is not bool \
                 or item['coefficients'] not in ('float', 'rational') or type(item['coefficients']) is not str \
-                or not 0 <= item['rows'] <= MAX_EXPORT_ENTRIES or not 0 <= item['nnz'] <= MAX_EXPORT_ENTRIES \
-                or not 0 <= item['text_bytes'] <= 64 * MAX_EXPORT_ENTRIES \
+                or not 0 <= item['rows'] <= m.MAX_EXPORT_ENTRIES or not 0 <= item['nnz'] <= m.MAX_EXPORT_ENTRIES \
+                or not 0 <= item['text_bytes'] <= m.MAX_EXPORT_TEXT_BYTES \
                 or (item['coefficients'] == 'float' and item['text_bytes'] != 0) \
                 or (item['coefficients'] == 'rational' and (item['text_bytes'] == 0) != (item['nnz'] == 0)):
             raise _ProtocolError('export')
     return header
+
+
+def _planned_bytes(header: dict) -> int:
+    """Bytes of the request after the header JSON, up to the candidate (Python integers)."""
+    n, nnz = header['n'], header['nnz']
+    total = header['threadpoolctl_bytes'] + 8 * (n + 1) + 16 * nnz + (8 * n if header['mode'] == 'solve' else 0)
+    for item in header['exports']:
+        total += 8 * (item['rows'] + 1) + 8 * item['nnz']
+        total += 8 * item['nnz'] if item['coefficients'] == 'float' else item['text_bytes']
+        total += 8 * item['rows'] if item['offsets'] else 0
+    return total
 
 
 def _read_export(stream, m, np, item: dict, n: int) -> tuple:
@@ -310,31 +378,39 @@ def _encode_certificate(m, certificate: dict) -> dict:
     return out
 
 
-def _end_of_request(stdin) -> None:
-    """The parent closes stdin after the last byte it sends: anything more is malformed (review r7)."""
-    if stdin.read(1):
-        raise _ProtocolError('trailing bytes')
-
-
-def _run(m, np, stdin, report: dict) -> tuple:
-    """Returns (reply dict, sections list of (name, bytes))."""
+def _read_request(m, np, stdin: _Input, report: dict) -> tuple:
+    """The whole request up to the candidate, validated (review r8): (header, threadpoolctl source,
+    request arrays). Without a candidate the end of the stream is checked here too."""
     head = _read_exact(stdin, 16)
     if bytes(head[:8]) != REQUEST_MAGIC:
         raise _ProtocolError('magic')
     length = struct.unpack('<Q', bytes(head[8:]))[0]
-    if length > MAX_HEADER_BYTES:
+    if length > m.MAX_HEADER_BYTES:
         raise _ProtocolError('header length')
     header = _header(m, bytes(_read_exact(stdin, length)))
+    stdin.planned = stdin.consumed + _planned_bytes(header)
+    stdin.follows, stdin.size = header['candidate'] == 'follows', header['n']
     n, nnz, solve = header['n'], header['nnz'], header['mode'] == 'solve'
     started = time.perf_counter()
+    source = bytes(_read_exact(stdin, header['threadpoolctl_bytes']))
     indptr = _array(stdin, np, '<i8', n + 1)
     indices = _array(stdin, np, '<i8', nnz)
     data = _array(stdin, np, '<f8', nnz)
     b = _array(stdin, np, '<f8', n) if solve else None
     exports = [_read_export(stdin, m, np, item, n) for item in header['exports']]
-    if header['candidate'] != 'follows':
-        _end_of_request(stdin)
+    if stdin.consumed != stdin.planned:
+        raise _ProtocolError('request length')
+    if not stdin.follows:
+        stdin.end()
     report['seconds_read'] = time.perf_counter() - started
+    return header, source, (indptr, indices, data, b, exports)
+
+
+def _run(m, np, stdin: _Input, header: dict, arrays: tuple, report: dict) -> tuple:
+    """The certificate on the read request. Returns (reply dict, sections list of (name, bytes)); the
+    caller completes the request (candidate, end of stream) before it writes any verdict."""
+    n, solve = header['n'], header['mode'] == 'solve'
+    indptr, indices, data, b, exports = arrays
     _check(m, np, report, 'request')
 
     def refuse(code, reason, message, **diagnostics):
@@ -401,15 +477,11 @@ def _run(m, np, stdin, report: dict) -> tuple:
     if header['candidate'] == 'zero':
         x = np.zeros(n)
     else:
-        tag = bytes(_read_exact(stdin, 2))
+        tag, payload = stdin.take_candidate()             # the end of the stream is checked with it
         if tag == b'XF':
-            _end_of_request(stdin)
             _check(m, np, report, 'after')
             return {'verdict': 'no_candidate', 'certificate': public}, []
-        if tag != b'XV':
-            raise _ProtocolError('candidate tag')
-        x = _array(stdin, np, '<f8', n)
-        _end_of_request(stdin)
+        x = np.frombuffer(payload, dtype='<f8').astype('f8', copy=True) if n else np.zeros(0)
         if bool(((m._float_bits(x) & m._ABS_MASK) >= m._INF_BITS).any()):
             return refuse('COUPLED_UNCERTIFIED', 'candidate_failed', 'the candidate solve is not finite',
                           certificate=public)
@@ -460,12 +532,18 @@ def _write_reply(out, reply: dict, sections: list) -> None:
 
 def _main(argv) -> int:
     out = sys.stdout.buffer
+    stdin = _Input(sys.stdin.buffer)
     report = {'isolated': sys.flags.isolated, 'no_site': sys.flags.no_site,
               'ignore_environment': sys.flags.ignore_environment, 'no_user_site': sys.flags.no_user_site,
               'site_loaded': 'site' in sys.modules, 'sitecustomize_loaded': 'sitecustomize' in sys.modules,
               'environment_keys': sorted(os.environ), 'sys_path': list(sys.path)}
 
     def finish(reply: dict, sections: list, code: int) -> int:
+        # Review r8: no verdict before the whole request, its candidate and the end of the stream.
+        try:
+            stdin.complete()
+        except _ProtocolError:
+            return EXIT_PROTOCOL
         _write_reply(out, reply, sections)
         try:
             report['seconds_total'] = time.perf_counter() - _STARTED
@@ -476,7 +554,7 @@ def _main(argv) -> int:
             pass
         return code
 
-    if len(argv) != 5:
+    if len(argv) != 4:
         return EXIT_PROTOCOL
     try:
         _install_finder(argv[1])
@@ -487,13 +565,14 @@ def _main(argv) -> int:
         report['numpy'] = np.__version__
         report['seconds_startup'] = time.perf_counter() - _STARTED
         if os.path.normcase(os.path.dirname(os.path.abspath(np.__file__))) != os.path.normcase(os.path.abspath(argv[1])) \
-                or np.__version__ != argv[3]:
+                or np.__version__ != argv[2]:
             return finish({'verdict': 'environment', 'reason': 'numpy_mismatch'}, [], EXIT_ENVIRONMENT)
-        _load_threadpoolctl(argv[2], argv[4])
         m = _load_math()
+        header, source, arrays = _read_request(m, np, stdin, report)     # validated before any verdict
+        _load_threadpoolctl(source, argv[3])
         report['modules'] = sorted(name for name in sys.modules if '.' not in name)
         _check(m, np, report, 'start')
-        reply, sections = _run(m, np, sys.stdin.buffer, report)
+        reply, sections = _run(m, np, stdin, header, arrays, report)
         report['modules'] = sorted(name for name in sys.modules if '.' not in name)
         return finish(reply, sections, EXIT_OK)
     except _Environment as exc:

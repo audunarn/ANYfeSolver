@@ -36,6 +36,15 @@ DENSE_COPIES = 4
 SQRT_BITS = 120
 EPS = Fraction(1, 2 ** 52)
 
+# --- Request limits (review r8): one source for both processes. The parent refuses above them with a
+# code (``export_limit``, ``threadpoolctl_mismatch``) before it starts the child; the child refuses
+# above them (protocol error) before any allocation.
+MAX_HEADER_BYTES = 1 << 24
+MAX_EXPORTS = 64
+MAX_EXPORT_ENTRIES = 1 << 26
+MAX_EXPORT_TEXT_BYTES = 64 * MAX_EXPORT_ENTRIES
+MAX_THREADPOOLCTL_BYTES = 1 << 22
+
 _SIGN_BIT = 1 << 63
 _FRACTION_BITS = (1 << 52) - 1
 _INF_BITS = 0x7FF << 52
@@ -268,11 +277,28 @@ class CSR:
         self.indptr, self.indices, self.data = indptr, indices, data
 
 
+def row_pointer_reason(indptr, nnz: int):
+    """None iff ``indptr`` is a CSR row pointer over ``nnz`` entries: a 1-D integer ndarray with
+    indptr[0] == 0, indptr[-1] == nnz, nondecreasing (review r8 P2).
+
+    Decided by element comparisons and Python integers only. ``np.diff`` of int64 entries can
+    overflow: [0, 2^62, -2^63, -2^62, 0] has four positive differences. A comparison cannot overflow,
+    and a nondecreasing pointer from 0 to nnz has every entry and every step in [0, nnz], so a later
+    ``np.diff`` of it is exact."""
+    if type(indptr) is not np.ndarray or indptr.ndim != 1 or indptr.shape[0] < 1 or indptr.dtype.kind not in 'iu':
+        return 'structure'
+    if int(indptr[0]) != 0 or int(indptr[-1]) != int(nnz):
+        return 'structure'
+    if indptr.shape[0] > 1 and bool((indptr[1:] < indptr[:-1]).any()):
+        return 'structure'
+    return None
+
+
 def canonical_csr_reason(size: int, indptr: np.ndarray, indices: np.ndarray, data: np.ndarray):
     """None for a canonical square CSR of finite float64 entries (exact integer checks), else a reason."""
     if indptr.shape != (size + 1,) or indices.shape != data.shape or indices.ndim != 1:
         return 'invalid_system'
-    if int(indptr[0]) != 0 or int(indptr[-1]) != indices.shape[0] or bool((np.diff(indptr) < 0).any()):
+    if row_pointer_reason(indptr, indices.shape[0]) is not None:      # no int64 overflow (review r8)
         return 'invalid_system'
     if indices.size and (int(indices.min()) < 0 or int(indices.max()) >= size):
         return 'invalid_system'
@@ -377,7 +403,7 @@ def export_structure_reason(indptr: np.ndarray, columns: np.ndarray, size: int):
     [0, size); the order within a row does not matter. Exact integer checks only."""
     if indptr.ndim != 1 or columns.ndim != 1 or indptr.shape[0] < 1:
         return 'structure'
-    if int(indptr[0]) != 0 or int(indptr[-1]) != columns.shape[0] or bool((np.diff(indptr) < 0).any()):
+    if row_pointer_reason(indptr, columns.shape[0]) is not None:      # no int64 overflow (review r8)
         return 'structure'
     if columns.size and (int(columns.min()) < 0 or int(columns.max()) >= size):
         return 'column_range'

@@ -1,5 +1,15 @@
 # S3: coupled specimen, references R0–R2 and timing (2026-11-19)
 
+## Update 2026-11-21 (OD16, review r8 fixes): results bit-identical, timing PASS
+
+Re-run of the same six coupled entries (shared machine, load 8–74 %; raw/runs.log was locked by another process
+and not appended). Every non-timing field is identical to 3601a0dcb; summary.json changes in its timing block
+only. OD10: R0 PASS, R1 FAIL (unchanged, nothing tuned), R2 PASS. Whole certificate at N = 5000 including the
+child (svd entry, median of 3 after a warm-up) **29.3 s** ≤ 45 s (runs 34.6, 28.5, 29.3 s; the spread is in the
+child's SVD, 27.4–33.5 s, under machine load; the dense-certificate entry 26.7 s); specimen h = 0.05 accepted,
+median wall **34.1 s** ≤ 60 s (default threads 38.6 s); peak parent 307.3 MiB above post-import + child
+780.5 MiB = **1188.5 MiB**.
+
 ## Update 2026-11-21 (OD15, review r7 non-hook fixes): results bit-identical, timing PASS
 
 Re-run of the same six coupled entries (shared machine, load 43–94 %). Every non-timing field is identical to

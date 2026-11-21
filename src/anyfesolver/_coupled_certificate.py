@@ -253,15 +253,18 @@ def _require_system(system: Any) -> sparse.csr_matrix:
     return system
 
 
-# --- The certificate process (owner decisions OD13, OD14) -------------------------------------------------
+# --- The certificate process (owner decisions OD13, OD14; review r8: docs "Certificate process: states") --
 
 _SVD_WORKER_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '_coupled_svd_worker.py')
-# Hard bound on one worker run (start-up, transfer, the certificate; N = 5000 takes about 30 s).
+# Hard bound on one worker run (review r8: ONE deadline, started before any child-related I/O, the
+# provenance read included, and carried through the candidate to the verdict; N = 5000 takes about 30 s).
 _SVD_WORKER_TIMEOUT_SECONDS = 600.0
 # Interval of the cancellation polls while the worker runs.
 _SVD_WORKER_POLL_SECONDS = 0.05
-# Longest wait for the transfer threads once the worker has exited, and in teardown.
-_SVD_WORKER_IO_SECONDS = 60.0
+# After the child has exited, its lanes get at most this long: an exited child's unread output is at
+# most one pipe buffer per stream, so this drain does not depend on the deadline (review r8).
+_SVD_WORKER_IO_SECONDS = 10.0
+# Teardown (kill, reap, lanes) on every path, after the deadline too.
 _SVD_WORKER_STOP_SECONDS = 30.0
 _SVD_WORKER_STDERR_LIMIT = 1 << 16
 _REPLY_JSON_LIMIT = 1 << 22
@@ -269,31 +272,114 @@ _SHIFT_LIMIT = 1 << 20
 _SVD_WORKER_ENVIRONMENT_REASONS = ('blas_threads', 'subnormal_flush', 'rounding_mode')
 
 
-def _file_digest(path: str) -> str:
-    """SHA-256 of the file's bytes, or the worker's NO_DIGEST when it cannot be read."""
+def _remaining(deadline: float) -> float:
+    import time
+    return deadline - time.monotonic()
+
+
+# --- Provenance of the modules the child trusts (review r8 P1) ---------------------------------------------
+
+@dataclass(frozen=True)
+class _Runtime:
+    """What the child is started with: NumPy's package directory and version, and threadpoolctl's
+    RECORD-checked bytes (sent in the request) with their SHA-256 (in argv)."""
+
+    numpy_dir: str
+    numpy_version: str
+    threadpoolctl_path: str
+    threadpoolctl_source: bytes
+    threadpoolctl_digest: str
+
+
+def _provenance_refusal(reason: str, message: str) -> CoupledSolveError:
+    return _refuse('COUPLED_UNCERTIFIED', reason, f'the certificate cannot vouch for its modules: {message}')
+
+
+def _installed(site: str, name: str, reason: str) -> Any:
+    """The one installed distribution ``name`` whose dist-info lies in ``site`` (importlib.metadata)."""
+    from importlib import metadata
+    try:
+        found = list(metadata.distributions(name=name, path=[site]))
+    except (OSError, ValueError, UnicodeDecodeError):
+        found = None
+    if found is None or len(found) != 1:
+        raise _provenance_refusal(reason, f'no single installed {name} distribution next to NumPy')
+    return found[0]
+
+
+def _recorded_bytes(distribution: Any, site: str, relative: str, reason: str,
+                    expected: Optional[str] = None) -> tuple:
+    """(path, bytes) of the file ``relative`` (POSIX, relative to ``site``) of an installed distribution,
+    read once and checked against the SHA-256 that the distribution's RECORD lists for it. With
+    ``expected`` the file must also be that path (the module this process loaded)."""
+    import base64
     import hashlib
     try:
+        entries = [f for f in (distribution.files or ()) if str(f) == relative]
+    except (OSError, ValueError, UnicodeDecodeError):
+        entries = []
+    if len(entries) != 1 or entries[0].hash is None or entries[0].hash.mode != 'sha256':
+        raise _provenance_refusal(reason, f'{relative} has no SHA-256 entry in its RECORD')
+    path = os.path.join(site, *relative.split('/'))
+    if expected is not None and os.path.normcase(os.path.abspath(expected)) != os.path.normcase(os.path.abspath(path)):
+        raise _provenance_refusal(reason, f'the loaded module is not the installed {relative}')
+    try:
         with open(path, 'rb') as handle:
-            return hashlib.sha256(handle.read()).hexdigest()
+            data = handle.read()
     except OSError:
-        return _worker.NO_DIGEST
+        raise _provenance_refusal(reason, f'{relative} cannot be read') from None
+    digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(b'=').decode('ascii')
+    if digest != entries[0].hash.value:
+        raise _provenance_refusal(reason, f'{relative} does not match its RECORD')
+    return path, data
 
 
-def _svd_worker_command() -> list:
+def _trusted_runtime(numpy_module: Any = None) -> _Runtime:
+    """Resolve every module the child trusts from the installed distributions, never from
+    ``sys.modules`` or ``sys.path`` (review r8 P1; inventory in docs/SOLID_COUPLING.md):
+
+    - NumPy: the package this process runs must be the installed ``numpy`` distribution of its own
+      directory: one dist-info there, the same version, ``numpy/__init__.py`` that very file and equal
+      to its RECORD hash (``numpy_mismatch`` otherwise). The child imports NumPy from that directory
+      only and checks directory and version again.
+    - threadpoolctl: the one installed distribution in NumPy's directory; ``threadpoolctl.py`` is read
+      once and checked against its RECORD hash (``threadpoolctl_mismatch`` otherwise), and exactly
+      those bytes are sent to the child, which runs them after checking their SHA-256.
+    - The standard library is the interpreter's own (``-I -S``); the worker script and the arithmetic
+      module are this package's files, loaded by path. Files on disk are trusted (OD9).
+
+    Blocking file I/O: :func:`_start_worker` runs this on a lane inside the run's deadline."""
+    import hashlib
+    module = np if numpy_module is None else numpy_module
+    numpy_file, version = module.__dict__.get('__file__'), module.__dict__.get('__version__')
+    if type(numpy_file) is not str or type(version) is not str:
+        raise _provenance_refusal('numpy_mismatch', 'NumPy has no file or version')
+    numpy_dir = os.path.dirname(os.path.abspath(numpy_file))
+    site = os.path.dirname(numpy_dir)
+    if os.path.normcase(os.path.basename(numpy_dir)) != os.path.normcase('numpy'):
+        raise _provenance_refusal('numpy_mismatch', 'NumPy is not a numpy package directory')
+    numpy_dist = _installed(site, 'numpy', 'numpy_mismatch')
+    try:
+        recorded_version = numpy_dist.version
+    except (OSError, ValueError, KeyError, UnicodeDecodeError):
+        recorded_version = None
+    if type(recorded_version) is not str or recorded_version != version:
+        raise _provenance_refusal('numpy_mismatch', 'the loaded NumPy is not the installed version')
+    _recorded_bytes(numpy_dist, site, 'numpy/__init__.py', 'numpy_mismatch', expected=numpy_file)
+    path, source = _recorded_bytes(_installed(site, 'threadpoolctl', 'threadpoolctl_mismatch'), site,
+                                   'threadpoolctl.py', 'threadpoolctl_mismatch')
+    if not 0 < len(source) <= _m.MAX_THREADPOOLCTL_BYTES:
+        raise _provenance_refusal('threadpoolctl_mismatch', 'threadpoolctl.py has an unexpected size')
+    return _Runtime(numpy_dir, version, path, source, hashlib.sha256(source).hexdigest())
+
+
+def _svd_worker_command(runtime: Optional[_Runtime] = None) -> list:
     """argv of the worker: this interpreter, isolated (-I) and without site (-S), the worker script,
-    NumPy's package directory, threadpoolctl's file (the loaded module's file, else ``threadpoolctl.py``
-    next to NumPy), NumPy's version and the SHA-256 of that threadpoolctl file. The child imports NumPy
-    from exactly that directory and checks its version, and runs threadpoolctl from exactly that file's
-    bytes after checking their digest (review r6 P1, r7 P1)."""
-    numpy_dir = os.path.dirname(os.path.abspath(np.__file__))
-    location = os.path.join(os.path.dirname(numpy_dir), 'threadpoolctl.py')
-    loaded = sys.modules.get('threadpoolctl')
-    found = loaded.__dict__.get('__file__') if type(loaded) is type(sys) else None
-    if type(found) is str and found:
-        location = os.path.abspath(found)
-    version = np.__dict__.get('__version__')
-    return [sys.executable, '-I', '-S', _SVD_WORKER_PATH, numpy_dir, location,
-            version if type(version) is str else '', _file_digest(location)]
+    NumPy's package directory and version, and the SHA-256 of the threadpoolctl bytes sent in the
+    request (review r6 P1, r7 P1, r8 P1). Without ``runtime`` it is resolved here (tests)."""
+    runtime = _trusted_runtime() if runtime is None else runtime
+    return [sys.executable, '-I', '-S', _SVD_WORKER_PATH, runtime.numpy_dir, runtime.numpy_version,
+            runtime.threadpoolctl_digest]
 
 
 def _svd_worker_environment() -> dict:
@@ -311,20 +397,28 @@ def _worker_refusal(detail: str, message: str, **diagnostics: Any) -> CoupledSol
                    worker_failure=detail, **diagnostics)
 
 
+def _timeout() -> CoupledSolveError:
+    return _worker_refusal('timeout', f'no result within {_SVD_WORKER_TIMEOUT_SECONDS:.0f} s')
+
+
+# --- Lanes and the run ----------------------------------------------------------------------------------------
+
 class _Lane:
-    """One transfer thread, started with ``_thread.start_new_thread`` (no wait on the thread registry
-    or on a 'started' event: review r6 P2) and joined through its own lock with a bounded wait."""
+    """One thread, started with ``_thread.start_new_thread`` (no wait on the thread registry or on a
+    'started' event: review r6 P2) and joined through its own lock with a bounded wait. A start that
+    fails raises from the constructor (the caller tears the run down)."""
 
     def __init__(self, target: Callable, *args: Any) -> None:
         import _thread
         self.error: Optional[BaseException] = None
+        self.result: Any = None
         self._done = _thread.allocate_lock()
         self._done.acquire()
         _thread.start_new_thread(self._run, (target, args))
 
     def _run(self, target: Callable, args: tuple) -> None:
         try:
-            target(*args)
+            self.result = target(*args)
         except BaseException as exc:  # noqa: BLE001
             self.error = exc
         finally:
@@ -346,9 +440,19 @@ def _write_all(stream: Any, data: Any) -> None:
         view = view[written:]
 
 
+def _close(stream: Any) -> None:
+    try:
+        if stream is not None:
+            stream.close()
+    except Exception:  # noqa: BLE001
+        pass
+
+
 class _WorkerIO:
     """Feeds the request (and, later, the candidate) to the worker's stdin and drains stdout and
-    stderr on three lanes, so the calling thread stays free to compute the candidate and to poll."""
+    stderr on three lanes, so the calling thread stays free to compute the candidate and to poll.
+    Each lane closes its own pipe end when it ends; the coordinator closes only pipe ends whose lane
+    has finished or never started (a close never races a lane blocked on the stream)."""
 
     def __init__(self, process: Any, request: list, candidate_follows: bool, stdout_limit: int,
                  deadline: float) -> None:
@@ -362,10 +466,18 @@ class _WorkerIO:
         self._ready = _thread.allocate_lock()
         self._ready.acquire()
         self._streams = (process.stdin, process.stdout, process.stderr)
+        self._plan = ((self._write, process.stdin, request, candidate_follows),
+                      (self._read, process.stdout, self.stdout, stdout_limit),
+                      (self._read, process.stderr, self.stderr, _SVD_WORKER_STDERR_LIMIT))
         self._lanes: list = []
-        self._lanes.append(_Lane(self._write, process.stdin, request, candidate_follows))
-        self._lanes.append(_Lane(self._read, process.stdout, self.stdout, stdout_limit))
-        self._lanes.append(_Lane(self._read, process.stderr, self.stderr, _SVD_WORKER_STDERR_LIMIT))
+
+    def start(self) -> None:
+        """START: one lane per stream, each started only within the deadline. A lane that cannot start
+        raises; the caller then tears the whole run down at once (review r8 P2)."""
+        for target, *args in self._plan:
+            if _remaining(self.deadline) <= 0:
+                raise _timeout()
+            self._lanes.append(_Lane(target, *args))
 
     def post_candidate(self, payload: bytes) -> None:
         if self._candidate is None and not self._aborted:
@@ -383,28 +495,27 @@ class _WorkerIO:
             for chunk in request:
                 _write_all(stream, chunk)
             if candidate_follows:
-                import time
-                if not self._ready.acquire(timeout=max(0.0, self.deadline - time.monotonic())) or self._aborted:
+                if not self._ready.acquire(timeout=max(0.0, _remaining(self.deadline))) or self._aborted:
                     return
                 _write_all(stream, self._candidate)
         except (BrokenPipeError, OSError, ValueError):
             pass                                  # the worker exited early; its exit status decides
         finally:
-            try:
-                stream.close()
-            except Exception:  # noqa: BLE001
-                pass
+            _close(stream)
 
     def _read(self, stream: Any, sink: bytearray, limit: int) -> None:
-        while True:
-            chunk = stream.read(1 << 16)
-            if not chunk:
-                break
-            room = limit - len(sink)
-            if room > 0:
-                sink += chunk[:room]
-            if len(chunk) > room and sink is self.stdout:
-                self.overflow = True
+        try:
+            while True:
+                chunk = stream.read(1 << 16)
+                if not chunk:
+                    break
+                room = limit - len(sink)
+                if room > 0:
+                    sink += chunk[:room]
+                if len(chunk) > room and sink is self.stdout:
+                    self.overflow = True
+        finally:
+            _close(stream)
 
     def finished(self, timeout: float) -> bool:
         import time
@@ -416,19 +527,15 @@ class _WorkerIO:
         return [lane.error for lane in self._lanes if lane.error is not None]
 
     def close_finished(self) -> None:
-        """Close the parent's pipe ends whose lane has finished (never one a lane may still block on)."""
-        for lane, stream in zip(self._lanes, self._streams):
-            if lane.finished(0.0) and stream is not None:
-                try:
-                    stream.close()
-                except Exception:  # noqa: BLE001
-                    pass
+        """Close the parent's pipe ends whose lane has finished or never started."""
+        for k, stream in enumerate(self._streams):
+            if k >= len(self._lanes) or self._lanes[k].finished(0.0):
+                _close(stream)
 
 
-def _stop(process: Any, io: Optional[_WorkerIO] = None) -> None:
-    """Terminate and reap this solve's own worker, by the handle it was started with (never by image
-    name). Each step is retried, so a one-shot hook raising in here cannot leave the child running
-    (review r6 P2); every wait is bounded."""
+def _reap(process: Any) -> None:
+    """Kill and reap a process by its own handle (never by image name); every wait is bounded. Each
+    step is retried, so a one-shot failure cannot leave the child running (review r6 P2)."""
     if process is None:
         return
     for _ in range(_TRANSLATION_ATTEMPTS):
@@ -438,20 +545,6 @@ def _stop(process: Any, io: Optional[_WorkerIO] = None) -> None:
             if process.poll() is None:
                 process.kill()
             process.wait(timeout=_SVD_WORKER_STOP_SECONDS)
-            break
-        except Exception:  # noqa: BLE001
-            continue
-    for _ in range(_TRANSLATION_ATTEMPTS):
-        try:
-            if io is not None:
-                io.abort()
-                io.finished(_SVD_WORKER_STOP_SECONDS)
-                io.close_finished()
-            else:
-                for name in ('stdin', 'stdout', 'stderr'):
-                    stream = process.__dict__.get(name)
-                    if stream is not None:
-                        stream.close()
             break
         except Exception:  # noqa: BLE001
             continue
@@ -470,13 +563,30 @@ def _worker_report(stderr: bytes) -> Optional[dict]:
 
 
 class _Run:
-    """One worker run: started by :func:`_start_worker`, optionally fed the candidate, then finished by
-    :meth:`result` (bounded waits, cancellation polls) and always stopped by :meth:`stop`. ``deadline``
-    (monotonic) is _SVD_WORKER_TIMEOUT_SECONDS after the child was started (review r7: not after the
-    candidate)."""
+    """One worker run through the states of docs/SOLID_COUPLING.md ("Certificate process: states"):
+    PREPARE and LAUNCH (on a lane), START, RUNNING, then COLLECT or EXPIRED, and TEARDOWN on every
+    path. ``deadline`` (monotonic) is the one deadline, set before any child-related I/O."""
 
-    def __init__(self, process: Any, io: _WorkerIO, deadline: float) -> None:
-        self.process, self.io, self.deadline = process, io, deadline
+    def __init__(self, deadline: float) -> None:
+        import _thread
+        self.deadline = deadline
+        self.process: Any = None
+        self.io: Optional[_WorkerIO] = None
+        self._abandoned = False
+        self._lock = _thread.allocate_lock()
+
+    def adopt(self, process: Any) -> bool:
+        """LAUNCH hands the created process over; False once the run was abandoned (the launching lane
+        then kills and reaps it itself)."""
+        with self._lock:
+            if self._abandoned:
+                return False
+            self.process = process
+            return True
+
+    @property
+    def abandoned(self) -> bool:
+        return self._abandoned
 
     def post_candidate(self, x: Optional[np.ndarray]) -> None:
         if x is None:
@@ -485,37 +595,46 @@ class _Run:
             self.io.post_candidate(b'XV' + np.ascontiguousarray(x, dtype='<f8').tobytes())
 
     def result(self, cancel: Optional[Callable[[], None]]):
-        """(exit code, stdout bytes, report): waits for the worker within the timeout, counted from the
-        child's start. A transfer lane that failed while the child runs refuses at once (review r7: a
-        reader MemoryError leaves the child blocked on a full pipe; that is COUPLED_TOO_LARGE, not a
-        timeout)."""
+        """RUNNING until the child exits (COLLECT) or the deadline passes with the child still running
+        (EXPIRED). Verdict precedence (review r8): once the child has exited, its complete reply
+        decides, whatever the clock says when the parent looks (a suspended parent does not turn a
+        timely verdict into a timeout). Lane failures are checked at every poll, after the final read
+        and after an expiry, so a reader MemoryError is COUPLED_TOO_LARGE, never a timeout."""
         import subprocess
-        import time
         while True:
             if cancel is not None:
                 _poll(cancel)                   # caller code; anything it raises propagates (stop follows)
             self._lane_failure(None)
+            if self.process.poll() is not None:
+                break                           # COLLECT
+            remaining = _remaining(self.deadline)
+            if remaining <= 0:
+                self._expire()                  # EXPIRED: raises
             try:
-                self.process.wait(timeout=_SVD_WORKER_POLL_SECONDS)
-                break
+                self.process.wait(timeout=min(_SVD_WORKER_POLL_SECONDS, remaining))
+                break                           # COLLECT
             except subprocess.TimeoutExpired:
-                if time.monotonic() > self.deadline:
-                    raise _worker_refusal('timeout', f'no result within {_SVD_WORKER_TIMEOUT_SECONDS:.0f} s') from None
-        if time.monotonic() > self.deadline:
-            raise _worker_refusal('timeout', f'no result within {_SVD_WORKER_TIMEOUT_SECONDS:.0f} s')
+                continue
         complete = self.io.finished(_SVD_WORKER_IO_SECONDS)
         code = self.process.returncode
         report = _worker_report(self.io.stderr)
-        self._lane_failure(code, report)
+        self._lane_failure(code, report)        # after the final read (review r8)
         if not complete:
             raise _worker_refusal('io', 'its output could not be read', exit_code=code)
         if self.io.overflow:
             raise _worker_refusal('bad_output', 'its output is too long', exit_code=code)
         return code, bytes(self.io.stdout), report
 
+    def _expire(self) -> None:
+        """EXPIRED: the child was still running at the deadline. TEARDOWN first; then a lane failure
+        (MemoryError: COUPLED_TOO_LARGE) wins over the timeout."""
+        self.stop()
+        self._lane_failure(None)
+        raise _timeout()
+
     def _lane_failure(self, code: Optional[int], report: Optional[dict] = None) -> None:
         """Refuse if a transfer lane raised: MemoryError -> COUPLED_TOO_LARGE, else svd_worker / io."""
-        errors = self.io.errors
+        errors = self.io.errors if self.io is not None else []
         if any(isinstance(e, MemoryError) for e in errors):
             raise _refuse('COUPLED_TOO_LARGE', 'memory_error', 'out of memory reading the certificate worker',
                           worker_report=report)
@@ -523,36 +642,83 @@ class _Run:
             raise _worker_refusal('io', 'its output could not be read', exit_code=code)
 
     def stop(self) -> None:
-        _stop(self.process, self.io)
+        """TEARDOWN (idempotent, every path): abandon the run (a launch still in progress reaps its own
+        process), release the writer, kill and reap the child by its own handle, wait for the lanes
+        (bounded) and close the pipe ends no lane uses."""
+        with self._lock:
+            self._abandoned = True
+            process = self.process
+        io = self.io
+        if io is not None:
+            io.abort()
+        _reap(process)
+        for _ in range(_TRANSLATION_ATTEMPTS):
+            try:
+                if io is not None:
+                    io.finished(_SVD_WORKER_STOP_SECONDS)
+                    io.close_finished()
+                elif process is not None:
+                    for name in ('stdin', 'stdout', 'stderr'):
+                        _close(process.__dict__.get(name))
+                break
+            except Exception:  # noqa: BLE001
+                continue
 
 
-def _start_worker(request: list, candidate_follows: bool, stdout_limit: int) -> _Run:
-    """Start the worker and its transfer lanes. Any exception after the process exists (including a
-    hook raising on return from ``Popen.__init__``) kills and reaps it first (review r6 P2)."""
+def _launch(run: _Run, header: dict, chunks: list) -> Optional[list]:
+    """PREPARE and LAUNCH, on a lane inside the deadline: resolve the trusted modules (file I/O that may
+    block), build argv and the request, create the process and hand it to the run. Returns the
+    request chunks, or None when the run was abandoned meanwhile (any process is then reaped here)."""
     import subprocess
-    import time
-    process, stage = None, 'start_failed'
+    runtime = _trusted_runtime()
+    command, environment = _svd_worker_command(runtime), _svd_worker_environment()
+    request = _encode_request(header, chunks, runtime)
+    if run.abandoned:
+        return None
+    flags = 0x08000000 if sys.platform == 'win32' else 0          # CREATE_NO_WINDOW
+    process = subprocess.Popen.__new__(subprocess.Popen)
     try:
-        command, environment = _svd_worker_command(), _svd_worker_environment()
-        flags = 0x08000000 if sys.platform == 'win32' else 0          # CREATE_NO_WINDOW
-        deadline = time.monotonic() + _SVD_WORKER_TIMEOUT_SECONDS     # the child's start (review r7)
-        process = subprocess.Popen.__new__(subprocess.Popen)
         process.__init__(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          bufsize=0, env=environment, cwd=os.path.dirname(_SVD_WORKER_PATH), close_fds=True,
                          creationflags=flags)
         if process.__dict__.get('pid') is None:
             raise OSError('the worker process was not created')
-        stage = 'io'
-        io = _WorkerIO(process, request, candidate_follows, stdout_limit, deadline)
-        return _Run(process, io, deadline)
+    except BaseException:
+        _reap(process)
+        raise
+    if not run.adopt(process):
+        _reap(process)
+        for name in ('stdin', 'stdout', 'stderr'):
+            _close(process.__dict__.get(name))
+        return None
+    return request
+
+
+def _start_worker(header: dict, chunks: list, candidate_follows: bool, stdout_limit: int,
+                  deadline: float) -> _Run:
+    """PREPARE, LAUNCH and START. Every wait is bounded by the deadline; any failure (a provenance
+    refusal, a process that cannot be created, a lane that cannot start) tears the run down at once,
+    the child killed and reaped and the writer released, before the refusal propagates (review r8)."""
+    run = _Run(deadline)
+    try:
+        launch = _Lane(_launch, run, header, chunks)
+        if not launch.finished(_remaining(deadline)):
+            raise _timeout()
+        if launch.error is not None:
+            raise launch.error
+        if run.process is None or launch.result is None:
+            raise OSError('the worker process was not created')
+        run.io = _WorkerIO(run.process, launch.result, candidate_follows, stdout_limit, deadline)
+        run.io.start()
+        return run
     except BaseException as exc:
-        _stop(process)
-        if not isinstance(exc, Exception):
+        run.stop()
+        if not isinstance(exc, Exception) or isinstance(exc, CoupledSolveError):
             raise
         if isinstance(exc, MemoryError):
             raise _built(lambda: _refuse('COUPLED_TOO_LARGE', 'memory_error',
                                          'out of memory starting the certificate worker')) from exc
-        detail = stage
+        detail = 'start_failed' if run.process is None else 'io'
         raise _built(lambda: _worker_refusal(detail, f'it could not be started ({_type_name(exc)})')) from exc
 
 
@@ -585,11 +751,19 @@ def _f8(values: Any) -> bytes:
     return np.ascontiguousarray(values, dtype='<f8').tobytes()
 
 
-def _request(system: sparse.csr_matrix, b: Optional[np.ndarray], *, mode: str, raw_load_zero: bool,
-             memory_limit: Optional[int], exports: Sequence[ExportMap]) -> list:
-    """The request as byte chunks (copies taken now: later changes to the arrays do not reach it)."""
+def _export_limit(message: str) -> CoupledSolveError:
+    return _refuse('COUPLED_UNCERTIFIED', 'export_limit', f'the certificate request exceeds its limits: {message}')
+
+
+def _request_parts(system: sparse.csr_matrix, b: Optional[np.ndarray], *, mode: str, raw_load_zero: bool,
+                   memory_limit: Optional[int], exports: Sequence[ExportMap]) -> tuple:
+    """(header, byte chunks after the threadpoolctl section): validated, with copies taken now (later
+    changes to the arrays do not reach it). Review r8: every request limit of the child (the same
+    ``_coupled_certificate_math`` constants) is checked here, before any child starts."""
     import json
     size = int(system.shape[0])
+    if len(exports) > _m.MAX_EXPORTS:
+        raise _export_limit(f'{len(exports)} export maps (at most {_m.MAX_EXPORTS})')
     items, blobs = [], []
     for export in exports:
         if type(export) is not ExportMap:
@@ -599,6 +773,9 @@ def _request(system: sparse.csr_matrix, b: Optional[np.ndarray], *, mode: str, r
                 or columns.ndim != 1 or indptr.dtype.kind != 'i' or columns.dtype.kind != 'i' or indptr.size < 1:
             raise _refuse('COUPLED_UNCERTIFIED', 'invalid_arguments', 'an export map has invalid index arrays')
         rows, count = int(indptr.size) - 1, int(columns.size)
+        if rows > _m.MAX_EXPORT_ENTRIES or count > _m.MAX_EXPORT_ENTRIES:
+            raise _export_limit(f'an export map has {rows} rows and {count} entries '
+                                f'(at most {_m.MAX_EXPORT_ENTRIES} each)')
         reason = _m.export_structure_reason(indptr, columns, size)
         if reason is not None:                   # incl. a repeated column in a row (review r7 P1)
             raise _refuse('COUPLED_UNCERTIFIED', 'invalid_arguments', f'an export map is invalid ({reason})')
@@ -610,6 +787,9 @@ def _request(system: sparse.csr_matrix, b: Optional[np.ndarray], *, mode: str, r
                 and all(type(c) is Fraction for c in coefficients):
             kind, data = 'rational', b''
             text = ','.join(_m.encode_fraction(c) for c in coefficients).encode('ascii')
+            if len(text) > _m.MAX_EXPORT_TEXT_BYTES:
+                raise _export_limit(f'an export map has {len(text)} coefficient bytes '
+                                    f'(at most {_m.MAX_EXPORT_TEXT_BYTES})')
         else:
             raise _refuse('COUPLED_UNCERTIFIED', 'invalid_arguments', 'an export map has invalid coefficients')
         offsets = export.offsets
@@ -622,14 +802,36 @@ def _request(system: sparse.csr_matrix, b: Optional[np.ndarray], *, mode: str, r
         if offsets is not None:
             blobs.append(_f8(offsets))
     candidate = 'none' if mode == 'certificate' else ('zero' if raw_load_zero else 'follows')
-    header = {'version': 2, 'mode': mode, 'n': size, 'nnz': int(system.nnz), 'raw_load_zero': raw_load_zero,
-              'candidate': candidate, 'memory_limit': memory_limit, 'constants': _constants(), 'exports': items}
-    body = json.dumps(header, sort_keys=True, separators=(',', ':')).encode('ascii')
-    chunks = [_worker.REQUEST_MAGIC + struct.pack('<Q', len(body)) + body,
-              _i8(system.indptr), _i8(system.indices), _f8(system.data)]
+    header = {'version': _worker.REQUEST_VERSION, 'mode': mode, 'n': size, 'nnz': int(system.nnz),
+              'raw_load_zero': raw_load_zero, 'candidate': candidate, 'memory_limit': memory_limit,
+              'constants': _constants(), 'exports': items}
+    if len(_header_body(header, _m.MAX_THREADPOOLCTL_BYTES)) > _m.MAX_HEADER_BYTES:
+        raise _export_limit(f'the request header exceeds {_m.MAX_HEADER_BYTES} bytes')
+    chunks = [_i8(system.indptr), _i8(system.indices), _f8(system.data)]
     if b is not None:
         chunks.append(_f8(b))
-    return chunks + blobs
+    return header, chunks + blobs
+
+
+def _header_body(header: dict, threadpoolctl_bytes: int) -> bytes:
+    import json
+    return json.dumps(dict(header, threadpoolctl_bytes=threadpoolctl_bytes), sort_keys=True,
+                      separators=(',', ':')).encode('ascii')
+
+
+def _encode_request(header: dict, chunks: list, runtime: _Runtime) -> list:
+    """The request bytes: magic, header, threadpoolctl's RECORD-checked bytes (review r8 P1), arrays."""
+    body = _header_body(header, len(runtime.threadpoolctl_source))
+    return [_worker.REQUEST_MAGIC + struct.pack('<Q', len(body)) + body, runtime.threadpoolctl_source] + chunks
+
+
+def _request(system: sparse.csr_matrix, b: Optional[np.ndarray], *, mode: str, raw_load_zero: bool,
+             memory_limit: Optional[int], exports: Sequence[ExportMap], runtime: Optional[_Runtime] = None) -> list:
+    """The whole request as byte chunks (tests and evidence scripts; the solve builds it on its launch
+    lane). Without ``runtime`` the trusted modules are resolved here."""
+    header, chunks = _request_parts(system, b, mode=mode, raw_load_zero=raw_load_zero, memory_limit=memory_limit,
+                                    exports=exports)
+    return _encode_request(header, chunks, _trusted_runtime() if runtime is None else runtime)
 
 
 class _Malformed(Exception):
@@ -924,16 +1126,19 @@ def _run_worker(system: sparse.csr_matrix, b: Optional[np.ndarray], *, mode: str
     """One certificate run: start the worker, compute the candidate here meanwhile (``candidate()``,
     None when it failed), send it, wait and decode. Returns (decoded, report). The worker is stopped
     on every path."""
+    import time
     size = int(system.shape[0])
     try:
-        request = _request(system, b, mode=mode, raw_load_zero=raw_load_zero, memory_limit=memory_limit,
-                           exports=exports)
+        header, chunks = _request_parts(system, b, mode=mode, raw_load_zero=raw_load_zero,
+                                        memory_limit=memory_limit, exports=exports)
     except MemoryError as exc:
         raise _refuse('COUPLED_TOO_LARGE', 'memory_error', 'out of memory building the certificate request') from exc
     export_rows = [int(e.indptr.size) - 1 for e in exports]
     limit = 16 + _REPLY_JSON_LIMIT + 16 * size + 16 * sum(export_rows) + 1
     follows = mode == 'solve' and not raw_load_zero
-    run = _start_worker(request, follows, limit)
+    # The one deadline (review r8): before any child-related I/O, the provenance read included.
+    deadline = time.monotonic() + _SVD_WORKER_TIMEOUT_SECONDS
+    run = _start_worker(header, chunks, follows, limit, deadline)
     try:
         if follows:
             run.post_candidate(candidate())

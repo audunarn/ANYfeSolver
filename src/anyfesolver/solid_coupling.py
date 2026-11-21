@@ -25,6 +25,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 import numpy as np
 from scipy import sparse
 
+from ._coupled_certificate_math import row_pointer_reason as _row_pointer_reason
 from ._coupled_certificate import (
     _ABS_MASK,
     COUPLED_MAX_EQUATIONS,
@@ -823,7 +824,8 @@ def _check_csr_structure(matrix: sparse.csr_matrix, what: str) -> None:
             raise bad('index arrays must be 1-D ndarrays')
     if not (np.issubdtype(indptr.dtype, np.integer) and np.issubdtype(indices.dtype, np.integer)):
         raise bad('index arrays must be integer')
-    if len(indptr) != rows + 1 or int(indptr[0]) != 0 or np.any(np.diff(indptr.astype(np.int64)) < 0):
+    # Comparisons only (review r8 P2): np.diff of int64 (or a cast of uint64) entries can overflow.
+    if len(indptr) != rows + 1 or _row_pointer_reason(indptr, int(indptr[-1])) is not None:
         raise bad('indptr is not a valid row pointer')
     nnz = int(indptr[-1])
     if len(indices) != nnz or len(data) != nnz:

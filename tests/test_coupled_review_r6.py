@@ -172,22 +172,26 @@ def _is_popen_init(frame):
         and isinstance(frame.f_locals.get('self'), subprocess.Popen)
 
 
-def test_r6_p2_hook_after_popen_init_kills_the_child():
-    """A one-shot profile hook raising on return from Popen.__init__ (after the OS created the
-    process): the refusal is start_failed and the child is gone while the refusal is still held."""
-    seen, state = [], {'fired': False}
+def test_r6_p2_hook_after_popen_init_kills_the_child(monkeypatch):
+    """An exception on return from Popen.__init__ (after the OS created the process): the refusal is
+    start_failed and the child is gone while the refusal is still held.
 
-    def profile(frame, event, arg):
-        if event == 'return' and not state['fired'] and _is_popen_init(frame):
+    Review r8: Popen now runs on the launch lane (a ``_thread`` thread), which a profile hook set on the
+    solving thread does not reach (and in-process hooks are out of scope, OD15). The same failure is
+    therefore raised by a test-side wrapper of Popen.__init__ after the process exists."""
+    import subprocess
+    seen, state = [], {'fired': False}
+    original = subprocess.Popen.__init__
+
+    def init(self, *args, **kwargs):
+        original(self, *args, **kwargs)
+        if not state['fired']:
             state['fired'] = True
             seen.extend(_descendants(os.getpid()))
             raise PermissionError('denied after creation')
-    sys.setprofile(profile)
-    try:
-        with pytest.raises(cc.CoupledSolveError) as info:
-            cc._certify_solve_matrix(sparse.csr_matrix(np.diag([4.0, 2.0, 1.0])))
-    finally:
-        sys.setprofile(None)
+    monkeypatch.setattr(subprocess.Popen, '__init__', init)
+    with pytest.raises(cc.CoupledSolveError) as info:
+        cc._certify_solve_matrix(sparse.csr_matrix(np.diag([4.0, 2.0, 1.0])))
     assert state['fired'] and seen, seen
     assert (info.value.code, info.value.reason) == ('COUPLED_UNCERTIFIED', 'svd_worker')
     assert info.value.diagnostics['worker_failure'] == 'start_failed'
@@ -236,7 +240,7 @@ _GRANDCHILD = textwrap.dedent('''
 def test_r6_p2_teardown_is_bounded_when_a_pipe_stays_open(monkeypatch):
     """The worker exits while a process it started keeps its stdout pipe open, so the reader lane
     stays blocked: the refusal comes within the bounded IO wait (no close() on a blocked stream)."""
-    monkeypatch.setattr(cc, '_svd_worker_command', lambda: [sys.executable, '-I', '-S', '-c', _GRANDCHILD])
+    monkeypatch.setattr(cc, '_svd_worker_command', lambda *args: [sys.executable, '-I', '-S', '-c', _GRANDCHILD])
     monkeypatch.setattr(cc, '_SVD_WORKER_IO_SECONDS', 1.0)
     if hasattr(cc, '_SVD_WORKER_STOP_SECONDS'):
         monkeypatch.setattr(cc, '_SVD_WORKER_STOP_SECONDS', 1.0)
@@ -267,15 +271,9 @@ def test_r6_p2_reader_memory_error_is_too_large(monkeypatch):
 
 def test_r6_p2_child_blas_probe_memory_error_is_too_large(monkeypatch, tmp_path):
     """The child's BLAS probe treated MemoryError as a probe failure (blas_threads)."""
-    (tmp_path / 'threadpoolctl.py').write_text("def threadpool_info():\n    raise MemoryError('probe')\n")
-    module = types.ModuleType('threadpoolctl')
-    module.__file__ = str(tmp_path / 'threadpoolctl.py')
-    original = cc._svd_worker_command
-    monkeypatch.setitem(sys.modules, 'threadpoolctl', module)
-    command = original()
-    if str(tmp_path) not in ' '.join(command):          # 3d1227284 passes a directory list
-        command = command[:5] + [str(tmp_path)] + command[5:]
-    monkeypatch.setattr(cc, '_svd_worker_command', lambda: command)
+    # Review r8: the seam is the threadpoolctl bytes the parent sends (sys.modules no longer selects them).
+    from _coupled_worker_patch import patch_threadpoolctl
+    patch_threadpoolctl(monkeypatch, cc, "def threadpool_info():\n    raise MemoryError('probe')\n")
     refused('COUPLED_TOO_LARGE', cc._certify_solve_matrix, sparse.csr_matrix(np.diag([4.0, 2.0, 1.0])),
             reason='memory_error')
 

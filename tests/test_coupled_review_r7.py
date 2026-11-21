@@ -98,18 +98,18 @@ def test_r7_p1_same_name_package_next_to_threadpoolctl_is_not_loaded(monkeypatch
 
 def test_r7_p1_threadpoolctl_with_another_digest_refuses(monkeypatch):
     command = cc._svd_worker_command()
-    assert len(command) == 8, command
-    command[7] = '0' * 64
-    monkeypatch.setattr(cc, '_svd_worker_command', lambda: command)
+    assert len(command) == 7, command               # review r8: <numpy dir> <numpy version> <tp sha256>
+    command[6] = '0' * 64
+    monkeypatch.setattr(cc, '_svd_worker_command', lambda *args: command)
     error = refused('COUPLED_UNCERTIFIED', cc._certify_solve_matrix, _diag(4.0, 2.0, 1.0), reason='svd_worker')
     assert error.diagnostics['worker_failure'] == 'environment', error.diagnostics
 
 
 def test_r7_p1_numpy_with_another_version_refuses(monkeypatch):
     command = cc._svd_worker_command()
-    assert len(command) == 8, command
-    command[6] = '0.0.0'
-    monkeypatch.setattr(cc, '_svd_worker_command', lambda: command)
+    assert len(command) == 7, command               # review r8: <numpy dir> <numpy version> <tp sha256>
+    command[5] = '0.0.0'
+    monkeypatch.setattr(cc, '_svd_worker_command', lambda *args: command)
     error = refused('COUPLED_UNCERTIFIED', cc._certify_solve_matrix, _diag(4.0, 2.0, 1.0), reason='svd_worker')
     assert error.diagnostics['worker_failure'] == 'environment', error.diagnostics
 

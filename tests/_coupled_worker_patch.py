@@ -29,4 +29,16 @@ def patch_worker(monkeypatch, cc, code: str) -> None:
         w._load_math = patched
         sys.exit(w._main([{path!r}] + {arguments!r}))
     ''').format(path=worker_path, code=textwrap.dedent(code), arguments=list(arguments))
-    monkeypatch.setattr(cc, '_svd_worker_command', lambda: [sys.executable, '-I', '-S', '-c', script])
+    monkeypatch.setattr(cc, '_svd_worker_command', lambda *args: [sys.executable, '-I', '-S', '-c', script])
+
+
+def patch_threadpoolctl(monkeypatch, cc, source: str) -> None:
+    """Review r8: the child runs the threadpoolctl bytes the parent sends (RECORD-checked from the
+    installed distribution). For this test the parent sends ``source`` instead, with its own digest,
+    so the real child runs a test threadpoolctl (e.g. one that fails to import or raises MemoryError)."""
+    import dataclasses
+    import hashlib
+    real = cc._trusted_runtime()
+    data = source.encode('ascii')
+    runtime = dataclasses.replace(real, threadpoolctl_source=data, threadpoolctl_digest=hashlib.sha256(data).hexdigest())
+    monkeypatch.setattr(cc, '_trusted_runtime', lambda *args: runtime)

@@ -360,53 +360,53 @@
  },
  "timing": {
   "coupled_median_t1": {
-   "provenance": 0.038363899919204414,
-   "native": 1.7819922000635415,
-   "connector": 1.4435300000477582,
-   "formation": 0.03475130000151694,
-   "certified_candidate": 0.49883719999343157,
-   "certified_certificate": 27.365211499971338,
-   "recovery": 0.04458739992696792,
-   "total": 32.540773599990644,
-   "wall": 32.544560899958014
+   "provenance": 0.037302899989299476,
+   "native": 1.8298588000470772,
+   "connector": 1.4767858000705019,
+   "formation": 0.03697250003460795,
+   "certified_candidate": 0.5157985000405461,
+   "certified_certificate": 28.76905700005591,
+   "recovery": 0.04274799989070743,
+   "total": 34.108300199965015,
+   "wall": 34.11192519997712
   },
   "coupled_runs_wall_t1": [
-   32.51763260003645,
-   33.188598399981856,
-   32.559176399954595,
-   32.54208919999655,
-   32.46547679998912,
-   32.544560899958014
+   33.663834500010125,
+   34.11192519997712,
+   33.51295070000924,
+   33.63003610004671,
+   36.30794249998871,
+   38.956157699925825
   ],
   "coupled_t1_refused": null,
   "coupled_t1_wall_to_refusal": null,
   "coupled_default_threads": {
-   "provenance": 0.023541499977000058,
-   "native": 1.3580330000258982,
-   "connector": 1.512082100030966,
-   "formation": 0.1713838999858126,
-   "certified_candidate": 0.509027799940668,
-   "certified_certificate": 27.995846700039692,
-   "recovery": 0.04372560000047088,
-   "total": 32.74708790006116,
-   "wall": 32.75307740003336
+   "provenance": 0.022388300043530762,
+   "native": 1.46047869999893,
+   "connector": 1.604336499935016,
+   "formation": 0.18088900006841868,
+   "certified_candidate": 0.5225778999738395,
+   "certified_certificate": 33.63443780003581,
+   "recovery": 0.04438430001027882,
+   "total": 38.56995369994547,
+   "wall": 38.57524829998147
   },
   "oneway_median_t1": {
-   "native_shell": 0.372094500111416,
-   "one_way_solid": 0.08959590003360063,
-   "total": 0.4675107999937609
+   "native_shell": 0.3772358000278473,
+   "one_way_solid": 0.09411530010402203,
+   "total": 0.4735762000782415
   },
   "certificate5000_t1_times": [
-   27.07691820000764,
-   27.105703299981542,
-   27.209420199971646,
-   27.10956949996762
+   37.24492399999872,
+   34.647260099998675,
+   28.49338500003796,
+   29.272309699910693
   ],
-  "certificate5000_t1_median": 27.10956949996762,
-  "dense_certificate5000_t1_median": 27.44030290003866,
+  "certificate5000_t1_median": 29.272309699910693,
+  "dense_certificate5000_t1_median": 26.65904329996556,
   "gate_svd_45s": true,
   "gate_specimen_60s": true,
-  "peak_commit_minus_post_import_mib": 308.55078125,
+  "peak_commit_minus_post_import_mib": 307.26953125,
   "peak_run_refused": null,
   "environment": {
    "python": "3.11.9",
