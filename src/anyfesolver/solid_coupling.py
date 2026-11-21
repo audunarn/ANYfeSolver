@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from collections import Counter
 import copy
+import sys
 from dataclasses import dataclass, field
 from fractions import Fraction
 import math
@@ -28,9 +29,11 @@ from ._coupled_certificate import (
     _ABS_MASK,
     COUPLED_MAX_EQUATIONS,
     CoupledSolveError,
+    ExportMap,
     _any_nonzero,
     _asymmetric,
     _bits_of,
+    _built,
     _checked_clock,
     _dense_bytes,
     _exact,
@@ -65,6 +68,16 @@ _SECTION_MODES = 5
 _SQRT_BITS = 120
 _DOF_NAMES = ('ux', 'uy', 'uz', 'rx', 'ry', 'rz')
 _SKINS = ('start', 'end')
+
+
+def _type_in(value: Any, types: Tuple[type, ...]) -> bool:
+    """type(value) is one of ``types``, by identity only (review r6 P2: ``in`` on a set or tuple would
+    run a metaclass ``__hash__`` or ``__eq__`` of the caller's class)."""
+    kind = type(value)
+    for candidate in types:
+        if kind is candidate:
+            return True
+    return False
 
 
 # --- exact rational helpers ----------------------------------------------------------------------
@@ -198,9 +211,23 @@ class CoupledSolution:
 
 # --- small utilities ----------------------------------------------------------------------------
 
-def _cancel_probe(cancel: Any) -> Optional[Callable[[], None]]:
+def _cancelled(state: List[Any]) -> bool:
+    """True once the caller's flag has read True (exact bool or np.bool_)."""
+    value = state[0]
+    return value is True or (type(value) is np.bool_ and bool(value))
+
+
+def _cancel_refusal() -> CoupledSolveError:
+    return _refuse('COUPLED_CANCELLED', None, 'the coupled solve was cancelled')
+
+
+def _cancel_probe(cancel: Any, state: Optional[List[Any]] = None) -> Optional[Callable[[], None]]:
+    """The cancellation check. Each flag value is stored in ``state[0]`` by the assignment itself (no
+    call in between), so the top-level translation still refuses COUPLED_CANCELLED when a hook raises
+    while the cancellation refusal is built (review r6 P2)."""
     if cancel is None:
         return None
+    state = [None] if state is None else state
     is_set = getattr(cancel, 'is_set', None)
     if callable(is_set):
         flag_value = is_set
@@ -211,12 +238,14 @@ def _cancel_probe(cancel: Any) -> Optional[Callable[[], None]]:
                       'cancel must be None, a callable returning a flag, or an object with is_set()')
 
     def check() -> None:
-        value = flag_value()
+        state[0] = flag_value()
+        value = state[0]
         # The flag's exact type is checked before it is used (r1 class 6): no truthiness coercion.
         if type(value) is not bool and type(value) is not np.bool_:
-            raise _refuse('COUPLED_NATIVE_INVALID', 'cancel_invalid', 'the cancellation flag must be a bool')
+            raise _built(lambda: _refuse('COUPLED_NATIVE_INVALID', 'cancel_invalid',
+                                         'the cancellation flag must be a bool'))
         if value:
-            raise _refuse('COUPLED_CANCELLED', None, 'the coupled solve was cancelled')
+            raise _built(_cancel_refusal)
     return check
 
 
@@ -354,12 +383,42 @@ def _analyse_cut(model: Any, removed_ids: Sequence[int]) -> _Cut:
     return _Cut(tuple(removed), orphans, tuple(chains), tuple(corners), n0, thicknesses[0])
 
 
+def _model_copy(model: Any, *, drop_constraints: bool = False):
+    """A deep copy of the FEModel that runs no caller copy protocol on what the route does not need
+    (review r6 P2): ``load_cases`` (any registered case, never read) is replaced by a new empty list,
+    the materials are shared (read only) and, with ``drop_constraints``, the MPC list is replaced by an
+    empty list (the holed model rebuilds it). _check_containers admitted the model's exact attribute set
+    and types before; the mesh is copied by FEMesh.__deepcopy__ (its fields only)."""
+    memo: Dict[int, Any] = {id(model.load_cases): []}
+    for material in model.materials.values():
+        memo[id(material)] = material
+    if drop_constraints:
+        memo[id(model.constraint_equations)] = []
+    return copy.deepcopy(model, memo)
+
+
+def _case_copy(load_case: Any):
+    """An exact-type rebuild of a LoadCase admitted by _check_containers and _check_load_route (review
+    r6 P2: no deepcopy of caller objects): exact dicts with integer keys, nodal values float64 arrays or
+    lists/tuples of raw scalars, pressures and masses raw scalars, no element loads, no gravity."""
+    from .boundary import LoadCase
+
+    def nodal(value: Any) -> Any:
+        if type(value) is np.ndarray:
+            return value.copy()
+        return list(value) if type(value) is list else tuple(value)
+    return LoadCase(name=load_case.name, nodal_loads={k: nodal(v) for k, v in load_case.nodal_loads.items()},
+                    element_loads={}, pressure_loads=dict(load_case.pressure_loads), gravity=None,
+                    added_node_masses=dict(load_case.added_node_masses),
+                    follower_pressure=load_case.follower_pressure)
+
+
 def _holed_model(model: Any, cut: _Cut):
     """A deep copy minus the removed elements and the orphan nodes, DOFs renumbered in node order.
     Returns (holed, old_to_new) with old_to_new mapping original DOFs of kept nodes."""
     from .fe_core import DOFManager
     from .constraint_audit import ConstraintEquation
-    holed = copy.deepcopy(model)
+    holed = _model_copy(model, drop_constraints=True)
     for eid in cut.removed:
         del holed.mesh.elements[eid]
     for nid in cut.orphans:
@@ -432,7 +491,7 @@ def _check_load_route(model: Any, load_case: Any) -> None:
     if load_case.gravity is not None:
         raise _refuse('COUPLED_LOAD_UNSUPPORTED', 'gravity', 'gravity is not supported')
     for eid, pressure in load_case.pressure_loads.items():
-        if type(pressure) not in (float, np.float64) or not math.isfinite(float(pressure)):
+        if not _type_in(pressure, (float, np.float64)) or not math.isfinite(float(pressure)):
             raise _refuse('COUPLED_LOAD_UNSUPPORTED', 'pressure_kind',
                           f'pressure on element {eid} must be a finite scalar float64')
     _check_raw_scalars(model, load_case)
@@ -444,7 +503,7 @@ _RAW_SCALAR_TYPES = (float, np.float64, int)
 def _raw_scalar(value: Any) -> bool:
     """A raw load, support or MPC scalar as ANYfem emits it: an exact float, np.float64 or int
     (never bool, Fraction, Decimal or another numeric type that native code would round)."""
-    return type(value) in _RAW_SCALAR_TYPES
+    return _type_in(value, _RAW_SCALAR_TYPES)
 
 
 def _check_raw_scalars(model: Any, load_case: Any) -> None:
@@ -456,7 +515,7 @@ def _check_raw_scalars(model: Any, load_case: Any) -> None:
         if type(load) is np.ndarray:
             if load.dtype != np.float64 or load.ndim != 1:
                 raise bad(f'the nodal load on node {nid}')
-        elif type(load) not in (list, tuple) or not all(_raw_scalar(v) for v in load):
+        elif not _type_in(load, (list, tuple)) or not all(_raw_scalar(v) for v in load):
             raise bad(f'the nodal load on node {nid}')
     for bc in model.boundary_conditions:
         if not all(_raw_scalar(v) for v in bc.dof_constraints.values()):
@@ -528,7 +587,7 @@ def _ledger(holed: Any, holed_case: Any, active: int, F_native: np.ndarray) -> T
 
 def _transferred(model: Any, cut: _Cut, load_case: Any) -> List[Tuple[int, int, float]]:
     """Native contributions (original DOFs) of the removed elements' pressure records."""
-    replay = copy.deepcopy(load_case)
+    replay = _case_copy(load_case)
     replay.nodal_loads = {}
     replay.pressure_loads = {eid: load_case.pressure_loads[eid] for eid in cut.removed if eid in load_case.pressure_loads}
     out = []
@@ -536,7 +595,7 @@ def _transferred(model: Any, cut: _Cut, load_case: Any) -> List[Tuple[int, int, 
     for record, dof, value in replay._load_contributions(model.mesh, None, one, report_skips=True):
         if record[0].endswith('_skipped'):
             raise _refuse('COUPLED_LOAD_UNCOVERED', record[0], 'a transferred pressure component is not assembled')
-        if type(value) not in (float, np.float64) or not math.isfinite(float(value)):
+        if not _type_in(value, (float, np.float64)) or not math.isfinite(float(value)):
             raise _refuse('COUPLED_LOAD_UNCOVERED', 'transferred_value', 'a transferred component is not a finite float64')
         out.append((int(record[1]), int(dof), float(value)))
     return out
@@ -960,35 +1019,31 @@ def _build_connector(trace, prepared, name, knots, n_shell, n_solid):
 
 # --- recovery bounds ------------------------------------------------------------------------------
 
-def _bounded_rows(matrix_rows: Sequence[Sequence[Tuple[int, Fraction]]], offsets: Optional[Sequence[Fraction]],
-                  z: np.ndarray, shifts: np.ndarray, error: Fraction) -> Bounded:
-    """values_i = sum_j M_ij z_j (+ offset_i) exactly, rounded once; bound
-    |float - exact| + sqrt_hi(sum_j (M_ij d_j)^2) E."""
-    values, bounds = [], []
-    zq = {}
-    for r, row in enumerate(matrix_rows):
-        exact = offsets[r] if offsets is not None else Fraction(0)
-        square = Fraction(0)
-        for j, coefficient in row:
-            if j not in zq:
-                zq[j] = _q(z[j])
-            exact += coefficient * zq[j]
-            square += (coefficient * Fraction(2) ** int(shifts[j])) ** 2
-        value = _to_float(exact)
-        values.append(value)
-        rounding = abs(_q(value) - exact) if math.isfinite(value) else Fraction(0)
-        bounds.append(_out_up(rounding + _sqrt_hi(square) * error))
-    values = np.asarray(values, dtype=float)
-    bounds = np.asarray(bounds, dtype=float)
-    if not (np.isfinite(values).all() and np.isfinite(bounds).all()):
-        raise _refuse('COUPLED_UNCERTIFIED', 'bound_not_finite', 'a recovered value or bound is not finite')
-    return Bounded(values, bounds)
+# OD14: the certificate worker evaluates each map M exactly, values_i = sum_j M_ij z_j (+ offset_i)
+# rounded once, with the bound |float - exact| + sqrt_hi(sum_j (M_ij d_j)^2) E
+# (_coupled_certificate_math.bounded_rows). These build the maps, entry for entry as before.
+
+def _identity_map(count: int, offset: int) -> ExportMap:
+    return ExportMap(np.arange(count + 1, dtype=np.int64), offset + np.arange(count, dtype=np.int64),
+                     np.ones(count, dtype=np.float64))
 
 
-def _csr_rows(matrix: sparse.csr_matrix, col_offset: int = 0) -> List[List[Tuple[int, Fraction]]]:
+def _csr_map(matrix: sparse.csr_matrix, col_offset: int, offsets: Optional[np.ndarray] = None) -> ExportMap:
     matrix = matrix.tocsr()
-    return [[(int(matrix.indices[k]) + col_offset, _q(matrix.data[k])) for k in range(matrix.indptr[i], matrix.indptr[i + 1])]
-            for i in range(matrix.shape[0])]
+    return ExportMap(np.asarray(matrix.indptr, dtype=np.int64), np.asarray(matrix.indices, dtype=np.int64) + col_offset,
+                     np.array(matrix.data, dtype=np.float64),
+                     None if offsets is None else np.array(offsets, dtype=np.float64))
+
+
+def _rational_map(rows: Sequence[Sequence[Tuple[int, Fraction]]]) -> ExportMap:
+    indptr = np.zeros(len(rows) + 1, dtype=np.int64)
+    columns, coefficients = [], []
+    for r, row in enumerate(rows):
+        for j, coefficient in row:
+            columns.append(int(j))
+            coefficients.append(Fraction(coefficient))
+        indptr[r + 1] = len(columns)
+    return ExportMap(indptr, np.asarray(columns, dtype=np.int64), tuple(coefficients))
 
 
 # --- contract properties the route assumes (review r1 #2, class 2) --------------------------------
@@ -1209,9 +1264,9 @@ def _check_footprint_partition(model: Any, removed: Sequence[int], orphans: Sequ
 
 # --- the entry ------------------------------------------------------------------------------------
 
-_INT_TYPES = frozenset((int, np.int8, np.int16, np.int32, np.int64, np.intc, np.intp,
-                        np.uint8, np.uint16, np.uint32, np.uint64, np.uintc, np.uintp))
-_RAW_VALUE_TYPES = frozenset((float, np.float64, int))
+_INT_TYPES = (int, np.int8, np.int16, np.int32, np.int64, np.intc, np.intp,
+              np.uint8, np.uint16, np.uint32, np.uint64, np.uintc, np.uintp)
+_RAW_VALUE_TYPES = (float, np.float64, int)
 
 
 def _check_containers(model: Any, load_case: Any) -> None:
@@ -1239,13 +1294,28 @@ def _check_containers(model: Any, load_case: Any) -> None:
         return _refuse('COUPLED_NATIVE_INVALID', 'container_type', f'{what} has an unsupported container type')
 
     def int_keys(mapping: dict) -> bool:
-        return all(type(key) in _INT_TYPES for key in mapping)
+        return all(_type_in(key, _INT_TYPES) for key in mapping)
 
+    from dataclasses import fields as _fields
+    from .boundary import LoadCase
+    from .fe_core import FEModel
+
+    def exact_attributes(obj: Any, cls: type) -> bool:
+        # The instance dict is an exact dict; its keys are checked to be exact str before the set compare.
+        names = obj.__dict__
+        return type(names) is dict and all(type(k) is str for k in names) \
+            and set(names) == {f.name for f in _fields(cls)}
+
+    if not exact_attributes(load_case, LoadCase) or type(load_case.name) is not str:
+        raise bad('load_case')
+    if not exact_attributes(model, FEModel) or type(model.name) is not str \
+            or type(model.current_material) is not str or type(model.load_cases) is not list:
+        raise bad('fe_model')
     for name in ('nodal_loads', 'element_loads', 'pressure_loads', 'added_node_masses'):
         value = getattr(load_case, name)
         if type(value) is not dict or not int_keys(value):
             raise bad(f'load_case.{name}')
-    if not all(type(v) in _RAW_VALUE_TYPES for v in load_case.added_node_masses.values()):
+    if not all(_type_in(v, _RAW_VALUE_TYPES) for v in load_case.added_node_masses.values()):
         raise bad('load_case.added_node_masses')
     if type(load_case.follower_pressure) is not bool:
         raise bad('load_case.follower_pressure')
@@ -1257,11 +1327,11 @@ def _check_containers(model: Any, load_case: Any) -> None:
         if type(mapping) is not _QualifiedStateMapping or not int_keys(mapping):
             raise bad(f'fe_model.mesh.{name}')
     for node in mesh.nodes.values():
-        if type(node) is not Node or type(node.dofs) is not list or not all(type(d) in _INT_TYPES for d in node.dofs):
+        if type(node) is not Node or type(node.dofs) is not list or not all(_type_in(d, _INT_TYPES) for d in node.dofs):
             raise bad('a node DOF list')
     for element in mesh.elements.values():
         ids = element.node_ids
-        if type(ids) not in (tuple, list) or not all(type(n) in _INT_TYPES for n in ids):
+        if not _type_in(ids, (tuple, list)) or not all(_type_in(n, _INT_TYPES) for n in ids):
             raise bad('an element node list')
     for name in ('point_masses', 'concentrated_masses'):
         if type(getattr(mesh, name)) is not dict:
@@ -1272,9 +1342,9 @@ def _check_containers(model: Any, load_case: Any) -> None:
     if type(supports) is not list:
         raise bad('fe_model.boundary_conditions')
     for bc in supports:
-        if type(bc) not in (BoundaryCondition, FixedSupport, PinnedSupport, RollerSupport, SymmetryBC):
+        if not _type_in(bc, (BoundaryCondition, FixedSupport, PinnedSupport, RollerSupport, SymmetryBC)):
             raise bad('a support')
-        if type(bc.node_ids) not in (list, tuple) or not all(type(n) in _INT_TYPES for n in bc.node_ids):
+        if not _type_in(bc.node_ids, (list, tuple)) or not all(_type_in(n, _INT_TYPES) for n in bc.node_ids):
             raise bad(f'the node list of support {bc.name!r}' if type(bc.name) is str else 'a support node list')
         if type(bc.dof_constraints) is not dict or not all(type(k) is str for k in bc.dof_constraints):
             raise bad('a support DOF mapping')
@@ -1282,9 +1352,9 @@ def _check_containers(model: Any, load_case: Any) -> None:
     if type(equations) is not list:
         raise bad('fe_model.constraint_equations')
     for equation in equations:
-        if type(equation) is not ConstraintEquation or type(equation.dependent_dof) not in _INT_TYPES \
+        if type(equation) is not ConstraintEquation or not _type_in(equation.dependent_dof, _INT_TYPES) \
                 or type(equation.coefficients) is not tuple \
-                or not all(type(term) is tuple and len(term) == 2 and type(term[0]) in _INT_TYPES
+                or not all(type(term) is tuple and len(term) == 2 and _type_in(term[0], _INT_TYPES)
                            for term in equation.coefficients):
             raise bad('an MPC')
 
@@ -1327,31 +1397,64 @@ def solve_shell_solid_coupled(fe_model: Any, prepared: Any, *, removed_element_i
     Trusted-construction boundary (OD9): the claims cover untouched objects built by ANYfem's
     pipeline only (``PreparedSolid`` from ``anysolid.prepare``, the FEModel from ANYfem's builder,
     the cut from ``cut_solid_submodel``). Objects modified after construction are out of scope."""
+    # No uncoded exception escapes (r1 #9). Review r5 #3 / r6 P2: a trace or profile hook that raises is
+    # unset by the interpreter after that one exception. Line events are switched off for this frame only
+    # (its own documented frame flag; the caller's tracing of every other frame is unchanged), so the
+    # handlers below run no line event; the translation is nested three deep, so a hook raising in a call
+    # of one handler is translated by the next level from the exception's __context__ chain.
+    sys._getframe().f_trace_lines = False
+    state: List[Any] = [None]
     try:
-        return _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, resources,
-                      time.perf_counter if clock is None else clock)   # identity, no __bool__ (r4 P2)
+        try:
+            try:
+                return _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, resources,
+                              time.perf_counter if clock is None else clock, state)  # identity, no __bool__
+            except CoupledSolveError:
+                raise
+            except Exception as exc:
+                raise _translated(exc, state) from exc
+        except CoupledSolveError:
+            raise
+        except Exception as exc:
+            raise _recovered(exc, 1, state) from exc
     except CoupledSolveError:
         raise
-    except Exception as exc:  # no uncoded exception escapes (r1 #9)
-        # Review r5 #3: the refusal is built in a bounded retry. A trace or profile hook that raises while
-        # it is built is unset by the interpreter after that exception, so it costs one attempt; the
-        # code and reason stay those of the original exception.
-        for _ in range(_TRANSLATION_ATTEMPTS):
-            try:
-                if isinstance(exc, MemoryError):
-                    refusal = _refuse('COUPLED_TOO_LARGE', 'memory_error', 'out of memory in the coupled solve')
-                else:
-                    refusal = _refuse('COUPLED_NATIVE_INVALID', f'unexpected:{_safe_name(exc)}',
-                                      f'the coupled solve failed unexpectedly ({_safe_text(exc)})')
-                break
-            except Exception:  # noqa: BLE001
-                continue
-        else:
-            raise
-        raise refusal from exc
+    except Exception as exc:
+        raise _recovered(exc, 2, state) from exc
 
 
-def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, resources, clock) -> CoupledSolution:
+_CONTEXT = BaseException.__dict__['__context__']          # C getset: no caller code runs
+
+
+def _translated(exc: BaseException, state: List[Any]) -> CoupledSolveError:
+    """The coded refusal for an uncoded exception: COUPLED_CANCELLED once the flag read True, COUPLED_TOO_LARGE
+    for MemoryError, else COUPLED_NATIVE_INVALID (unexpected:<Type>); built in a bounded retry."""
+    if _cancelled(state):
+        return _built(_cancel_refusal)
+    if isinstance(exc, MemoryError):
+        return _built(lambda: _refuse('COUPLED_TOO_LARGE', 'memory_error', 'out of memory in the coupled solve'))
+    return _built(lambda: _refuse('COUPLED_NATIVE_INVALID', f'unexpected:{_safe_name(exc)}',
+                                  f'the coupled solve failed unexpectedly ({_safe_text(exc)})'))
+
+
+def _recovered(exc: BaseException, steps: int, state: List[Any]) -> CoupledSolveError:
+    """The refusal for the original exception, ``steps`` links down the __context__ chain of a hook's
+    exception raised in an inner handler; a CoupledSolveError met on the way is the result itself."""
+    original = exc
+    for _ in range(steps):
+        context = _CONTEXT.__get__(original, BaseException)
+        if context is None:
+            break
+        original = context
+        if isinstance(original, CoupledSolveError):
+            return original
+    if isinstance(original, CoupledSolveError):
+        return original
+    return _translated(original, state)
+
+
+def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, resources, clock,
+           state=None) -> CoupledSolution:
     from anysolid.backend import PreparedSolid
     from .boundary import LoadCase
     from .fe_core import FEModel
@@ -1365,7 +1468,7 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
     clock = _checked_clock(clock)
     timings: Dict[str, float] = {}
     t_start = clock()
-    check = _cancel_probe(cancel)
+    check = _cancel_probe(cancel, state)
 
     def poll():
         # Cancellation, then the FP environment (a callback or a lazily imported extension may have
@@ -1406,7 +1509,7 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
     _check_targets(fe_model, cut, load_case)
     pressure = _skin_pressure(fe_model, cut, load_case, box)
     holed, _ = _native(_holed_model, fe_model, cut)
-    holed_case = copy.deepcopy(load_case)
+    holed_case = _case_copy(load_case)
     for eid in cut.removed:
         holed_case.pressure_loads.pop(eid, None)
     for nid in cut.orphans:
@@ -1474,7 +1577,7 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
         echo.update(offset=(-0.5 if box.skin == 'start' else 0.5) * thickness, traction=q.tolist())
         # The exact type is checked before any use or conversion (r1 #7, class 6).
         f_v = _require_vector(prepared.traction(box.skin, q), n_v, 'the skin traction f_v')
-        _transfer_gate(copy.deepcopy(fe_model), cut, load_case, prepared, f_v, centre, diagonal_lo)
+        _transfer_gate(_model_copy(fe_model), cut, load_case, prepared, f_v, centre, diagonal_lo)
     poll()
 
     # Native shell: unchanged assembly and reduction on the holed model.
@@ -1562,25 +1665,12 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
     # prescribed support value and MPC right-hand side.
     raw_zero = _raw_inputs_zero(fe_model, load_case, holed, pressure, ledger, F, u0)
     poll()
-    solved = certified_solve(formed.system, formed.rhs, raw_load_zero=raw_zero, memory_limit_bytes=memory_limit,
-                             cancel=check, clock=clock)
-    timings.update({f'certified_{k}': v for k, v in solved.timings.items()})
 
-    # Recovery with bounds (section 5).
-    t0 = clock()
-    z, shifts, E = solved.x, solved.shifts, solved.forward_error
+    # Section 5: the common rigid basis and the recovery maps. OD14: the certificate worker evaluates
+    # every bounded quantity exactly (values and bounds) from the candidate it verified; this process
+    # only forms the maps (formation, like the stored system).
     n_s, m = sizes['n_s'], sizes['m']
-    sl_v = slice(n_s, n_s + n_v)
     sl_l = slice(n_s + n_v, n_s + n_v + m)
-    identity = lambda count, offset: [[(offset + i, Fraction(1))] for i in range(count)]  # noqa: E731
-    solid = _bounded_rows(identity(n_v, n_s), None, z, shifts, E)
-    lam = _bounded_rows(identity(m, n_s + n_v), None, z, shifts, E)
-    shell = _bounded_rows(_csr_rows(T), [_q(v) for v in u0], z, shifts, E)
-    shell_force = _bounded_rows(_csr_rows(C_shell.T.tocsr(), n_s + n_v), None, z, shifts, E)
-    solid_force = _bounded_rows(_csr_rows(C_solid.T.tocsr(), n_s + n_v), None, z, shifts, E)
-    poll()
-
-    # Common rigid basis; V4 and the per-side resultants.
     manager = holed.mesh.dof_manager
     shell_coords, shell_names = [], []
     for dof in range(active):
@@ -1590,18 +1680,39 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
     R_s = _rigid_basis(shell_coords, shell_names, centre)
     solid_coords = prepared.coefficient_coordinates      # float64 (n_v, 3) by _check_prepared
     R_v = _rigid_basis(solid_coords, [_DOF_NAMES[int(c)] for c in prepared.coefficient_components], centre)
-    # The exported forward error is the bounded E rounded up, never below it (r1 class 5).
-    verification: Dict[str, Any] = {'backward': dict(solved.backward), 'forward_error': _out_up(E)}
-    resultants = []
+    side_blocks = []
     start = 0
-    lam_q = [_q(v) for v in z[sl_l]]
-    worst_compat = Fraction(0)
-    worst_balance = Fraction(0)
     for k, name in enumerate(box.sides):
         rows = slice(start, start + side_rows[k])
         Ck_s, Ck_v = C_shell[rows], C_solid[rows]
         CRs, CRv = _times_basis(Ck_s, R_s), _times_basis(Ck_v, R_v)
         scale = max(_abs_times_basis_inf(Ck_s, R_s), _abs_times_basis_inf(Ck_v, R_v))
+        side_blocks.append((name, start, side_rows[k], CRs, CRv, scale))
+        start += side_rows[k]
+    exports = [_identity_map(n_v, n_s), _identity_map(m, n_s + n_v), _csr_map(T, 0, u0),
+               _csr_map(C_shell.T.tocsr(), n_s + n_v), _csr_map(C_solid.T.tocsr(), n_s + n_v)]
+    for name, start, count, CRs, CRv, scale in side_blocks:
+        exports.append(_rational_map([[(n_s + n_v + start + i, -CRs[i][r]) for i in range(count) if CRs[i][r]]
+                                      for r in range(6)]))
+    poll()
+    solved = certified_solve(formed.system, formed.rhs, raw_load_zero=raw_zero, memory_limit_bytes=memory_limit,
+                             cancel=check, clock=clock, exports=exports)
+    timings.update({f'certified_{k}': v for k, v in solved.timings.items()})
+
+    # Recovery with bounds (section 5): values and bounds as the worker returned them.
+    t0 = clock()
+    z = solved.x
+    solid, lam, shell, shell_force, solid_force = (Bounded(v, b) for v, b in solved.exports[:5])
+    poll()
+
+    # V4 and the per-side resultants.
+    # The exported forward error is the bounded E rounded up, never below it (r1 class 5).
+    verification: Dict[str, Any] = {'backward': dict(solved.backward), 'forward_error': solved.forward_error_up}
+    resultants = []
+    lam_q = [_q(v) for v in z[sl_l]]
+    worst_compat = Fraction(0)
+    worst_balance = Fraction(0)
+    for k, (name, start, count, CRs, CRv, scale) in enumerate(side_blocks):
         for a_row, b_row in zip(CRs, CRv):
             for a, b in zip(a_row, b_row):
                 if abs(a - b) > V4_COMPATIBILITY_TOLERANCE * scale:
@@ -1609,13 +1720,10 @@ def _solve(fe_model, prepared, removed_element_ids, box, load_case, cancel, reso
                                   f'side {name!r}: C_shell R_s and C_solid R_v differ')
                 if scale:
                     worst_compat = max(worst_compat, abs(a - b) / scale)
-        lk = lam_q[start:start + side_rows[k]]
+        lk = lam_q[start:start + count]
         worst_balance = max(worst_balance, _v4_side_balance(name, CRs, CRv, lk))
-        Q_rows = [[(n_s + n_v + start + i, -CRs[i][r]) for i in range(len(lk)) if CRs[i][r]] for r in range(6)]
-        bounded = _bounded_rows(Q_rows, None, z, shifts, E)
-        resultants.append(SideResultant(name, Bounded(bounded.values[:3], bounded.bounds[:3]),
-                                        Bounded(bounded.values[3:], bounded.bounds[3:])))
-        start += side_rows[k]
+        values, bounds = solved.exports[5 + k]
+        resultants.append(SideResultant(name, Bounded(values[:3], bounds[:3]), Bounded(values[3:], bounds[3:])))
         poll()
     verification['v4_compatibility_max'] = _to_float(worst_compat)
     verification['v4_balance_max'] = _to_float(worst_balance)

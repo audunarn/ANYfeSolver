@@ -1,5 +1,21 @@
 # S3: coupled specimen, references R0–R2 and timing (2026-11-19)
 
+## Update 2026-11-21 (OD14, review r6): whole certificate in the child process — results bit-identical, timing PASS
+
+Re-run of the coupled entries (aw/timing_coupled_t1, 	iming_coupled_default, 	iming_oneway_t1, 	iming_svd_t1,
+peak_coupled_t1, 0_coupled_n10; one BLAS thread unless noted; shared machine, load 5–85 %).
+
+- **Bit identity.** Every non-timing field of the coupled entries is identical to 3d1227284 (observables, bounds,
+  kappa_up, E, V4/V5, reaction). summary.json changes in its timing block only. OD10: R0 PASS (h = 0.05 centre
+  0.150 %), R1 FAIL (order difference 0.418, e_c/e_s 1.54 at h = 0.1; unchanged, nothing tuned), R2 PASS 0.75 %.
+- **Whole certificate at N = 5000 including the child** (svd entry, median of 3 after one warm-up):
+  certified_solve on a banded N = 5000 system (601 340 nonzeros; candidate overlapped with the child's SVD;
+  then exact residual, V1–V3, E and V6 in the child) **26.9 s** ≤ 45 s; child SVD 25.9 s, equilibration 0.30 s,
+  exact residual 0.19 s, verification 0.28 s, candidate 1.24 s (overlapped). Certificate alone of the dense random
+  symmetric matrix of the OD13 measurement: 26.9 s (child SVD 25.8 s, request read 0.16 s, start-up 0.09 s).
+- **Specimen h = 0.05** (N = 4969) accepted, median wall **32.7 s** ≤ 60 s (OD13: 35.3 s).
+- **Peak commit at N = 4969:** parent 308 MiB above post-import (OD13: 830 MiB; the parent no longer holds a dense
+  copy), child 780 MiB (the dense matrix, its equilibrated copy and LAPACK's), sum **1190 MiB** (OD13: 1362 MiB).
 ## Update 2026-11-20 (OD13, review r5): certificate SVD in a worker process — results bit-identical, timing PASS
 
 Owner decision OD13: the certificate SVD runs in a child process (`docs/SOLID_COUPLING.md`, "Certificate SVD

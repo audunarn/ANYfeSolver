@@ -49,7 +49,7 @@ def _caller_frame():
 
 
 @pytest.mark.parametrize('function, next_line', [('_solve', 'prepared.assemble_linear()'),
-                                                  ('certified_solve', '_candidate(system, b)')],
+                                                  ('candidate', '_held_candidate(system, b, held)')],
                          ids=['formation', 'candidate'])
 def test_r3_p2_clock_switches_rounding_for_one_stage_refuses(function, next_line):
     """The reviewer's schedule: the clock selects downward rounding immediately before a stage

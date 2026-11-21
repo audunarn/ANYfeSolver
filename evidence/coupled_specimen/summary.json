@@ -360,56 +360,53 @@
  },
  "timing": {
   "coupled_median_t1": {
-   "provenance": 0.034490899997763336,
-   "native": 1.8333439999260008,
-   "connector": 1.5141564001096413,
-   "formation": 0.03543539997190237,
-   "certified_certificate": 28.890045600011945,
-   "certified_candidate": 0.506808300036937,
-   "certified_exact_residual": 0.07118329999502748,
-   "certified_verification": 0.20149199990555644,
-   "recovery": 0.6288151999469846,
-   "total": 35.32872669992503,
-   "wall": 35.33279729995411
+   "provenance": 0.03686859994195402,
+   "native": 1.7598068000515923,
+   "connector": 1.4412956999149173,
+   "formation": 0.033919099951162934,
+   "certified_candidate": 0.5025733999209478,
+   "certified_certificate": 27.556406699935906,
+   "recovery": 0.0431148000061512,
+   "total": 32.740886299987324,
+   "wall": 32.74448259989731
   },
   "coupled_runs_wall_t1": [
-   34.72148750000633,
-   35.33279729995411,
-   36.086080199922435,
-   35.963841700111516,
-   35.21985550003592,
-   35.256274799932726
+   32.62980290001724,
+   32.80086650000885,
+   32.53320359997451,
+   32.74448259989731,
+   32.830759699922055,
+   32.43384670000523
   ],
   "coupled_t1_refused": null,
   "coupled_t1_wall_to_refusal": null,
   "coupled_default_threads": {
-   "provenance": 0.02593570004682988,
-   "native": 1.7104166999924928,
-   "connector": 1.7979618000099435,
-   "formation": 0.17883850005455315,
-   "certified_certificate": 28.704154799925163,
-   "certified_candidate": 0.48683410009834915,
-   "certified_exact_residual": 0.07175179990008473,
-   "certified_verification": 0.18066519999410957,
-   "recovery": 0.645352799911052,
-   "total": 35.220102600054815,
-   "wall": 35.22526969993487
+   "provenance": 0.03147039993200451,
+   "native": 1.5408990000141785,
+   "connector": 1.5838668999494985,
+   "formation": 0.15976499998942018,
+   "certified_candidate": 0.5041070999577641,
+   "certified_certificate": 27.418290099943988,
+   "recovery": 0.0454230000032112,
+   "total": 32.47543270001188,
+   "wall": 32.481490800040774
   },
   "oneway_median_t1": {
-   "native_shell": 0.39457699994090945,
-   "one_way_solid": 0.09348870010580868,
-   "total": 0.4865631000138819
+   "native_shell": 0.36981449997983873,
+   "one_way_solid": 0.08922510000411421,
+   "total": 0.46016539994161576
   },
-  "svd5000_t1_times": [
-   27.830166600062512,
-   28.260560699971393,
-   28.009910500026308,
-   28.19312420010101
+  "certificate5000_t1_times": [
+   26.819721399922855,
+   26.877931300085038,
+   26.993788299965672,
+   26.863213500007987
   ],
-  "svd5000_t1_median": 28.19312420010101,
+  "certificate5000_t1_median": 26.877931300085038,
+  "dense_certificate5000_t1_median": 26.8670482999878,
   "gate_svd_45s": true,
   "gate_specimen_60s": true,
-  "peak_commit_minus_post_import_mib": 829.6171875,
+  "peak_commit_minus_post_import_mib": 308.3359375,
   "peak_run_refused": null,
   "environment": {
    "python": "3.11.9",

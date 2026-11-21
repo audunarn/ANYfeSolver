@@ -10,6 +10,7 @@ from scipy import sparse
 
 from anyfesolver import _coupled_certificate as cc
 from anyfesolver._coupled_certificate import CoupledSolveError
+from _coupled_worker_patch import patch_worker  # noqa: E402
 
 EPS = np.finfo(float).eps
 LIMIT = 1e-6 / EPS
@@ -130,7 +131,8 @@ def test_sigma_n_equal_to_delta_is_refused_singular_within_svd_error():
 def test_injected_singular_values_at_delta_refuse_the_solve(monkeypatch):
     S = _csr(np.eye(3))
     delta = cc._condition_upper_bound(1.0, 1.0, 3)['svd_error_bound']
-    monkeypatch.setattr(cc, '_svd_values', lambda A, cancel=None: np.array([1.0, 1.0, delta]))
+    # OD14: the SVD runs in the worker; the test injects the singular values there.
+    patch_worker(monkeypatch, cc, f"np.linalg.svd = lambda A, compute_uv=False: np.array([1.0, 1.0, {delta!r}])")
     error = _refusal(lambda: cc.certified_solve(S, np.ones(3), raw_load_zero=False))
     assert (error.code, error.reason) == ('COUPLED_UNCERTIFIED', 'singular_within_svd_error')
 
@@ -138,17 +140,18 @@ def test_injected_singular_values_at_delta_refuse_the_solve(monkeypatch):
 # --- Cap and memory ------------------------------------------------------------------------------------
 
 def test_cap_admits_5000_and_refuses_5001_before_any_dense_allocation(monkeypatch):
+    # OD14: the dense matrix is built in the worker; the refusal at 5001 comes before any worker starts.
     calls = []
-    original = sparse.csr_matrix.toarray
+    original = cc._start_worker
 
-    def spy(self, *args, **kwargs):
-        calls.append(self.shape)
-        return original(self, *args, **kwargs)
-    monkeypatch.setattr(sparse.csr_matrix, 'toarray', spy)
-    monkeypatch.setattr(cc, '_svd_values', lambda A, cancel=None: np.ones(A.shape[0]))  # no 45 s SVD in a unit test
+    def spy(*args, **kwargs):
+        calls.append(args)
+        return original(*args, **kwargs)
+    monkeypatch.setattr(cc, '_start_worker', spy)
+    patch_worker(monkeypatch, cc, 'np.linalg.svd = lambda A, compute_uv=False: np.ones(A.shape[0])')  # no 45 s SVD
     accepted = cc._certify_solve_matrix(sparse.identity(5000, format='csr'))
     assert accepted['accepted'] is True and accepted['size'] == 5000
-    assert calls == [(5000, 5000)]
+    assert len(calls) == 1
     calls.clear()
     error = _refusal(lambda: cc._certify_solve_matrix(sparse.identity(5001, format='csr')))
     assert (error.code, error.reason) == ('COUPLED_TOO_LARGE', 'equation_cap')
@@ -174,7 +177,10 @@ def test_injected_memory_error_is_coupled_too_large(monkeypatch, where):
     def boom(*args, **kwargs):
         raise MemoryError
     if where == 'svd':
-        monkeypatch.setattr(cc, '_svd_values', boom)
+        patch_worker(monkeypatch, cc, '''
+            def boom(*args, **kwargs):
+                raise MemoryError
+            np.linalg.svd = boom''')
     else:
         monkeypatch.setattr(cc.sparse_linalg, 'splu', boom)
     error = _refusal(lambda: cc.certified_solve(_csr(np.eye(2)), np.ones(2), raw_load_zero=False))
@@ -293,6 +299,7 @@ def test_forward_error_above_the_limit_refuses_the_solve(monkeypatch):
     S = _csr([[2., 0.], [0., 3.]])
     monkeypatch.setattr(cc, '_candidate', lambda system, b: np.array([0.5 * (1 + 1e-3), 1. / 3.]))
     monkeypatch.setattr(cc, 'BACKWARD_TOLERANCE', Fraction(1))
+    patch_worker(monkeypatch, cc, 'from fractions import Fraction; m.BACKWARD_TOLERANCE = Fraction(1)')
     error = _refusal(lambda: cc.certified_solve(S, np.array([1., 1.]), raw_load_zero=False))
     assert (error.code, error.reason) == ('COUPLED_UNCERTIFIED', 'forward_error_above_limit')
 

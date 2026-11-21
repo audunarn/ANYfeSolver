@@ -99,17 +99,26 @@ def _all_gone(pids, wait=10.0):
 
 @contextlib.contextmanager
 def _capture_reports(monkeypatch):
-    """Record the worker's diagnostic report of every certificate SVD (the production function is
-    wrapped, not replaced)."""
+    """Record the worker's diagnostic report of every certificate run (the production function is
+    wrapped, not replaced; OD14: the worker runs the whole certificate)."""
     reports = []
-    original = getattr(cc, '_svd_in_worker', None)
-    if original is not None:
-        def wrapped(*args, **kwargs):
-            sigma, failure, report = original(*args, **kwargs)
-            reports.append(report)
-            return sigma, failure, report
-        monkeypatch.setattr(cc, '_svd_in_worker', wrapped)
+    original = cc._run_worker
+
+    def wrapped(*args, **kwargs):
+        decoded, report = original(*args, **kwargs)
+        reports.append(report)
+        return decoded, report
+    monkeypatch.setattr(cc, '_run_worker', wrapped)
     yield reports
+
+
+def _certificate_run(A, cancel=None):
+    """The worker's certificate of the dense matrix A (as canonical CSR): (sigma_max, sigma_min,
+    condition_upper_bound) bit patterns and the worker's report."""
+    decoded, report = cc._run_worker(sparse.csr_matrix(A), None, mode='certificate', raw_load_zero=False,
+                                     memory_limit=None, cancel=cancel)
+    c = decoded['certificate']
+    return tuple(cc._bits_of(c[k]) for k in ('sigma_max', 'sigma_min', 'condition_upper_bound')), report
 
 
 def _one_thread(report):
@@ -134,7 +143,7 @@ def test_r5_1_profile_hook_four_threads_at_the_svd_does_not_reach_it(monkeypatch
     parent_svd_threads = []
 
     def at_svd(frame):
-        return frame.f_code.co_name == '_svd_in_worker' or _in_numpy_svd_from_certificate(frame)
+        return frame.f_code.co_name == '_run_worker' or _in_numpy_svd_from_certificate(frame)
 
     def profile(frame, event, arg):
         if event == 'call' and at_svd(frame):
@@ -165,13 +174,13 @@ def test_r5_1_parent_four_thread_scopes_do_not_reach_the_worker(monkeypatch):
     from threadpoolctl import threadpool_limits
     from anyfesolver.threading_policy import native_thread_scope
     A = _matrix(200)
-    baseline, failure, base_report = cc._svd_in_worker(A)
-    assert failure is None and _one_thread(base_report)
+    baseline, base_report = _certificate_run(A)
+    assert _one_thread(base_report)
     with threadpool_limits(limits=4, user_api='blas'):
         assert set(_blas_threads()) == {4}
-        sigma, failure, report = cc._svd_in_worker(A)
-    assert failure is None and _one_thread(report)
-    assert np.array_equal(sigma.view(np.int64), baseline.view(np.int64))
+        sigma, report = _certificate_run(A)
+    assert _one_thread(report)
+    assert sigma == baseline
     model, grid, removed, prepared, case, box = small()
     reference = solve(model, prepared, removed, box, case)
     holding, release = threading.Event(), threading.Event()
@@ -199,15 +208,14 @@ def test_r5_1_parent_fp_environment_does_not_reach_the_worker(mode):
     """Directed rounding or FTZ/DAZ in the parent thread does not reach the worker: it verifies its own
     environment and returns bit-identical singular values."""
     A = _matrix(200, seed=1)
-    baseline, failure, base_report = cc._svd_in_worker(A)
-    assert failure is None
+    baseline, base_report = _certificate_run(A)
     with (rounding(0x100) if mode == 'down' else flushing()):
-        sigma, failure, report = cc._svd_in_worker(A)
-    assert failure is None and _one_thread(report), report
+        sigma, report = _certificate_run(A)
+    assert _one_thread(report), report
     def verified(r):                        # the report without its timings and memory figures
         return {k: v for k, v in r.items() if not k.startswith(('seconds_', 'peak_'))}
     assert verified(report) == verified(base_report)
-    assert np.array_equal(sigma.view(np.int64), baseline.view(np.int64))
+    assert sigma == baseline
 
 
 def test_r5_1_parent_reader_joining_a_child_solve_proceeds():
@@ -248,7 +256,7 @@ def test_od13_worker_refuses_without_threadpoolctl(monkeypatch, tmp_path):
     """threadpoolctl not importable in the worker: the thread count cannot be verified, so it refuses."""
     (tmp_path / 'threadpoolctl.py').write_text("raise ImportError('blocked for the test')\n")
     original = cc._svd_worker_command
-    monkeypatch.setattr(cc, '_svd_worker_command', lambda: original()[:5] + [str(tmp_path)] + original()[5:])
+    monkeypatch.setattr(cc, '_svd_worker_command', lambda: original()[:5] + [str(tmp_path / 'threadpoolctl.py')])
     S = sparse.csr_matrix(np.diag([4.0, 2.0, 1.0]))
     refused('COUPLED_UNCERTIFIED', cc._certify_solve_matrix, S, reason='blas_threads')
 
@@ -273,8 +281,8 @@ def test_od13_worker_loads_no_site_customisation_or_python_variables(monkeypatch
     monkeypatch.setenv('PYTHONSTARTUP', str(tmp_path / 'startup.py'))
     monkeypatch.setenv('PYTHONUSERBASE', str(tmp_path))
     monkeypatch.setenv('OPENBLAS_NUM_THREADS', '4')
-    sigma, failure, report = cc._svd_in_worker(_matrix(50))
-    assert failure is None and _one_thread(report)
+    sigma, report = _certificate_run(_matrix(50))
+    assert _one_thread(report)
     assert not marker.exists(), marker.read_text()
     assert report['isolated'] == 1 and report['no_site'] == 1 and report['site_loaded'] is False
     assert report['sitecustomize_loaded'] is False
@@ -313,7 +321,7 @@ def test_od13_cancel_mid_svd_is_prompt():
             seen.extend(_descendants(os.getpid()))
             raise cc._refuse('COUPLED_CANCELLED', None, 'test cancellation')
     with pytest.raises(cc.CoupledSolveError) as info:
-        cc._svd_in_worker(A, cancel)
+        cc._certify_solve_matrix(sparse.csr_matrix(A), cancel=cancel)
     elapsed = time.monotonic() - started
     assert info.value.code == 'COUPLED_CANCELLED'
     assert seen and _all_gone(seen), seen
@@ -339,65 +347,137 @@ def test_od13_worker_timeout_refuses_and_terminates(monkeypatch):
 # --- OD13: a crash or bad output in the worker refuses -----------------------------------------------------------
 
 _SCRIPT = textwrap.dedent('''
-    import struct, sys
+    import json, math, os, struct, sys
     out = sys.stdout.buffer
-    def ok(values, n=3, tail=b''):
-        out.write(b'OK' + struct.pack('<Q', n) + struct.pack('<%dd' % len(values), *values) + tail)
+    def bits(x):
+        return struct.unpack('<Q', struct.pack('<d', x))[0]
+    def reply(obj, sections=(), code=0, tail=b'', counts=None):
+        obj = dict(obj, sections=counts if counts is not None else [[n, len(b)] for n, b in sections])
+        body = json.dumps(obj).encode()
+        out.write(b'ANYCRR02' + struct.pack('<Q', len(body)) + body + b''.join(b for _, b in sections) + tail)
         out.flush()
+        sys.exit(code)
+    def cert(drop=(), **changes):
+        c = dict(matrix='kkt_stored', size=3, method='power_of_two_ruiz_dense_svd',
+                 condition_limit=bits(1e-6 / 2.0 ** -52), condition_number=bits(1.0),
+                 condition_upper_bound=bits(1.0000000001), equilibration_sweeps=0, accepted=True, reason=None,
+                 sigma_max=bits(1.0), sigma_min=bits(1.0), svd_error_constant=1000,
+                 svd_error_alpha=bits(3000 * 2.0 ** -52), svd_error_bound=bits(1e-12))
+        c.update(changes)
+        for key in drop:
+            c.pop(key)
+        return c
+    SHIFTS = struct.pack('<3q', 0, 0, 0)
     {body}
 ''')
 
+_OK = "reply({{'verdict': 'certificate', 'certificate': cert()}}, [('shifts', SHIFTS)])"
+_SVD_KEYS = "('sigma_max', 'sigma_min', 'svd_error_constant', 'svd_error_alpha', 'svd_error_bound')"
+_UNCERTIFIED = ('COUPLED_UNCERTIFIED', 'svd_worker')
+
 _CASES = {
-    'exit7': ('sys.exit(7)', ('COUPLED_UNCERTIFIED', 'svd_worker')),
-    'crash': ("raise RuntimeError('worker crash')", ('COUPLED_UNCERTIFIED', 'svd_worker')),
-    'silent_ok_exit': ('sys.exit(0)', ('COUPLED_UNCERTIFIED', 'svd_worker')),
-    'short': ('ok([4.0, 2.0])', ('COUPLED_UNCERTIFIED', 'svd_worker')),
-    'long': ("ok([4.0, 2.0, 1.0], tail=b'x')", ('COUPLED_UNCERTIFIED', 'svd_worker')),
-    'wrong_n': ('ok([4.0, 2.0, 1.0], n=4)', ('COUPLED_UNCERTIFIED', 'svd_worker')),
-    'nan': ("ok([4.0, float('nan'), 1.0])", ('COUPLED_UNCERTIFIED', 'svd_worker')),
-    'inf': ("ok([float('inf'), 2.0, 1.0])", ('COUPLED_UNCERTIFIED', 'svd_worker')),
-    'negative': ('ok([4.0, 2.0, -1.0])', ('COUPLED_UNCERTIFIED', 'svd_worker')),
-    'ascending': ('ok([1.0, 2.0, 4.0])', ('COUPLED_UNCERTIFIED', 'svd_worker')),
-    'ok_nonzero_exit': ('ok([4.0, 2.0, 1.0]); sys.exit(1)', ('COUPLED_UNCERTIFIED', 'svd_worker')),
-    'garbage': ("out.write(b'\\x00' * 34); out.flush()", ('COUPLED_UNCERTIFIED', 'svd_worker')),
-    'unknown_environment': ("out.write(b'ENsomething'); out.flush(); sys.exit(3)", ('COUPLED_UNCERTIFIED', 'svd_worker')),
-    'memory': ("out.write(b'MM'); out.flush(); sys.exit(4)", ('COUPLED_TOO_LARGE', 'memory_error')),
-    'killed': ('import os; os._exit(9)', ('COUPLED_UNCERTIFIED', 'svd_worker')),
+    'exit7': ('sys.exit(7)', _UNCERTIFIED),
+    'crash': ("raise RuntimeError('worker crash')", _UNCERTIFIED),
+    'silent_ok_exit': ('sys.exit(0)', _UNCERTIFIED),
+    'short': ("reply({{'verdict': 'certificate', 'certificate': cert()}}, [('shifts', SHIFTS[:16])])", _UNCERTIFIED),
+    'long': ("reply({{'verdict': 'certificate', 'certificate': cert()}}, [('shifts', SHIFTS)], tail=b'x')",
+             _UNCERTIFIED),
+    'lying_count': ("reply({{'verdict': 'certificate', 'certificate': cert()}}, [('shifts', SHIFTS)], "
+                    "counts=[['shifts', 32]])", _UNCERTIFIED),
+    'wrong_size': ("reply({{'verdict': 'certificate', 'certificate': cert(size=4)}}, [('shifts', SHIFTS)])",
+                   _UNCERTIFIED),
+    'json_float': ("reply({{'verdict': 'certificate', 'certificate': cert(condition_number=1.5)}}, "
+                   "[('shifts', SHIFTS)])", _UNCERTIFIED),
+    'nan_sigma': ("reply({{'verdict': 'certificate', 'certificate': cert(sigma_min=bits(math.nan))}}, "
+                  "[('shifts', SHIFTS)])", _UNCERTIFIED),
+    'inf_sigma': ("reply({{'verdict': 'certificate', 'certificate': cert(sigma_max=bits(math.inf))}}, "
+                  "[('shifts', SHIFTS)])", _UNCERTIFIED),
+    'accepted_above_limit': ("reply({{'verdict': 'certificate', 'certificate': cert(condition_upper_bound="
+                             "bits(1e10))}}, [('shifts', SHIFTS)])", _UNCERTIFIED),
+    'accepted_with_reason': ("reply({{'verdict': 'certificate', 'certificate': cert(reason='condition_above_limit')}}, "
+                             "[('shifts', SHIFTS)])", _UNCERTIFIED),
+    'unknown_reason': ("reply({{'verdict': 'certificate', 'certificate': cert(accepted=False, reason='made_up')}}, "
+                       "[('shifts', SHIFTS)])", _UNCERTIFIED),
+    'unknown_key': ("reply({{'verdict': 'certificate', 'certificate': cert(extra=1)}}, [('shifts', SHIFTS)])",
+                    _UNCERTIFIED),
+    'accepted_without_shifts': ("reply({{'verdict': 'certificate', 'certificate': cert()}})", _UNCERTIFIED),
+    'huge_shift': ("reply({{'verdict': 'certificate', 'certificate': cert()}}, "
+                   "[('shifts', struct.pack('<3q', 0, 1 << 40, 0))])", _UNCERTIFIED),
+    'unknown_verdict': ("reply({{'verdict': 'accept_all', 'certificate': cert()}}, [('shifts', SHIFTS)])",
+                        _UNCERTIFIED),
+    'accept_in_certificate_mode': ("reply({{'verdict': 'accept', 'certificate': cert()}}, [('shifts', SHIFTS)])",
+                                   _UNCERTIFIED),
+    'ok_nonzero_exit': ("reply({{'verdict': 'certificate', 'certificate': cert()}}, [('shifts', SHIFTS)], code=1)",
+                        _UNCERTIFIED),
+    'garbage': ("out.write(b'\\x00' * 34); out.flush()", _UNCERTIFIED),
+    'unknown_environment': ("reply({{'verdict': 'environment', 'reason': 'something'}}, code=3)", _UNCERTIFIED),
+    'environment_exit_0': ("reply({{'verdict': 'environment', 'reason': 'blas_threads'}}, code=0)", _UNCERTIFIED),
+    'refuse_unknown_code': ("reply({{'verdict': 'refuse', 'code': 'COUPLED_OK', 'reason': 'equation_cap', "
+                            "'message': 'm'}})", _UNCERTIFIED),
+    'refuse_wrong_reason': ("reply({{'verdict': 'refuse', 'code': 'COUPLED_TOO_LARGE', 'reason': 'zero_row', "
+                            "'message': 'm'}})", _UNCERTIFIED),
+    'refuse_coded': ("reply({{'verdict': 'refuse', 'code': 'COUPLED_TOO_LARGE', 'reason': 'equation_cap', "
+                     "'message': 'capped'}})", ('COUPLED_TOO_LARGE', 'equation_cap')),
+    'memory': ("reply({{'verdict': 'memory'}}, code=4)", ('COUPLED_TOO_LARGE', 'memory_error')),
+    'memory_exit_0': ("reply({{'verdict': 'memory'}}, code=0)", _UNCERTIFIED),
+    'killed': ('import os; os._exit(9)', _UNCERTIFIED),
 }
 
 
 @pytest.mark.parametrize('case', sorted(_CASES))
 def test_od13_bad_worker_output_refuses(monkeypatch, case):
+    """OD14 wire format: every malformed or inconsistent reply refuses (svd_worker); a well-formed coded
+    refusal or MemoryError keeps its code."""
     body, (code, reason) = _CASES[case]
-    script = _SCRIPT.format(body=body)
+    script = _SCRIPT.format(body=body.format())
     monkeypatch.setattr(cc, '_svd_worker_command', lambda: [sys.executable, '-I', '-S', '-c', script])
     S = sparse.csr_matrix(np.diag([4.0, 2.0, 1.0]))
     refused(code, cc._certify_solve_matrix, S, reason=reason)
 
 
 def test_od13_worker_linalg_failure_is_a_numerical_failure(monkeypatch):
-    script = _SCRIPT.format(body="out.write(b'LA'); out.flush(); sys.exit(5)")
+    body = ("reply({{'verdict': 'certificate', 'certificate': cert(drop=" + _SVD_KEYS +
+            ", accepted=False, reason='numerical_failure:LinAlgError')}}, [('shifts', SHIFTS)])")
+    script = _SCRIPT.format(body=body.format())
     monkeypatch.setattr(cc, '_svd_worker_command', lambda: [sys.executable, '-I', '-S', '-c', script])
+    certificate = cc._certify_solve_matrix(sparse.csr_matrix(np.diag([4.0, 2.0, 1.0])))
+    assert certificate['accepted'] is False and certificate['reason'] == 'numerical_failure:LinAlgError'
+
+
+def test_od13_worker_linalg_failure_in_the_real_worker(monkeypatch):
+    from _coupled_worker_patch import patch_worker
+
+    patch_worker(monkeypatch, cc, '''
+        def fail(*args, **kwargs):
+            raise np.linalg.LinAlgError('SVD did not converge')
+        np.linalg.svd = fail''')
     certificate = cc._certify_solve_matrix(sparse.csr_matrix(np.diag([4.0, 2.0, 1.0])))
     assert certificate['accepted'] is False and certificate['reason'] == 'numerical_failure:LinAlgError'
 
 
 def test_od13_valid_worker_record_is_accepted(monkeypatch):
     """Control for the cases above: a well-formed record from the same harness is used as is."""
-    script = _SCRIPT.format(body='ok([1.0, 1.0, 1.0])')
+    script = _SCRIPT.format(body=_OK.format())
     monkeypatch.setattr(cc, '_svd_worker_command', lambda: [sys.executable, '-I', '-S', '-c', script])
     certificate = cc._certify_solve_matrix(sparse.csr_matrix(np.eye(3)))
     assert certificate['accepted'] is True and certificate['sigma_max'] == 1.0 == certificate['sigma_min']
 
 
 def test_od13_worker_matches_in_process_svd_bits():
-    """The worker's singular values are bit-identical to NumPy's in-process one-thread SVD here."""
+    """The worker's singular values are bit-identical to NumPy's in-process one-thread SVD of the same
+    equilibrated matrix here (OD14: the worker equilibrates too)."""
     from threadpoolctl import threadpool_limits
+    from anyfesolver import _coupled_certificate_math as m
     A = _matrix(300, seed=3)
-    sigma, failure, _ = cc._svd_in_worker(A)
+    S = sparse.csr_matrix(A)
+    certificate = cc._certify_solve_matrix(S)
+    local_certificate = m.new_certificate(300)
+    equilibrated, shifts = m.equilibrate(np.array(S.toarray(), dtype=float), local_certificate)
     with threadpool_limits(limits=1, user_api='blas'):
-        local = np.linalg.svd(A, compute_uv=False)
-    assert failure is None and np.array_equal(sigma.view(np.int64), local.view(np.int64))
+        local = np.linalg.svd(equilibrated, compute_uv=False)
+    assert np.array_equal(certificate['shifts'], shifts)
+    assert cc._bits_of(certificate['sigma_max']) == cc._bits_of(float(local[0]))
+    assert cc._bits_of(certificate['sigma_min']) == cc._bits_of(float(local[-1]))
 
 
 _AUDIT_CHILD = textwrap.dedent('''

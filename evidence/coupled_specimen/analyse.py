@@ -136,8 +136,11 @@ out['timing'] = {'coupled_median_t1': c20.get('timings_median'), 'coupled_runs_w
                  'coupled_t1_refused': c20.get('refused'), 'coupled_t1_wall_to_refusal': c20.get('wall_to_refusal'),
                  'coupled_default_threads': dflt.get('timings_all', [None])[0] if not refused(dflt) else dflt,
                  'oneway_median_t1': ow['timings_median'],
-                 'svd5000_t1_times': svd['times'], 'svd5000_t1_median': svd['median'],
-                 'gate_svd_45s': svd['median'] <= 45.0,
+                 # OD14: the whole certificate in the child (certified_solve at N = 5000); OD13 measured the SVD only.
+                 'certificate5000_t1_times': svd.get('solve_times', svd.get('times')),
+                 'certificate5000_t1_median': svd.get('solve_median', svd.get('median')),
+                 'dense_certificate5000_t1_median': svd.get('dense_median'),
+                 'gate_svd_45s': svd.get('solve_median', svd.get('median')) <= 45.0,
                  'gate_specimen_60s': (not refused(c20)) and specimen_total <= 60.0,
                  'peak_commit_minus_post_import_mib': pk['peak_commit_minus_post_import_mib'], 'peak_run_refused': pk.get('refused'),
                  'environment': ow['environment']}

@@ -365,17 +365,21 @@ def test_r2_exported_forward_error_rounds_up_where_nearest_rounds_down(monkeypat
     captured = {}
     original = sc.certified_solve
 
+    # OD14: the worker rounds E up (forward_error_up); the route exports exactly that value.
     def spy(*args, **kwargs):
         solved = original(*args, **kwargs)
-        up = Fraction(cc._out_up(solved.forward_error))
-        forced = up + Fraction(1, 2 ** 200) * up                      # nearest rounding gives `up`, below it
-        assert Fraction(cc._to_float(forced)) < forced
-        captured['E'] = forced
-        return dataclasses.replace(solved, forward_error=forced)
+        captured['solved'] = solved
+        return solved
     monkeypatch.setattr(sc, 'certified_solve', spy)
     model, grid, removed, prepared, case, box = small()
     result = solve(model, prepared, removed, box, case)
-    assert Fraction(result.verification['forward_error']) >= captured['E']
+    solved = captured['solved']
+    assert result.verification['forward_error'] == solved.forward_error_up
+    assert Fraction(solved.forward_error_up) >= solved.forward_error
+    assert solved.forward_error_up == cc._out_up(solved.forward_error)
+    up = Fraction(cc._out_up(solved.forward_error))
+    forced = up + Fraction(1, 2 ** 200) * up                          # nearest rounding gives `up`, below it
+    assert Fraction(cc._to_float(forced)) < forced <= Fraction(cc._out_up(forced))
 
 
 # --- P2: the test oracle uses the specified scaling (r11 classes module) ----------------------------------

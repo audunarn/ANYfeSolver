@@ -412,7 +412,9 @@ def test_r1_7_memory_limit_must_be_an_integer(limit):
 @pytest.mark.parametrize('target', ['recovery', 'verification', 'v4'])
 def test_r1_8_cancellation_late_in_the_solve_never_returns_success(monkeypatch, target):
     event = threading.Event()
-    module, name = {'recovery': (sc, '_bounded_rows'), 'verification': (cc, '_backward_check'),
+    # OD14: the verification runs in the worker; 'verification' trips while its verdict is decoded,
+    # 'recovery' while the recovered values are wrapped.
+    module, name = {'recovery': (sc, 'Bounded'), 'verification': (cc, '_decode'),
                     'v4': (sc, '_v4_side_balance')}[target]
     original = getattr(module, name)
 
