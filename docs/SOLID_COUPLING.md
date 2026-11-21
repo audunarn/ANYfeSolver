@@ -9,7 +9,7 @@ weakly along the four cut sides. The result is either a `CoupledSolution` with c
 
 The module is private. `import anyfesolver` neither imports nor exports it. ANYfem is its only intended caller.
 The certificate lives in `anyfesolver._coupled_certificate`. The spec is
-`SOLVER-PR67-DENSE-SPEC-20261119.md`, which applies owner decisions OD1–OD13. `threadpoolctl` is a core dependency of
+`SOLVER-PR67-DENSE-SPEC-20261119.md`, which applies owner decisions OD1–OD15. `threadpoolctl` is a core dependency of
 ANYfeSolver and is also listed in the `solids` extra (OD11).
 
 ## Trusted-construction boundary (OD9)
@@ -33,6 +33,20 @@ result = sc.solve_shell_solid_coupled(
     box=sc.BoxFaces(divisions=(nx, ny, nz), skin='end', sides=('side_0', 'side_1', 'side_2', 'side_3')),
     cancel=None, resources=None)
 ```
+
+## Caller code in the solving process (OD15)
+
+Owner decision OD15 (2026-11-21, "A"): like tampering with built objects (OD9), code that the caller has installed
+in its own process and that runs during the call is **out of scope**:
+- audit hooks (`sys.addaudithook`), including audit policies that deny operations;
+- trace and profile hooks (`sys.settrace`, `sys.setprofile`, `threading.settrace`, `threading.setprofile` and
+  the like);
+- caller-defined subclasses of `str`, `int` and other built-ins, which the ANYfem builders do not produce.
+
+Behaviour with such code installed is unsupported: the claims below are not made for it. The defences that already
+fail closed against hooks stay (the certificate in the child process, the bounded refusal retries, the identity
+type checks); no further hook defences are added. Findings that need no such code (genuine ANYfem-built inputs or
+legal environment state, for example a file on the import path) remain in scope.
 
 ## Formulation
 
@@ -212,13 +226,18 @@ them against the schema (below). The result's `x` is the child's copy of the can
 `Bounded` value and bound, the shifts, `E`, `σ⁻`, κ_up and the backward record come from the reply.
 
 - **Start.** `subprocess.Popen` (a new interpreter, never a fork) of `sys.executable -I -S
-  anyfesolver/_coupled_svd_worker.py <NumPy package dir> <threadpoolctl location>` (the loaded module's file, else
-  `threadpoolctl.py` next to NumPy). `-I` ignores every `PYTHON*` variable and the user site and keeps the script
-  and working directories off `sys.path`; `-S` skips `site`, so no `.pth` file, `sitecustomize` or `usercustomize`
-  runs. `sys.path` stays the standard library only. A finder appended to `sys.meta_path` (after the built-in,
-  frozen and path finders) resolves exactly two top-level names: `numpy` from the directory that holds the given
-  package, `threadpoolctl` from the given location (review r6 P1: before, those directories were prepended to
-  `sys.path`, so a `numbers.py` next to threadpoolctl shadowed the standard library). The arithmetic module
+  anyfesolver/_coupled_svd_worker.py <NumPy package dir> <threadpoolctl file> <NumPy version> <threadpoolctl
+  SHA-256>` (the file is the parent's loaded module's `__file__`, else `threadpoolctl.py` next to NumPy; the digest
+  is of that file's bytes, `none` if it cannot be read). `-I` ignores every `PYTHON*` variable and the user site and
+  keeps the script and working directories off `sys.path`; `-S` skips `site`, so no `.pth` file, `sitecustomize` or
+  `usercustomize` runs. `sys.path` stays the standard library only. A finder appended to `sys.meta_path` (after the
+  built-in, frozen and path finders) resolves exactly one top-level name, `numpy`, from the directory that holds
+  the given package; the loaded package must be that directory and report the parent's version, else the child
+  refuses `numpy_mismatch`. `threadpoolctl` is executed from the bytes of exactly the given file, read once and
+  hashed: a different digest refuses `threadpoolctl_mismatch`, a missing or failing file leaves it unimportable
+  (`blas_threads`). Review r6 P1: before, those directories were prepended to `sys.path`, so a `numbers.py` next
+  to threadpoolctl shadowed the standard library; review r7 P1: a same-name `threadpoolctl/` package next to the
+  file took precedence over it. The arithmetic module
   `_coupled_certificate_math.py` is loaded by its path next to the worker; nothing else from anyfesolver is
   imported. The environment is exactly `OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1`, `MKL_NUM_THREADS=1` and, on
   Windows, `SYSTEMROOT`. The working directory is the anyfesolver package directory. The child receives no
@@ -245,34 +264,58 @@ them against the schema (below). The result's `x` is the child's copy of the can
   optional `float64` offsets. The header names the mode (`certificate` or `solve`), N, nnz, `raw_load_zero`, the
   candidate (`none`, `zero` or `follows`), the memory limit, the maps' sizes and the constants (cap 5000, the
   κ limit's bit pattern, the V1–V3 and V6 tolerances, the sweep limit, the SVD constant, the dense-copy count,
-  the root precision); the child refuses a request whose constants differ from its own. With `follows`, the
-  parent later sends `XV` and N `float64` (the candidate) or `XF` (no candidate). Reply on stdout: `ANYCRR02`, a
+  the root precision); the child refuses a request whose constants differ from its own in value or in JSON type.
+  With `follows`, the parent later sends `XV` and N `float64` (the candidate) or `XF` (no candidate). The parent
+  closes stdin after its last byte; the child refuses (exit 2) a header with a float or constant literal or a
+  repeated key, and any byte after the request (review r7). N = 0 is a valid request (below). A rational map
+  with no entries has an empty text (zero bytes), accepted on both sides.
+- **Recovery maps (review r7 P1).** A map row is bounded by `sqrt_hi(Σ_k (M_rk d_j(k))²)·E`, the 2-norm over the
+  row's entries; that is the row norm only when no column repeats in the row (two unit entries on one column are
+  the coefficient 2, norm 2, not √2: an accepted bound fell below the actual error). So every row must have
+  distinct columns in `[0, N)`, in any order (`_coupled_certificate_math.export_structure_reason`): the parent
+  refuses a map that breaks this (`invalid_arguments`), the child refuses it on its own copy (exit 2), and
+  `bounded_rows` refuses it again (`invalid_export`). The route's maps (identities, `T`, `Cᵀ` from canonical CSR,
+  the side resultants with one entry per multiplier) have distinct columns. The stored system itself must be
+  canonical CSR (sorted, distinct columns), checked on both sides.
+- **N = 0 (review r7).** The 0 × 0 system goes through the child like any other: its certificate is the fixed
+  `no_free_dofs` record, `x = ()`, `E = 0`, `σ⁻ = 1`, and the child evaluates the maps (offset-only rows return
+  their offset with bound 0). Before, the parent returned empty arrays for every map, so an offset-only row lost
+  its value. Reply on stdout: `ANYCRR02`, a
   `uint64` length, a JSON reply and the binary sections it lists (`shifts` `int64`·N; `x` `float64`·N;
   `values<k>`, `bounds<k>` `float64` per map). Floats in the JSON are their unsigned 64-bit patterns, exact
   rationals hexadecimal fractions; the JSON holds no float literal. Exit 0 for the verdicts `accept`, `refuse`,
   `certificate` and `no_candidate`, 3 for `environment`, 4 for `memory`, 2 for a malformed request (no reply).
 - **Validation in the parent.** The magic, the lengths, every key and type of the reply and of the certificate and
-  backward records (no unknown or missing key; exact `int`, `bool` and `str`; no JSON float), the reason against
-  the set of certificate and refusal reasons, the exit code against the verdict, the section list against the
-  expected names and byte lengths (exactly; no trailing byte), finite values, non-negative bounds and shifts
-  within ±2^20. An accepted certificate must carry the full record and a κ_up bit pattern at most the limit's.
-  Anything else refuses `COUPLED_UNCERTIFIED` (`svd_worker`).
+  backward records (no unknown, missing or repeated key; exact `int`, `bool` and `str`; no JSON float), the exit
+  code against the verdict, the section list against the expected names and byte lengths (exactly; no trailing
+  byte), finite values, non-negative bounds and shifts within ±2^20 (two comparisons: `abs(−2^63)` overflowed and
+  passed). A refusal is checked against the table of refusals the child can send in that mode, with exactly the
+  diagnostics that refusal carries and its certificate record accepted or not (review r7: certificate mode admitted
+  solve-only reasons). An accepted certificate must carry the full record with every field non-null, finite and
+  non-negative, and a κ_up bit pattern at most the limit's; `forward_error_up` and the backward `max_ratio` must be
+  finite and non-negative. Anything else refuses `COUPLED_UNCERTIFIED` (`svd_worker`).
 - **Failures.** Every worker failure refuses `COUPLED_UNCERTIFIED` with reason `svd_worker` (the name is kept from
   OD13; the worker now runs the whole certificate); the diagnostic `worker_failure` names it: `start_failed`,
-  `io` (the transfer failed or a pipe stayed open past the bounded wait), `timeout` (no result within 600 s),
+  `io` (the transfer failed or a pipe stayed open past the bounded wait), `timeout` (no result within 600 s of
+  the child's start),
   `exit`, `bad_output` and `environment` (an unknown environment reason, or another NumPy). A `MemoryError` in a
-  transfer thread of the parent also refuses `COUPLED_TOO_LARGE` (`memory_error`, review r6 P2). Coded refusals
+  transfer thread of the parent also refuses `COUPLED_TOO_LARGE` (`memory_error`, review r6 P2), at once: the
+  lanes are checked at every 50 ms poll, so a reader that failed while the child blocks on a full pipe is not
+  reported as a timeout (review r7). Coded refusals
   from the child keep their code and reason (for example `condition_above_limit`, `forward_error_above_limit`,
   `bound_not_finite`).
 - **Bounded waits (review r6 P2).** The three transfer lanes are started with `_thread.start_new_thread` (no wait on
   the thread registry or a 'started' event) and joined through their own locks with a timeout. The parent waits
-  for the child in 50 ms steps up to 600 s, for the lanes up to 60 s after the child exits and, in teardown, kills
+  for the child in 50 ms steps up to 600 s counted from the child's start (review r5 #2: it started after the
+  candidate), refuses `timeout` if the child exits after that deadline, waits for the lanes up to 60 s after the
+  child exits and, in teardown, kills
   and reaps the child (30 s), releases a writer still waiting for the candidate and closes only the pipe ends whose
   lane has finished, so no `close()` waits on a lane blocked in a read.
 - **Cancellation.** While the child runs, the parent polls the caller's cancellation (then its own FP environment)
   every 50 ms. On a cancellation, a callback error or any other exception it terminates its own child by the handle
   it created (never by image name) and re-raises: a cancellation refuses `COUPLED_CANCELLED`.
-- **What parent hooks can and cannot affect.** Caller code in the parent (trace, profile and audit hooks, other
+- **What parent hooks can and cannot affect.** In-process hooks are out of scope (OD15, above); this records what
+  the design already gives. Caller code in the parent (trace, profile and audit hooks, other
   threads, the FP environment) can change formation, the recovery maps and the candidate. The child certifies
   exactly the bytes it received, so the certificate claim (κ_up, `|x_i − x*_i| ≤ d_i·E` for the exact solution
   `x*` of the received `S` and `b`, and every exported bound) holds for those bytes whatever the parent did. A

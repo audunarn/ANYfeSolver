@@ -359,6 +359,37 @@ def new_certificate(size: int) -> dict:
             'accepted': False, 'reason': None}
 
 
+def empty_certificate() -> dict:
+    """The certificate of the 0 x 0 system (no free DOFs): S x = b has the unique solution x = (),
+    there is no matrix entry, singular value or residual to decide on (review r7: decided in the
+    worker like every other size, so the recovery maps are evaluated there too)."""
+    return {'matrix': 'empty', 'size': 0, 'method': 'no_free_dofs', 'condition_limit': CONDITION_LIMIT,
+            'condition_number': 1.0, 'condition_upper_bound': 1.0, 'equilibration_sweeps': 0,
+            'accepted': True, 'reason': None}
+
+
+def export_structure_reason(indptr: np.ndarray, columns: np.ndarray, size: int):
+    """None for a valid recovery-map structure, else a reason (review r7 P1).
+
+    ``bounded_rows`` bounds row r by sqrt(sum_k (M_rk d_j(k))^2) E, the 2-norm of the row taken over
+    its entries; that is the row's norm only if no column repeats in the row (two entries 1 on one
+    column are the coefficient 2, norm 2, not sqrt(2)). So every row must have distinct columns, in
+    [0, size); the order within a row does not matter. Exact integer checks only."""
+    if indptr.ndim != 1 or columns.ndim != 1 or indptr.shape[0] < 1:
+        return 'structure'
+    if int(indptr[0]) != 0 or int(indptr[-1]) != columns.shape[0] or bool((np.diff(indptr) < 0).any()):
+        return 'structure'
+    if columns.size and (int(columns.min()) < 0 or int(columns.max()) >= size):
+        return 'column_range'
+    if columns.size > 1:
+        rows = np.repeat(np.arange(indptr.shape[0] - 1, dtype=np.int64), np.diff(indptr))
+        order = np.lexsort((columns, rows))
+        r, c = rows[order], columns[order]
+        if bool(((r[1:] == r[:-1]) & (c[1:] == c[:-1])).any()):
+            return 'repeated_column'
+    return None
+
+
 # --- Section 2.3: exact residual and V1-V3, V6 -------------------------------------------------------------
 
 class ExactRows:
@@ -383,6 +414,8 @@ def _exact_rows(system, x: np.ndarray, b: np.ndarray) -> ExactRows:
     depend on the FP environment, the summation order or the term count. ``system`` is a canonical
     CSR (scipy or :class:`CSR`)."""
     size = system.shape[0]
+    if size == 0:
+        return ExactRows(residual=[], reference=[], exponent=np.zeros(0, dtype=np.int64))
     indptr = system.indptr
     counts = np.diff(indptr)
     ms, es = _decompose(system.data)
@@ -517,7 +550,12 @@ def bounded_rows(indptr: np.ndarray, columns: np.ndarray, coefficients, offsets,
                  shifts: np.ndarray, error: Fraction):
     """values_i = sum_j M_ij z_j (+ offset_i) exactly, rounded once; bound
     |float - exact| + sqrt_hi(sum_j (M_ij d_j)^2) E. ``coefficients`` are exact Fractions in CSR
-    order, ``offsets`` exact Fractions or None. Returns (values, bounds) float64 arrays."""
+    order, ``offsets`` exact Fractions or None. Returns (values, bounds) float64 arrays. The structure
+    must satisfy :func:`export_structure_reason` (distinct columns per row); a repeated column is
+    refused here as well, never bounded."""
+    reason = export_structure_reason(indptr, columns, z.shape[0])
+    if reason is not None:
+        raise CertificateRefusal('COUPLED_UNCERTIFIED', 'invalid_export', f'a recovery map is invalid ({reason})')
     values, bounds = [], []
     zq = {}
     for r in range(indptr.shape[0] - 1):

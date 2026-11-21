@@ -1,5 +1,13 @@
 # S3: coupled specimen, references R0–R2 and timing (2026-11-19)
 
+## Update 2026-11-21 (OD15, review r7 non-hook fixes): results bit-identical, timing PASS
+
+Re-run of the same six coupled entries (shared machine, load 43–94 %). Every non-timing field is identical to
+6f7e67ce2; summary.json changes in its timing block only. OD10: R0 PASS, R1 FAIL (p 1.17 on 40/80/160, unchanged,
+nothing tuned), R2 PASS. Whole certificate at N = 5000 including the child (svd entry, median of 3) **27.1 s**
+≤ 45 s (child SVD 26.1 s); specimen h = 0.05 accepted, median wall **32.5 s** ≤ 60 s (default threads 32.8 s);
+peak parent 308.6 MiB above post-import + child 780.6 MiB = **1190.4 MiB** (was 1189.6).
+
 ## Update 2026-11-21 (OD14, review r6): whole certificate in the child process — results bit-identical, timing PASS
 
 Re-run of the coupled entries (aw/timing_coupled_t1, 	iming_coupled_default, 	iming_oneway_t1, 	iming_svd_t1,

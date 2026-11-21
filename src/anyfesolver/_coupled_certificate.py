@@ -269,19 +269,31 @@ _SHIFT_LIMIT = 1 << 20
 _SVD_WORKER_ENVIRONMENT_REASONS = ('blas_threads', 'subnormal_flush', 'rounding_mode')
 
 
+def _file_digest(path: str) -> str:
+    """SHA-256 of the file's bytes, or the worker's NO_DIGEST when it cannot be read."""
+    import hashlib
+    try:
+        with open(path, 'rb') as handle:
+            return hashlib.sha256(handle.read()).hexdigest()
+    except OSError:
+        return _worker.NO_DIGEST
+
+
 def _svd_worker_command() -> list:
     """argv of the worker: this interpreter, isolated (-I) and without site (-S), the worker script,
-    NumPy's package directory and threadpoolctl's location (the loaded module's file, else the
-    ``threadpoolctl`` entry next to NumPy). The child imports exactly these two top-level names from
-    there, after the standard library (review r6 P1)."""
+    NumPy's package directory, threadpoolctl's file (the loaded module's file, else ``threadpoolctl.py``
+    next to NumPy), NumPy's version and the SHA-256 of that threadpoolctl file. The child imports NumPy
+    from exactly that directory and checks its version, and runs threadpoolctl from exactly that file's
+    bytes after checking their digest (review r6 P1, r7 P1)."""
     numpy_dir = os.path.dirname(os.path.abspath(np.__file__))
     location = os.path.join(os.path.dirname(numpy_dir), 'threadpoolctl.py')
     loaded = sys.modules.get('threadpoolctl')
     found = loaded.__dict__.get('__file__') if type(loaded) is type(sys) else None
     if type(found) is str and found:
-        found = os.path.abspath(found)
-        location = os.path.dirname(found) if os.path.basename(found) == '__init__.py' else found
-    return [sys.executable, '-I', '-S', _SVD_WORKER_PATH, numpy_dir, location]
+        location = os.path.abspath(found)
+    version = np.__dict__.get('__version__')
+    return [sys.executable, '-I', '-S', _SVD_WORKER_PATH, numpy_dir, location,
+            version if type(version) is str else '', _file_digest(location)]
 
 
 def _svd_worker_environment() -> dict:
@@ -338,8 +350,10 @@ class _WorkerIO:
     """Feeds the request (and, later, the candidate) to the worker's stdin and drains stdout and
     stderr on three lanes, so the calling thread stays free to compute the candidate and to poll."""
 
-    def __init__(self, process: Any, request: list, candidate_follows: bool, stdout_limit: int) -> None:
+    def __init__(self, process: Any, request: list, candidate_follows: bool, stdout_limit: int,
+                 deadline: float) -> None:
         import _thread
+        self.deadline = deadline
         self.stdout = bytearray()
         self.stderr = bytearray()
         self.overflow = False
@@ -369,7 +383,8 @@ class _WorkerIO:
             for chunk in request:
                 _write_all(stream, chunk)
             if candidate_follows:
-                if not self._ready.acquire(timeout=_SVD_WORKER_TIMEOUT_SECONDS) or self._aborted:
+                import time
+                if not self._ready.acquire(timeout=max(0.0, self.deadline - time.monotonic())) or self._aborted:
                     return
                 _write_all(stream, self._candidate)
         except (BrokenPipeError, OSError, ValueError):
@@ -456,10 +471,12 @@ def _worker_report(stderr: bytes) -> Optional[dict]:
 
 class _Run:
     """One worker run: started by :func:`_start_worker`, optionally fed the candidate, then finished by
-    :meth:`result` (bounded waits, cancellation polls) and always stopped by :meth:`stop`."""
+    :meth:`result` (bounded waits, cancellation polls) and always stopped by :meth:`stop`. ``deadline``
+    (monotonic) is _SVD_WORKER_TIMEOUT_SECONDS after the child was started (review r7: not after the
+    candidate)."""
 
-    def __init__(self, process: Any, io: _WorkerIO) -> None:
-        self.process, self.io = process, io
+    def __init__(self, process: Any, io: _WorkerIO, deadline: float) -> None:
+        self.process, self.io, self.deadline = process, io, deadline
 
     def post_candidate(self, x: Optional[np.ndarray]) -> None:
         if x is None:
@@ -468,31 +485,42 @@ class _Run:
             self.io.post_candidate(b'XV' + np.ascontiguousarray(x, dtype='<f8').tobytes())
 
     def result(self, cancel: Optional[Callable[[], None]]):
-        """(exit code, stdout bytes, report): waits for the worker within the timeout."""
+        """(exit code, stdout bytes, report): waits for the worker within the timeout, counted from the
+        child's start. A transfer lane that failed while the child runs refuses at once (review r7: a
+        reader MemoryError leaves the child blocked on a full pipe; that is COUPLED_TOO_LARGE, not a
+        timeout)."""
         import subprocess
         import time
-        deadline = time.monotonic() + _SVD_WORKER_TIMEOUT_SECONDS
         while True:
             if cancel is not None:
                 _poll(cancel)                   # caller code; anything it raises propagates (stop follows)
+            self._lane_failure(None)
             try:
                 self.process.wait(timeout=_SVD_WORKER_POLL_SECONDS)
                 break
             except subprocess.TimeoutExpired:
-                if time.monotonic() > deadline:
+                if time.monotonic() > self.deadline:
                     raise _worker_refusal('timeout', f'no result within {_SVD_WORKER_TIMEOUT_SECONDS:.0f} s') from None
+        if time.monotonic() > self.deadline:
+            raise _worker_refusal('timeout', f'no result within {_SVD_WORKER_TIMEOUT_SECONDS:.0f} s')
         complete = self.io.finished(_SVD_WORKER_IO_SECONDS)
         code = self.process.returncode
         report = _worker_report(self.io.stderr)
-        errors = self.io.errors
-        if any(isinstance(e, MemoryError) for e in errors):
-            raise _refuse('COUPLED_TOO_LARGE', 'memory_error', 'out of memory reading the certificate worker',
-                          worker_report=report)
-        if not complete or errors:
+        self._lane_failure(code, report)
+        if not complete:
             raise _worker_refusal('io', 'its output could not be read', exit_code=code)
         if self.io.overflow:
             raise _worker_refusal('bad_output', 'its output is too long', exit_code=code)
         return code, bytes(self.io.stdout), report
+
+    def _lane_failure(self, code: Optional[int], report: Optional[dict] = None) -> None:
+        """Refuse if a transfer lane raised: MemoryError -> COUPLED_TOO_LARGE, else svd_worker / io."""
+        errors = self.io.errors
+        if any(isinstance(e, MemoryError) for e in errors):
+            raise _refuse('COUPLED_TOO_LARGE', 'memory_error', 'out of memory reading the certificate worker',
+                          worker_report=report)
+        if errors:
+            raise _worker_refusal('io', 'its output could not be read', exit_code=code)
 
     def stop(self) -> None:
         _stop(self.process, self.io)
@@ -502,10 +530,12 @@ def _start_worker(request: list, candidate_follows: bool, stdout_limit: int) -> 
     """Start the worker and its transfer lanes. Any exception after the process exists (including a
     hook raising on return from ``Popen.__init__``) kills and reaps it first (review r6 P2)."""
     import subprocess
+    import time
     process, stage = None, 'start_failed'
     try:
         command, environment = _svd_worker_command(), _svd_worker_environment()
         flags = 0x08000000 if sys.platform == 'win32' else 0          # CREATE_NO_WINDOW
+        deadline = time.monotonic() + _SVD_WORKER_TIMEOUT_SECONDS     # the child's start (review r7)
         process = subprocess.Popen.__new__(subprocess.Popen)
         process.__init__(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          bufsize=0, env=environment, cwd=os.path.dirname(_SVD_WORKER_PATH), close_fds=True,
@@ -513,8 +543,8 @@ def _start_worker(request: list, candidate_follows: bool, stdout_limit: int) -> 
         if process.__dict__.get('pid') is None:
             raise OSError('the worker process was not created')
         stage = 'io'
-        io = _WorkerIO(process, request, candidate_follows, stdout_limit)
-        return _Run(process, io)
+        io = _WorkerIO(process, request, candidate_follows, stdout_limit, deadline)
+        return _Run(process, io, deadline)
     except BaseException as exc:
         _stop(process)
         if not isinstance(exc, Exception):
@@ -569,6 +599,9 @@ def _request(system: sparse.csr_matrix, b: Optional[np.ndarray], *, mode: str, r
                 or columns.ndim != 1 or indptr.dtype.kind != 'i' or columns.dtype.kind != 'i' or indptr.size < 1:
             raise _refuse('COUPLED_UNCERTIFIED', 'invalid_arguments', 'an export map has invalid index arrays')
         rows, count = int(indptr.size) - 1, int(columns.size)
+        reason = _m.export_structure_reason(indptr, columns, size)
+        if reason is not None:                   # incl. a repeated column in a row (review r7 P1)
+            raise _refuse('COUPLED_UNCERTIFIED', 'invalid_arguments', f'an export map is invalid ({reason})')
         coefficients = export.coefficients
         if type(coefficients) is np.ndarray and coefficients.dtype == np.float64 and coefficients.shape == (count,):
             kind, text = 'float', b''
@@ -623,6 +656,12 @@ def _finite_bits(value: Any) -> float:
     return _float_from_bits(value)
 
 
+def _non_negative_bits(value: Any) -> float:
+    """A finite binary64 with the sign bit clear (+0.0 included, -0.0 not) (review r7)."""
+    _expect(type(value) is int and 0 <= value < _INF_BITS)
+    return _float_from_bits(value)
+
+
 def _fraction(value: Any) -> Fraction:
     try:
         return _m.decode_fraction(value)
@@ -640,21 +679,50 @@ _NUMERICAL_FAILURES = frozenset(f'numerical_failure:{name}' for name in
 _CERTIFICATE_REASONS = frozenset(('nonfinite_entry', 'zero_row', 'equilibration_not_converged',
                                   'nonfinite_singular_values', 'invalid_singular_values', 'svd_error_bound_invalid',
                                   'singular_within_svd_error', 'condition_above_limit')) | _NUMERICAL_FAILURES
-_REFUSAL_REASONS = {
-    'COUPLED_UNCERTIFIED': _CERTIFICATE_REASONS | frozenset((
-        'invalid_system', 'zero_load_inconsistent', 'candidate_failed', 'backward_error_above_limit',
-        'forward_error_above_limit', 'bound_not_finite', 'internal_residual_inconsistency')),
-    'COUPLED_TOO_LARGE': frozenset(('equation_cap', 'memory_limit')),
-    'COUPLED_FORMATION_LOSS': frozenset(('load_stored_as_zero',)),
+# Review r7 P2: every refusal the child can send, per mode, with the diagnostic keys it carries and
+# whether its certificate record is accepted (None: no record). Anything else is malformed.
+_BEFORE = frozenset()
+_REFUSALS_BEFORE_CERTIFICATE = {
+    ('COUPLED_TOO_LARGE', 'equation_cap'): {(_BEFORE, None)},
+    ('COUPLED_TOO_LARGE', 'memory_limit'): {(_BEFORE, None)},
+    ('COUPLED_UNCERTIFIED', 'invalid_system'): {(_BEFORE, None)},
+    ('COUPLED_UNCERTIFIED', 'nonfinite_entry'): {(_BEFORE, None)},
+}
+_CERT = frozenset(('certificate',))
+_REFUSALS = {
+    'certificate': _REFUSALS_BEFORE_CERTIFICATE,
+    'solve': {
+        **_REFUSALS_BEFORE_CERTIFICATE,
+        ('COUPLED_UNCERTIFIED', 'nonfinite_entry'): {(_BEFORE, None), (_CERT, False)},
+        ('COUPLED_UNCERTIFIED', 'zero_load_inconsistent'): {(_BEFORE, None)},
+        ('COUPLED_FORMATION_LOSS', 'load_stored_as_zero'): {(_BEFORE, None)},
+        **{('COUPLED_UNCERTIFIED', r): {(_CERT, False)} for r in _CERTIFICATE_REASONS if r != 'nonfinite_entry'},
+        ('COUPLED_UNCERTIFIED', 'singular_within_svd_error'): {(_CERT, False), (_CERT, True)},
+        ('COUPLED_UNCERTIFIED', 'candidate_failed'): {(_CERT, True)},
+        ('COUPLED_UNCERTIFIED', 'backward_error_above_limit'): {(_CERT | {'backward'}, True)},
+        ('COUPLED_UNCERTIFIED', 'forward_error_above_limit'): {(_CERT | {'forward_error_up'}, True)},
+        ('COUPLED_UNCERTIFIED', 'internal_residual_inconsistency'): {(_BEFORE, None)},
+        ('COUPLED_UNCERTIFIED', 'bound_not_finite'): {(_BEFORE, None)},
+        ('COUPLED_UNCERTIFIED', 'invalid_export'): {(_BEFORE, None)},
+    },
 }
 _CERTIFICATE_FLOATS = ('condition_number', 'condition_upper_bound')
 _CERTIFICATE_REQUIRED = frozenset(('matrix', 'size', 'method', 'condition_limit', 'condition_number',
                                    'condition_upper_bound', 'equilibration_sweeps', 'accepted', 'reason'))
 
 
+_EMPTY_CERTIFICATE_BITS = {k: (_bits_of(float(v)) & 0xFFFF_FFFF_FFFF_FFFF if isinstance(v, float) else v)
+                           for k, v in _m.empty_certificate().items()}
+
+
 def _decode_certificate(value: Any, size: int) -> dict:
-    """The certificate record, key by key against the schema; floats arrive as their bit patterns."""
+    """The certificate record, key by key against the schema; floats arrive as their bit patterns.
+    The 0 x 0 system has exactly the empty record (review r7: decided in the child)."""
     _expect(type(value) is dict)
+    if size == 0:
+        _expect(set(value) == set(_EMPTY_CERTIFICATE_BITS)
+                and all(type(value[k]) is type(v) and value[k] == v for k, v in _EMPTY_CERTIFICATE_BITS.items()))
+        return _m.empty_certificate()
     keys = set(value)
     _expect(_CERTIFICATE_REQUIRED <= keys)
     sigma = {'sigma_max', 'sigma_min'} & keys
@@ -683,9 +751,12 @@ def _decode_certificate(value: Any, size: int) -> dict:
         out['svd_error_alpha'] = None if alpha is None else _f64(alpha)
         out['svd_error_bound'] = _f64(value['svd_error_bound'])
     if accepted:
-        # An accepted record has the full set, a finite upper bound at most the limit (bit order of
-        # non-negative binary64 values; no arithmetic).
-        _expect(sigma and svd and value['svd_error_constant'] is not None)
+        # An accepted record has the full set with every field non-null, finite and non-negative, and an
+        # upper bound at most the limit (bit order of non-negative binary64 values; no arithmetic).
+        _expect(sigma and svd and value['svd_error_constant'] is not None and value['svd_error_alpha'] is not None)
+        for key in ('condition_number', 'condition_upper_bound', 'sigma_max', 'sigma_min', 'svd_error_alpha',
+                    'svd_error_bound'):
+            _non_negative_bits(value[key])
         upper = value['condition_upper_bound']
         _expect(upper <= _bits_of(CONDITION_LIMIT) and (upper >> 63) == 0)
     return out
@@ -702,7 +773,7 @@ def _decode_backward(value: Any, size: int, accepted: bool) -> dict:
     count = _int(value['failing_count'], len(failing), size)
     _expect((count == 0) == accepted and (accepted or failing))
     return {'accepted': accepted, 'failing_rows': failing, 'failing_count': count,
-            'exempt_rows': _int(value['exempt_rows'], 0, size), 'max_ratio': _finite_bits(value['max_ratio']),
+            'exempt_rows': _int(value['exempt_rows'], 0, size), 'max_ratio': _non_negative_bits(value['max_ratio']),
             'reference': 'row_normwise_od7'}
 
 
@@ -716,8 +787,16 @@ def _decode(code: Any, output: bytes, size: int, mode: str, export_rows: Sequenc
 
     def no_float(text: str) -> None:
         raise _Malformed()
+
+    def unique(pairs: list) -> dict:            # review r7: a repeated key is malformed, not collapsed
+        out = {}
+        for key, item in pairs:
+            _expect(key not in out)
+            out[key] = item
+        return out
     try:
-        reply = json.loads(output[16:16 + length].decode('ascii'), parse_float=no_float, parse_constant=no_float)
+        reply = json.loads(output[16:16 + length].decode('ascii'), parse_float=no_float, parse_constant=no_float,
+                           object_pairs_hook=unique)
     except (UnicodeDecodeError, ValueError):
         raise _Malformed() from None
     _expect(type(reply) is dict and type(reply.get('verdict')) is str and type(reply.get('sections')) is list)
@@ -744,16 +823,22 @@ def _decode(code: Any, output: bytes, size: int, mode: str, export_rows: Sequenc
     if verdict == 'refuse':
         _expect({'verdict', 'code', 'reason', 'message', 'sections'} <= set(reply) <= {
             'verdict', 'code', 'reason', 'message', 'sections', 'certificate', 'backward', 'forward_error_up'})
-        _expect(not sections and type(reply['code']) is str and reply['code'] in _REFUSAL_REASONS)
-        _expect(type(reply['reason']) is str and reply['reason'] in _REFUSAL_REASONS[reply['code']])
+        _expect(not sections and type(reply['code']) is str and type(reply['reason']) is str)
+        allowed = _REFUSALS[mode].get((reply['code'], reply['reason']))
+        _expect(allowed is not None)
+        extra = frozenset(set(reply) - {'verdict', 'code', 'reason', 'message', 'sections'})
         out.update(code=reply['code'], reason=reply['reason'], message=_text(reply['message']))
         diagnostics = {}
+        record = None
         if 'certificate' in reply:
             diagnostics['certificate'] = _decode_certificate(reply['certificate'], size)
+            record = diagnostics['certificate']['accepted']
+            _expect(record or diagnostics['certificate']['reason'] == reply['reason'])
+        _expect((extra, record) in allowed)
         if 'backward' in reply:
             diagnostics['backward'] = _decode_backward(reply['backward'], size, False)
         if 'forward_error_up' in reply:
-            diagnostics['forward_error'] = _f64(reply['forward_error_up'])
+            diagnostics['forward_error'] = _non_negative_bits(reply['forward_error_up'])
         out['diagnostics'] = diagnostics
         return out
     if verdict == 'certificate':
@@ -774,7 +859,7 @@ def _decode(code: Any, output: bytes, size: int, mode: str, export_rows: Sequenc
     _expect(out['certificate']['accepted'])
     out['backward'] = _decode_backward(reply['backward'], size, True)
     out['forward_error'] = _fraction(reply['forward_error'])
-    out['forward_error_up'] = _finite_bits(reply['forward_error_up'])
+    out['forward_error_up'] = _non_negative_bits(reply['forward_error_up'])
     out['sigma_lower'] = _fraction(reply['sigma_lower'])
     _expect(out['forward_error'] >= 0 and out['sigma_lower'] > 0)
     expected = [['shifts', 8 * size], ['x', 8 * size]]
@@ -796,7 +881,8 @@ def _decode(code: Any, output: bytes, size: int, mode: str, export_rows: Sequenc
 def _shifts(blob: bytes, size: int) -> np.ndarray:
     _expect(len(blob) == 8 * size)
     shifts = np.frombuffer(blob, dtype='<i8').astype(np.int64, copy=True)
-    _expect(not bool((np.abs(shifts) > _SHIFT_LIMIT).any()))
+    # Two comparisons, no np.abs: abs(-2^63) overflows to -2^63 and passed (review r7).
+    _expect(not bool(((shifts < -_SHIFT_LIMIT) | (shifts > _SHIFT_LIMIT)).any()))
     return shifts
 
 
@@ -871,12 +957,6 @@ def _size_checks(system: sparse.csr_matrix, memory_limit_bytes: Optional[int]) -
     return size
 
 
-def _empty_certificate() -> dict:
-    return {'matrix': 'empty', 'size': 0, 'method': 'no_free_dofs', 'condition_limit': CONDITION_LIMIT,
-            'condition_number': 1.0, 'condition_upper_bound': 1.0, 'equilibration_sweeps': 0,
-            'shifts': np.zeros(0, dtype=np.int64), 'accepted': True, 'reason': None}
-
-
 def _certify_solve_matrix(system: Any, *, memory_limit_bytes: Optional[int] = None,
                           cancel: Optional[Callable[[], None]] = None) -> dict:
     """Condition certificate of the stored system S alone, computed by the worker (its 'certificate'
@@ -884,10 +964,8 @@ def _certify_solve_matrix(system: Any, *, memory_limit_bytes: Optional[int] = No
     COUPLED_MAX_EQUATIONS, above the memory limit or on MemoryError. Returns the decision numbers,
     including the exact power-of-two shifts ``shifts`` (D = diag(2^shifts)), with ``accepted``."""
     system = _require_system(system)
-    size = _size_checks(system, memory_limit_bytes)
-    if size == 0:
-        return _empty_certificate()
-    _require_fp_environment()
+    _size_checks(system, memory_limit_bytes)
+    _require_fp_environment()                 # N = 0 too: the child decides it (review r7)
     decoded, _report = _run_worker(system, None, mode='certificate', raw_load_zero=False,
                                    memory_limit=memory_limit_bytes, cancel=cancel)
     return dict(decoded['certificate'], shifts=decoded['shifts'])
@@ -1017,12 +1095,9 @@ def certified_solve(system: Any, rhs: Any, *, raw_load_zero: bool,
         raise _refuse('COUPLED_FORMATION_LOSS', 'load_stored_as_zero',
                       'a nonzero raw load was stored as an all-zero right-hand side')
     _poll(cancel)
-    size = _size_checks(system, memory_limit_bytes)
-    if size == 0:
-        public = {k: v for k, v in _empty_certificate().items() if k != 'shifts'}
-        return CertifiedSolve(np.zeros(0), np.zeros(0, dtype=np.int64), Fraction(0), Fraction(1), public,
-                              {'accepted': True, 'exempt_rows': 0, 'max_ratio': 0.0, 'failing_count': 0},
-                              raw_load_zero, timings, tuple((np.zeros(0), np.zeros(0)) for _ in exports), 0.0)
+    _size_checks(system, memory_limit_bytes)
+    # N = 0 goes through the child like every other size (review r7): its recovery maps (offset-only
+    # rows) are evaluated and bounded there, never returned empty here.
     held: dict = {}
 
     def candidate() -> Optional[np.ndarray]:

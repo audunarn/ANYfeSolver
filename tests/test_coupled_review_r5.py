@@ -12,6 +12,7 @@ import sys
 import textwrap
 import threading
 import time
+import types
 
 import numpy as np
 import pytest
@@ -255,8 +256,11 @@ def test_od13_worker_refuses_more_than_one_blas_thread(monkeypatch):
 def test_od13_worker_refuses_without_threadpoolctl(monkeypatch, tmp_path):
     """threadpoolctl not importable in the worker: the thread count cannot be verified, so it refuses."""
     (tmp_path / 'threadpoolctl.py').write_text("raise ImportError('blocked for the test')\n")
-    original = cc._svd_worker_command
-    monkeypatch.setattr(cc, '_svd_worker_command', lambda: original()[:5] + [str(tmp_path / 'threadpoolctl.py')])
+    # Review r7: the parent passes its threadpoolctl file and that file's digest; the seam is the
+    # parent's resolved module (as in test_r6_p2_child_blas_probe_memory_error_is_too_large).
+    module = types.ModuleType('threadpoolctl')
+    module.__file__ = str(tmp_path / 'threadpoolctl.py')
+    monkeypatch.setitem(sys.modules, 'threadpoolctl', module)
     S = sparse.csr_matrix(np.diag([4.0, 2.0, 1.0]))
     refused('COUPLED_UNCERTIFIED', cc._certify_solve_matrix, S, reason='blas_threads')
 

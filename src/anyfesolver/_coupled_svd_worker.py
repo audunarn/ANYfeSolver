@@ -6,13 +6,16 @@ profile and audit hooks, other threads changing the BLAS pools or the floating-p
 review r6 showed a trace hook toggling FTZ/DAZ around the parent's equilibration. So every certificate
 decision runs in a fresh interpreter that this module is the whole program of:
 
-    <sys.executable> -I -S _coupled_svd_worker.py <numpy package dir> <threadpoolctl location>
+    <sys.executable> -I -S _coupled_svd_worker.py <numpy package dir> <threadpoolctl file>
+                                                  <numpy version> <threadpoolctl sha256>
 
 ``-I`` ignores every ``PYTHON*`` variable and the user site and keeps the script and working
 directories off ``sys.path``; ``-S`` skips ``site``, so no ``.pth`` file, ``sitecustomize`` or
 ``usercustomize`` runs. ``sys.path`` stays the standard library only. A finder appended to
-``sys.meta_path`` (after the standard ones) resolves exactly two top-level names, ``numpy`` from the
-directory that holds the given NumPy package and ``threadpoolctl`` from the given location; no other
+``sys.meta_path`` (after the standard ones) resolves exactly one top-level name, ``numpy``, from the
+directory that holds the given NumPy package; the loaded package must be that directory and have the
+parent's version. ``threadpoolctl`` is executed from the bytes of exactly the given file, whose SHA-256
+must equal the parent's (review r7 P1: a same-name package next to the file no longer wins). No other
 module of those directories can be imported and no standard-library module can be shadowed (review r6
 P1). The arithmetic module ``_coupled_certificate_math.py`` next to this file is loaded by path; nothing
 else from anyfesolver is imported. The environment is minimal (one BLAS, OpenMP and MKL thread).
@@ -41,7 +44,10 @@ REQUEST_MAGIC = b'ANYCRT02'
 REPLY_MAGIC = b'ANYCRR02'
 REPORT_PREFIX = 'ANYSVD-REPORT '
 EXIT_OK, EXIT_PROTOCOL, EXIT_ENVIRONMENT, EXIT_MEMORY = 0, 2, 3, 4
-ENVIRONMENT_REASONS = ('blas_threads', 'subnormal_flush', 'rounding_mode', 'numpy_mismatch')
+ENVIRONMENT_REASONS = ('blas_threads', 'subnormal_flush', 'rounding_mode', 'numpy_mismatch',
+                       'threadpoolctl_mismatch')
+# The digest the parent sends when it found no readable threadpoolctl file (the child then has none).
+NO_DIGEST = 'none'
 MATH_FILE = '_coupled_certificate_math.py'
 # Upper bounds on the request, checked before any allocation (the parent sends far less).
 MAX_HEADER_BYTES = 1 << 24
@@ -63,7 +69,9 @@ class _Environment(Exception):
 
 class _ExactFinder:
     """Resolves only the listed top-level names, each from its one directory (appended to
-    sys.meta_path, so built-in, frozen and standard-library modules always win)."""
+    sys.meta_path, so built-in, frozen and standard-library modules always win). Since review r7 only
+    ``numpy`` is listed (a package directory takes precedence over same-name files there, and the
+    loaded package's directory and version are checked)."""
 
     def __init__(self, allowed: dict) -> None:
         self._allowed = dict(allowed)
@@ -78,11 +86,40 @@ class _ExactFinder:
         pass
 
 
-def _install_finder(numpy_dir: str, threadpoolctl_location: str) -> None:
-    numpy_dir = os.path.abspath(numpy_dir)
-    location = os.path.abspath(threadpoolctl_location)
-    sys.meta_path.append(_ExactFinder({'numpy': os.path.dirname(numpy_dir),
-                                       'threadpoolctl': os.path.dirname(location)}))
+def _install_finder(numpy_dir: str) -> None:
+    sys.meta_path.append(_ExactFinder({'numpy': os.path.dirname(os.path.abspath(numpy_dir))}))
+
+
+def _load_threadpoolctl(path: str, digest: str) -> None:
+    """Execute threadpoolctl from the bytes of exactly ``path`` (one read: the bytes hashed are the
+    bytes run) after checking their SHA-256 against the parent's ``digest`` (review r7 P1). Without a
+    readable file, or when the module fails to execute, ``threadpoolctl`` stays unimportable and the
+    thread probe refuses ``blas_threads`` (as before). A different file refuses
+    ``threadpoolctl_mismatch``. A MemoryError propagates."""
+    import hashlib
+    from importlib.util import module_from_spec, spec_from_file_location
+    sys.modules['threadpoolctl'] = None                      # unimportable unless loaded below
+    path = os.path.abspath(path)
+    if digest == NO_DIGEST:
+        return
+    try:
+        with open(path, 'rb') as handle:
+            source = handle.read()
+    except OSError:
+        return
+    if hashlib.sha256(source).hexdigest() != digest:
+        raise _Environment('threadpoolctl_mismatch')
+    package = os.path.basename(path) == '__init__.py'
+    spec = spec_from_file_location('threadpoolctl', path,
+                                   submodule_search_locations=[os.path.dirname(path)] if package else None)
+    module = module_from_spec(spec)
+    sys.modules['threadpoolctl'] = module
+    try:
+        exec(compile(source, path, 'exec'), module.__dict__)
+    except MemoryError:
+        raise
+    except Exception:  # noqa: BLE001  (a failing threadpoolctl: not verifiable, blas_threads)
+        sys.modules['threadpoolctl'] = None
 
 
 def _load_math():
@@ -163,17 +200,44 @@ _HEADER_KEYS = {'version', 'mode', 'n', 'nnz', 'raw_load_zero', 'candidate', 'me
 _EXPORT_KEYS = {'rows', 'nnz', 'coefficients', 'text_bytes', 'offsets'}
 
 
-def _header(m, raw: bytes) -> dict:
+def _strict_json(raw: bytes):
+    """JSON with no float or constant literal and no repeated key in any object (review r7 P2)."""
     import json
+
+    def no_float(text):
+        raise ValueError('no float literal')
+
+    def unique(pairs):
+        out = {}
+        for key, value in pairs:
+            if key in out:
+                raise ValueError('repeated key')
+            out[key] = value
+        return out
+    return json.loads(raw.decode('ascii'), parse_float=no_float, parse_constant=no_float, object_pairs_hook=unique)
+
+
+def _same(value, expected) -> bool:
+    """value == expected with the exact type of every element (review r7: 2.0 is not the constant 2)."""
+    if type(value) is not type(expected):
+        return False
+    if type(expected) is dict:
+        return set(value) == set(expected) and all(_same(value[k], expected[k]) for k in expected)
+    if type(expected) is list:
+        return len(value) == len(expected) and all(_same(a, b) for a, b in zip(value, expected))
+    return value == expected
+
+
+def _header(m, raw: bytes) -> dict:
     try:
-        header = json.loads(raw.decode('utf-8'))
+        header = _strict_json(raw)
     except (UnicodeDecodeError, ValueError) as exc:
         raise _ProtocolError('header') from exc
     if type(header) is not dict or set(header) != _HEADER_KEYS or header['version'] != 2 \
             or type(header['version']) is not int:
         raise _ProtocolError('header keys')
     n, nnz = header['n'], header['nnz']
-    if not (_is_int(n) and _is_int(nnz) and 1 <= n and 0 <= nnz <= n * n):
+    if not (_is_int(n) and _is_int(nnz) and 0 <= n and 0 <= nnz <= n * n):
         raise _ProtocolError('sizes')
     if header['mode'] not in ('certificate', 'solve') or type(header['mode']) is not str:
         raise _ProtocolError('mode')
@@ -182,7 +246,7 @@ def _header(m, raw: bytes) -> dict:
     limit = header['memory_limit']
     if limit is not None and not _is_int(limit):
         raise _ProtocolError('memory_limit')
-    if header['constants'] != _expected_constants(m) or type(header['constants']) is not dict:
+    if not _same(header['constants'], _expected_constants(m)):
         raise _ProtocolError('constants')
     exports = header['exports']
     if type(exports) is not list or len(exports) > MAX_EXPORTS:
@@ -198,7 +262,8 @@ def _header(m, raw: bytes) -> dict:
                 or item['coefficients'] not in ('float', 'rational') or type(item['coefficients']) is not str \
                 or not 0 <= item['rows'] <= MAX_EXPORT_ENTRIES or not 0 <= item['nnz'] <= MAX_EXPORT_ENTRIES \
                 or not 0 <= item['text_bytes'] <= 64 * MAX_EXPORT_ENTRIES \
-                or (item['coefficients'] == 'float') != (item['text_bytes'] == 0):
+                or (item['coefficients'] == 'float' and item['text_bytes'] != 0) \
+                or (item['coefficients'] == 'rational' and (item['text_bytes'] == 0) != (item['nnz'] == 0)):
             raise _ProtocolError('export')
     return header
 
@@ -206,8 +271,7 @@ def _header(m, raw: bytes) -> dict:
 def _read_export(stream, m, np, item: dict, n: int) -> tuple:
     indptr = _array(stream, np, '<i8', item['rows'] + 1)
     columns = _array(stream, np, '<i8', item['nnz'])
-    if int(indptr[0]) != 0 or int(indptr[-1]) != item['nnz'] or bool((np.diff(indptr) < 0).any()) \
-            or (columns.size and (int(columns.min()) < 0 or int(columns.max()) >= n)):
+    if m.export_structure_reason(indptr, columns, n) is not None:     # incl. a repeated column (review r7 P1)
         raise _ProtocolError('export structure')
     if item['coefficients'] == 'float':
         data = _array(stream, np, '<f8', item['nnz'])
@@ -246,6 +310,12 @@ def _encode_certificate(m, certificate: dict) -> dict:
     return out
 
 
+def _end_of_request(stdin) -> None:
+    """The parent closes stdin after the last byte it sends: anything more is malformed (review r7)."""
+    if stdin.read(1):
+        raise _ProtocolError('trailing bytes')
+
+
 def _run(m, np, stdin, report: dict) -> tuple:
     """Returns (reply dict, sections list of (name, bytes))."""
     head = _read_exact(stdin, 16)
@@ -262,6 +332,8 @@ def _run(m, np, stdin, report: dict) -> tuple:
     data = _array(stdin, np, '<f8', nnz)
     b = _array(stdin, np, '<f8', n) if solve else None
     exports = [_read_export(stdin, m, np, item, n) for item in header['exports']]
+    if header['candidate'] != 'follows':
+        _end_of_request(stdin)
     report['seconds_read'] = time.perf_counter() - started
     _check(m, np, report, 'request')
 
@@ -292,8 +364,12 @@ def _run(m, np, stdin, report: dict) -> tuple:
     # Equilibration and SVD (sections 2.1-2.2).
     _check(m, np, report, 'before')
     started = time.perf_counter()
-    certificate = m.new_certificate(n)
-    A, shifts = m.equilibrate(m.dense_from_csr(system), certificate)
+    if n == 0:
+        # The 0 x 0 system (review r7): nothing to equilibrate or decompose; x = () is its solution.
+        certificate, A, shifts = m.empty_certificate(), None, np.zeros(0, dtype=np.int64)
+    else:
+        certificate = m.new_certificate(n)
+        A, shifts = m.equilibrate(m.dense_from_csr(system), certificate)
     report['seconds_equilibration'] = time.perf_counter() - started
     if A is not None:
         _check(m, np, report, 'between')
@@ -316,7 +392,7 @@ def _run(m, np, stdin, report: dict) -> tuple:
     if not certificate['accepted']:
         return refuse('COUPLED_UNCERTIFIED', certificate['reason'],
                       f"the coupled system is not certified ({certificate['reason']})", certificate=public)
-    sigma_lower = m._sigma_lower(certificate['sigma_max'], certificate['sigma_min'], n)
+    sigma_lower = m._sigma_lower(certificate['sigma_max'], certificate['sigma_min'], n) if n else m.Fraction(1)
     if not sigma_lower > 0:
         return refuse('COUPLED_UNCERTIFIED', 'singular_within_svd_error',
                       'the exact singular-value lower bound is not positive', certificate=public)
@@ -327,11 +403,13 @@ def _run(m, np, stdin, report: dict) -> tuple:
     else:
         tag = bytes(_read_exact(stdin, 2))
         if tag == b'XF':
+            _end_of_request(stdin)
             _check(m, np, report, 'after')
             return {'verdict': 'no_candidate', 'certificate': public}, []
         if tag != b'XV':
             raise _ProtocolError('candidate tag')
         x = _array(stdin, np, '<f8', n)
+        _end_of_request(stdin)
         if bool(((m._float_bits(x) & m._ABS_MASK) >= m._INF_BITS).any()):
             return refuse('COUPLED_UNCERTIFIED', 'candidate_failed', 'the candidate solve is not finite',
                           certificate=public)
@@ -398,18 +476,20 @@ def _main(argv) -> int:
             pass
         return code
 
-    if len(argv) != 3:
+    if len(argv) != 5:
         return EXIT_PROTOCOL
     try:
-        _install_finder(argv[1], argv[2])
+        _install_finder(argv[1])
         try:
             import numpy as np
         except ImportError:
             return finish({'verdict': 'environment', 'reason': 'numpy_mismatch'}, [], EXIT_ENVIRONMENT)
         report['numpy'] = np.__version__
         report['seconds_startup'] = time.perf_counter() - _STARTED
-        if os.path.normcase(os.path.dirname(os.path.abspath(np.__file__))) != os.path.normcase(os.path.abspath(argv[1])):
+        if os.path.normcase(os.path.dirname(os.path.abspath(np.__file__))) != os.path.normcase(os.path.abspath(argv[1])) \
+                or np.__version__ != argv[3]:
             return finish({'verdict': 'environment', 'reason': 'numpy_mismatch'}, [], EXIT_ENVIRONMENT)
+        _load_threadpoolctl(argv[2], argv[4])
         m = _load_math()
         report['modules'] = sorted(name for name in sys.modules if '.' not in name)
         _check(m, np, report, 'start')
