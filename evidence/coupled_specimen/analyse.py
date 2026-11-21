@@ -46,7 +46,12 @@ def r0(c10, c20):
 def r1_od10(c10, c20):
     """OD10: coupled against all-shell at the same h. Errors against the finest all-shell run R(h/8)
     (n = 160); observed order p = log2(e(0.1) / e(0.05)) from the centre deflection; gates
-    |p_coupled - p_shell| <= 0.2 and e_coupled <= 1.2 e_shell at every compared h and observable."""
+    |p_coupled - p_shell| <= 0.2 and e_coupled <= 1.2 e_shell at every compared h and observable.
+
+    OD17 (owner, 2026-11-21): the order test is one-sided, p_coupled >= p_shell - 0.2, and the error ratio
+    e_coupled <= 1.2 e_shell is gated at the resolved mesh h = 0.05 only (centre and quarter point); the h = 0.1
+    ratio is reported. The OD10 two-sided result is kept as the reported fields 'od10_*' (same data, same
+    arithmetic, nothing re-run)."""
     if refused(c10) or refused(c20):
         return {'gate': 'R(h/8)', 'pass': False,
                 'status': 'FAIL: the coupled route refused at ' + ', '.join(
@@ -57,7 +62,7 @@ def r1_od10(c10, c20):
         e_s = {0.1: abs(s10['observables']['centre']['w'] - refc), 0.05: abs(s20['observables']['centre']['w'] - refc)}
         p_c, p_s = math.log2(e_c[0.1] / e_c[0.05]), math.log2(e_s[0.1] / e_s[0.05])
         ratios = [{'h': h, 'obs': 'centre', 'e_coupled': e_c[h], 'e_shell': e_s[h], 'ratio': e_c[h] / e_s[h],
-                   'pass': e_c[h] <= 1.2 * e_s[h]} for h in (0.1, 0.05)]
+                   'gated': h == 0.05, 'pass': e_c[h] <= 1.2 * e_s[h]} for h in (0.1, 0.05)]
         if label == 'R(h/8)':
             for c, s, h in ((c10, s10, 0.1), (c20, s20, 0.05)):
                 for k in c['observables']:
@@ -65,11 +70,17 @@ def r1_od10(c10, c20):
                         ec = abs(c['observables'][k]['w'] - s160['observables'][k]['w'])
                         es = abs(s['observables'][k]['w'] - s160['observables'][k]['w'])
                         ratios.append({'h': h, 'obs': k, 'e_coupled': ec, 'e_shell': es, 'ratio': ec / es,
-                                       'pass': ec <= 1.2 * es})
+                                       'gated': h == 0.05, 'pass': ec <= 1.2 * es})
+        order_pass = p_c >= p_s - 0.2                                       # OD17, one-sided
+        gated_pass = all(r['pass'] for r in ratios if r['gated'])           # OD17, h = 0.05 only
         od10[label] = {'reference_centre': refc, 'p_coupled': p_c, 'p_shell': p_s, 'order_difference': abs(p_c - p_s),
-                       'order_pass': abs(p_c - p_s) <= 0.2, 'ratios': ratios,
-                       'pass': abs(p_c - p_s) <= 0.2 and all(r['pass'] for r in ratios)}
-    return {'gate': 'R(h/8)', 'p_fine_40_80_160': p_fine, **od10, 'pass': od10['R(h/8)']['pass']}
+                       'order_margin': p_c - (p_s - 0.2), 'order_pass': order_pass, 'ratios': ratios,
+                       'ratios_gated_pass': gated_pass, 'pass': order_pass and gated_pass,
+                       # reported history: the OD10 gates (two-sided order, every h) on the same data
+                       'od10_order_pass': abs(p_c - p_s) <= 0.2,
+                       'od10_pass': abs(p_c - p_s) <= 0.2 and all(r['pass'] for r in ratios)}
+    return {'gate': 'R(h/8)', 'p_fine_40_80_160': p_fine, **od10, 'pass': od10['R(h/8)']['pass'],
+            'od10_two_sided_pass': od10['R(h/8)']['od10_pass'], 'rule': 'OD17'}
 
 
 def r2(c20, key):

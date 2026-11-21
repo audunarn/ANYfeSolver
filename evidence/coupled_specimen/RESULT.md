@@ -1,5 +1,26 @@
 # S3: coupled specimen, references R0–R2 and timing (2026-11-19)
 
+## Update 2026-11-21 (OD17): R1 gate changed by the owner -- R1 PASS
+
+Owner decision OD17: the R1 order test is one-sided (`p_coupled >= p_shell - 0.2`) and the error ratio
+`e_coupled <= 1.2 e_shell` is gated at the resolved mesh h = 0.05 only (centre and quarter point); the h = 0.1
+ratio is reported. Resolution rule: at least 8 shell elements across the footprint's shorter side (0.4 m wide, so
+h = 0.05; docs/SOLID_COUPLING.md "Minimum resolution for coupled mode"). Only `analyse.py` was changed and re-run on
+the existing raw data (no specimen run, nothing tuned); `summary.json` differs from the previous one in `R1_od10`
+only. The OD10 two-sided result stays as reported fields (`od10_pass`, `od10_order_pass`, `od10_two_sided_pass`).
+
+| Quantity (reference R(h/8), n = 160) | Value | OD17 gate | Outcome |
+|---|---|---|---|
+| p coupled / p all-shell | 0.957 / 0.539 | p_c >= p_s - 0.2 = 0.339 (margin 0.618) | **pass** |
+| e_c/e_s centre, h = 0.05 | 1.150 | <= 1.2 | **pass** |
+| e_c/e_s quarter point, h = 0.05 | 0.957 | <= 1.2 | **pass** |
+| e_c/e_s centre, h = 0.1 | 1.536 | reported, not gated | reported |
+| Richardson sensitivity | p 0.885 / 0.487; ratios 1.49 (h = 0.1), 1.13 (h = 0.05) | same rule | pass |
+| OD10 two-sided order (history) | difference 0.418 > 0.2 | reported | would fail |
+
+**R1 verdict under OD17: PASS.** R0 (PASS) and R2 (PASS) unchanged. The h = 0.1 mesh (4 elements across 0.4 m) is
+below the resolution rule, and there the coupled error is 1.54 times the all-shell error.
+
 ## Update 2026-11-21 (OD16, review r8 fixes): results bit-identical, timing PASS
 
 Re-run of the same six coupled entries (shared machine, load 8–74 %; raw/runs.log was locked by another process

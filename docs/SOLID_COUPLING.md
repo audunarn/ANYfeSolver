@@ -364,7 +364,7 @@ checked at every poll, after the final read and after an expiry: a reader that f
 child blocks on a full pipe, is never reported as a timeout (review r7 item 5, r8). Otherwise an exited child's
 complete reply decides: the parent looks at what it received, not at the wall clock when it looks, so a parent
 suspended past `D` (for example in a cancellation callback or by the OS) keeps a timely refusal or acceptance
-(review r8). `timeout` is reported only when the child was observed still running at or after `D`. Since the
+(review r8). `timeout` is reported only when the child was observed still running at or after `D`. The observation is made by a poll that follows the clock read: when the clock says `D` has passed, the parent polls once more, and a child that exited in the window between the first poll and the clock read decides by its reply (OD17; `tests/test_coupled_od17_race.py`). Every transition above is check-then-act on a child that can change state meanwhile, and each one either re-checks (RUNNING → EXPIRED) or is idempotent and tolerant of the change (TEARDOWN's poll-then-kill, retried; the candidate post and the writer release, now under one lock). Since the
 child reads the whole request before any verdict, a certificate refusal is sent only after the candidate (or
 `XF`) arrives; a parent that delivers the candidate after `D` therefore gets `timeout`, which is correct: no
 verdict existed before `D`. Each transition has a test in `tests/test_coupled_review_r8.py` (`test_r8_state_*`;
@@ -422,6 +422,17 @@ centre: `e` on the translations, and `e × r` with `r = x − x_c` exact. It is 
 centre `x_c` is the corner mean rounded once to binary64; the exported `footprint_centre` is exactly that point, so
 every moment, V4 and the transfer gate refer to the exported value (review r1 #6). The exported `forward_error` is
 `E` rounded up.
+
+## Minimum resolution for coupled mode (OD17)
+The coupled route is not guaranteed to be at least as accurate as all-shell on a coarse shell mesh. The rule: **at
+least 8 shell elements across the footprint's shorter side** (the specimen's footprint is 0.4 m wide, so h = 0.05
+meets it and h = 0.1, 4 elements, does not). Below it the solid's 3-D field, read on the mid-plane, differs from the
+shell model by more than the discretisation error of the shell, and the coupled error can exceed the all-shell
+error: on the S3 specimen the coupled centre error is 1.54 times the all-shell error at h = 0.1 (5.97e-7 against
+3.88e-7), against 1.15 (centre) and 0.96 (quarter point) at the resolved h = 0.05. The S3 R1 gate (OD17) therefore
+applies the error-ratio limit 1.2 at h = 0.05 only, reports the h = 0.1 ratio, and tests the observed order
+one-sided (`p_coupled >= p_shell - 0.2`; 0.957 against 0.539). ANYfem's coupled mode will warn below this
+resolution, in the later ANYfem PR; the solver itself does not check it.
 
 ## Claims (C5)
 

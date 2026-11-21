@@ -465,6 +465,7 @@ class _WorkerIO:
         self._aborted = False
         self._ready = _thread.allocate_lock()
         self._ready.acquire()
+        self._post_lock = _thread.allocate_lock()
         self._streams = (process.stdin, process.stdout, process.stderr)
         self._plan = ((self._write, process.stdin, request, candidate_follows),
                       (self._read, process.stdout, self.stdout, stdout_limit),
@@ -480,15 +481,17 @@ class _WorkerIO:
             self._lanes.append(_Lane(target, *args))
 
     def post_candidate(self, payload: bytes) -> None:
-        if self._candidate is None and not self._aborted:
-            self._candidate = payload
-            self._ready.release()
+        with self._post_lock:                     # check-then-act: exactly one release (OD17)
+            if self._candidate is None and not self._aborted:
+                self._candidate = payload
+                self._ready.release()
 
     def abort(self) -> None:
         """Release a writer still waiting for the candidate (teardown): it writes nothing more."""
-        if self._candidate is None and not self._aborted:
-            self._aborted = True
-            self._ready.release()
+        with self._post_lock:
+            if self._candidate is None and not self._aborted:
+                self._aborted = True
+                self._ready.release()
 
     def _write(self, stream: Any, request: list, candidate_follows: bool) -> None:
         try:
@@ -609,6 +612,10 @@ class _Run:
                 break                           # COLLECT
             remaining = _remaining(self.deadline)
             if remaining <= 0:
+                # Check-then-act (OD17): the child may have exited between the poll above and this clock
+                # read (a suspended parent); look once more, and an exited child's reply decides.
+                if self.process.poll() is not None:
+                    break                       # COLLECT
                 self._expire()                  # EXPIRED: raises
             try:
                 self.process.wait(timeout=min(_SVD_WORKER_POLL_SECONDS, remaining))

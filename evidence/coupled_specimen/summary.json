@@ -84,7 +84,8 @@
    "p_coupled": 0.9571697314339603,
    "p_shell": 0.5394516770096865,
    "order_difference": 0.4177180544242738,
-   "order_pass": false,
+   "order_margin": 0.6177180544242737,
+   "order_pass": true,
    "ratios": [
     {
      "h": 0.1,
@@ -92,6 +93,7 @@
      "e_coupled": 5.966842896484323e-07,
      "e_shell": 3.884647014991679e-07,
      "ratio": 1.5360064565601477,
+     "gated": false,
      "pass": false
     },
     {
@@ -100,6 +102,7 @@
      "e_coupled": 3.073320148469329e-07,
      "e_shell": 2.6727628489575504e-07,
      "ratio": 1.149866382521744,
+     "gated": true,
      "pass": true
     },
     {
@@ -108,17 +111,22 @@
      "e_coupled": 2.08409167126669e-07,
      "e_shell": 2.1775163999175813e-07,
      "ratio": 0.9570957405168442,
+     "gated": true,
      "pass": true
     }
    ],
-   "pass": false
+   "ratios_gated_pass": true,
+   "pass": true,
+   "od10_order_pass": false,
+   "od10_pass": false
   },
   "Richardson(p_fine) [sensitivity]": {
    "reference_centre": 2.6930452541164245e-05,
    "p_coupled": 0.8846355173394431,
    "p_shell": 0.4869599540232581,
    "order_difference": 0.39767556331618503,
-   "order_pass": false,
+   "order_margin": 0.597675563316185,
+   "order_pass": true,
    "ratios": [
     {
      "h": 0.1,
@@ -126,6 +134,7 @@
      "e_coupled": 6.312557603137332e-07,
      "e_shell": 4.2303617216446875e-07,
      "ratio": 1.492202799311243,
+     "gated": false,
      "pass": false
     },
     {
@@ -134,12 +143,18 @@
      "e_coupled": 3.4190348551223375e-07,
      "e_shell": 3.018477555610559e-07,
      "ratio": 1.1327017650892408,
+     "gated": true,
      "pass": true
     }
    ],
-   "pass": false
+   "ratios_gated_pass": true,
+   "pass": true,
+   "od10_order_pass": false,
+   "od10_pass": false
   },
-  "pass": false
+  "pass": true,
+  "od10_two_sided_pass": false,
+  "rule": "OD17"
  },
  "R2": [
   {
