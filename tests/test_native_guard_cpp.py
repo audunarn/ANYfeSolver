@@ -3,6 +3,7 @@ import gc
 import importlib
 import sys
 import types
+from pathlib import Path
 import pytest
 from anyfesolver import boundary,static_batch,prepared_static_loads as loads
 from anyfesolver import _native_authority_dag as dag,_native_guard_dispatch as dispatch
@@ -11,13 +12,19 @@ from anyfesolver import _native_authority_dag as dag,_native_guard_dispatch as d
 def native():
     return pytest.importorskip('anyfesolver._native_guard')
 
+def editable_install():
+    # An editable install loads the package from this checkout. An installed wheel that lost its RECORD
+    # entry does not. (Metadata is no guide: an egg-info left in src/ hides pip's direct_url.json.)
+    return Path(dispatch.__file__).resolve().parent==Path(__file__).resolve().parents[1]/'src'/'anyfesolver'
+
 @pytest.fixture
 def admitted(native):
     # An editable install builds the extension in place but has no RECORD for it, so the dispatch
     # falls back by design. Any other state still runs (and fails) the test. The native-guard
     # workflow runs this module on a real wheel and fails on any skip.
     state=dispatch.diagnostics()
-    if state['backend']=='fallback' and state.get('reason')=='unadmitted_no_binary_record':
+    if (state['backend']=='fallback' and state.get('reason')=='unadmitted_no_binary_record'
+            and editable_install()):
         pytest.skip('editable install: the in-place extension is not admitted (no binary RECORD)')
     return native
 

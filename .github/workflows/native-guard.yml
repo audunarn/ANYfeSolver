@@ -60,6 +60,8 @@ jobs:
       - run: python -m pip check
       # pythonpath is emptied so that src/ does not shadow the installed wheel.
       - name: Native guard tests on the installed wheel
+        env:
+          PYTEST_ADDOPTS: ''
         run: >-
           python -m pytest -o pythonpath= --junitxml=native-guard.xml
           tests/test_native_guard_cpp.py tests/test_native_guard_code_grammar.py
