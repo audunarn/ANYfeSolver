@@ -147,7 +147,8 @@ def test_r8_p1_child_runs_exactly_the_bytes_sent(monkeypatch, tmp_path):
     genuine one."""
     marker = tmp_path / 'sent.txt'
     real = cc._trusted_runtime()
-    source = f"open({str(marker)!r}, 'a').write('sent\\n')\n".encode('ascii') + real.threadpoolctl_source
+    # Appended: threadpoolctl 3.8 opens with ``from __future__``, which no statement may precede.
+    source = real.threadpoolctl_source + f"\nopen({str(marker)!r}, 'a').write('sent\\n')\n".encode('ascii')
     runtime = dataclasses.replace(real, threadpoolctl_source=source,
                                   threadpoolctl_digest=hashlib.sha256(source).hexdigest())
     monkeypatch.setattr(cc, '_trusted_runtime', lambda *args: runtime)
