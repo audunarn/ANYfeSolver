@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import contextlib
 import ctypes
+import json
 import os
 import subprocess
 import sys
@@ -305,15 +306,38 @@ def test_od13_worker_loads_no_site_customisation_or_python_variables(monkeypatch
     assert report['sitecustomize_loaded'] is False
     allowed = {'OPENBLAS_NUM_THREADS', 'OMP_NUM_THREADS', 'MKL_NUM_THREADS', 'SYSTEMROOT', '__PYVENV_LAUNCHER__'}
     if sys.platform.startswith('linux') and 'LC_CTYPE' in report['environment_keys']:
-        # It was not passed (above), so CPython's C-locale coercion (PEP 538) set it at start-up. The report
-        # holds names only, so a second run reads the value inside the worker itself.
-        from _coupled_worker_patch import patch_worker
-        value = tmp_path / 'lc_ctype.txt'
+        # It was not passed (above), so only CPython's C-locale coercion (PEP 538) or the worker can have set it.
+        # The report holds names only, so a second launch runs the same file as __main__ (its own main block
+        # included) and records the value before its first line, every write to it and the value at exit.
+        seen = tmp_path / 'lc_ctype.json'
+        observer = textwrap.dedent(f"""
+            import atexit, json, os, runpy, sys
+            first, writes = os.environ.get('LC_CTYPE'), []
+
+            def audit(event, args):
+                if event in ('os.putenv', 'os.unsetenv') and os.fsdecode(args[0]) == 'LC_CTYPE':
+                    writes.append(event)
+
+            def save():
+                with open({str(seen)!r}, 'w') as out:
+                    json.dump([first, writes, os.environ.get('LC_CTYPE')], out)
+
+            atexit.register(save)
+            sys.addaudithook(audit)
+            sys.argv = sys.argv[1:]
+            runpy.run_path(sys.argv[0], run_name='__main__')
+        """)
+        production = cc._svd_worker_command
+
+        def observed(*args):
+            command = production(*args)
+            return command[:3] + ['-c', observer] + command[3:]
+
         with monkeypatch.context() as patched:
-            patch_worker(patched, cc, f"open({str(value)!r}, 'w').write(w.os.environ['LC_CTYPE'])")
-            _certificate_run(_matrix(50))
+            patched.setattr(cc, '_svd_worker_command', observed)
+            assert _certificate_run(_matrix(50))[1]['environment_keys'] == report['environment_keys']
         assert launched == [given, given]
-        assert value.read_text() == 'C.UTF-8'
+        assert json.loads(seen.read_text()) == ['C.UTF-8', [], 'C.UTF-8']
         allowed.add('LC_CTYPE')
     assert set(report['environment_keys']) <= allowed, report['environment_keys']
     command = cc._svd_worker_command()
