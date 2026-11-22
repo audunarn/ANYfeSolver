@@ -285,20 +285,35 @@ def test_od13_worker_loads_no_site_customisation_or_python_variables(monkeypatch
     monkeypatch.setenv('OPENBLAS_NUM_THREADS', '4')
     monkeypatch.setenv('LC_CTYPE', 'POSIX')
     monkeypatch.setenv('ANY_PARENT_ONLY_CANARY', '1')
+    given = {'OPENBLAS_NUM_THREADS': '1', 'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1'}
+    if sys.platform == 'win32' and os.environ.get('SYSTEMROOT'):
+        given['SYSTEMROOT'] = os.environ['SYSTEMROOT']
+    launched = []
+    initialise = subprocess.Popen.__init__
+
+    def recording(self, *args, **kwargs):
+        launched.append(kwargs.get('env'))
+        return initialise(self, *args, **kwargs)
+
+    # The environment each launch really passes to the operating system, not what the helper would return.
+    monkeypatch.setattr(subprocess.Popen, '__init__', recording)
     sigma, report = _certificate_run(_matrix(50))
+    assert launched == [given]
     assert _one_thread(report)
     assert not marker.exists(), marker.read_text()
     assert report['isolated'] == 1 and report['no_site'] == 1 and report['site_loaded'] is False
     assert report['sitecustomize_loaded'] is False
     allowed = {'OPENBLAS_NUM_THREADS', 'OMP_NUM_THREADS', 'MKL_NUM_THREADS', 'SYSTEMROOT', '__PYVENV_LAUNCHER__'}
     if sys.platform.startswith('linux') and 'LC_CTYPE' in report['environment_keys']:
-        # CPython's C-locale coercion (PEP 538) sets this itself at start-up. The worker reports names only,
-        # so the value comes from a bare interpreter started with the same flags and the same environment.
-        given = cc._svd_worker_environment()
-        assert 'LC_CTYPE' not in given
-        seen = subprocess.check_output([sys.executable, '-I', '-S', '-c', "import os; print(os.environ['LC_CTYPE'])"],
-                                       env=given, text=True, timeout=60)
-        assert seen.strip() == 'C.UTF-8'
+        # It was not passed (above), so CPython's C-locale coercion (PEP 538) set it at start-up. The report
+        # holds names only, so a second run reads the value inside the worker itself.
+        from _coupled_worker_patch import patch_worker
+        value = tmp_path / 'lc_ctype.txt'
+        with monkeypatch.context() as patched:
+            patch_worker(patched, cc, f"open({str(value)!r}, 'w').write(w.os.environ['LC_CTYPE'])")
+            _certificate_run(_matrix(50))
+        assert launched == [given, given]
+        assert value.read_text() == 'C.UTF-8'
         allowed.add('LC_CTYPE')
     assert set(report['environment_keys']) <= allowed, report['environment_keys']
     command = cc._svd_worker_command()

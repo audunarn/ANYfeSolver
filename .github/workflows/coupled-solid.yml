@@ -1,6 +1,7 @@
 name: Coupled solid
 
-# The portable shards have no scikit-fem, so they skip the two-way shell-solid coupling tests.
+# Only one portable shard installs scikit-fem and it is not assigned the two-way shell-solid coupling
+# tests, so the portable run skips most of them.
 # This workflow installs the optional solid stack and runs them on both operating systems.
 on:
   push:

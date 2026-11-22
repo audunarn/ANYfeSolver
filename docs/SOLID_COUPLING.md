@@ -241,8 +241,9 @@ them against the schema (below). The result's `x` is the child's copy of the can
   module
   `_coupled_certificate_math.py` is loaded by its path next to the worker; nothing else from anyfesolver is
   imported. The environment given to the child is exactly `OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1`,
-  `MKL_NUM_THREADS=1` and, on Windows, `SYSTEMROOT`. On Linux CPython itself then adds `LC_CTYPE=C.UTF-8` (C-locale
-  coercion, PEP 538); it is not copied from the parent. The working directory is the anyfesolver package directory. The child receives no
+  `MKL_NUM_THREADS=1` and, on Windows, `SYSTEMROOT`. On Linux CPython itself may then add an `LC_CTYPE` (C-locale
+  coercion, PEP 538: `C.UTF-8` where the interpreter build and the host's locales support it); it is not copied from
+  the parent, and the isolation test accepts no other value. The working directory is the anyfesolver package directory. The child receives no
   callable, so no caller code runs in it. The `Popen` object is created first and initialised second, so an
   exception after the OS created the process (for example a hook raising on return from `Popen.__init__`) still
   kills and reaps it (review r6 P2). (A Windows venv's `python.exe` is a launcher that starts the base interpreter
@@ -554,7 +555,8 @@ ceilings. The tests are:
 - `tests/test_solid_trace_extensions.py`;
 - `tests/test_load_contributions.py`.
 
-The portable CI shards have no scikit-fem and skip most of them. `.github/workflows/coupled-solid.yml` installs
+Only one portable CI shard installs scikit-fem (Windows, index 0, subshard 0), and these modules are not assigned
+to it, so the portable run skips most of them. `.github/workflows/coupled-solid.yml` installs
 the solid stack and runs all of them on Windows and Linux. On Linux the tests that switch denormal flushing or
 the rounding mode through the MSVC runtime, or inspect processes through the Windows Toolhelp API, are skipped,
 so those behaviours are tested on Windows only.
