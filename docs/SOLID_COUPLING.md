@@ -240,8 +240,9 @@ them against the schema (below). The result's `x` is the child's copy of the can
   imported, so a same-name module from an earlier `sys.path` entry was run by the child and trusted. The arithmetic
   module
   `_coupled_certificate_math.py` is loaded by its path next to the worker; nothing else from anyfesolver is
-  imported. The environment is exactly `OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1`, `MKL_NUM_THREADS=1` and, on
-  Windows, `SYSTEMROOT`. The working directory is the anyfesolver package directory. The child receives no
+  imported. The environment given to the child is exactly `OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1`,
+  `MKL_NUM_THREADS=1` and, on Windows, `SYSTEMROOT`. On Linux CPython itself then adds `LC_CTYPE=C.UTF-8` (C-locale
+  coercion, PEP 538); it is not copied from the parent. The working directory is the anyfesolver package directory. The child receives no
   callable, so no caller code runs in it. The `Popen` object is created first and initialised second, so an
   exception after the OS created the process (for example a hook raising on return from `Popen.__init__`) still
   kills and reaps it (review r6 P2). (A Windows venv's `python.exe` is a launcher that starts the base interpreter
@@ -546,10 +547,14 @@ ceilings. The tests are:
   uses an independent implementation of the specified power-of-two Ruiz scaling, an mpmath reference solution,
   and a high-precision κ (binary64 SVD triplets refined by Newton steps on mpmath residuals) judged against the
   exact cutoff 1e7 with no margin (review r3), in private mpmath contexts (review r5 #5);
-- `tests/test_coupled_review_r1.py` to `tests/test_coupled_review_r5.py` (the review rounds; r5 holds the OD13
+- `tests/test_coupled_review_r1.py` to `tests/test_coupled_review_r8.py` and `tests/test_coupled_od17_race.py`
+  (the review rounds; r5 holds the OD13
   worker tests: parent hooks, thread limits and FP environment do not reach the worker, isolation, cancellation and
   timeout by PID, every malformed worker record);
 - `tests/test_solid_trace_extensions.py`;
 - `tests/test_load_contributions.py`.
 
-They run in the ANYsolid venv, because the pinned CI venv has no scikit-fem and skips them.
+The portable CI shards have no scikit-fem and skip most of them. `.github/workflows/coupled-solid.yml` installs
+the solid stack and runs all of them on Windows and Linux. On Linux the tests that switch denormal flushing or
+the rounding mode through the MSVC runtime, or inspect processes through the Windows Toolhelp API, are skipped,
+so those behaviours are tested on Windows only.

@@ -283,12 +283,23 @@ def test_od13_worker_loads_no_site_customisation_or_python_variables(monkeypatch
     monkeypatch.setenv('PYTHONSTARTUP', str(tmp_path / 'startup.py'))
     monkeypatch.setenv('PYTHONUSERBASE', str(tmp_path))
     monkeypatch.setenv('OPENBLAS_NUM_THREADS', '4')
+    monkeypatch.setenv('LC_CTYPE', 'POSIX')
+    monkeypatch.setenv('ANY_PARENT_ONLY_CANARY', '1')
     sigma, report = _certificate_run(_matrix(50))
     assert _one_thread(report)
     assert not marker.exists(), marker.read_text()
     assert report['isolated'] == 1 and report['no_site'] == 1 and report['site_loaded'] is False
     assert report['sitecustomize_loaded'] is False
     allowed = {'OPENBLAS_NUM_THREADS', 'OMP_NUM_THREADS', 'MKL_NUM_THREADS', 'SYSTEMROOT', '__PYVENV_LAUNCHER__'}
+    if sys.platform.startswith('linux') and 'LC_CTYPE' in report['environment_keys']:
+        # CPython's C-locale coercion (PEP 538) sets this itself at start-up. The worker reports names only,
+        # so the value comes from a bare interpreter started with the same flags and the same environment.
+        given = cc._svd_worker_environment()
+        assert 'LC_CTYPE' not in given
+        seen = subprocess.check_output([sys.executable, '-I', '-S', '-c', "import os; print(os.environ['LC_CTYPE'])"],
+                                       env=given, text=True, timeout=60)
+        assert seen.strip() == 'C.UTF-8'
+        allowed.add('LC_CTYPE')
     assert set(report['environment_keys']) <= allowed, report['environment_keys']
     command = cc._svd_worker_command()
     assert command[0] == sys.executable and command[1:3] == ['-I', '-S']
