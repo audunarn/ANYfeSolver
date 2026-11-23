@@ -40,6 +40,64 @@ def test_an_ignored_kernel_pin_fails_closed(kernels, accepted) -> None:
     assert (check.kernel_failures(pools) == []) is accepted
 
 
+def _pools(*kernels):
+    return [dict(internal_api="openblas", architecture=name, filepath=f"lib{i}")
+            for i, name in enumerate(kernels)]
+
+
+@pytest.mark.parametrize("kind", ["pytest", "module"])
+def test_numerical_workers_refuse_an_ignored_pin_before_running(monkeypatch, kind) -> None:
+    ran = []
+    monkeypatch.setattr(check, "verify_worker_origins", lambda job: None)
+    monkeypatch.setattr(check, "loaded_pools", lambda: _pools("Sandybridge", "Haswell"))
+    monkeypatch.setattr("pytest.main", lambda *a, **k: ran.append(a) or 0)
+    monkeypatch.setattr("runpy.run_module", lambda *a, **k: ran.append(a))
+    with pytest.raises(SystemExit, match="must be pinned to Sandybridge"):
+        check.run_worker(dict(kind=kind, inserts=[], argv=["examples.unused"]))
+    assert ran == []
+
+
+@pytest.mark.parametrize("kind", ["pytest", "module"])
+def test_numerical_workers_check_libraries_loaded_while_running(monkeypatch, kind) -> None:
+    seen = iter([_pools("Sandybridge"), _pools("Sandybridge", "SkylakeX")])
+    monkeypatch.setattr(check, "verify_worker_origins", lambda job: None)
+    monkeypatch.setattr(check, "loaded_pools", lambda: next(seen))
+    monkeypatch.setattr("pytest.main", lambda *a, **k: 0)
+    monkeypatch.setattr("runpy.run_module", lambda *a, **k: None)
+    with pytest.raises(SystemExit, match="SkylakeX"):
+        check.run_worker(dict(kind=kind, inserts=[], argv=["examples.unused"]))
+
+
+def test_the_real_worker_pools_report_the_pin(monkeypatch) -> None:
+    import subprocess
+    monkeypatch.setenv("OPENBLAS_CORETYPE", "SkylakeX")
+    code = ("import sys; sys.path.insert(0, sys.argv[1]); "
+            "from scripts import check_static_contact_candidate as c; c.require_pinned_kernel()")
+    completed = subprocess.run([sys.executable, "-c", code, str(ROOT)], env=check.clean_env(),
+                               capture_output=True, text=True, timeout=120)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+
+
+@pytest.mark.parametrize("network", [False, True])
+def test_pip_runs_get_the_pinned_kernel(tmp_path, monkeypatch, network) -> None:
+    seen = []
+    monkeypatch.setenv("OPENBLAS_CORETYPE", "SkylakeX")
+    monkeypatch.setattr(check.subprocess, "run",
+                        lambda cmd, **kw: seen.append(kw["env"]) or type("R", (), {"returncode": 0})())
+    check.pip_run(["pip"], tmp_path, "phase", 10, network=network)
+    assert seen[0]["OPENBLAS_CORETYPE"] == "Sandybridge"
+
+
+def test_target_install_pip_gets_the_pinned_kernel(tmp_path, monkeypatch) -> None:
+    seen = []
+    monkeypatch.setenv("OPENBLAS_CORETYPE", "SkylakeX")
+    monkeypatch.setattr(check.subprocess, "check_call", lambda cmd, **kw: seen.append(kw.get("env")))
+    bundle = fake_bundle(tmp_path)
+    assert check.main(["install", "--bundle", str(bundle), "--output", str(tmp_path / "out"),
+                       "--python", sys.executable, "--numerical-site", str(tmp_path)]) == 0
+    assert seen and seen[0]["OPENBLAS_CORETYPE"] == "Sandybridge"
+
+
 def test_both_guides_state_the_pinned_kernel(tmp_path) -> None:
     build.write_guide(tmp_path, CONFIG)
     for guide in (tmp_path / "README.md", ROOT / "docs" / "GENERAL_CONTACT_STATIC_CANDIDATE.md"):

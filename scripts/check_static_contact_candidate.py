@@ -83,6 +83,21 @@ def kernel_failures(pools: list[dict]) -> list[str]:
     return []
 
 
+def loaded_pools() -> list[dict]:
+    """Thread pools after loading both bundled OpenBLAS copies (NumPy's and SciPy's)."""
+    import numpy  # noqa: F401
+    import scipy.linalg  # noqa: F401
+    from threadpoolctl import threadpool_info
+    return threadpool_info()
+
+
+def require_pinned_kernel() -> None:
+    """Refuse to run a numerical worker whose OpenBLAS ignored the pin."""
+    failures = kernel_failures(loaded_pools())
+    if failures:
+        raise SystemExit("; ".join(failures))
+
+
 def clean_env(extra: dict | None = None) -> dict:
     """Worker/pip environment without inherited path contamination."""
     env = {k: v for k, v in os.environ.items()
@@ -151,14 +166,19 @@ def run_worker(job: dict) -> int:
     kind = job["kind"]
     if kind == "pytest":
         verify_worker_origins(job)
+        require_pinned_kernel()
         import pytest
-        raise SystemExit(pytest.main(job["argv"] + ["-o", "pythonpath=",
-                                                    "-p", "no:cacheprovider"]))
+        code = pytest.main(job["argv"] + ["-o", "pythonpath=", "-p", "no:cacheprovider"])
+        # Libraries loaded by the tests themselves are checked as well.
+        require_pinned_kernel()
+        raise SystemExit(code)
     if kind == "module":
         verify_worker_origins(job)
+        require_pinned_kernel()
         import runpy
         sys.argv = job["argv"]
         runpy.run_module(job["argv"][0], run_name="__main__")
+        require_pinned_kernel()
         return 0
     if kind == "extract":
         if len(job["argv"]) != 2:
@@ -195,8 +215,7 @@ def run_worker(job: dict) -> int:
                         f"numerical pin {name}=={version} violated: "
                         f"{record['numerical_versions'].get(name)}")
         import numba
-        from threadpoolctl import threadpool_info
-        pools = threadpool_info()
+        pools = loaded_pools()
         record["runtime"] = dict(
             python=sys.version, executable=sys.executable,
             isolated=bool(sys.flags.isolated),
@@ -555,6 +574,7 @@ def pip_run(cmd: list[str], out: Path, name: str, timeout: float,
     """One pip subprocess with a cleaned environment and a finite timeout."""
     env = {k: v for k, v in os.environ.items()
            if k not in ("PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP")}
+    env["OPENBLAS_CORETYPE"] = OPENBLAS_KERNEL
     if not network:
         env["PIP_NO_INDEX"] = "1"
     else:
@@ -620,7 +640,8 @@ def main(argv: list[str] | None = None) -> int:
                 raise SystemExit(f"expected six wheels, found {len(wheels)}")
             subprocess.check_call([args.python, "-m", "pip", "install", "--no-index",
                                   "--no-deps", "--no-compile", f"--target={target}"]
-                                 + [str(w) for w in wheels])
+                                 + [str(w) for w in wheels],
+                                  env={**os.environ, "OPENBLAS_CORETYPE": OPENBLAS_KERNEL})
             record = dict(mode="target", installed=str(target),
                           numerical_site=str(args.numerical_site.resolve()),
                           pip_check="NOT_APPLICABLE_TARGET_MODE")
