@@ -39,12 +39,17 @@ ROOT = Path(__file__).resolve().parents[1]
 # Packaging-only 0.5.0 successor; the frozen predecessor
 # scripts/contact_candidate_slice2.json is retained unchanged.
 CONFIG_PATH = ROOT / "scripts" / "contact_candidate_050.json"
+# Runner CPUs vary and OpenBLAS picks its kernel from the CPU, which changes the last digits of
+# converged residuals by more than the cross-host bound. Haswell is not usable as the pin: the
+# OpenBLAS in numpy 2.5.4 segfaults under forced Haswell on large matrix products on AVX-512 CPUs.
+OPENBLAS_KERNEL = "Sandybridge"
 THREAD_ENV = {
     "OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "MKL_NUM_THREADS": "1",
     "NUMEXPR_NUM_THREADS": "1", "VECLIB_MAXIMUM_THREADS": "1", "NUMBA_NUM_THREADS": "1",
     "NUMBA_DISABLE_JIT": "1", "PYTHONHASHSEED": "0", "PYTHONDONTWRITEBYTECODE": "1",
     "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
     "ANYMESHER_DISABLE_NATIVE": "1", "ANYMESHER_REQUIRE_NATIVE": "0",
+    "OPENBLAS_CORETYPE": OPENBLAS_KERNEL,
 }
 PRIVATE_PACKAGES = ("ANYfeSolver", "anyfesolver-results", "ANYmaterial",
                     "ANYgeometry", "ANYmesher", "ANYfileio")
@@ -67,6 +72,15 @@ def private_requirements(config: dict) -> list[str]:
     return [f"ANYgeometry[planar]=={config['private_versions']['ANYgeometry']}"
             if p == "ANYgeometry" else f"{p}=={config['private_versions'][p]}"
             for p in PRIVATE_PACKAGES]
+
+
+def kernel_failures(pools: list[dict]) -> list[str]:
+    """Fail closed unless every OpenBLAS pool reports the pinned kernel, and there is one."""
+    found = [pool.get("architecture") for pool in pools
+             if pool.get("internal_api") == "openblas"]
+    if not found or any(name != OPENBLAS_KERNEL for name in found):
+        return [f"OpenBLAS kernel must be pinned to {OPENBLAS_KERNEL}, got {found}"]
+    return []
 
 
 def clean_env(extra: dict | None = None) -> dict:
@@ -195,6 +209,7 @@ def run_worker(job: dict) -> int:
             record["failures"].append("candidate needs JIT off and one numba thread")
         if any(pool["num_threads"] != 1 for pool in pools):
             record["failures"].append("candidate native pools must use one thread")
+        record["failures"].extend(kernel_failures(pools))
         for name in EXAMPLE_MODULES:
             module = __import__(f"examples.{name}", fromlist=["__name__"])
             record["examples"][name] = str(Path(module.__file__).resolve())

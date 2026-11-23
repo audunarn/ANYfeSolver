@@ -21,6 +21,33 @@ CONFIG_FILE = ROOT / "scripts" / "contact_candidate_050.json"
 CONFIG = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
 
 
+def test_every_worker_gets_the_pinned_openblas_kernel(monkeypatch) -> None:
+    monkeypatch.setenv("OPENBLAS_CORETYPE", "SkylakeX")
+    assert check.clean_env()["OPENBLAS_CORETYPE"] == "Sandybridge"
+
+
+@pytest.mark.parametrize("kernels, accepted", [
+    (["Sandybridge"], True),
+    (["Sandybridge", "Sandybridge"], True),
+    (["Haswell"], False),
+    (["Sandybridge", "SkylakeX"], False),
+    ([None], False),
+    ([], False),
+])
+def test_an_ignored_kernel_pin_fails_closed(kernels, accepted) -> None:
+    pools = [dict(internal_api="openblas", architecture=name) for name in kernels]
+    pools.append(dict(internal_api="openmp", architecture=None))
+    assert (check.kernel_failures(pools) == []) is accepted
+
+
+def test_both_guides_state_the_pinned_kernel(tmp_path) -> None:
+    build.write_guide(tmp_path, CONFIG)
+    for guide in (tmp_path / "README.md", ROOT / "docs" / "GENERAL_CONTACT_STATIC_CANDIDATE.md"):
+        text = guide.read_text(encoding="utf-8")
+        assert f'$env:OPENBLAS_CORETYPE = "{check.OPENBLAS_KERNEL}"' in text
+        assert f"export OPENBLAS_CORETYPE={check.OPENBLAS_KERNEL} " in text
+
+
 def test_tools_load_the_050_successor_config() -> None:
     assert build.CONFIG_PATH == CONFIG_FILE
     assert check.CONFIG_PATH == CONFIG_FILE
