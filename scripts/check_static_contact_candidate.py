@@ -74,13 +74,32 @@ def private_requirements(config: dict) -> list[str]:
             for p in PRIVATE_PACKAGES]
 
 
+OPENBLAS_OWNERS = ("numpy", "scipy")
+
+
+def _openblas_owner(filepath) -> str | None:
+    """'numpy' or 'scipy' for the OpenBLAS copy a wheel bundles (numpy.libs, scipy.libs, .dylibs)."""
+    path = Path(str(filepath or ""))
+    for folder in (path.parent, path.parent.parent):
+        stem = folder.name.split(".")[0]
+        if stem in OPENBLAS_OWNERS:
+            return stem
+    return None
+
+
 def kernel_failures(pools: list[dict]) -> list[str]:
-    """Fail closed unless every OpenBLAS pool reports the pinned kernel, and there is one."""
-    found = [pool.get("architecture") for pool in pools
-             if pool.get("internal_api") == "openblas"]
+    """Fail closed unless NumPy's and SciPy's OpenBLAS are both loaded and every OpenBLAS pool
+    reports the pinned kernel."""
+    openblas = [pool for pool in pools if pool.get("internal_api") == "openblas"]
+    found = [pool.get("architecture") for pool in openblas]
+    owners = {_openblas_owner(pool.get("filepath")) for pool in openblas}
+    missing = [name for name in OPENBLAS_OWNERS if name not in owners]
+    failures = []
+    if missing:
+        failures.append(f"OpenBLAS of {', '.join(missing)} is not loaded, so its kernel is unverified")
     if not found or any(name != OPENBLAS_KERNEL for name in found):
-        return [f"OpenBLAS kernel must be pinned to {OPENBLAS_KERNEL}, got {found}"]
-    return []
+        failures.append(f"OpenBLAS kernel must be pinned to {OPENBLAS_KERNEL}, got {found}")
+    return failures
 
 
 def loaded_pools() -> list[dict]:
@@ -177,7 +196,12 @@ def run_worker(job: dict) -> int:
         require_pinned_kernel()
         import runpy
         sys.argv = job["argv"]
-        runpy.run_module(job["argv"][0], run_name="__main__")
+        try:
+            runpy.run_module(job["argv"][0], run_name="__main__")
+        except SystemExit:
+            # Examples end with raise SystemExit(main()); check before the exit code counts.
+            require_pinned_kernel()
+            raise
         require_pinned_kernel()
         return 0
     if kind == "extract":

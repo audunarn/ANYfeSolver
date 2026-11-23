@@ -27,22 +27,61 @@ def test_every_worker_gets_the_pinned_openblas_kernel(monkeypatch) -> None:
 
 
 @pytest.mark.parametrize("kernels, accepted", [
-    (["Sandybridge"], True),
     (["Sandybridge", "Sandybridge"], True),
-    (["Haswell"], False),
+    (["Haswell", "Haswell"], False),
     (["Sandybridge", "SkylakeX"], False),
-    ([None], False),
+    (["Sandybridge", None], False),
     ([], False),
 ])
 def test_an_ignored_kernel_pin_fails_closed(kernels, accepted) -> None:
-    pools = [dict(internal_api="openblas", architecture=name) for name in kernels]
+    pools = _pools(*kernels)
     pools.append(dict(internal_api="openmp", architecture=None))
     assert (check.kernel_failures(pools) == []) is accepted
 
 
 def _pools(*kernels):
-    return [dict(internal_api="openblas", architecture=name, filepath=f"lib{i}")
+    """OpenBLAS pools as the NumPy and SciPy wheels load them (numpy.libs, then scipy.libs)."""
+    owners = ("numpy.libs", "scipy.libs")
+    return [dict(internal_api="openblas", architecture=name,
+                 filepath=str(Path("site-packages") / owners[min(i, 1)] / f"libscipy_openblas-{i}.so"))
             for i, name in enumerate(kernels)]
+
+
+@pytest.mark.parametrize("folders, accepted", [
+    (("numpy.libs", "scipy.libs"), True),
+    (("numpy/.dylibs", "scipy/.dylibs"), True),
+    (("numpy.libs",), False),
+    (("scipy.libs",), False),
+    (("numpy.libs", "elsewhere"), False),
+])
+def test_both_bundled_openblas_copies_must_be_seen(folders, accepted) -> None:
+    pools = [dict(internal_api="openblas", architecture="Sandybridge",
+                  filepath=str(Path("site-packages") / folder / "libscipy_openblas.so"))
+             for folder in folders]
+    assert (check.kernel_failures(pools) == []) is accepted
+
+
+def test_an_example_exiting_with_success_is_still_checked(monkeypatch) -> None:
+    seen = iter([_pools("Sandybridge", "Sandybridge"), _pools("Sandybridge", "SkylakeX")])
+    monkeypatch.setattr(check, "verify_worker_origins", lambda job: None)
+    monkeypatch.setattr(check, "loaded_pools", lambda: next(seen))
+
+    def example(*args, **kwargs):
+        raise SystemExit(0)
+    monkeypatch.setattr("runpy.run_module", example)
+    with pytest.raises(SystemExit, match="SkylakeX"):
+        check.run_worker(dict(kind="module", inserts=[], argv=["examples.unused"]))
+
+
+def test_venv_install_pins_every_pip_phase(tmp_path, monkeypatch) -> None:
+    seen = []
+    monkeypatch.setenv("OPENBLAS_CORETYPE", "SkylakeX")
+    monkeypatch.setattr(check.subprocess, "run",
+                        lambda cmd, **kw: seen.append(kw["env"]) or type("R", (), {"returncode": 0})())
+    bundle = fake_bundle(tmp_path)
+    assert check.main(["install", "--bundle", str(bundle), "--output", str(tmp_path / "out"),
+                       "--venv", str(tmp_path / "venv")]) == 0
+    assert len(seen) == 4 and all(env["OPENBLAS_CORETYPE"] == "Sandybridge" for env in seen)
 
 
 @pytest.mark.parametrize("kind", ["pytest", "module"])
@@ -59,7 +98,7 @@ def test_numerical_workers_refuse_an_ignored_pin_before_running(monkeypatch, kin
 
 @pytest.mark.parametrize("kind", ["pytest", "module"])
 def test_numerical_workers_check_libraries_loaded_while_running(monkeypatch, kind) -> None:
-    seen = iter([_pools("Sandybridge"), _pools("Sandybridge", "SkylakeX")])
+    seen = iter([_pools("Sandybridge", "Sandybridge"), _pools("Sandybridge", "SkylakeX")])
     monkeypatch.setattr(check, "verify_worker_origins", lambda job: None)
     monkeypatch.setattr(check, "loaded_pools", lambda: next(seen))
     monkeypatch.setattr("pytest.main", lambda *a, **k: 0)
