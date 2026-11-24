@@ -266,8 +266,8 @@ def test_forced_mismatch_falls_back_without_side_effects(monkeypatch):
     cp.reset_corotational_performance_status()
     counters = cp.corotational_performance_status()
     assert batch.prepare_corotational_beam_batch(
-        model, u, tangent=True, tangent_mode="rotated", num_layers=5,
-        stable_shell_rotation=False,
+        model, u, committed_states={}, tangent=True, tangent_mode="rotated",
+        num_layers=5, stable_shell_rotation=False,
     ) is None
     assert cp.corotational_performance_status() == counters  # nothing recorded
     status = batch.corotational_beam_batch_status()
@@ -278,11 +278,14 @@ def test_forced_mismatch_falls_back_without_side_effects(monkeypatch):
     assert _same(scalar[1].toarray(), stacked[1].toarray())
 
 
-def _prepared_ids(model, u, **overrides):
+def _prepared_ids(model, u, committed_states=None, **overrides):
     arguments = dict(tangent=True, tangent_mode="rotated", num_layers=5,
                      stable_shell_rotation=False)
     arguments.update(overrides)
-    prepared = batch.prepare_corotational_beam_batch(model, u, **arguments)
+    prepared = batch.prepare_corotational_beam_batch(
+        model, u, committed_states={} if committed_states is None else committed_states,
+        **arguments,
+    )
     return set() if prepared is None else set(prepared._responses)
 
 
@@ -295,9 +298,12 @@ def _admission_model():
     return model, u
 
 
+ALL = set(range(1, 7))
+
+
 def test_admission_refuses_subclass_and_instance_overrides():
     model, u = _admission_model()
-    assert _prepared_ids(model, u) == set(range(1, 7))
+    assert _prepared_ids(model, u) == ALL
 
     class Spied(BeamElement):
         pass
@@ -306,32 +312,232 @@ def test_admission_refuses_subclass_and_instance_overrides():
     spied = Spied(2, list(original.node_ids), "mat", dict(SECTION))
     spied._nl_cache = original._nl_cache
     model.mesh.elements[2] = spied
-    assert 2 not in _prepared_ids(model, u)
+    assert _prepared_ids(model, u) == set()  # all or nothing
     model.mesh.elements[2] = original
 
     element = model.mesh.elements[3]
     element.compute_nonlinear_response = lambda *a, **k: None  # instance override
-    assert 3 not in _prepared_ids(model, u)
+    assert _prepared_ids(model, u) == set()
     del element.compute_nonlinear_response
-    assert 3 in _prepared_ids(model, u)
+    assert _prepared_ids(model, u) == ALL
 
 
 def test_admission_refuses_unsupported_formulations_and_modes():
     model, u = _admission_model()
     element = model.mesh.elements[4]
     element._fiber_plasticity = True
-    assert 4 not in _prepared_ids(model, u)
+    assert _prepared_ids(model, u) == set()
     element._fiber_plasticity = None
     element._geometric_nonlinearity = "corotational"
-    assert 4 not in _prepared_ids(model, u)
+    assert _prepared_ids(model, u) == set()
     element._geometric_nonlinearity = "von_karman"
     element._linear_nodal_offsets = np.zeros((2, 3))
-    assert 4 not in _prepared_ids(model, u)
+    assert _prepared_ids(model, u) == set()
     del element._linear_nodal_offsets
-    assert 4 in _prepared_ids(model, u)
+    assert _prepared_ids(model, u) == ALL
     for mode in ("consistent", "work_conjugate"):
         assert _prepared_ids(model, u, tangent_mode=mode) == set()
-    assert 5 not in _prepared_ids(model, u, excluded={5})
+    assert _prepared_ids(model, u, excluded={5}) == set()
+
+
+def test_mixed_model_refuses_whole_evaluation():
+    from anyfesolver.elements import create_shell_element
+
+    model, u = _admission_model()
+    base = 100
+    for offset, xyz in enumerate(((0, 0, 5), (1, 0, 5), (1, 1, 5), (0, 1, 5))):
+        model.add_node(base + offset, *xyz)
+    shell = create_shell_element(50, [base, base + 1, base + 2, base + 3], "mat",
+                                 thickness=0.01, reference_normal=(0.0, 0.0, 1.0))
+    model.add_element(50, shell)
+    total = model.mesh.dof_manager.total_dofs
+    u = np.random.default_rng(2).standard_normal(total) * 1.0e-4
+    _assemble(model, np.zeros(total))
+    assert _prepared_ids(model, u) == set()
+
+
+def _noop_method(*args, **kwargs):  # pragma: no cover - never meant to run
+    raise AssertionError("shadowing hook must not be called by the batch")
+
+
+@pytest.mark.parametrize("owner, name", [
+    ("model", "get_material"),
+    ("mesh", "get_node"),
+    ("mesh", "revision_signature"),
+    ("mesh", "get_element"),
+    ("element", "get_dof_mapping"),
+    ("element", "get_node_coordinates"),
+    ("element", "compute_nonlinear_response"),
+    ("element", "_refuse_offset_route"),
+    ("node", "coords"),
+])
+def test_each_instance_shadowed_callable_refuses(owner, name):
+    model, u = _admission_model()
+    target = {
+        "model": model,
+        "mesh": model.mesh,
+        "element": model.mesh.elements[3],
+        "node": model.mesh.nodes[3],
+    }[owner]
+    vars(target)[name] = _noop_method
+    assert _prepared_ids(model, u) == set()
+
+
+@pytest.mark.parametrize("change", ["material_name", "nl_cache_type", "nl_cache_value",
+                                    "node_dofs", "committed_states", "displacements",
+                                    "materials_type", "foreign_key"])
+def test_each_non_exact_input_refuses(change):
+    model, u = _admission_model()
+    element = model.mesh.elements[3]
+    committed = {}
+    if change == "material_name":
+        class Name(str):
+            pass
+        element.material_name = Name("mat")
+    elif change == "nl_cache_type":
+        class Cache(dict):
+            pass
+        element._nl_cache = Cache(element._nl_cache)
+    elif change == "nl_cache_value":
+        element._nl_cache = dict(element._nl_cache, L=int(1))
+    elif change == "node_dofs":
+        model.mesh.nodes[3].dofs = tuple(model.mesh.nodes[3].dofs)
+    elif change == "committed_states":
+        class States(dict):
+            pass
+        committed = States()
+    elif change == "displacements":
+        u = u.view(type("Vector", (np.ndarray,), {}))
+    elif change == "materials_type":
+        class Materials(dict):
+            pass
+        model.materials = Materials(model.materials)
+    elif change == "foreign_key":
+        vars(element)[1] = "not a str key"
+    assert _prepared_ids(model, u, committed_states=committed) == set()
+
+
+# --- Codex round 2 reproducers (fail on 91c176cc8) ---------------------------
+
+
+def test_r2_earlier_callback_cannot_stale_a_later_batched_force():
+    results = []
+    for enabled in (False, True):
+        model, u = _admission_model()
+        first, second = list(model.mesh.elements.values())[:2]
+        original_mapping = first.get_dof_mapping
+        dof = second.get_dof_mapping(model.mesh)[0]
+        ea = second._nl_cache["EA"]
+
+        def change_later_beam(mesh, second=second, ea=ea, original=original_mapping):
+            second._nl_cache["EA"] = 2 * ea
+            return original(mesh)
+
+        first.get_dof_mapping = change_later_beam
+        batch.set_corotational_beam_batch_enabled(enabled)
+        results.append(_assemble(model, u, tangent=False)[0][dof])
+    assert _same(results[0], results[1])
+
+
+def test_r2_caller_exception_is_not_swallowed():
+    outcomes = []
+    for enabled in (False, True):
+        model, u = _admission_model()
+        original_signature = model.mesh.revision_signature
+        calls = []
+
+        def revision_signature(calls=calls, original=original_signature):
+            calls.append(1)
+            if len(calls) == 1:
+                raise RuntimeError("first revision")
+            return original()
+
+        model.mesh.revision_signature = revision_signature
+        batch.set_corotational_beam_batch_enabled(enabled)
+        try:
+            _assemble(model, u, tangent=False)
+            outcomes.append(("returned", len(calls)))
+        except RuntimeError as exc:
+            outcomes.append((str(exc), len(calls)))
+    assert outcomes[0] == outcomes[1] == [("first revision", 1)][0]
+
+
+def test_r2_reference_cache_reuse_follows_scalar_rule():
+    class Miss(tuple):
+        def __eq__(self, other):
+            return False
+
+        def __ne__(self, other):
+            return False
+
+        __hash__ = tuple.__hash__
+
+    results = []
+    for enabled in (False, True):
+        model, u = _admission_model()
+        signature, references = model.mesh._corotational_cache
+        references[2].coordinates = np.array([[0.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+        model.mesh._corotational_cache = (Miss(signature), references)
+        batch.set_corotational_beam_batch_enabled(enabled)
+        force = _assemble(model, u, tangent=False)[0]
+        results.append((force, model.mesh._corotational_cache[1] is references))
+    assert _same(results[0][0], results[1][0])
+    assert results[0][1] == results[1][1]
+
+
+def test_r2_caller_lookups_keep_scalar_count_and_order():
+    logs = []
+    for enabled in (False, True):
+        model, u = _admission_model()
+        log = []
+        material, node = model.get_material, model.mesh.get_node
+
+        def get_material(name=None, log=log, material=material):
+            log.append(("material", name))
+            return material(name)
+
+        def get_node(node_id, log=log, node=node):
+            log.append(("node", node_id))
+            return node(node_id)
+
+        model.get_material = get_material
+        model.mesh.get_node = get_node
+        batch.set_corotational_beam_batch_enabled(enabled)
+        _assemble(model, u, tangent=False)
+        logs.append(log)
+    assert logs[0] == logs[1]
+
+
+def test_r2_counters_do_not_advance_before_committed_state_lookup():
+    from anyfesolver.nonlinear_static import _assemble_nonlinear_system
+
+    class BadState(dict):
+        def get(self, key, default=None):
+            raise RuntimeError("state")
+
+    counts = []
+    for enabled in (False, True):
+        model, u = _admission_model()
+        batch.set_corotational_beam_batch_enabled(enabled)
+        cp.reset_corotational_performance_status()
+        with pytest.raises(RuntimeError, match="state"):
+            _assemble_nonlinear_system(
+                model, u, BadState(), 5, tangent=False, kinematics="corotational"
+            )
+        counts.append(cp.corotational_performance_status()["force_block_rotations"])
+    assert counts[0] == counts[1] == 0
+
+
+def test_r2_counter_order_with_plain_dict_states_matches_scalar():
+    """Exact dict states: the lookup precedes each counted rotation."""
+    events = []
+    for enabled in (False, True):
+        model, u = _admission_model()
+        batch.set_corotational_beam_batch_enabled(enabled)
+        cp.reset_corotational_performance_status()
+        _assemble(model, u, tangent=True)
+        events.append(cp.corotational_performance_status())
+    assert events[0] == events[1]
 
 
 def test_consistent_mode_assembly_never_uses_batch():

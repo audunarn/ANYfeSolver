@@ -43,8 +43,9 @@ import numpy as np
 from . import corotational as _cr
 from . import corotational_performance as _cp
 from .elements import BeamElement
-from .fe_core import FEMesh, FEModel
+from .fe_core import FEMesh, FEModel, Node, _QualifiedStateMapping
 from .jit_compiler import JIT_ENABLED, njit
+from .nonlinear_state import NonlinearStateStore
 
 _SMALL = 1.0e-12
 _BOUND = 1.0e100
@@ -79,6 +80,10 @@ def _class_callables(cls: type) -> frozenset:
 
 
 _BEAM_CALLABLES = _class_callables(BeamElement)
+_MODEL_CALLABLES = _class_callables(FEModel)
+_MESH_CALLABLES = _class_callables(FEMesh)
+_NODE_CALLABLES = _class_callables(Node)
+_MAPPING_TYPES = (dict, _QualifiedStateMapping)
 
 # Library functions whose replacement at run time must disable the batch, so a
 # patched (spied, wrapped or altered) scalar route is always honoured.
@@ -103,8 +108,10 @@ _PINNED = (
     (BeamElement, "_fiber_plasticity_config"),
     (BeamElement, "num_nodes"),
     (BeamElement, "get_dof_mapping"),
+    (BeamElement, "get_node_coordinates"),
     (FEModel, "get_material"),
     (FEMesh, "revision_signature"),
+    (FEMesh, "get_node"),
 )
 
 
@@ -449,11 +456,27 @@ def _bitwise_equal(a: Optional[np.ndarray], b: Optional[np.ndarray]) -> bool:
 # --------------------------------------------------------------------------
 
 
-def _admit(element, mesh, references, elem_id):
-    """Return (reference, cache, dof_mapping) or None for the scalar route."""
-    if type(element) is not BeamElement:
+def _is_exact_int(value) -> bool:
+    return type(value) is int
+
+
+def _is_exact_str(value) -> bool:
+    return type(value) is str
+
+
+def _admit(element, elem_id, nodes, references):
+    """Return (reference, cache, dof_mapping) or None.
+
+    Only identity/type checks and exact built-in container reads run here; no
+    method of the element, mesh, nodes or model is called, so no caller code
+    can run before the assembly loop does.
+    """
+    if type(element) is not BeamElement or type(elem_id) is not int:
         return None
     attributes = vars(element)
+    # Exact-str keys first: hashing/comparing a foreign key could run code.
+    if type(attributes) is not dict or not all(map(_is_exact_str, attributes)):
+        return None
     if not _BEAM_CALLABLES.isdisjoint(attributes):
         return None
     if attributes.get("formulation_native_total_lagrangian", False) is not False:
@@ -467,13 +490,14 @@ def _admit(element, mesh, references, elem_id):
     geometry = attributes.get("_geometric_nonlinearity")
     if type(geometry) is not str or geometry in _COROTATIONAL_LOCAL:
         return None
-    if type(attributes.get("material_name")) is not str:
+    name = attributes.get("material_name")
+    if type(name) is not str or not name:
         return None
     cache = attributes.get("_nl_cache")
     if type(cache) is not dict:
         return None
     for key in ("T", "K_noax"):
-        matrix = cache.get(key)
+        matrix = dict.get(cache, key)
         if (
             type(matrix) is not np.ndarray
             or matrix.dtype != np.float64
@@ -482,16 +506,14 @@ def _admit(element, mesh, references, elem_id):
             or not matrix.flags.aligned
         ):
             return None
-    if type(cache.get("L")) not in (float, np.float64):
+    if type(dict.get(cache, "L")) not in (float, np.float64):
         return None
-    if type(cache.get("EA")) not in (float, np.float64):
+    if type(dict.get(cache, "EA")) not in (float, np.float64):
         return None
-    reference = references.get(int(elem_id))
-    if (
-        reference is None
-        or type(reference) is not _cr._CorotationalReference
-        or reference.category != "beam"
-    ):
+    reference = dict.get(references, elem_id)
+    if type(reference) is not _cr._CorotationalReference:
+        return None
+    if type(reference.category) is not str or reference.category != "beam":
         return None
     coordinates = reference.coordinates
     if (
@@ -500,29 +522,103 @@ def _admit(element, mesh, references, elem_id):
         or coordinates.shape != (2, 3)
     ):
         return None
-    dof_mapping = np.asarray(element.get_dof_mapping(mesh), dtype=np.intp)
-    if dof_mapping.shape != (12,):
+    # Element.get_dof_mapping without calling it: node_ids -> nodes -> dofs.
+    node_ids = attributes.get("node_ids")
+    if type(node_ids) is not list or len(node_ids) != 2:
         return None
-    return reference, cache, dof_mapping
+    dof_mapping = []
+    for node_id in node_ids:
+        if type(node_id) is not int:
+            return None
+        node = dict.get(nodes, node_id)
+        if type(node) is not Node:
+            return None
+        node_attributes = vars(node)
+        if not all(map(_is_exact_str, node_attributes)):
+            return None
+        if not _NODE_CALLABLES.isdisjoint(node_attributes):
+            return None
+        node_dofs = node_attributes.get("dofs")
+        if type(node_dofs) is not list or not all(map(_is_exact_int, node_dofs)):
+            return None
+        dof_mapping.extend(node_dofs)
+    if len(dof_mapping) != 12:
+        return None
+    return reference, cache, np.asarray(dof_mapping, dtype=np.intp)
 
 
-def _cached_references(model):
-    """The scalar route's reference cache, only if it already exists."""
-    mesh = model.mesh
-    revisions = mesh.revision_signature()
-    signature = (
-        int(revisions.get("topology", 0)),
-        int(revisions.get("geometry", 0)),
-    )
-    cached = getattr(mesh, "_corotational_cache", None)
+def _cached_references(mesh_attributes):
+    """The scalar route's reference cache, under the scalar reuse rule.
+
+    ``_corotational_cache`` reuses ``cached[1]`` only when ``cached[0] ==
+    (topology, geometry)``.  The comparison is evaluated here on exact ints
+    only, so no caller ``__eq__`` can run or disagree with the scalar test.
+    """
+    revisions = mesh_attributes.get("revisions")
+    if type(revisions) is not dict:
+        return None
+    topology = dict.get(revisions, "topology", 0)
+    geometry = dict.get(revisions, "geometry", 0)
+    if type(topology) is not int or type(geometry) is not int:
+        return None
+    if not all(type(key) is str for key in revisions):
+        return None
+    if not all(type(value) is int for value in dict.values(revisions)):
+        return None  # revision_signature() would call int() on them
+    cached = mesh_attributes.get("_corotational_cache")
+    if type(cached) is not tuple or len(cached) != 2:
+        return None
+    signature, references = cached
+    if type(signature) is not tuple or len(signature) != 2:
+        return None
+    if type(signature[0]) is not int or type(signature[1]) is not int:
+        return None
+    if signature[0] != topology or signature[1] != geometry:
+        return None
+    if type(references) is not dict or not all(map(_is_exact_int, references)):
+        return None
+    return references
+
+
+def _evaluation_admitted(model, committed_states, displacements):
+    """Whole-evaluation admission by identity/type checks only."""
+    if type(model) is not FEModel:
+        return None
+    model_attributes = vars(model)
+    if not all(map(_is_exact_str, model_attributes)):
+        return None
+    if not _MODEL_CALLABLES.isdisjoint(model_attributes):
+        return None
+    mesh = model_attributes.get("mesh")
+    if type(mesh) is not FEMesh:
+        return None
+    mesh_attributes = vars(mesh)
+    if not all(map(_is_exact_str, mesh_attributes)):
+        return None
+    if not _MESH_CALLABLES.isdisjoint(mesh_attributes):
+        return None
+    if mesh_attributes.get("element_activity", None) is not None:
+        return None
+    materials = model_attributes.get("materials")
+    if type(materials) is not dict or "default" not in materials:
+        return None
+    if not all(type(key) is str for key in materials):
+        return None
+    elements = mesh_attributes.get("elements")
+    nodes = mesh_attributes.get("nodes")
+    if type(elements) not in _MAPPING_TYPES or type(nodes) not in _MAPPING_TYPES:
+        return None
+    if not all(map(_is_exact_int, nodes)):
+        return None
+    if type(committed_states) not in (dict, NonlinearStateStore):
+        return None
     if (
-        type(cached) is not tuple
-        or len(cached) != 2
-        or cached[0] != signature
-        or type(cached[1]) is not dict
+        type(displacements) is not np.ndarray
+        or displacements.dtype != np.float64
+        or displacements.ndim != 1
     ):
         return None
-    return cached[1]
+    return mesh, mesh_attributes, materials, elements, nodes
 
 
 class CorotationalBeamBatch:
@@ -538,7 +634,11 @@ class CorotationalBeamBatch:
         return len(self._responses)
 
     def take(self, elem_id: Any):
-        """Return (f, k) for a batched element, recording the scalar counters."""
+        """Return (f, k) for a batched element, recording the scalar counters.
+
+        Call it where the scalar route would run, i.e. after the committed
+        state lookup, so counters advance in the scalar order.
+        """
         response = self._responses.pop(elem_id, None)
         if response is None:
             return None
@@ -584,81 +684,70 @@ def prepare_corotational_beam_batch(
     model: Any,
     displacements: Any,
     *,
+    committed_states: Any,
     tangent: Any,
     tangent_mode: Any,
     num_layers: Any,
     stable_shell_rotation: Any,
     excluded: Any = (),
 ) -> Optional[CorotationalBeamBatch]:
-    """Evaluate all admitted beams at once, or return ``None`` (scalar route).
+    """Evaluate a pure plain-beam evaluation at once, or return ``None``.
 
-    The returned object holds only elements whose stacked response equals the
-    scalar response; every other element keeps the scalar call.  No state,
-    cache or counter is written here.
+    Admission is all-or-nothing and uses identity/type checks only: every
+    element must be an admitted beam, and no instance attribute of the model,
+    mesh, nodes or elements may shadow a class callable.  Hence no caller code
+    runs here and nothing the scalar loop runs can change a batched input.
+    Elements whose stacked arithmetic is not exact are left to the scalar
+    call.  No state, cache or counter is written here.
     """
 
+    if type(tangent) is not bool or type(stable_shell_rotation) is not bool:
+        return None
+    if type(num_layers) is not int:
+        return None
+    if type(tangent_mode) is not str or tangent_mode.strip().lower() != "rotated":
+        return None
+    if excluded:
+        return None  # deleted or scaled elements: not a pure evaluation
+    if np.geterr().get("under") != _DEFAULT_UNDERFLOW:
+        return None
+    admitted_evaluation = _evaluation_admitted(model, committed_states, displacements)
+    if admitted_evaluation is None:
+        return None
+    mesh, mesh_attributes, materials, elements, nodes = admitted_evaluation
+    if not _library_intact() or not _ready():
+        return None
+    references = _cached_references(mesh_attributes)
+    if references is None:
+        return None
+    ids = []
+    element_list = []
+    refs = []
+    caches = []
+    dofs = []
+    for elem_id, element in dict.items(elements):
+        admitted = _admit(element, elem_id, nodes, references)
+        if admitted is None:
+            return None  # mixed or unadmitted model: whole evaluation scalar
+        ids.append(elem_id)
+        element_list.append(element)
+        refs.append(admitted[0])
+        caches.append(admitted[1])
+        dofs.append(admitted[2])
+    if len(ids) < 2:
+        return None
+    dof_matrix = np.stack(dofs)
+    if int(dof_matrix.min()) < 0 or int(dof_matrix.max()) >= displacements.size:
+        return None
     try:
-        if type(tangent) is not bool or type(stable_shell_rotation) is not bool:
-            return None
-        if type(num_layers) is not int:
-            return None
-        if type(tangent_mode) is not str or tangent_mode.strip().lower() != "rotated":
-            return None
-        if type(model) is not FEModel or type(model.mesh) is not FEMesh:
-            return None
-        if type(model.materials) is not dict:
-            return None
-        if model.mesh.element_activity is not None:
-            # revision_signature() reads the activity object; keep its
-            # per-element call pattern on the scalar route.
-            return None
-        if np.geterr().get("under") != _DEFAULT_UNDERFLOW:
-            return None
-        if (
-            type(displacements) is not np.ndarray
-            or displacements.dtype != np.float64
-            or displacements.ndim != 1
-        ):
-            return None
-        if not _library_intact() or not _ready():
-            return None
-        mesh = model.mesh
-        references = _cached_references(model)
-        if references is None:
-            return None
-        excluded = set(excluded)
-        ids = []
-        elements = []
-        refs = []
-        caches = []
-        dofs = []
-        for elem_id, element in mesh.elements.items():
-            if elem_id in excluded:
-                continue
-            admitted = _admit(element, mesh, references, elem_id)
-            if admitted is None:
-                continue
-            # The scalar route resolves the material per element; keep its
-            # lookup (and any KeyError) on the same inputs.
-            model.get_material(element.material_name)
-            ids.append(elem_id)
-            elements.append(element)
-            refs.append(admitted[0])
-            caches.append(admitted[1])
-            dofs.append(admitted[2])
-        if len(ids) < 2:
-            return None
-        dof_matrix = np.stack(dofs)
-        if int(dof_matrix.min()) < 0 or int(dof_matrix.max()) >= displacements.size:
-            return None
         U = displacements[dof_matrix]
         X = np.stack([reference.coordinates for reference in refs])
-        T = np.stack([cache["T"] for cache in caches])
-        K_noax = np.stack([cache["K_noax"] for cache in caches])
-        L_values = [cache["L"] for cache in caches]
+        T = np.stack([dict.__getitem__(cache, "T") for cache in caches])
+        K_noax = np.stack([dict.__getitem__(cache, "K_noax") for cache in caches])
+        L_values = [dict.__getitem__(cache, "L") for cache in caches]
         L = np.array(L_values, dtype=float)
         L_squared = np.array([value**2 for value in L_values], dtype=float)
-        EA = np.array([cache["EA"] for cache in caches], dtype=float)
+        EA = np.array([dict.__getitem__(cache, "EA") for cache in caches], dtype=float)
         # Bounded finite data keeps every scalar intermediate free of
         # floating-point exceptions; anything else stays scalar.
         for array in (U, X, T, K_noax, EA):
@@ -667,37 +756,39 @@ def prepare_corotational_beam_batch(
         if not (np.all(L > 1.0e-50) and np.all(L < 1.0e50)):
             return None
         f, k, route = _kernel(X, U, T, K_noax, L, L_squared, EA, tangent)
-        batched = np.flatnonzero(~route)
-        if batched.size == 0:
-            return None
-        # Spot check the first and last batched element against the oracle.
-        for position in (int(batched[0]), int(batched[-1])):
-            material = model.get_material(elements[position].material_name)
-            f_scalar, k_scalar = _scalar_oracle(
-                refs[position], elements[position], mesh, material,
-                displacements[dofs[position]], tangent,
-            )
-            if not (
-                _bitwise_equal(f[position], f_scalar)
-                and _bitwise_equal(None if k is None else k[position], k_scalar)
-            ):
-                with _LOCK:
-                    _STATUS["spot_check_failures"] += 1
-                    _STATUS["enabled"] = False
-                    _STATUS["disabled_reason"] = "spot_check_mismatch"
-                return None
-        responses = {
-            ids[position]: (f[position], None if k is None else k[position])
-            for position in batched.tolist()
-        }
-        with _LOCK:
-            _STATUS["batched_evaluations"] += 1
-            _STATUS["batched_elements"] += len(responses)
-            _STATUS["routed_elements"] += int(route.sum())
-        return CorotationalBeamBatch(responses, tangent)
-    except Exception:  # fail closed: the scalar loop reproduces any error
+    except Exception:  # the batch's own numerics only: refuse, scalar recomputes
         _refuse()
         return None
+    batched = np.flatnonzero(~route)
+    if batched.size == 0:
+        return None
+    # Spot check the first and last batched element against the oracle.  The
+    # material is resolved as FEModel.get_material would, by exact dict reads.
+    for position in (int(batched[0]), int(batched[-1])):
+        element = element_list[position]
+        material = dict.get(materials, element.material_name, materials["default"])
+        f_scalar, k_scalar = _scalar_oracle(
+            refs[position], element, mesh, material,
+            displacements[dofs[position]], tangent,
+        )
+        if not (
+            _bitwise_equal(f[position], f_scalar)
+            and _bitwise_equal(None if k is None else k[position], k_scalar)
+        ):
+            with _LOCK:
+                _STATUS["spot_check_failures"] += 1
+                _STATUS["enabled"] = False
+                _STATUS["disabled_reason"] = "spot_check_mismatch"
+            return None
+    responses = {
+        ids[position]: (f[position], None if k is None else k[position])
+        for position in batched.tolist()
+    }
+    with _LOCK:
+        _STATUS["batched_evaluations"] += 1
+        _STATUS["batched_elements"] += len(responses)
+        _STATUS["routed_elements"] += int(route.sum())
+    return CorotationalBeamBatch(responses, tangent)
 
 
 # --------------------------------------------------------------------------
