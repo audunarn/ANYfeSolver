@@ -249,3 +249,36 @@ def test_memo_does_not_rescan_after_an_exception():
             v2d._validate_model_scope(model.mesh)
             beam.__class__ = _LegacyShell
             raise KeyError("operation failure wins")
+
+
+def _count_q4_boundary_guards(call):
+    calls = 0
+
+    def profiler(frame, event, arg):
+        nonlocal calls
+        if event == "call" and frame.f_code.co_name == "boundary_guard":
+            calls += 1
+
+    previous = sys.getprofile()
+    sys.setprofile(profiler)
+    try:
+        result = call()
+    finally:
+        sys.setprofile(previous)
+    return calls, result
+
+
+def test_mixed_q4_v2d_recovery_guard_work_is_linear():
+    """Mixed Q4/V2D recovery ran a complete Q4 guard per V2D observation."""
+
+    counts = []
+    for n in (3, 6):
+        model, element_ids = _triangle_plate(n, quads_every=3)
+        u, _info = solve_linear(model, _pressure(element_ids))
+        calls, stresses = _count_q4_boundary_guards(lambda: compute_stresses(model, u))
+        assert sorted(stresses) == element_ids
+        counts.append((len(element_ids), calls))
+    (small_n, small), (large_n, large) = counts
+    # Linear work grows with the element ratio (~4x); one complete Q4 guard
+    # per V2D observation grew with its square (~16x).
+    assert small > 0 and large <= 1.5 * (large_n / small_n) * small, counts

@@ -17,7 +17,7 @@ from contextlib import ExitStack, contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, Mapping, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -1293,6 +1293,14 @@ def _build_qualified_recovery_require(
             trusted_element_require
         )
 
+    trusted_v2d_require = _build_trusted_v2d_recovery_require(
+        model,
+        lease_namespace,
+        context=context,
+    )
+    if trusted_v2d_require is not None:
+        require._qualified_trusted_recovery_v2d_require = trusted_v2d_require
+
     if exact_beam_authority is not None:
         (
             exact_beam_candidate,
@@ -1358,6 +1366,90 @@ def _build_qualified_recovery_require(
         require._qualified_recover_captured_beam = recover_captured_beam
 
     return require
+
+
+def _build_trusted_v2d_recovery_require(
+    model: "FEModel",
+    lease_namespace: Any,
+    *,
+    context: str,
+) -> Optional[Callable[..., bool]]:
+    """Constant-time observation check for exact S3 V2D elements, or ``None``.
+
+    Mixed Q4/V2D models get a per-element trusted check only for their
+    qualified Q4 elements; every V2D observation otherwise runs the complete
+    lease guard over all Q4 elements (quadratic in mesh size).  This pairs the
+    lease's trusted state check (owned inputs, mesh token, Q4/S3/assembly
+    epochs; silent about V2D) with the V2D trusted authority captured once
+    here (V2D class epoch, a write counter on every V2D instance and a
+    complete guard on one representative element), exactly as the owned load
+    kernel does.  It applies only to an exact V2D element captured here whose
+    material is the one the lease's owned material resolution gives for its
+    captured material name; anything else keeps the complete guard.
+
+    ``None`` when the lease exposes no trusted state check or owned inputs,
+    the mesh has no V2D element, or any V2D instance is ineligible for the
+    trusted capture.
+    """
+
+    if type(lease_namespace) is not dict:
+        return None
+    trusted_state = dict.get(lease_namespace, "_qualified_trusted_state_require")
+    owned_items = dict.get(lease_namespace, "_qualified_owned_element_items")
+    owned_material_name = dict.get(
+        lease_namespace, "_qualified_owned_material_name"
+    )
+    if not (
+        callable(trusted_state)
+        and callable(owned_items)
+        and callable(owned_material_name)
+    ):
+        return None
+    from .current_state_tangent import _capture_qualified_v2d_trusted_authority
+    from .e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
+
+    items = owned_items()
+    if type(items) is not tuple:
+        return None
+    v2d_materials: Dict[int, Tuple[Any, Any]] = {}
+    for _element_id, element in items:
+        if type(element) is not NativeParityE4PLS3V2DShellElement:
+            continue
+        namespace = object.__getattribute__(element, "__dict__")
+        name = dict.get(namespace, "material_name") if type(namespace) is dict else None
+        if type(name) is not str:
+            return None
+        material = owned_material_name(name)
+        if material is None:
+            return None
+        v2d_materials[id(element)] = (element, material)
+    if not v2d_materials:
+        return None
+    v2d_guard = _capture_qualified_v2d_trusted_authority(
+        items,
+        context=f"{context} recovery",
+    )
+    if v2d_guard is None:
+        return None
+
+    def trusted_v2d_require(
+        element: Any,
+        material: Any,
+        *,
+        stage: str,
+    ) -> bool:
+        record = dict.get(v2d_materials, id(element))
+        if record is None or record[0] is not element or record[1] is not material:
+            return False
+        try:
+            trusted_state(model, context=f"{context} {stage}")
+            v2d_guard(context=f"{context} {stage}")
+        except BaseException:
+            _clear_recovery_plan_without_callbacks(model)
+            raise
+        return True
+
+    return trusted_v2d_require
 
 
 def _qualified_recovery_trusted_elements(
@@ -1588,6 +1680,11 @@ def _qualified_recovery_observation_guard(
         if type(namespace) is dict
         else None
     )
+    trusted_v2d = (
+        dict.get(namespace, "_qualified_trusted_recovery_v2d_require")
+        if type(namespace) is dict
+        else None
+    )
 
     def require(
         *,
@@ -1611,6 +1708,17 @@ def _qualified_recovery_observation_guard(
             and element is not None
             and material is not None
             and trusted_beam(
+                element,
+                material,
+                stage=stage,
+            )
+        ):
+            return
+        if (
+            callable(trusted_v2d)
+            and element is not None
+            and material is not None
+            and trusted_v2d(
                 element,
                 material,
                 stage=stage,
