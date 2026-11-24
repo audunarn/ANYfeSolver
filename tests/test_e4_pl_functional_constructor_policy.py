@@ -146,6 +146,12 @@ def test_functional_lane_direct_shell_calls_are_non_q4_or_explicit_refusal() -> 
                 "tests/test_recovery_qualification.py",
                 "test_patch_rejects_reduced_q8_and_warped_q4_outside_qualified_scope",
             ): 1,
+            # Legacy three-node shell is constructed only to assert that the
+            # production S3 trace refuses it, not to admit a legacy Q4 solve.
+            (
+                "tests/test_solid_trace_extensions.py",
+                "test_admission_geometry_and_sampling_refusals",
+            ): 1,
             # Submodelling S1: three-node shells the transfer must refuse.
             (
                 "tests/test_submodel_transfer.py",

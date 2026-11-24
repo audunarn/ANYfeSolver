@@ -1,6 +1,13 @@
 {
   "dependencies": [
     {
+      "distribution": "ANYsolid",
+      "licence": "MPL-2.0",
+      "requirement": "ANYsolid[skfem]>=0.1.0,<0.2",
+      "scope": "optional-runtime",
+      "status": "not-bundled"
+    },
+    {
       "distribution": "numpy",
       "licence": "BSD-3-Clause AND bundled-component-licences",
       "requirement": "numpy>=2.0",
