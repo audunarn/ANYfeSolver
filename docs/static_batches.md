@@ -126,7 +126,9 @@ Models whose every element is an admitted exact built-in `BeamElement`
 stresses in one batch.  One complete lease guard runs before the batch reads
 anything and one after its last output, in place of the two per-element
 observation guards of the scalar loops; the two bracket guards carry the
-context of the first and last per-element guard they replace.  This relies
+context of the first and last per-element guard they replace (in recovery
+they are calls of the loop's own observation guard with the same stage,
+element and material).  This relies
 on the existing contract: changing a model during a request, including from
 another thread, is outside the supported contract.  Single-threaded calls
 accept and reject exactly the inputs of the scalar loops.  Every dispatch
@@ -147,6 +149,29 @@ scalar methods once per process and a check of the first and last element of
 every batch disable the batch for the process on a mismatch; they detect a
 broken kernel or platform and do not by themselves prove parity for the
 interior elements of a batch.
+
+Trust boundary of the exact-beam batch (owner decision, 2026-11-24).  The
+batch must behave exactly like the scalar loops for hostile data, instance
+attributes, subclasses, and replacement of ANYfeSolver classes, ANYfeSolver
+module attributes and functions, and of the mapping protocol.  This includes
+the stiffness classification objects (`QualifiedE4PLShellElement`, the Q4
+`FORMULATION_ID`, `ShellElement`, `v2c_fast_candidate`, `v2d_fast_candidate`,
+`reference_s3_candidate`, and the inner predicate and class each reads),
+which are compared by identity with the objects bound at import without
+reading attributes of, or comparing, caller-supplied objects; the recovery
+observation-guard factory `assembly._qualified_recovery_observation_guard`;
+and the element-matrix check kernels `_check_matrix_kernel` and
+`_relative_symmetry_kernel`, whose module functions or private clones (with
+their bound defaults and `np` global) are the only kernels for which the
+batch's own finiteness and symmetry tests stand in.  Any other object takes
+the scalar loop.  Trusted and not defended: library internals (NumPy
+internals such as the `sqrt` global of `numpy.linalg`; ANYmaterial internals
+such as `elastic_compliance_matrix`), Python builtins (including rebinding a
+builtin name in a module's globals), finaliser (`__del__`) order,
+`__code__`/`__closure__` swaps of identity-checked functions, dependencies
+that inspect caller frames, and stateful dependencies that observe repeated
+identical calls (the process probe, the endpoint checks, or a declined batch
+followed by the scalar loop).
 
 `ResourceConfig.memory_limit_bytes` limits a conservative storage estimate and
 adapts the requested block size; it refuses a request that cannot fit one case.

@@ -4022,6 +4022,56 @@ def _standard_element_stiffness(element: Any, mesh: Any, material: Any) -> np.nd
 
 _EXACT_STANDARD_STIFFNESS_GETTER = _standard_element_stiffness
 
+# The element-matrix check kernels for which the exact-beam batch's own
+# finiteness and symmetry tests reach the same accept/reject decision: the
+# module functions (direct calls of the implementation with its defaults)
+# here, and their private clones in the operation's private globals (see
+# ``_make_exact_assembly_operation``).  Each kernel must be one of a listed
+# pair and keep its bound defaults and its ``np`` global; any other kernel
+# takes the scalar loop, which calls it per element.
+_EXACT_BEAM_MATRIX_KERNEL_PAIRS = (
+    (_check_element_matrix_shape, _relative_symmetry_error),
+)
+_EXACT_BEAM_MATRIX_KERNEL_DEFAULTS = (
+    _check_element_matrix_shape.__defaults__,
+    _check_element_matrix_shape.__kwdefaults__,
+    _relative_symmetry_error.__defaults__,
+    _relative_symmetry_error.__kwdefaults__,
+)
+_EXACT_BEAM_NUMPY = np
+
+
+def _exact_beam_matrix_kernels_admitted(
+    check_kernel: Any,
+    symmetry_kernel: Any,
+    pairs: Any,
+    defaults: Any,
+    numpy_module: Any,
+) -> bool:
+    """Pure reads: ``(check_kernel, symmetry_kernel)`` is a listed exact pair."""
+
+    for check, symmetry in pairs:
+        if check_kernel is check and symmetry_kernel is symmetry:
+            break
+    else:
+        return False
+    for kernel in (check_kernel, symmetry_kernel):
+        if type(kernel) is not FunctionType:
+            return False
+        namespace = kernel.__globals__
+        if type(namespace) is not dict or not all(
+            type(key) is str for key in dict.keys(namespace)
+        ):
+            return False
+        if dict.get(namespace, "np") is not numpy_module:
+            return False
+    return (
+        check_kernel.__defaults__ is defaults[0]
+        and check_kernel.__kwdefaults__ is defaults[1]
+        and symmetry_kernel.__defaults__ is defaults[2]
+        and symmetry_kernel.__kwdefaults__ is defaults[3]
+    )
+
 
 def _assemble_element_matrix_under_lease_impl(
     model: "FEModel",
@@ -4576,6 +4626,13 @@ def _assemble_element_matrix_under_lease_impl(
             and not raw_q4_only
             and not raw_exact_cached_only
             and _EXACT_BEAM_STIFFNESS_CANDIDATE(model, mesh, element_items)
+            and _exact_beam_matrix_kernels_admitted(
+                _check_matrix_kernel,
+                _relative_symmetry_kernel,
+                _EXACT_BEAM_MATRIX_KERNEL_PAIRS,
+                _EXACT_BEAM_MATRIX_KERNEL_DEFAULTS,
+                _EXACT_BEAM_NUMPY,
+            )
         ):
             qualified_runtime_guard(
                 model,
@@ -5488,6 +5545,12 @@ def _make_exact_assembly_operation(implementation: Any) -> tuple[Any, Any]:
     )
     exact_relative_symmetry = private_function(
         expected_kwdefaults["_relative_symmetry_kernel"]
+    )
+    # The operation always passes these private clones; only they admit the
+    # exact-beam batch inside it (private globals: no module attribute
+    # replacement reaches this entry).
+    exact_globals["_EXACT_BEAM_MATRIX_KERNEL_PAIRS"] = (
+        (exact_check_matrix, exact_relative_symmetry),
     )
     exact_sparsity = private_function(expected_kwdefaults["_sparsity_kernel"])
     exact_topology_signature = private_function(

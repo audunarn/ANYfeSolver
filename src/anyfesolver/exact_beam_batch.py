@@ -40,6 +40,23 @@ batch instead of one Python call per element:
   do not prove parity for the interior elements of a batch.  That parity rests
   on the batch performing the identical floating-point operations (above).
 
+* **Trust boundary (owner decision, 2026-11-24).**  The batch behaves exactly
+  like the scalar loops for hostile *data*, instance attributes, subclasses,
+  and replacement of ANYfeSolver classes, ANYfeSolver module attributes and
+  functions (including the classification predicates, the recovery
+  observation-guard factory and the element-matrix check kernels of the
+  scalar loops), and of the mapping protocol: each is identity-checked
+  against the object captured when this module (or the calling module) was
+  bound, and anything else takes the scalar loop.  Trusted and *not*
+  defended: library internals (NumPy internals such as the ``sqrt`` global of
+  ``numpy.linalg``; ANYmaterial internals such as ``elastic_compliance_matrix``),
+  Python builtins (including rebinding a builtin name in a module's globals),
+  finaliser/``__del__`` order, ``__code__``/``__closure__`` swaps of
+  identity-checked functions, dependencies that inspect caller frames, and
+  stateful dependencies that observe repeated identical calls (for example
+  the probe, the endpoint checks or a declined batch followed by the scalar
+  loop).
+
 The scalar element methods remain the numerical oracle.  This module keeps no
 model, mesh, material or displacement data beyond one call.
 """
@@ -52,13 +69,16 @@ import math
 import time
 from itertools import chain, repeat
 from operator import is_
-from types import FunctionType
 from typing import Any, Callable
 
 import numpy as np
 
+from . import e4_pl_element as _q4_module
 from . import elements as _elements_module
 from . import fe_core as _fe_core_module
+from . import s3_reference_batch as _s3_reference_module
+from . import s3_v2c_fast_assembly as _s3_v2c_module
+from . import s3_v2d_fast_assembly as _s3_v2d_module
 from .elements import BeamElement, Element, QuadraticBeamElement
 from .fe_core import FEMesh, FEModel, Node, _QualifiedStateMapping
 from .fe_core import Material as _BuiltinMaterial
@@ -105,7 +125,6 @@ def _bind_exact_beam_batch() -> Any:
     exact_dict_keys = dict.keys
     exact_dict_len = dict.__len__
     exact_isinstance = isinstance
-    function_type = FunctionType
     exact_frozenset = frozenset
     exact_set = set
     exact_exception = Exception
@@ -326,6 +345,8 @@ def _bind_exact_beam_batch() -> Any:
                     "_contiguous_vector_norm",
                     "_frame_columns",
                     "_elastic_symmetry",
+                    # Called by ``_elastic_symmetry`` once per reduction.
+                    "_run_post_observation_guard",
                     "_beam_material_properties",
                     "_canonical_beam_material_properties",
                     "_canonical_material_symmetry",
@@ -421,102 +442,63 @@ def _bind_exact_beam_batch() -> Any:
         return True
 
     # ------------------------------------------------------------------
-    # The scalar classification loop of the stiffness assembly calls, for
-    # every element, ``v2c_fast_candidate``, ``v2d_fast_candidate`` and
-    # ``reference_s3_candidate`` (module attributes read at call time).  For
-    # the original functions each is ``type(element) is <class> and ...``,
-    # i.e. ``False`` for an exact ``BeamElement`` without any further
-    # dispatch.  Their modules are imported lazily (importing them installs
-    # runtime protections), so instead of an import-time identity snapshot
-    # the predicate is verified structurally with pure reads: exact function
-    # object bound under its own name in its own module, no defaults or
-    # closure, the expected global names, unshadowed builtins, and a class
-    # global that is not ``BeamElement``.  Anything else falls back.
+    # The scalar classification loop of the stiffness assembly imports, at
+    # call time, ``QualifiedE4PLShellElement`` and ``FORMULATION_ID`` of the
+    # Q4 module, ``ShellElement`` and the predicates ``v2c_fast_candidate``,
+    # ``v2d_fast_candidate`` and ``reference_s3_candidate``, and calls the
+    # predicates for every element.  The originals are
+    # ``<inner>(element)`` -> ``type(element) is <class> and ...``, i.e.
+    # ``False`` for an exact ``BeamElement`` without further dispatch.  Each
+    # object the scalar loop would use is compared by identity, with pure
+    # reads only, against the object captured here when this module is bound:
+    # the classifier objects themselves, and the inner function and class
+    # global each predicate reads from its module namespace.  No attribute of
+    # a caller-supplied object is read and none of its methods (``__eq__``,
+    # ``__ne__``, ``__name__``) is invoked.  Anything else falls back.
     # ------------------------------------------------------------------
 
-    package_name = __name__.rpartition(".")[0]
-    builtin_values = {
-        name: exact_dict_get(builtins_namespace, name) for name in ("type", "bool", "getattr")
-    }
-    predicate_specs = (
-        (
-            package_name + ".s3_v2c_fast_assembly",
-            "v2c_fast_candidate",
-            ("_candidate",),
-            "_candidate",
-            ("type", "StrictFlatLinearE4PLS3V2CShellElement", "formulation_id", "FORMULATION_ID"),
-            "StrictFlatLinearE4PLS3V2CShellElement",
-        ),
-        (
-            package_name + ".s3_v2d_fast_assembly",
-            "v2d_fast_candidate",
-            ("_candidate",),
-            "_candidate",
-            (
-                "bool",
-                "type",
-                "NativeParityE4PLS3V2DShellElement",
-                "formulation_id",
-                "FORMULATION_ID",
-                "qualified_batch_policy_id",
-                "BATCH_POLICY_ID",
-                "legacy_stiffness_batch_eligible",
-                "legacy_nonlinear_batch_eligible",
-            ),
-            "NativeParityE4PLS3V2DShellElement",
-        ),
-        (
-            package_name + ".s3_reference_batch",
-            "reference_s3_candidate",
-            ("_is_exact_qualified_s3",),
-            "_is_exact_qualified_s3",
-            ("type", "QualifiedE4PLS3ShellElement", "getattr", "REFERENCE_S3_FORMULATION_ID"),
-            "QualifiedE4PLS3ShellElement",
-        ),
+    q4_classifiers = (
+        vars(_q4_module)["QualifiedE4PLShellElement"],
+        vars(_q4_module)["FORMULATION_ID"],
+        shell_element_type,
     )
-
-    def plain_function(function: Any, name: str, names: tuple[str, ...], module: Any) -> bool:
-        if exact_type(function) is not function_type:
-            return False
-        code = function.__code__
-        if (
-            function.__globals__ is not module
-            or exact_dict_get(module, name, missing) is not function
-            or function.__name__ != name
-            or function.__qualname__ != name
-            or function.__defaults__ is not None
-            or function.__kwdefaults__ is not None
-            or function.__closure__ is not None
-            or code.co_argcount != 1
-            or code.co_names != names
-        ):
-            return False
-        function_builtins = function.__builtins__
-        if exact_type(function_builtins) is not exact_dict:
-            return False
-        for builtin_name, expected in exact_dict_items(builtin_values):
-            if builtin_name in names and (
-                builtin_name in module
-                or exact_dict_get(function_builtins, builtin_name, missing) is not expected
-            ):
-                return False
-        return True
-
-    def predicate_is_false_for_beams(function: Any, spec: tuple[Any, ...]) -> bool:
-        module_name, name, names, inner_name, inner_names, class_name = spec
-        if exact_type(function) is not function_type:
-            return False
-        module = function.__globals__
-        if exact_type(module) is not exact_dict or not all_str_keys(module):
-            return False
-        bound_name = exact_dict_get(module, "__name__", missing)
-        if exact_type(bound_name) is not exact_str or bound_name != module_name:
-            return False
-        return (
-            plain_function(function, name, names, module)
-            and plain_function(exact_dict_get(module, inner_name), inner_name, inner_names, module)
-            and exact_dict_get(module, class_name, beam_type) is not beam_type
+    predicate_bindings = exact_tuple(
+        (
+            vars(module)[name],
+            vars(module),
+            inner_name,
+            vars(module)[inner_name],
+            class_name,
+            vars(module)[class_name],
         )
+        for module, name, inner_name, class_name in (
+            (
+                _s3_v2c_module,
+                "v2c_fast_candidate",
+                "_candidate",
+                "StrictFlatLinearE4PLS3V2CShellElement",
+            ),
+            (
+                _s3_v2d_module,
+                "v2d_fast_candidate",
+                "_candidate",
+                "NativeParityE4PLS3V2DShellElement",
+            ),
+            (
+                _s3_reference_module,
+                "reference_s3_candidate",
+                "_is_exact_qualified_s3",
+                "QualifiedE4PLS3ShellElement",
+            ),
+        )
+    )
+    classifiers_are_beam_free = (
+        exact_type(q4_classifiers[1]) is exact_str
+        and exact_type(beam_formulation_id) is exact_str
+        and q4_classifiers[1] != beam_formulation_id
+        and q4_classifiers[0] is not beam_type
+        and exact_all(binding[5] is not beam_type for binding in predicate_bindings)
+    )
 
     def classification_is_noop(classifiers: Any, element_items: Any) -> bool:
         """The scalar classification loop leaves every admitted beam alone.
@@ -526,24 +508,33 @@ def _bind_exact_beam_batch() -> Any:
         v2c_fast_candidate, v2d_fast_candidate, reference_s3_candidate)``.
         """
 
-        if exact_type(classifiers) is not exact_tuple or exact_len(classifiers) != 6:
-            return False
-        q4_type, q4_formulation_id, shell_type, *predicates = classifiers
         if (
-            q4_type is beam_type
-            or exact_type(q4_formulation_id) is not exact_str
-            or q4_formulation_id == beam_formulation_id
-            or shell_type is not shell_element_type
+            not classifiers_are_beam_free
+            or exact_type(classifiers) is not exact_tuple
+            or exact_len(classifiers) != 6
         ):
             return False
-        for function, spec in exact_zip(predicates, predicate_specs):
-            if not predicate_is_false_for_beams(function, spec):
+        for supplied, expected in exact_zip(classifiers, q4_classifiers):
+            if supplied is not expected:
+                return False
+        for supplied, binding in exact_zip(classifiers[3:], predicate_bindings):
+            function, namespace, inner_name, inner, class_name, cls = binding
+            if supplied is not function:
+                return False
+            # Module namespace keys are read through the C dict storage; a
+            # non-``str`` key could run caller code during a lookup.
+            if not all_str_keys(namespace):
+                return False
+            if (
+                exact_dict_get(namespace, inner_name, missing) is not inner
+                or exact_dict_get(namespace, class_name, missing) is not cls
+            ):
                 return False
         # ``isinstance(element, ShellElement)``: the identical call of the
         # scalar loop (ABCMeta hooks verified by ``authority_is_exact``; the
         # ABC cache makes repeated calls return the first answer).
         for item in element_items:
-            if exact_isinstance(item[1], shell_type):
+            if exact_isinstance(item[1], shell_element_type):
                 return False
         return True
 
@@ -1649,10 +1640,12 @@ def _bind_exact_beam_batch() -> Any:
         return stiffness, plan["element_ids"], clock() - started, sparsity
 
     def recovery_candidate(model: Any, mesh: Any, selected: Any) -> Any:
-        """``(first_id, last_id)`` of the selected elements, or ``None``.
+        """``(first_id, first_element, last_id)`` of the selection, or ``None``.
 
         Authority first, then pure reads; the ids name the first and last
-        per-element guards of the scalar loop that the bracket replaces.
+        per-element observation guards of the scalar loop that the bracket
+        replaces, and the first element is the one the scalar loop observes
+        first.
         """
 
         if state["disabled_reason"] is not None or not authority_is_exact():
@@ -1680,7 +1673,8 @@ def _bind_exact_beam_batch() -> Any:
             return None
         if not element_ids:
             return None
-        return element_ids[0], element_ids[-1]
+        first_id = element_ids[0]
+        return first_id, exact_dict_get(elements, first_id), element_ids[-1]
 
     def recovery_batch(
         model: Any,
@@ -1688,7 +1682,12 @@ def _bind_exact_beam_batch() -> Any:
         displacements: Any,
         selected: Any,
     ) -> Any:
-        """Stress records of all selected elements in mesh order, or ``None``."""
+        """``(records, last_element, last_material)``, or ``None``.
+
+        ``records`` maps every selected element id to its stress record in
+        mesh order; the last element and its material are the arguments of
+        the scalar loop's last observation guard.
+        """
 
         if not authority_is_exact():
             fallback("class or module authority changed")
@@ -1783,7 +1782,11 @@ def _bind_exact_beam_batch() -> Any:
                 disable("recovery spot check mismatch")
                 return None
         counters["recovery_batches"] += 1
-        return exact_dict(exact_zip(plan["element_ids"], records))
+        return (
+            exact_dict(exact_zip(plan["element_ids"], records)),
+            elements[count - 1],
+            materials[material_index[count - 1]],
+        )
 
     def status() -> dict[str, Any]:
         return {

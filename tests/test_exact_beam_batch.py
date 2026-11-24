@@ -978,3 +978,243 @@ def test_classification_dispatch_matches_scalar_path(
 
     batched, scalar, _before, _after = _both_paths(run)
     assert batched == scalar
+
+
+
+# ----------------------------------------------------------------------
+# Codex review round 4 reproductions (in scope under the owner's trust
+# boundary of 2026-11-24; each failed on cf30b7545 unless noted).
+# ----------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "module_name, name, inner_name",
+    [
+        ("anyfesolver.s3_v2c_fast_assembly", "v2c_fast_candidate", "_candidate"),
+        ("anyfesolver.s3_v2d_fast_assembly", "v2d_fast_candidate", "_candidate"),
+        (
+            "anyfesolver.s3_reference_batch",
+            "reference_s3_candidate",
+            "_is_exact_qualified_s3",
+        ),
+    ],
+)
+def test_replaced_shell_predicate_runs_as_in_scalar_path(
+    monkeypatch: pytest.MonkeyPatch, module_name: str, name: str, inner_name: str
+) -> None:
+    # Codex r4 P2: a fresh predicate defined in its own module with the
+    # original global names passed the structural check; scalar raises.
+    import importlib
+
+    module = importlib.import_module(module_name)
+    namespace = vars(module)
+    source = f"def {name}(element):\n    {inner_name}(element)\n    raise element\n"
+    scratch: dict[str, Any] = {}
+    # The fresh function's globals are the module namespace itself.
+    exec(compile(source, module.__file__, "exec"), namespace, scratch)
+    fresh = scratch[name]
+
+    def prepare(model: FEModel) -> Any:
+        monkeypatch.setitem(namespace, name, fresh)
+        return monkeypatch.undo
+
+    batched, scalar, before, after = _both_paths(_stiffness_and_recovery(prepare))
+    assert batched == scalar
+    assert batched[0][0] == "TypeError"
+    assert after[0] == before[0]
+
+
+def test_shell_predicate_name_methods_are_not_invoked() -> None:
+    # Codex r4 P2: the structural check compared the genuine predicate's
+    # ``__name__``, whose ``str`` subclass logged ``__ne__``/``__eq__``.
+    from anyfesolver import s3_v2c_fast_assembly as module
+
+    log: list[str] = []
+
+    class LoggingName(str):
+        def __ne__(self, other: object) -> bool:
+            log.append("ne")
+            return str.__ne__(self, other)
+
+        def __eq__(self, other: object) -> bool:
+            log.append("eq")
+            return str.__eq__(self, other)
+
+        __hash__ = str.__hash__
+
+    function = module.v2c_fast_candidate
+    original = function.__name__
+    function.__name__ = LoggingName(original)
+    try:
+
+        def run() -> Any:
+            del log[:]
+            result = _stiffness_and_recovery(lambda model: None)()
+            return result, list(log)
+
+        batched, scalar, before, after = _both_paths(run)
+    finally:
+        function.__name__ = original
+    assert batched == scalar
+    assert batched[1] == []
+    assert after[0] == before[0] + 1
+
+
+def test_replaced_observation_guard_factory_runs_as_in_scalar_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Codex r4 P2: the bracket called the raw lease guard instead of the
+    # guard returned by ``assembly._qualified_recovery_observation_guard``.
+    import anyfesolver.assembly as assembly_module
+
+    original = assembly_module._qualified_recovery_observation_guard
+
+    def factory(guard: Any) -> Any:
+        delegate = original(guard)
+
+        def observe(*, stage: str, element: Any = None, material: Any = None) -> None:
+            if stage == "stress material observation for element 4":
+                raise RuntimeError("fourth beam observation")
+            delegate(stage=stage, element=element, material=material)
+
+        return observe
+
+    def run() -> tuple[str, str]:
+        model = _disjoint_model()
+        u = np.arange(model.mesh.dof_manager.total_dofs, dtype=float) * 1.0e-3
+        monkeypatch.setattr(
+            assembly_module, "_qualified_recovery_observation_guard", factory
+        )
+        try:
+            return _outcome(lambda: compute_stresses(model, u))
+        finally:
+            monkeypatch.undo()
+
+    batched, scalar, before, after = _both_paths(run)
+    assert batched == scalar == ("RuntimeError", "fourth beam observation")
+    assert after == before
+
+
+def _direct_assembly(model: FEModel, **kernels: Any) -> Any:
+    """The implementation called directly, with its kwdefaults or ``kernels``."""
+
+    def guard(model: Any, *, context: str, final: bool = False) -> None:
+        del model, context, final
+
+    return matrix_assembly._assemble_element_matrix_under_lease_impl(
+        model,
+        "stiffness",
+        matrix_assembly._standard_element_stiffness,
+        guard,
+        None,
+        **kernels,
+    )
+
+
+@pytest.mark.parametrize("kind", ["check", "symmetry", "symmetry-defaults"])
+def test_replaced_matrix_check_kernel_runs_as_in_scalar_path(
+    monkeypatch: pytest.MonkeyPatch, kind: str
+) -> None:
+    # Codex r4 P2 (ANYfeSolver part): the batch replaced the scalar loop's
+    # per-element ``_check_matrix_kernel``/``_relative_symmetry_kernel``
+    # calls by its own tests, so a different kernel was not honoured.
+    check = matrix_assembly._check_element_matrix_shape
+    symmetry = matrix_assembly._relative_symmetry_error
+    dense_calls = [0]
+
+    def raising_check(element_id: int, name: str, matrix: Any, size: int) -> Any:
+        if element_id == 4:
+            raise AssemblyError("element-4 matrix check")
+        return check(element_id, name, matrix, size)
+
+    def asymmetric_fourth(matrix: Any) -> float:
+        if isinstance(matrix, np.ndarray):
+            dense_calls[0] += 1
+            if dense_calls[0] == 4:
+                return 1.0
+        return symmetry(matrix)
+
+    issparse, sparse_norm = symmetry.__defaults__
+
+    def raising_issparse(matrix: Any) -> bool:
+        if isinstance(matrix, np.ndarray):
+            dense_calls[0] += 1
+            if dense_calls[0] == 4:
+                raise LookupError("element-4 issparse")
+        return issparse(matrix)
+
+    def run() -> Any:
+        dense_calls[0] = 0
+        model = _disjoint_model()
+        if kind == "check":
+            kernels = {"_check_matrix_kernel": raising_check}
+        elif kind == "symmetry":
+            kernels = {"_relative_symmetry_kernel": asymmetric_fourth}
+        else:
+            kernels = {}
+            monkeypatch.setattr(
+                symmetry, "__defaults__", (raising_issparse, sparse_norm)
+            )
+        try:
+            outcome = _outcome(lambda: _direct_assembly(model, **kernels))
+        finally:
+            monkeypatch.undo()
+        return outcome, _stored_matrices(model)
+
+    batched, scalar, before, after = _both_paths(run)
+    assert batched == scalar
+    assert batched[0][0] in {"AssemblyError", "LookupError"}
+    assert after[0] == before[0]
+
+
+def test_direct_implementation_call_with_default_kernels_still_batches() -> None:
+    model = _disjoint_model()
+    before = _batches()
+    matrix, _info = _direct_assembly(model)
+    assert _batches()[0] == before[0] + 1
+    with _scalar_only():
+        scalar_matrix, _scalar_info = _direct_assembly(_disjoint_model())
+    assert _csr_bits(matrix) == _csr_bits(scalar_matrix)
+
+
+def test_replaced_post_observation_guard_is_called_as_in_scalar_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Codex r4 (endpoint-check call counts): ``_elastic_symmetry`` calls the
+    # elements-module ``_run_post_observation_guard`` once per material
+    # reduction; the endpoint checks added two calls to the scalar count.
+    original = elements_module._run_post_observation_guard
+    calls = [0]
+
+    def counting(post_observation: Any) -> None:
+        calls[0] += 1
+        original(post_observation)
+
+    def run() -> Any:
+        calls[0] = 0
+        monkeypatch.setattr(elements_module, "_run_post_observation_guard", counting)
+        try:
+            result = _stiffness_and_recovery(lambda model: None)()
+        finally:
+            monkeypatch.undo()
+        return result, calls[0]
+
+    _stiffness_and_recovery(lambda model: None)()  # warm the process probe
+    batched, scalar, _before, _after = _both_paths(run)
+    assert batched == scalar
+    assert scalar[1] == 2 * 8
+
+
+@pytest.mark.parametrize("stored", ["none", "empty", "zeros"])
+def test_any_stored_linear_nodal_offsets_take_scalar_path(stored: str) -> None:
+    # Regression guard (already held on cf30b7545): the default rigid arm is
+    # taken only when the attribute is absent (AttributeError, 30bcd9bf5);
+    # any stored value takes the scalar loop.
+    value = {"none": None, "empty": (), "zeros": np.zeros((2, 3))}[stored]
+
+    def prepare(model: FEModel) -> None:
+        vars(model.mesh.elements[5])["_linear_nodal_offsets"] = value
+
+    batched, scalar, before, after = _both_paths(_stiffness_and_recovery(prepare))
+    assert batched == scalar
+    assert after == before
