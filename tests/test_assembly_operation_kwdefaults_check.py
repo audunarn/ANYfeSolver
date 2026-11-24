@@ -113,7 +113,82 @@ def test_colliding_key_that_flips_keeps_original_key_error(
     kwdefaults[key] = value  # type: ignore[index]
     with pytest.raises(KeyError):
         REQUIRE()
-    assert key.calls == 2
+    # The probe count depends on the hash seed (slot collisions); the
+    # original membership test and item lookup both reach the key.
+    assert key.calls >= 2
+
+
+class _StrLikeMeta(type):
+    """A key class that hashes like ``str`` and compares equal to it."""
+
+    def __hash__(cls) -> int:
+        return hash(str)
+
+    def __eq__(cls, other: object) -> bool:
+        return other is str or type.__eq__(cls, other)
+
+
+class _StrLikeCollidingKey(_CollidingKey, metaclass=_StrLikeMeta):
+    pass
+
+
+class _UnhashableMeta(type):
+    __hash__ = None  # type: ignore[assignment]
+
+
+class _UnhashableTypeCollidingKey(_CollidingKey, metaclass=_UnhashableMeta):
+    __hash__ = _CollidingKey.__hash__
+
+
+class _RaisingMeta(type):
+    def __hash__(cls) -> int:
+        raise RuntimeError("key type hashed")
+
+    def __eq__(cls, other: object) -> bool:
+        raise RuntimeError("key type compared")
+
+
+class _RaisingTypeKey(_CollidingKey, metaclass=_RaisingMeta):
+    __hash__ = _CollidingKey.__hash__
+
+
+def test_str_like_key_type_cannot_enter_the_fast_path(
+    kwdefaults: dict[str, Any],
+) -> None:
+    # Codex r1 P1: a key whose *type* hashes and compares like ``str`` must
+    # still take the original generator (membership True, lookup KeyError).
+    name = next(iter(kwdefaults))
+    value = kwdefaults.pop(name)
+    kwdefaults[_StrLikeCollidingKey(name, [True, False])] = value  # type: ignore[index]
+    with pytest.raises(KeyError):
+        REQUIRE()
+
+
+def test_unhashable_key_type_keeps_original_acceptance(
+    kwdefaults: dict[str, Any],
+) -> None:
+    # Codex r1 P2: the original guard accepts a colliding key that always
+    # matches and keeps the original value; key types are never hashed.
+    name = next(iter(kwdefaults))
+    value = kwdefaults.pop(name)
+    key = _UnhashableTypeCollidingKey(name, [True] * 64)
+    kwdefaults[key] = value  # type: ignore[index]
+    REQUIRE()
+    assert key.calls >= 2
+
+
+def test_earlier_mismatch_short_circuits_before_hostile_key_type(
+    kwdefaults: dict[str, Any],
+) -> None:
+    # Codex r1 P2: an earlier identity mismatch raises ValueError before any
+    # later key could run code; the key type is never hashed or compared.
+    names = list(kwdefaults)
+    first, last = names[0], names[-1]
+    kwdefaults[first] = object()
+    value = kwdefaults.pop(last)
+    kwdefaults[_RaisingTypeKey(last, [True] * 64)] = value  # type: ignore[index]
+    with pytest.raises(ValueError, match="operation authority changed"):
+        REQUIRE()
 
 
 def test_colliding_key_that_never_matches_is_rejected(

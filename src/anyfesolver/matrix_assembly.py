@@ -5432,11 +5432,10 @@ def _make_exact_assembly_operation(implementation: Any) -> tuple[Any, Any]:
     exact_kw_map = map
     exact_kw_all = all
     exact_kw_any = any
-    exact_kw_set = set
     exact_kw_type = type
     exact_kw_is = is_
     exact_kw_repeat = repeat
-    exact_kw_str_types = frozenset((str,))
+    exact_kw_str = str
     exact_kw_missing = object()
 
     def kw_items_changed(
@@ -5445,7 +5444,15 @@ def _make_exact_assembly_operation(implementation: Any) -> tuple[Any, Any]:
         names: tuple[str, ...],
         values: tuple[Any, ...],
     ) -> bool:
-        if exact_kw_set(exact_kw_map(exact_kw_type, current)) <= exact_kw_str_types:
+        # ``type(key) is str`` for every key; neither ``type`` nor ``is``
+        # dispatches to caller code (no hashing or comparison of key types).
+        if exact_kw_all(
+            exact_kw_map(
+                exact_kw_is,
+                exact_kw_map(exact_kw_type, current),
+                exact_kw_repeat(exact_kw_str),
+            )
+        ):
             return not exact_kw_all(
                 exact_kw_map(
                     exact_kw_is,
