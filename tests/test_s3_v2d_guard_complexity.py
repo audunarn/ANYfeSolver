@@ -274,27 +274,24 @@ class _ForeignElement(BeamElement):
     """A subclass is not package-owned: its methods may be foreign code."""
 
 
-def test_class_swap_inside_an_element_callback_is_refused_at_once():
+# test_class_swap_inside_an_element_callback_is_refused_at_once (round 2) was
+# removed with the owner's guard-shortcut contract of 2026-11-24: __class__
+# reassignment made and undone inside an operation is outside supported use,
+# and the per-operation census memo (Codex supported-use review, P2) relies on
+# that.  A persistent change is still refused by the next operation.
+
+
+def test_a_persistent_class_change_is_refused_by_the_next_operation():
     model, element_ids = _triangle_plate(2)
     beam = BeamElement(
         99, [1, 2], "steel", {"A": 1.0e-4, "Iy": 1.0e-8, "Iz": 1.0e-8, "J": 1.0e-8}
     )
     model.add_element(99, beam)
-    v2d = model.mesh.elements[element_ids[0]]
-
-    def swapping_compute_stresses(*args, **kwargs):
-        beam.__class__ = _LegacyShell
-        try:
-            v2d._geometry(model.mesh)
-        finally:
-            beam.__class__ = BeamElement
-        return {}
-
-    beam.compute_stresses = swapping_compute_stresses
     u, _info = solve_linear(model, _pressure(element_ids))
+    compute_stresses(model, u)
+    beam.__class__ = _LegacyShell
     with pytest.raises(Exception) as caught:
         compute_stresses(model, u)
-    # Refused (the scope error itself or the lease's rejection of the callback).
     assert "scope" in str(caught.value) or "authority" in str(caught.value)
 
 
@@ -495,3 +492,79 @@ def test_scope_census_defers_when_the_mapping_class_machinery_changed(monkeypatc
     monkeypatch.setattr(_QualifiedStateMapping, "__getattribute__", faking, raising=False)
     with pytest.raises(NativeParityCapabilityError, match="mixed shell scope"):
         _require_v2d_mixed_shell_scope(model.mesh.elements)
+
+
+# --- Codex supported-use review (2026-11-24): performance evidence ------------
+
+
+def _count_calls(name, call):
+    calls = 0
+
+    def profiler(frame, event, arg):
+        nonlocal calls
+        code = frame.f_code
+        if event == "call" and code.co_name == name and code.co_filename.endswith(_V2D_FILE):
+            calls += 1
+
+    previous = sys.getprofile()
+    sys.setprofile(profiler)
+    try:
+        result = call()
+    finally:
+        sys.setprofile(previous)
+    return calls, result
+
+
+def test_full_element_census_is_taken_a_bounded_number_of_times_per_operation():
+    counts = []
+    for n in (2, 4):
+        model, element_ids = _triangle_plate(n)
+        solve_calls, (u, _info) = _count_calls(
+            "_census_ids", lambda: solve_linear(model, _pressure(element_ids))
+        )
+        recovery_calls, _stresses = _count_calls(
+            "_census_ids", lambda: compute_stresses(model, u)
+        )
+        counts.append((solve_calls, recovery_calls))
+    # Each walk over the whole element registry is linear; it must not be
+    # repeated once per element (that made recovery quadratic).
+    assert 0 < counts[1][1] <= counts[0][1] + 2, counts
+    assert 0 < counts[1][0] <= counts[0][0] + 2, counts
+
+
+def test_a_missing_pressure_id_keeps_the_pressure_record_fast_path():
+    model, element_ids = _triangle_plate(4)
+    first = LoadCase("missing first")
+    first.pressure_loads = {987654: 1.0e3, **{e: 1.0e3 for e in element_ids}}
+    last = LoadCase("missing last")
+    last.pressure_loads = {**{e: 1.0e3 for e in element_ids}, 987654: 1.0e3}
+    from anyfesolver.matrix_assembly import assemble_system
+
+    scans_first, _steps, (k1, f1, _i1) = _profile(lambda: assemble_system(model, first))
+    scans_last, _steps, (k2, f2, _i2) = _profile(lambda: assemble_system(model, last))
+    assert np.array_equal(f1, f2)
+    assert scans_first == scans_last, (scans_first, scans_last)
+
+
+def test_census_memo_retakes_the_census_after_a_supported_mesh_mutation():
+    from anyfesolver.e4_pl_s3_v2d_element import v2d_scope_census_memo
+
+    model, v2d, beam = _v2d_with_beam()
+    with v2d_scope_census_memo():
+        v2d._validate_model_scope(model.mesh)
+        model.mesh.elements[100] = _LegacyShell.__new__(_LegacyShell)
+        with pytest.raises(NativeParityCapabilityError, match="mixed shell scope"):
+            v2d._validate_model_scope(model.mesh)
+
+
+def test_census_memo_is_inert_in_a_context_copied_during_the_operation():
+    import contextvars
+
+    from anyfesolver.e4_pl_s3_v2d_element import _SCOPE_CENSUS_MEMO, v2d_scope_census_memo
+
+    model, v2d, beam = _v2d_with_beam()
+    with v2d_scope_census_memo():
+        v2d._validate_model_scope(model.mesh)
+        copied = contextvars.copy_context()
+    memo = copied.run(_SCOPE_CENSUS_MEMO.get)
+    assert memo is not None and not memo.active and not memo.entries

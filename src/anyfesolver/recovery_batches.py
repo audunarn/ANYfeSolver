@@ -1582,7 +1582,8 @@ def _qualified_recovery_runtime_lease_scope(
         )
         guard(stage="preflight")
         try:
-            result = operation(guard)
+            with _v2d_scope_census_memo():
+                result = operation(guard)
         except BaseException:
             guard(stage="exceptional output")
             raise
@@ -1628,6 +1629,14 @@ def _qualified_recovery_runtime_lease_scope(
     stack.close()
 
 
+def _v2d_scope_census_memo() -> Any:
+    """One-operation S3 V2D scope-census memo (imported lazily)."""
+
+    from .e4_pl_s3_v2d_element import v2d_scope_census_memo
+
+    return v2d_scope_census_memo()
+
+
 def _run_with_qualified_recovery_runtime_lease(
     model: "FEModel",
     *,
@@ -1671,6 +1680,7 @@ def _run_with_qualified_recovery_runtime_lease(
 
             stack.enter_context(_Q4_TRUSTED_OPERATION_SCOPE(q4_elements))
             stack.enter_context(_S3_TRUSTED_OPERATION_SCOPE(s3_elements))
+            stack.enter_context(_v2d_scope_census_memo())
             result = operation(require)
     except BaseException:
         require(stage="exceptional output")

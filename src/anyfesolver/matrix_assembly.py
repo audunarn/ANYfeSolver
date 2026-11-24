@@ -3644,6 +3644,7 @@ def _run_with_qualified_assembly_runtime_lease(
                 with ExitStack() as stack:
                     stack.enter_context(_Q4_TRUSTED_OPERATION_SCOPE(q4_elements))
                     stack.enter_context(_S3_TRUSTED_OPERATION_SCOPE(s3_elements))
+                    stack.enter_context(_v2d_scope_census_memo())
                     try:
                         result = operation(lease)
                     except BaseException as exc:
@@ -6572,9 +6573,12 @@ def _qualified_s3_pressure_surface_records(
     records: list[Dict[str, Any]] = []
     for raw_element_id in pressure_ids:
         if v2d_elements is not None and type(raw_element_id) is int:
-            fields = _foreign_code_free_v2d_pressure_fields(
-                dict.get(v2d_elements, raw_element_id)
-            )
+            element = dict.get(v2d_elements, raw_element_id)
+            if element is None:
+                # ``get_element`` (verified to be FEMesh's own) returns None
+                # for it too, and the guarded route skips it without a guard.
+                continue
+            fields = _foreign_code_free_v2d_pressure_fields(element)
             if fields is not None:
                 formulation, pressure_policy, offset = fields
                 if (
@@ -6616,6 +6620,14 @@ def _qualified_s3_pressure_surface_records(
             )
         records.append(_qualified_s3_pressure_surface_record(element_id, offset))
     return records
+
+
+def _v2d_scope_census_memo() -> Any:
+    """One-operation S3 V2D scope-census memo (imported lazily)."""
+
+    from .e4_pl_s3_v2d_element import v2d_scope_census_memo
+
+    return v2d_scope_census_memo()
 
 
 def _qualified_s3_pressure_surface_record(

@@ -15,6 +15,8 @@ import math
 import threading
 import weakref
 from abc import ABCMeta
+from contextlib import contextmanager
+from contextvars import ContextVar
 from types import MappingProxyType
 from typing import Any, Dict, Iterable, Mapping, Optional, Sequence, Tuple
 
@@ -56,7 +58,7 @@ from .e4_pl_s3_v2d_state import (
     serialize_v2d_state,
     validate_v2d_state,
 )
-from .fe_core import FEMesh, Material, _QualifiedStateMapping
+from .fe_core import FEMesh, Material, _QualifiedMutationEpoch, _QualifiedStateMapping
 from .plasticity import plane_stress_return_map
 
 
@@ -166,6 +168,68 @@ def _scope_class_machinery(
 
 
 _SCOPE_CENSUS_SNAPSHOT: Optional[Dict[int, Tuple[type, Tuple[Any, ...]]]] = None
+_SCOPE_CENSUS_MEMO: ContextVar[Optional["_ScopeCensusMemo"]] = ContextVar(
+    "anyfesolver_s3_v2d_scope_census_memo", default=None
+)
+
+
+class _ScopeCensusMemo:
+    """Element-class census per mesh for one assembly/recovery operation.
+
+    Inside an operation the mesh does not change in supported use (owner
+    contract 2026-11-24: no mid-request surface changes), so the C-level
+    census of element classes, linear in mesh size, is taken once per mesh
+    mutation stamp instead of on every V2D evaluation.  The stamp (the mesh's
+    qualified mutation epoch object and value, and the mapping length) still
+    retakes it after any supported mapping mutation.  The class-machinery
+    checks in ``_owned_scope_census`` run on every call.  The memo is inert
+    once its operation has ended, also in contexts copied from inside it.
+    """
+
+    __slots__ = ("active", "entries")
+
+    def __init__(self) -> None:
+        self.active = True
+        self.entries: Dict[int, Tuple[Any, Any, int, int, frozenset]] = {}
+
+
+@contextmanager
+def v2d_scope_census_memo() -> Iterable[None]:
+    memo = _ScopeCensusMemo()
+    reset = _SCOPE_CENSUS_MEMO.set(memo)
+    try:
+        yield
+    finally:
+        memo.active = False
+        memo.entries.clear()
+        _SCOPE_CENSUS_MEMO.reset(reset)
+
+
+def _census_ids(elements: Any) -> frozenset:
+    return frozenset(map(id, map(type, dict.values(elements))))
+
+
+def _memoized_census_ids(elements: Any) -> frozenset:
+    memo = _SCOPE_CENSUS_MEMO.get()
+    if memo is None or not memo.active or type(elements) is not _QualifiedStateMapping:
+        return _census_ids(elements)
+    token = dict.get(object.__getattribute__(elements, "__dict__"), "_qualified_token")
+    if type(token) is not _QualifiedMutationEpoch:
+        return _census_ids(elements)
+    epoch = list.__getitem__(token, 0)
+    length = dict.__len__(elements)
+    entry = dict.get(memo.entries, id(elements))
+    if (
+        entry is not None
+        and entry[0] is elements
+        and entry[1] is token
+        and entry[2] == epoch
+        and entry[3] == length
+    ):
+        return entry[4]
+    census = _census_ids(elements)
+    memo.entries[id(elements)] = (elements, token, epoch, length, census)
+    return census
 _SCOPE_MAPPING_SNAPSHOT: Optional[Tuple[Any, ...]] = None
 
 
@@ -201,7 +265,7 @@ def _owned_scope_census(elements: Any) -> Optional[set]:
     # Identities only: hashing or comparing the classes themselves could run
     # a metaclass ``__hash__``/``__eq__``.  An id found in the snapshot is that
     # owned class, which the snapshot keeps alive.
-    census = set(map(id, map(type, dict.values(elements))))
+    census = _memoized_census_ids(elements)
     kinds = []
     for kind_id in census:
         entry = dict.get(snapshot, kind_id)
