@@ -129,8 +129,8 @@ def test_curved_beam_needs_orientation_for_reference_result():
     _model, default = _curved_beam(_STRIP)
     _model, oriented = _curved_beam({**_STRIP, "orientation": [0.0, 0.0, 1.0]})
     assert oriented == pytest.approx(_CURVED_OUT_OF_PLANE_REFERENCE, rel=0.03)
-    assert abs(default / _CURVED_OUT_OF_PLANE_REFERENCE - 1.0) > 0.10
-
+    # Characterisation (owner decision open): measured -21.7 % without orientation.
+    assert -0.30 < default / _CURVED_OUT_OF_PLANE_REFERENCE - 1.0 < -0.15
 
 
 # --------------------------------------------------------------- finding 3
