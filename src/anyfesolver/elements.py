@@ -427,6 +427,48 @@ def _section_orientation(cross_section: Dict[str, Any]) -> Optional[np.ndarray]:
     return np.array(vector[:3], dtype=float)
 
 
+_NO_LINEAR_NODAL_OFFSETS = object()
+
+
+def _contiguous_vector_norm(vector: Any) -> Any:
+    """``np.linalg.norm(vector)`` without its dispatch overhead.
+
+    For a C-contiguous one-dimensional float64 ndarray, ``np.linalg.norm``
+    evaluates exactly ``np.sqrt(x.dot(x))`` (``ravel(order="K")`` returns
+    the same data), so the value and its ``np.float64`` type are identical.
+    Every other input takes ``np.linalg.norm`` unchanged.
+    """
+    if (
+        type(vector) is np.ndarray
+        and vector.ndim == 1
+        and vector.dtype.char == "d"
+        and vector.flags.c_contiguous
+    ):
+        return np.sqrt(vector.dot(vector))
+    return np.linalg.norm(vector)
+
+
+def _frame_columns(e1: Any, e2: Any, e3: Any) -> np.ndarray:
+    """``np.column_stack((e1, e2, e3))`` for three float64 3-vectors."""
+    if (
+        type(e1) is np.ndarray
+        and type(e2) is np.ndarray
+        and type(e3) is np.ndarray
+        and e1.shape == (3,)
+        and e2.shape == (3,)
+        and e3.shape == (3,)
+        and e1.dtype.char == "d"
+        and e2.dtype.char == "d"
+        and e3.dtype.char == "d"
+    ):
+        frame = np.empty((3, 3), dtype=np.float64)
+        frame[:, 0] = e1
+        frame[:, 1] = e2
+        frame[:, 2] = e3
+        return frame
+    return np.column_stack((e1, e2, e3))
+
+
 def _beam_rotation_matrix(e1: np.ndarray, orientation: Optional[np.ndarray]) -> np.ndarray:
     """Build the beam local frame [e1 e2 e3] with optional prescribed local z.
 
@@ -436,20 +478,20 @@ def _beam_rotation_matrix(e1: np.ndarray, orientation: Optional[np.ndarray]) -> 
     """
     if orientation is not None:
         candidate = orientation - np.dot(orientation, e1) * e1
-        norm = float(np.linalg.norm(candidate))
+        norm = float(_contiguous_vector_norm(candidate))
         if norm > 1.0e-6 * float(np.linalg.norm(orientation)):
             e3 = candidate / norm
             e2 = _cross3(e3, e1)
-            e2 /= np.linalg.norm(e2)
-            return np.column_stack((e1, e2, e3))
+            e2 /= _contiguous_vector_norm(e2)
+            return _frame_columns(e1, e2, e3)
     trial = np.array([0.0, 1.0, 0.0])
     if abs(float(np.dot(e1, trial))) > 0.95:
         trial = np.array([0.0, 0.0, 1.0])
     e2 = trial - np.dot(trial, e1) * e1
-    e2 /= np.linalg.norm(e2)
+    e2 /= _contiguous_vector_norm(e2)
     e3 = _cross3(e1, e2)
-    e3 /= np.linalg.norm(e3)
-    return np.column_stack((e1, e2, e3))
+    e3 /= _contiguous_vector_norm(e3)
+    return _frame_columns(e1, e2, e3)
 
 
 def _elastic_symmetry(
@@ -3811,7 +3853,14 @@ class BeamElement(Element):
 
     def _linear_rigid_arm_map(self) -> np.ndarray:
         arm=np.eye(12)
-        for i,d in enumerate(getattr(self,'_linear_nodal_offsets',np.zeros((2,3)))):
+        offsets=getattr(self,'_linear_nodal_offsets',_NO_LINEAR_NODAL_OFFSETS)
+        if offsets is _NO_LINEAR_NODAL_OFFSETS:
+            # Bit-identical to the loop below over zero offsets: each skew
+            # block [[0,z,-y],[-z,0,x],[y,-x,0]] built from +0.0 arms holds
+            # -0.0 at exactly these three places per node.
+            arm[(0,1,2,6,7,8),(5,3,4,11,9,10)]=-0.0
+            return arm
+        for i,d in enumerate(offsets):
             x,y,z=d
             arm[i*6:i*6+3,i*6+3:i*6+6]=np.array([[0,z,-y],[-z,0,x],[y,-x,0]])
         return arm
@@ -3910,7 +3959,7 @@ class BeamElement(Element):
         return coords+getattr(self,'_linear_nodal_offsets',0)
 
     def _beam_frame_and_transform(self, coords: np.ndarray) -> Tuple[float, np.ndarray]:
-        length = float(np.linalg.norm(coords[1] - coords[0]))
+        length = float(_contiguous_vector_norm(coords[1] - coords[0]))
         if length < _SMALL:
             raise ValueError(f"Beam element {self.element_id} has near-zero length")
         e1 = (coords[1] - coords[0]) / length
