@@ -22,7 +22,9 @@ _DOF = ("ux", "uy", "uz", "rx", "ry", "rz")
 
 def _solve(model, load_case):
     u, info = solve_linear(model, load_case)
-    assert info["convergence_info"]["status"] == "converged"
+    status = info["convergence_info"]["status"]
+    if status != "converged":  # not an AssertionError: must not satisfy the xfail below
+        raise RuntimeError(f"linear solve did not converge: {status}")
     return u
 
 
@@ -66,6 +68,7 @@ _TWISTED_REFERENCE = {2: 0.005424, 1: 0.001754}  # MacNeal & Harder 1985, Table 
 
 @pytest.mark.xfail(
     strict=True,
+    raises=AssertionError,
     reason=(
         "warped Q4 with default drilling_stabilization=1e-3 is +31 %/+24 % too "
         "flexible on the twisted beam; contract change pending the owner's decision"
@@ -115,6 +118,20 @@ def test_curved_beam_with_orientation_matches_reference_and_does_not_warn():
         warnings.simplefilter("error", BeamOrientationWarning)
         _model, got = _curved_beam({**_STRIP, "orientation": [0.0, 0.0, 1.0]})
     assert got == pytest.approx(0.5022, rel=0.03)  # MacNeal-Harder out-of-plane
+
+
+def test_orientation_parallel_to_member_axis_still_warns():
+    # A member along global Y with orientation Y: the orientation cannot define the frame.
+    model = FEModel("y_member")
+    model.add_material("mat", 1.0e7, 0.25)
+    model.add_node(1, 0.0, 0.0, 0.0)
+    model.add_node(2, 0.0, 1.0, 0.0)
+    model.add_element(1, BeamElement(1, [1, 2], "mat", {**_STRIP, "orientation": [0.0, 1.0, 0.0]}))
+    model.add_boundary_condition(FixedSupport("root", [1]))
+    load_case = LoadCase("tip")
+    load_case.add_nodal_load(2, [0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
+    with pytest.warns(BeamOrientationWarning, match="orientation"):
+        _solve(model, load_case)
 
 
 def test_symmetric_section_without_orientation_does_not_warn():

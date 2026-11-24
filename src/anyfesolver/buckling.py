@@ -667,8 +667,9 @@ def _solve_eigenvalue_buckling_under_lease(
     :func:`anyfesolver.matrix_assembly.assemble_geometric_stiffness_matrix`.
     Beam elements accept axial reference compression and shell elements accept
     membrane resultant prestress (compression positive, or tension-positive
-    ``membrane_forces``).  The prestress comes only from ``element_states``;
-    to buckle under a static solution, pass
+    ``membrane_forces``).  For reference-state buckling the prestress comes
+    only from ``element_states`` (``reference_displacements`` feed only the
+    follower-load tangent); to buckle under a static solution, pass
     ``element_states=recover_prestress_from_static_result(model, u)[0]``.
 
     When ``reference_load_case`` carries follower pressure, its exact
@@ -2084,7 +2085,14 @@ def solve_eigenvalue_buckling(
     current_state_num_layers: int = 5,
     current_state_load_scale: float = 1.0,
 ) -> BucklingResult:
-    """Solve buckling under one non-renewable qualified-family lease."""
+    """Solve buckling under one non-renewable qualified-family lease.
+
+    For reference-state buckling the prestress comes only from
+    ``element_states``; ``reference_load_case`` and
+    ``reference_displacements`` feed only the follower-load tangent.  To
+    buckle under a linear static solution ``u`` pass
+    ``element_states=recover_prestress_from_static_result(model, u)[0]``.
+    """
 
     exact_guard = _EXACT_QUALIFIED_COMPONENT_LIFECYCLE_GUARD
     run_under_lease = _run_with_qualified_assembly_runtime_lease

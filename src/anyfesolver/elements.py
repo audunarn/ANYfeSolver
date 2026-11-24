@@ -424,7 +424,10 @@ class BeamOrientationWarning(UserWarning):
     factors or a generalized section) without ``cross_section["orientation"]``
     on members within about 18 degrees of global Y.  There the default rule
     switches local y from global Y to global Z, so the section is turned by
-    90 degrees relative to neighbouring members of a curved line.
+    90 degrees relative to neighbouring members of a curved line.  An
+    ``orientation`` (nearly) parallel to the member axis does not define the
+    frame and is treated as absent.  Material orthotropy (unequal transverse
+    shear moduli) is not inspected here.
     """
 
 
@@ -433,10 +436,14 @@ _DEFAULT_AXIS_SWITCH_COSINE = 0.95
 
 def _warn_default_beam_axis_switch(element: Any, e1: np.ndarray) -> None:
     """Warn when the default local-axis rule switches for an asymmetric section."""
-    if element._orientation is not None:
-        return
     if abs(float(e1[1])) <= _DEFAULT_AXIS_SWITCH_COSINE:
         return
+    orientation = element._orientation
+    if orientation is not None:
+        # Same test as _beam_rotation_matrix: a usable orientation defines the frame.
+        projected = orientation - np.dot(orientation, e1) * e1
+        if float(np.linalg.norm(projected)) > 1.0e-6 * float(np.linalg.norm(orientation)):
+            return
     asymmetric = (
         getattr(element, "generalized_section", None) is not None
         or float(element._Iy) != float(element._Iz)
