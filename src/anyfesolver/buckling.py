@@ -667,7 +667,10 @@ def _solve_eigenvalue_buckling_under_lease(
     :func:`anyfesolver.matrix_assembly.assemble_geometric_stiffness_matrix`.
     Beam elements accept axial reference compression and shell elements accept
     membrane resultant prestress (compression positive, or tension-positive
-    ``membrane_forces``).
+    ``membrane_forces``).  For reference-state buckling the prestress comes
+    only from ``element_states`` (``reference_displacements`` feed only the
+    follower-load tangent); to buckle under a static solution, pass
+    ``element_states=recover_prestress_from_static_result(model, u)[0]``.
 
     When ``reference_load_case`` carries follower pressure, its exact
     current-area external-load stiffness is added to the destabilizing
@@ -1357,6 +1360,13 @@ def _solve_eigenvalue_buckling_under_lease(
         return BucklingResult([], num_modes, "empty_reduced_system", constraint_info, assembly_info, result_case, diagnostics)
     if KG_red.nnz == 0:
         diagnostics = {"status": "zero_geometric_stiffness"}
+        if element_states is None and not current_state:
+            diagnostics["hint"] = (
+                "no prestress was supplied: reference_load_case and "
+                "reference_displacements only define the follower-load "
+                "tangent; pass element_states, e.g. "
+                "recover_prestress_from_static_result(model, displacements)[0]"
+            )
         result_case = make_result_case(
             name="linear_buckling",
             analysis_type="linear_buckling",
@@ -2075,7 +2085,14 @@ def solve_eigenvalue_buckling(
     current_state_num_layers: int = 5,
     current_state_load_scale: float = 1.0,
 ) -> BucklingResult:
-    """Solve buckling under one non-renewable qualified-family lease."""
+    """Solve buckling under one non-renewable qualified-family lease.
+
+    For reference-state buckling the prestress comes only from
+    ``element_states``; ``reference_load_case`` and
+    ``reference_displacements`` feed only the follower-load tangent.  To
+    buckle under a linear static solution ``u`` pass
+    ``element_states=recover_prestress_from_static_result(model, u)[0]``.
+    """
 
     exact_guard = _EXACT_QUALIFIED_COMPONENT_LIFECYCLE_GUARD
     run_under_lease = _run_with_qualified_assembly_runtime_lease
