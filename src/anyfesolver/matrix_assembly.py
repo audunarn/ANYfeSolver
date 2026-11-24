@@ -6586,6 +6586,10 @@ def _qualified_s3_pressure_surface_records(
                     _qualified_s3_pressure_surface_record(raw_element_id, offset)
                 )
                 continue
+        # The guarded route below may run caller code (``__int__``, a
+        # provider, a descriptor) that changes what the mapping read above
+        # would mean; the remaining records keep the guarded route.
+        v2d_elements = None
         element_id = int(raw_element_id)
         element = model.mesh.get_element(element_id)
         if element is None:

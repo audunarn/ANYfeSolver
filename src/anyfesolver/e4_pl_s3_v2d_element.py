@@ -98,17 +98,17 @@ _ABC_SUBCLASSCHECK = ABCMeta.__dict__["__subclasscheck__"]
 def _require_v2d_mixed_shell_scope(elements: Mapping[Any, Any]) -> None:
     """Refuse a mesh holding any shell outside exact V2D, V2C and qualified Q4.
 
-    Equivalent to testing ``isinstance(element, ShellElement) and type(element)
-    not in allowed`` for every element, but the per-element work is a C-level
-    type census; the ``isinstance`` question is then answered once per
-    distinct class with ``issubclass``.  That is the same answer whenever
-    every class keeps ``object``'s own ``__class__`` descriptor (an instance's
-    ``__class__`` is then its type), ``ShellElement`` keeps the unpatched
-    ``ABCMeta`` checks and the mapping's values are read with ``dict.values``;
-    otherwise the element-by-element test runs instead.
-    Called on every V2D geometry evaluation, so it must stay cheap: the old
-    element-by-element ``isinstance`` scan made stress recovery quadratic in
-    mesh size with a large constant.
+    The reference test is ``isinstance(element, ShellElement) and type(element)
+    not in allowed`` for every element.  It runs on every V2D geometry
+    evaluation, and element by element it made stress recovery quadratic in
+    mesh size with a large constant.  A shortcut answers instead only when
+    every element's class belongs to a closed set of this package's own
+    element classes whose attribute machinery (MRO, ``__getattribute__``,
+    ``__getattr__``, ``__class__``) is unchanged since import, ``ShellElement``
+    keeps the unpatched ``ABCMeta`` checks and the mapping is read with
+    ``dict.values``.  For those classes ``isinstance`` equals ``issubclass``
+    of the class, decided once per class from a C-level type census.  Any
+    other class or machinery takes the element-by-element reference test.
     """
 
     allowed = (
@@ -116,29 +116,8 @@ def _require_v2d_mixed_shell_scope(elements: Mapping[Any, Any]) -> None:
         StrictFlatLinearE4PLS3V2CShellElement,
         QualifiedE4PLShellElement,
     )
-    abc_namespace = type.__getattribute__(ABCMeta, "__dict__")
-    mapping_kind = type(elements)
-    if mapping_kind is dict:
-        values_are_builtin = True
-    elif mapping_kind is _QualifiedStateMapping:
-        # ``values`` is a non-data method: an instance attribute would shadow it.
-        values_are_builtin = (
-            _class_attribute_owner(mapping_kind, "values") is dict
-            and "values" not in object.__getattribute__(elements, "__dict__")
-        )
-    else:
-        values_are_builtin = False
-    census_is_exact = values_are_builtin and (
-        type(ShellElement) is ABCMeta
-        and abc_namespace.get("__instancecheck__") is _ABC_INSTANCECHECK
-        and abc_namespace.get("__subclasscheck__") is _ABC_SUBCLASSCHECK
-    )
-    if census_is_exact:
-        census = set(map(type, dict.values(elements)))
-        census_is_exact = all(
-            _class_attribute_owner(kind, "__class__") is object for kind in census
-        )
-    if not census_is_exact:
+    census = _owned_scope_census(elements)
+    if census is None:
         if any(
             isinstance(element, ShellElement) and type(element) not in allowed
             for element in elements.values()
@@ -147,13 +126,68 @@ def _require_v2d_mixed_shell_scope(elements: Mapping[Any, Any]) -> None:
                 "S3 V2D mixed shell scope admits only exact V2D, accepted V2C and qualified Q4"
             )
         return
-    if not any(
-        kind not in allowed and issubclass(kind, ShellElement) for kind in census
-    ):
-        return
-    raise NativeParityCapabilityError(
-        "S3 V2D mixed shell scope admits only exact V2D, accepted V2C and qualified Q4"
+    if any(kind not in allowed and issubclass(kind, ShellElement) for kind in census):
+        raise NativeParityCapabilityError(
+            "S3 V2D mixed shell scope admits only exact V2D, accepted V2C and qualified Q4"
+        )
+
+
+def _scope_class_machinery(kind: type) -> Tuple[Any, ...]:
+    """The attribute-lookup facts of *kind* that ``isinstance`` depends on."""
+
+    def resolved(name: str) -> Any:
+        for base in type.__getattribute__(kind, "__mro__"):
+            namespace = type.__getattribute__(base, "__dict__")
+            if name in namespace:
+                return namespace[name]
+        return None
+
+    return (
+        type.__getattribute__(kind, "__mro__"),
+        resolved("__getattribute__"),
+        resolved("__getattr__"),
+        resolved("__class__"),
     )
+
+
+_SCOPE_CENSUS_SNAPSHOT: Optional[Dict[type, Tuple[Any, ...]]] = None
+
+
+def _owned_scope_census(elements: Any) -> Optional[set]:
+    """Distinct element classes when the shortcut applies, else ``None``.
+
+    Nothing here executes code outside this package.
+    """
+
+    snapshot = _SCOPE_CENSUS_SNAPSHOT
+    if snapshot is None:
+        return None
+    mapping_kind = type(elements)
+    if mapping_kind is _QualifiedStateMapping:
+        # ``values`` is a non-data method: an instance attribute would shadow it.
+        if (
+            _class_attribute_owner(mapping_kind, "values") is not dict
+            or "values" in object.__getattribute__(elements, "__dict__")
+        ):
+            return None
+    elif mapping_kind is not dict:
+        return None
+    abc_namespace = type.__getattribute__(ABCMeta, "__dict__")
+    if (
+        type(ShellElement) is not ABCMeta
+        or abc_namespace.get("__instancecheck__") is not _ABC_INSTANCECHECK
+        or abc_namespace.get("__subclasscheck__") is not _ABC_SUBCLASSCHECK
+    ):
+        return None
+    census = set(map(type, dict.values(elements)))
+    for kind in census:
+        expected = snapshot.get(kind)
+        if expected is None:
+            return None
+        current = _scope_class_machinery(kind)
+        if any(now is not then for now, then in zip(current, expected)):
+            return None
+    return census
 
 
 def _class_attribute_owner(kind: type, name: str) -> Any:
@@ -2700,3 +2734,21 @@ __all__ = [
     "SUPPORTED_OPERATIONS",
     "V2C_OPERATOR_SHA256",
 ]
+
+
+def _capture_scope_census_snapshot() -> Dict[type, Tuple[Any, ...]]:
+    from .elements import BeamElement, QuadraticBeamElement
+
+    return {
+        kind: _scope_class_machinery(kind)
+        for kind in (
+            NativeParityE4PLS3V2DShellElement,
+            StrictFlatLinearE4PLS3V2CShellElement,
+            QualifiedE4PLShellElement,
+            BeamElement,
+            QuadraticBeamElement,
+        )
+    }
+
+
+_SCOPE_CENSUS_SNAPSHOT = _capture_scope_census_snapshot()

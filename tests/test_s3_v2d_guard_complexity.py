@@ -357,3 +357,95 @@ def test_provider_change_from_a_displacement_callback_is_refused():
         compute_stresses(model, _Displacements())
     assert calls["material"] <= 1, calls
     assert "authority" in str(caught.value), caught.value
+
+
+# --- review round 3 (Codex, 2026-11-24) -------------------------------------
+
+
+def test_scope_shortcut_defers_to_isinstance_for_a_faked_class():
+    from anyfesolver.e4_pl_s3_v2d_element import _require_v2d_mixed_shell_scope
+
+    class _FakingBeam(BeamElement):
+        def __getattribute__(self, name):
+            if name == "__class__":
+                return _LegacyShell
+            return object.__getattribute__(self, name)
+
+    model, v2d, beam = _v2d_with_beam()
+    beam.__class__ = _FakingBeam
+    assert isinstance(beam, ShellElement)
+    with pytest.raises(NativeParityCapabilityError, match="mixed shell scope"):
+        _require_v2d_mixed_shell_scope(model.mesh.elements)
+
+
+def test_scope_shortcut_defers_when_owned_class_machinery_changed(monkeypatch):
+    from anyfesolver.e4_pl_s3_v2d_element import _require_v2d_mixed_shell_scope
+
+    model, v2d, beam = _v2d_with_beam()
+
+    def faking(self, name):
+        if name == "__class__":
+            return _LegacyShell
+        return object.__getattribute__(self, name)
+
+    monkeypatch.setattr(BeamElement, "__getattribute__", faking, raising=False)
+    assert isinstance(beam, ShellElement)
+    with pytest.raises(NativeParityCapabilityError, match="mixed shell scope"):
+        _require_v2d_mixed_shell_scope(model.mesh.elements)
+
+
+def test_pressure_records_drop_the_fast_path_after_caller_code(monkeypatch):
+    import anyfesolver.matrix_assembly as matrix_assembly
+    from anyfesolver.matrix_assembly import _run_with_qualified_assembly_runtime_lease
+
+    model, element_ids = _triangle_plate(2)
+    mesh = model.mesh
+    hidden = element_ids[-1]
+
+    class _InstallingId:
+        def __int__(self):
+            original = FEMeshGetElement
+            mesh.get_element = lambda element_id: (
+                None if element_id == hidden else original(mesh, element_id)
+            )
+            return 10_000
+
+    class _RestoringId:
+        def __int__(self):
+            mesh.__dict__.pop("get_element", None)
+            return 10_001
+
+    from anyfesolver.fe_core import FEMesh
+
+    FEMeshGetElement = FEMesh.get_element
+    case = LoadCase("pressure")
+    case.pressure_loads = {element_ids[0]: 1.0, _InstallingId(): 1.0, hidden: 1.0, _RestoringId(): 1.0}
+
+    def records():
+        return _run_with_qualified_assembly_runtime_lease(
+            model,
+            context="test pressure-surface records",
+            operation=lambda lease: matrix_assembly._qualified_s3_pressure_surface_records(
+                model,
+                case,
+                qualified_runtime_guard=lambda m, *, context: lease(m, context=context),
+            ),
+        )
+
+    try:
+        fast = records()
+    except Exception as exc:  # the guarded route may refuse the provider change
+        fast = exc
+    monkeypatch.setattr(
+        matrix_assembly, "_foreign_code_free_v2d_element_mapping", lambda model: None
+    )
+    mesh.__dict__.pop("get_element", None)
+    try:
+        guarded = records()
+    except Exception as exc:
+        guarded = exc
+    if isinstance(guarded, Exception):
+        assert type(fast) is type(guarded) and str(fast) == str(guarded)
+    else:
+        assert fast == guarded
+        assert hidden not in [record["element_id"] for record in fast]
