@@ -1,0 +1,369 @@
+{
+  "scope": "development reference control study; not engineering acceptance",
+  "scaled_component_order": [
+    "e",
+    "w",
+    "ve",
+    "vw",
+    "p",
+    "alpha"
+  ],
+  "scales": [
+    1e-08,
+    0.001,
+    1e-05,
+    1.0,
+    1e-08,
+    1e-08
+  ],
+  "times": [
+    0.0,
+    3e-05,
+    6e-05,
+    9e-05,
+    0.00012,
+    0.00015000000000000001,
+    0.00018,
+    0.00021,
+    0.00024,
+    0.00027,
+    0.00030000000000000003,
+    0.00033,
+    0.00036,
+    0.00039,
+    0.00042,
+    0.00045,
+    0.00048,
+    0.00051,
+    0.00054,
+    0.00057,
+    0.0006000000000000001,
+    0.00063,
+    0.00066,
+    0.00069,
+    0.00072,
+    0.00075,
+    0.00078,
+    0.0008100000000000001,
+    0.00084,
+    0.00087,
+    0.0009,
+    0.00093,
+    0.00096,
+    0.00099,
+    0.00102,
+    0.00105,
+    0.00108,
+    0.00111,
+    0.00114,
+    0.00117,
+    0.0012000000000000001,
+    0.00123,
+    0.00126,
+    0.0012900000000000001,
+    0.00132,
+    0.00135,
+    0.00138,
+    0.00141,
+    0.00144,
+    0.00147,
+    0.0015,
+    0.0015300000000000001,
+    0.00156,
+    0.00159,
+    0.0016200000000000001,
+    0.00165,
+    0.00168,
+    0.0017100000000000001,
+    0.00174,
+    0.00177,
+    0.0018,
+    0.00183,
+    0.00186,
+    0.00189,
+    0.00192,
+    0.0019500000000000001,
+    0.00198,
+    0.00201,
+    0.00204,
+    0.0020700000000000002,
+    0.0021,
+    0.00213,
+    0.00216,
+    0.00219,
+    0.00222,
+    0.0022500000000000003,
+    0.00228,
+    0.00231,
+    0.00234,
+    0.00237,
+    0.0024000000000000002,
+    0.00243,
+    0.00246,
+    0.00249,
+    0.00252,
+    0.00255,
+    0.0025800000000000003,
+    0.00261,
+    0.00264,
+    0.00267,
+    0.0027,
+    0.0027300000000000002,
+    0.00276,
+    0.00279,
+    0.00282,
+    0.00285,
+    0.00288,
+    0.0029100000000000003,
+    0.00294,
+    0.00297,
+    0.003
+  ],
+  "errors": {
+    "tighter_exponential_scaled_maxima": [
+      2.9977025398921723e-13,
+      2.5088438271314573e-13,
+      1.7762280903922676e-13,
+      1.1485257189747244e-13,
+      6.753102520882918e-13,
+      7.985601633586929e-13
+    ],
+    "independent_dop853_scaled_maxima": [
+      1.5153948821971467e-13,
+      1.0408340855860843e-14,
+      1.0443916239645522e-13,
+      1.3988810110276972e-14,
+      1.4823076576950256e-13,
+      1.376428539288238e-13
+    ]
+  },
+  "methods": {
+    "ordinary": {
+      "method": "exponential",
+      "maximum_step": 1e-06,
+      "relative_tolerance": 2e-12,
+      "dimensionless_absolute_tolerance": 2e-14,
+      "state_scales": [
+        1e-08,
+        0.001,
+        1e-05,
+        1.0,
+        1e-08,
+        1e-08
+      ],
+      "event_time_tolerance": 1e-14,
+      "maximum_intervals": 20000,
+      "maximum_event_iterations": 80,
+      "branch_gap_tolerance_m": 1e-14,
+      "branch_stress_tolerance_pa": 1e-10,
+      "branch_velocity_tolerance_per_s": 1e-16,
+      "intervals": 3043,
+      "exponential_evaluations": 3183,
+      "ode_function_evaluations": 0,
+      "event_iterations": 135,
+      "enclosure_halvings": 0,
+      "zero_duration_events": 0,
+      "maximum_gap_enclosure_allowance": 2.4472247584730834e-17,
+      "maximum_stress_enclosure_allowance": 1.480489231046793e-13,
+      "maximum_velocity_enclosure_allowance": 9.465525723504759e-18,
+      "maximum_yield_event_residual_pa": 2.1757734502969583e-12,
+      "maximum_contact_event_gap_residual_m": 1.6749839362728558e-15,
+      "maximum_unloading_event_velocity_residual_per_s": 0.0,
+      "maximum_grouped_event_residual_ratio": 0.16739644514562566,
+      "output_phase_convention": "incoming phase may persist at a boundary within branch tolerance",
+      "scope": "development reference, not accepted; pure-deviatoric uniform membrane, two normalized pressure groups, perfect plateau alpha<.005; no physical-corner penetration or generalized shell certificate",
+      "elapsed_seconds": 1.8405591000337154,
+      "maximum_energy_balance_error_j": 7.617018127348274e-12,
+      "initial_energy_j": 250.0,
+      "maximum_alpha": 1.4124219992477191e-08,
+      "event_count": 5
+    },
+    "tighter": {
+      "method": "exponential",
+      "maximum_step": 5e-07,
+      "relative_tolerance": 2e-12,
+      "dimensionless_absolute_tolerance": 2e-14,
+      "state_scales": [
+        1e-08,
+        0.001,
+        1e-05,
+        1.0,
+        1e-08,
+        1e-08
+      ],
+      "event_time_tolerance": 2e-15,
+      "maximum_intervals": 20000,
+      "maximum_event_iterations": 80,
+      "branch_gap_tolerance_m": 1e-14,
+      "branch_stress_tolerance_pa": 1e-10,
+      "branch_velocity_tolerance_per_s": 1e-16,
+      "intervals": 6022,
+      "exponential_evaluations": 6167,
+      "ode_function_evaluations": 0,
+      "event_iterations": 140,
+      "enclosure_halvings": 0,
+      "zero_duration_events": 0,
+      "maximum_gap_enclosure_allowance": 2.4185843279756278e-17,
+      "maximum_stress_enclosure_allowance": 8.669009095370483e-14,
+      "maximum_velocity_enclosure_allowance": 5.5149079276886034e-18,
+      "maximum_yield_event_residual_pa": 7.011058400507864e-13,
+      "maximum_contact_event_gap_residual_m": 7.384500996798771e-16,
+      "maximum_unloading_event_velocity_residual_per_s": 0.0,
+      "maximum_grouped_event_residual_ratio": 0.07380747080031115,
+      "output_phase_convention": "incoming phase may persist at a boundary within branch tolerance",
+      "scope": "development reference, not accepted; pure-deviatoric uniform membrane, two normalized pressure groups, perfect plateau alpha<.005; no physical-corner penetration or generalized shell certificate",
+      "elapsed_seconds": 3.6859418000094593,
+      "maximum_energy_balance_error_j": 6.73594513500575e-12,
+      "initial_energy_j": 250.0,
+      "maximum_alpha": 1.4124219992469206e-08,
+      "event_count": 5
+    },
+    "independent": {
+      "method": "dop853",
+      "maximum_step": 1e-06,
+      "relative_tolerance": 2e-13,
+      "dimensionless_absolute_tolerance": 2e-15,
+      "state_scales": [
+        1e-08,
+        0.001,
+        1e-05,
+        1.0,
+        1e-08,
+        1e-08
+      ],
+      "event_time_tolerance": 1e-14,
+      "maximum_intervals": 20000,
+      "maximum_event_iterations": 80,
+      "branch_gap_tolerance_m": 1e-14,
+      "branch_stress_tolerance_pa": 1e-10,
+      "branch_velocity_tolerance_per_s": 1e-16,
+      "intervals": 3043,
+      "exponential_evaluations": 0,
+      "ode_function_evaluations": 44562,
+      "event_iterations": 135,
+      "enclosure_halvings": 0,
+      "zero_duration_events": 0,
+      "maximum_gap_enclosure_allowance": 2.447224758472997e-17,
+      "maximum_stress_enclosure_allowance": 1.4804892310467933e-13,
+      "maximum_velocity_enclosure_allowance": 9.465525723504759e-18,
+      "maximum_yield_event_residual_pa": 2.1765228508385803e-12,
+      "maximum_contact_event_gap_residual_m": 1.6749839362728558e-15,
+      "maximum_unloading_event_velocity_residual_per_s": 0.0,
+      "maximum_grouped_event_residual_ratio": 0.16739644514562566,
+      "output_phase_convention": "incoming phase may persist at a boundary within branch tolerance",
+      "scope": "development reference, not accepted; pure-deviatoric uniform membrane, two normalized pressure groups, perfect plateau alpha<.005; no physical-corner penetration or generalized shell certificate",
+      "elapsed_seconds": 3.1597257999237627,
+      "maximum_energy_balance_error_j": 9.379164112033322e-13,
+      "initial_energy_j": 250.0,
+      "maximum_alpha": 1.4124219992475815e-08,
+      "event_count": 5
+    }
+  },
+  "events": {
+    "ordinary": [
+      {
+        "time": 0.0007966666666679088,
+        "kind": "contact_closure",
+        "indices": [
+          0
+        ]
+      },
+      {
+        "time": 0.0008033532461375004,
+        "kind": "contact_closure",
+        "indices": [
+          1
+        ]
+      },
+      {
+        "time": 0.0008750242100246251,
+        "kind": "yield_negative",
+        "indices": []
+      },
+      {
+        "time": 0.0009077187739871444,
+        "kind": "contact_release",
+        "indices": [
+          1
+        ]
+      },
+      {
+        "time": 0.000914405353456736,
+        "kind": "contact_release",
+        "indices": [
+          0
+        ]
+      }
+    ],
+    "tighter": [
+      {
+        "time": 0.0007966666666669757,
+        "kind": "contact_closure",
+        "indices": [
+          0
+        ]
+      },
+      {
+        "time": 0.0008033532461374978,
+        "kind": "contact_closure",
+        "indices": [
+          1
+        ]
+      },
+      {
+        "time": 0.0008750242100255559,
+        "kind": "yield_negative",
+        "indices": []
+      },
+      {
+        "time": 0.0009077187739880749,
+        "kind": "contact_release",
+        "indices": [
+          1
+        ]
+      },
+      {
+        "time": 0.0009144053534567343,
+        "kind": "contact_release",
+        "indices": [
+          0
+        ]
+      }
+    ],
+    "independent": [
+      {
+        "time": 0.0007966666666679088,
+        "kind": "contact_closure",
+        "indices": [
+          0
+        ]
+      },
+      {
+        "time": 0.0008033532461375004,
+        "kind": "contact_closure",
+        "indices": [
+          1
+        ]
+      },
+      {
+        "time": 0.0008750242100246251,
+        "kind": "yield_negative",
+        "indices": []
+      },
+      {
+        "time": 0.0009077187739871444,
+        "kind": "contact_release",
+        "indices": [
+          1
+        ]
+      },
+      {
+        "time": 0.000914405353456736,
+        "kind": "contact_release",
+        "indices": [
+          0
+        ]
+      }
+    ]
+  }
+}

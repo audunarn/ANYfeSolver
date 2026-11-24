@@ -68,8 +68,17 @@ def test_whole_driven_edge_clamp_and_imperfect_branch(solved):
     constrained=fixed+driven;free=np.setdiff1d(np.arange(len(p)),constrained)
     assert np.linalg.norm(p[free])/max(np.linalg.norm(p[constrained]),1.)<=1e-6
 
-def test_adaptive_cutback_keeps_only_accepted_edge_states(solved):
-    m,r=solved
+@pytest.fixture(scope='module')
+def cutback():
+    # max_iterations=8 forces nonconvergence cutbacks on this path.  With the
+    # 2026-11-24 warped-Q4 drilling floor the max_iterations=25 path of
+    # `solved` converges without any cutback (base: 1 cutback, 19 steps).
+    m=fixture.plate(.01,True)
+    r=solve_static_nonlinear(m,None,num_steps=4,max_iterations=8,kinematics='corotational',corotational_tangent='work_conjugate',record_increment_snapshots=True)
+    return m,r
+
+def test_adaptive_cutback_keeps_only_accepted_edge_states(cutback):
+    m,r=cutback
     failed=[v for v in r.info['convergence_adaptation'] if v['action']=='cutback_after_nonconvergence']
     assert failed and r.info['total_newton_iterations']>sum(s.iterations for s in r.steps)
     assert len(r.snapshots)==len(r.steps)
