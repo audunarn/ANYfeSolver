@@ -365,6 +365,7 @@ class PardisoPerturbedPivotError(RuntimeError):
     def __init__(self, count: Optional[int], *, phase: int, detail: str = "") -> None:
         self.count = count
         self.phase = int(phase)
+        self.detail = str(detail)
         message = (
             f"{PARDISO_PERTURBED_PIVOTS}: PARDISO phase {int(phase)} "
             + (
@@ -402,7 +403,21 @@ def _pardiso_numeric_factorize(solver: Any, prepared: sparse.csr_matrix, phase: 
 
     solver.set_phase(int(phase))
     _count_numeric_operation("pardiso_factorization_attempts")
-    solver._call_pardiso(prepared, np.zeros((prepared.shape[0], 1)))
+    try:
+        solver._call_pardiso(prepared, np.zeros((prepared.shape[0], 1)))
+    except Exception as exc:
+        # A native error does not hide a perturbation report: a positive or
+        # unreadable count after a raised call is a perturbation failure (no
+        # retry, no mtype advance).  Only a verified zero count lets the
+        # original error propagate, so that a caller may retry or advance.
+        count, detail = _pardiso_perturbed_pivot_count(solver)
+        if count is None or count > 0:
+            raise PardisoPerturbedPivotError(
+                count,
+                phase=int(phase),
+                detail=f"{detail}; after native error {type(exc).__name__}: {exc}",
+            ) from exc
+        raise
     count, detail = _pardiso_perturbed_pivot_count(solver)
     if count is None or count > 0:
         raise PardisoPerturbedPivotError(count, phase=int(phase), detail=detail)
@@ -457,6 +472,18 @@ class _PardisoFactorization:
     evicted), the handle transparently refactorizes its own matrix into a
     private solver whose MKL memory is released by a finalizer when the handle
     is garbage collected.
+
+    A failed private rebuild (perturbed pivots, an unreadable pivot report or
+    any other PARDISO error) fails the handle permanently, for the auto and
+    the forced policy alike: there is no solve-time fallback to another
+    backend.  The rejection is recorded inside the process lock before it is
+    released; every later or concurrent solve checks it inside the lock before
+    any rebuild and raises the same typed error, so no second rebuild runs
+    and no PARDISO result is returned after a rejection.  The owning handle
+    reports ``status "failed"`` with ``pardiso_failure_stage
+    "stale_rebuild"``.  The rejection keeps no reference to the triggering
+    right-hand side.  Fresh factorizations keep their factorization-time
+    policy (auto: SuperLU fallback; forced: typed failure).
     """
 
     def __init__(self, slot: _PardisoPatternSlot, prepared: sparse.csr_matrix, mtype: int):
@@ -466,27 +493,46 @@ class _PardisoFactorization:
         self._mtype = int(mtype)
         self._private_solver: Any = None
         self.stale_rebuild_count = 0
-        # The exception of a failed stale-handle rebuild (solve time), if any.
-        self.rebuild_failure: Optional[BaseException] = None
+        # Data (not the exception: no traceback, no RHS) of a rejected
+        # stale-handle rebuild: (perturbed, count, phase, detail, reason).
+        self._rejection: Optional[Tuple[bool, Optional[int], int, str, str]] = None
         self._handle_ref: Optional["weakref.ReferenceType[FactorizationHandle]"] = None
 
-    def _mark_handle_failed(self, exc: BaseException) -> None:
-        """Report a failed solve-time rebuild truthfully on the owning handle."""
+    def _rejection_error(self) -> BaseException:
+        perturbed, count, phase, detail, reason = self._rejection  # type: ignore[misc]
+        if perturbed:
+            return PardisoPerturbedPivotError(count, phase=phase, detail=detail)
+        return RuntimeError(reason)
 
+    def _reject(self, exc: BaseException) -> None:
+        """Fail the handle permanently after a failed stale rebuild (lock held)."""
+
+        perturbed = isinstance(exc, PardisoPerturbedPivotError)
+        reason = str(exc) if perturbed else f"pypardiso stale-handle rebuild failed: {exc}"
+        count = exc.count if perturbed else None
+        self._rejection = (
+            perturbed,
+            count,
+            int(getattr(exc, "phase", 12)),
+            str(getattr(exc, "detail", "")),
+            reason,
+        )
         handle = self._handle_ref() if self._handle_ref is not None else None
         if handle is None:
             return
-        perturbed = isinstance(exc, PardisoPerturbedPivotError)
         handle.status = "failed"
-        handle.failure_reason = (
-            str(exc) if perturbed else f"pypardiso stale-handle rebuild failed: {exc}"
-        )
+        handle.failure_reason = reason
         handle.metadata["pardiso_failure_kind"] = (
             PARDISO_PERTURBED_PIVOTS if perturbed else "pardiso_error"
         )
         handle.metadata["pardiso_failure_stage"] = "stale_rebuild"
         if perturbed:
-            handle.metadata["pardiso_perturbed_pivots"] = {str(self._mtype): exc.count}
+            key = str(self._mtype)
+            handle.metadata["pardiso_perturbed_pivots"] = {
+                key: _reported_pivot_count(self._mtype, count)
+            }
+            if self._mtype not in _PARDISO_PIVOT_COUNT_DOCUMENTED_MTYPES and count is not None:
+                handle.metadata["pardiso_iparm13_raw"] = {key: count}
 
     @_serialized_pypardiso_call
     def _active_solver(self) -> Any:
@@ -510,13 +556,14 @@ class _PardisoFactorization:
 
     @_serialized_pypardiso_call
     def solve(self, rhs: np.ndarray) -> np.ndarray:
+        # Inside the process lock: a solve admitted before a concurrent
+        # rejection sees it here and never rebuilds again.
+        if self._rejection is not None:
+            raise self._rejection_error()
         try:
             solver = self._active_solver()
         except Exception as exc:
-            # A failed (e.g. perturbed) rebuild is never retried here: the
-            # handle is marked failed, and the auto policy decides on fallback.
-            self.rebuild_failure = exc
-            self._mark_handle_failed(exc)
+            self._reject(exc)
             raise
         b = solver._check_b(self._matrix, np.asarray(rhs, dtype=np.float64))
         solver.set_phase(33)
@@ -687,6 +734,7 @@ class PyPardisoSolverBackend:
         # Perturbed-pivot count (iparm[13]) per attempted mtype; None =
         # unreadable, PARDISO_PIVOT_COUNT_UNSUPPORTED = not documented (mtype 2).
         perturbed_pivots: Dict[str, Any] = {}
+        raw_iparm13: Dict[str, int] = {}
         if csr is not None:
             for mtype in _pardiso_mtype_candidates(matrix_class):
                 try:
@@ -700,7 +748,13 @@ class PyPardisoSolverBackend:
                     # matrix, not of an unsuitable mtype: a later mtype can
                     # factorize the same matrix through a rounding-level pivot
                     # without reporting it.  Stop and fail this backend.
-                    perturbed_pivots[str(int(mtype))] = exc.count
+                    perturbed_pivots[str(int(mtype))] = _reported_pivot_count(mtype, exc.count)
+                    if (
+                        int(mtype) not in _PARDISO_PIVOT_COUNT_DOCUMENTED_MTYPES
+                        and exc.count is not None
+                    ):
+                        # Refused fail closed, but not a documented count.
+                        raw_iparm13[str(int(mtype))] = exc.count
                     failure_reasons.append(f"mtype={mtype}: {exc}")
                     break
                 except Exception as exc:
@@ -725,6 +779,8 @@ class PyPardisoSolverBackend:
                 PARDISO_PERTURBED_PIVOTS if rejected_perturbed else "pardiso_error"
             )
             failed.metadata["pardiso_perturbed_pivots"] = dict(perturbed_pivots)
+            if raw_iparm13:
+                failed.metadata["pardiso_iparm13_raw"] = dict(raw_iparm13)
             return failed
         handle = FactorizationHandle(
             matrix_shape=tuple(int(v) for v in matrix.shape),
@@ -888,16 +944,8 @@ class AutoSparseSolverBackend:
             handle.metadata.setdefault(key, value)
         handle.metadata.setdefault("pypardiso_initialized", bool(self.pardiso_backend.initialized))
         if handle.status == "ok":
-            # A stale handle may rebuild its factorization at solve time; that
-            # rebuild gets the same fallback policy as this factorization.
-            handle._solver = _AutoPardisoSolveGuard(
-                handle,
-                handle._solver,
-                matrix,
-                scipy_backend=self.scipy_backend,
-                forced=selection_policy == "pypardiso_forced",
-                options=options_dict,
-            )
+            # A stale handle whose solve-time rebuild fails is failed
+            # permanently (no solve-time fallback; see _PardisoFactorization).
             return handle
         failure_kind = handle.metadata.get("pardiso_failure_kind")
         if selection_policy == "pypardiso_forced" and failure_kind == PARDISO_PERTURBED_PIVOTS:
@@ -920,87 +968,6 @@ class AutoSparseSolverBackend:
                 handle.metadata["pardiso_perturbed_pivots"]
             )
         return fallback
-
-
-class _AutoPardisoSolveGuard:
-    """Auto-policy solve wrapper for a PARDISO handle.
-
-    If the PARDISO handle's solve-time stale rebuild fails (including perturbed
-    pivots), the auto policy applies the factorization-time rule: SuperLU
-    factorizes the original matrix and the handle is relabelled truthfully
-    (``scipy_after_pypardiso_failure``, ``fallback_failure_stage
-    "stale_rebuild"``); if SuperLU also fails the handle is marked failed and
-    the solve raises.  A forced PARDISO handle never falls back on perturbed
-    pivots: it stays failed with the typed status.  Holds a reference to the
-    caller's matrix (no copy); factorized matrices must not be mutated.
-    """
-
-    def __init__(
-        self,
-        handle: FactorizationHandle,
-        pardiso_solver: Any,
-        matrix: sparse.spmatrix,
-        *,
-        scipy_backend: SparseSolverBackend,
-        forced: bool,
-        options: Mapping[str, Any],
-    ) -> None:
-        self._handle_ref = weakref.ref(handle)
-        self._pardiso = pardiso_solver
-        self._matrix = matrix
-        self._scipy_backend = scipy_backend
-        self._forced = bool(forced)
-        self._options = dict(options)
-        self._fallback_solver: Any = None
-
-    @property
-    def stale_rebuild_count(self) -> int:
-        return int(getattr(self._pardiso, "stale_rebuild_count", 0))
-
-    def solve(self, rhs: np.ndarray) -> np.ndarray:
-        if self._fallback_solver is not None:
-            return self._fallback_solver.solve(rhs)
-        try:
-            return self._pardiso.solve(rhs)
-        except Exception as exc:
-            if getattr(self._pardiso, "rebuild_failure", None) is not exc:
-                raise
-            if self._forced and isinstance(exc, PardisoPerturbedPivotError):
-                raise
-            return self._fall_back(exc).solve(rhs)
-
-    def _fall_back(self, exc: BaseException) -> Any:
-        handle = self._handle_ref()
-        if handle is None:
-            raise exc
-        fallback = self._scipy_backend.factorize(
-            self._matrix, handle.matrix_class, signature=handle.signature, options=self._options
-        )
-        metadata = handle.metadata
-        kind = metadata.pop("pardiso_failure_kind", "pardiso_error")
-        metadata.pop("pardiso_failure_stage", None)
-        perturbed = metadata.pop("pardiso_perturbed_pivots", None)
-        metadata["auto_backend_policy"] = "scipy_after_pypardiso_failure"
-        metadata["fallback_from_backend"] = handle.backend_name
-        metadata["fallback_failure_reason"] = handle.failure_reason
-        metadata["fallback_failure_kind"] = kind
-        metadata["fallback_failure_stage"] = "stale_rebuild"
-        if perturbed is not None:
-            metadata["fallback_pardiso_perturbed_pivots"] = dict(perturbed)
-        handle.backend_name = fallback.backend_name
-        handle.ordering = fallback.ordering
-        handle.factorization_count += 1
-        handle.factorization_time += fallback.factorization_time
-        if fallback.status != "ok" or fallback._solver is None:
-            handle.status = "failed"
-            handle.failure_reason = fallback.failure_reason
-            raise RuntimeError(
-                f"Cannot solve with failed factorization: {fallback.failure_reason}"
-            ) from exc
-        handle.status = "ok"
-        handle.failure_reason = None
-        self._fallback_solver = fallback._solver
-        return self._fallback_solver
 
 
 # One size-aware policy in every environment (it falls back to SuperLU without
@@ -1073,6 +1040,12 @@ class FactorizationCache:
     ) -> FactorizationHandle:
         cache_key = self.key(matrix, matrix_class, signature=signature, options=options)
         with self._lock:
+            cached = self._handles.get(cache_key)
+            if cached is not None and (cached.status != "ok" or cached._solver is None):
+                # Failed after insertion (e.g. a rejected stale rebuild):
+                # evict it, count the failure and factorize afresh (a miss).
+                self._handles.pop(cache_key, None)
+                self.factorization_failures += 1
             if cache_key in self._handles:
                 self.hits += 1
                 handle = self._handles[cache_key]
