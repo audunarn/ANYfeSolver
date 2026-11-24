@@ -253,8 +253,7 @@ def _counting(monkeypatch: pytest.MonkeyPatch, owner: Any, name: str) -> list[in
         ("BeamElement", "compute_stresses"),
         ("Element", "get_dof_mapping"),
         ("elements", "_beam_rotation_matrix"),
-        ("elements", "_contiguous_vector_norm"),
-        ("elements", "_frame_columns"),
+        ("elements", "_cross3"),
         ("elements", "_beam_material_properties"),
     ],
 )
@@ -1208,9 +1207,9 @@ def test_replaced_post_observation_guard_is_called_as_in_scalar_path(
 
 @pytest.mark.parametrize("stored", ["none", "empty", "zeros"])
 def test_any_stored_linear_nodal_offsets_take_scalar_path(stored: str) -> None:
-    # Regression guard (already held on cf30b7545): the default rigid arm is
-    # taken only when the attribute is absent (AttributeError, 30bcd9bf5);
-    # any stored value takes the scalar loop.
+    # Regression guard (already held on cf30b7545): the default rigid arm of
+    # getattr(self, '_linear_nodal_offsets', np.zeros((2, 3))) is taken only
+    # when the attribute is absent; any stored value takes the scalar loop.
     value = {"none": None, "empty": (), "zeros": np.zeros((2, 3))}[stored]
 
     def prepare(model: FEModel) -> None:

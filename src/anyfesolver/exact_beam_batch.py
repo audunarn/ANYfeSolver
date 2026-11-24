@@ -351,8 +351,6 @@ def _bind_exact_beam_batch() -> Any:
                     "_SMALL",
                     "_cross3",
                     "_beam_rotation_matrix",
-                    "_contiguous_vector_norm",
-                    "_frame_columns",
                     "_elastic_symmetry",
                     # Called by ``_elastic_symmetry`` once per reduction.
                     "_run_post_observation_guard",
@@ -990,7 +988,7 @@ def _bind_exact_beam_batch() -> Any:
         count = coordinates.shape[0]
         start = coordinates[:, 0, :]
         end = coordinates[:, 1, :]
-        # length = float(_contiguous_vector_norm(coords[1] - coords[0]))
+        # length = float(np.linalg.norm(coords[1] - coords[0]))
         difference = end - start
         lengths = np_sqrt(dot3(difference, difference))
         if not exact_bool(np_all(lengths >= small)):
@@ -1007,7 +1005,7 @@ def _bind_exact_beam_batch() -> Any:
             # candidate = orientation - np.dot(orientation, e1) * e1
             projection = dot3(orientation, oriented_axis)
             candidate = orientation - projection[:, None] * oriented_axis
-            # norm = float(_contiguous_vector_norm(candidate))
+            # norm = float(np.linalg.norm(candidate))
             candidate_norm = np_sqrt(dot3(candidate, candidate))
             # norm > 1.0e-6 * float(np.linalg.norm(orientation))
             orientation_norm = np_sqrt(dot3(orientation, orientation))
@@ -1017,7 +1015,7 @@ def _bind_exact_beam_batch() -> Any:
                 target = rows[used]
                 # e3 = candidate / norm
                 local_z = candidate[used] / candidate_norm[used][:, None]
-                # e2 = _cross3(e3, e1); e2 /= _contiguous_vector_norm(e2)
+                # e2 = _cross3(e3, e1); e2 /= np.linalg.norm(e2)
                 local_y = cross3(local_z, oriented_axis[used])
                 local_y = local_y / np_sqrt(dot3(local_y, local_y))[:, None]
                 second[target] = local_y
@@ -1039,7 +1037,7 @@ def _bind_exact_beam_batch() -> Any:
             local_z = local_z / np_sqrt(dot3(local_z, local_z))[:, None]
             second[fallback_rows] = local_y
             third[fallback_rows] = local_z
-        # R = _frame_columns(e1, e2, e3); T blocks hold R.T
+        # R = np.column_stack((e1, e2, e3)); T blocks hold R.T
         rotation_t = np_empty((count, 3, 3), dtype=float64_dtype)
         rotation_t[:, 0, :] = axis
         rotation_t[:, 1, :] = second
