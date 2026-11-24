@@ -547,9 +547,11 @@ class PyPardisoSolverBackend:
         _ensure_mkl_rt_env()
         failure_reasons: List[str] = []
         try:
-            csr = sparse.csr_matrix(matrix)
-            if csr is matrix:
-                csr = csr.copy()
+            # Snapshot the caller's arrays: the handle may refactorize its own
+            # matrix later (stale-handle rebuild), and ``csr_matrix(csr)`` shares
+            # ``data``/``indices``/``indptr`` with the input, so an in-place edit
+            # by the caller would otherwise be factorized silently.
+            csr = sparse.csr_matrix(matrix, copy=True)
             csr.sort_indices()
         except Exception as exc:
             failure_reasons.append(str(exc))
@@ -779,6 +781,12 @@ class FactorizationCache:
 
     The cache is intentionally not global.  Analyses that can safely reuse a
     matrix factorization own the cache and therefore own its lifetime.
+    Without an explicit ``signature`` the key is a content digest of the
+    matrix, and every backend factorizes a private snapshot of its values, so
+    a caller that edits a matrix in place after factorizing gets a fresh
+    factorization for the edited values and the original one for the
+    original values.  An explicit ``signature`` is a caller-owned revision
+    stamp and is trusted: the caller must change it whenever the values change.
     Cache lookup, insertion, eviction and counters are protected for concurrent
     callers.  Returned handles retain the concurrency semantics of their
     numerical backend; the cache does not serialize subsequent ``solve`` calls.
