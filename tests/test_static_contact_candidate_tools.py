@@ -79,6 +79,38 @@ def test_a_library_scipy_does_not_record_does_not_count_as_scipys(impostor) -> N
     assert any("scipy is not loaded" in failure for failure in check.kernel_failures(pools))
 
 
+def test_one_library_cannot_stand_for_both_packages(monkeypatch) -> None:
+    shared = {check._same_file_key(_LIBS["numpy"])}
+    monkeypatch.setattr(check, "distribution_files", lambda name: shared)
+    pools = [dict(internal_api="openblas", architecture="Sandybridge", filepath=_LIBS["numpy"])]
+    assert any("same OpenBLAS file" in failure for failure in check.kernel_failures(pools))
+
+
+def _metadata(tmp_path, folder, files):
+    import importlib.metadata
+    meta = tmp_path / folder
+    meta.mkdir()
+    (meta / "METADATA").write_text("Metadata-Version: 2.1\nName: scipy\nVersion: 1.0\n", encoding="utf-8")
+    for name, text in files.items():
+        (meta / name).write_text(text, encoding="utf-8")
+    return importlib.metadata.PathDistribution(meta)
+
+
+def test_only_record_lists_the_files(tmp_path, monkeypatch) -> None:
+    import importlib.metadata
+    monkeypatch.undo()
+    library = tmp_path / "scipy.libs" / "libscipy_openblas.so"
+    library.parent.mkdir()
+    library.write_bytes(b"")
+    egg = _metadata(tmp_path, "scipy.egg-info", {"SOURCES.txt": "scipy.libs/libscipy_openblas.so\n"})
+    monkeypatch.setattr(importlib.metadata, "distribution", lambda name: egg)
+    assert check.distribution_files("scipy") is None
+    wheel = _metadata(tmp_path, "scipy-1.0.dist-info",
+                      {"RECORD": "scipy.libs/libscipy_openblas.so,sha256=x,0\n"})
+    monkeypatch.setattr(importlib.metadata, "distribution", lambda name: wheel)
+    assert check.distribution_files("scipy") == {check._same_file_key(library)}
+
+
 def test_a_distribution_without_a_record_fails_closed(monkeypatch) -> None:
     monkeypatch.setattr(check, "distribution_files",
                         lambda name: None if name == "scipy" else {check._same_file_key(_LIBS[name])})
@@ -137,13 +169,17 @@ def test_venv_install_pins_every_pip_phase(tmp_path, monkeypatch) -> None:
 
 
 @pytest.mark.parametrize("kind", ["pytest", "module"])
-def test_numerical_workers_refuse_an_ignored_pin_before_running(monkeypatch, kind) -> None:
+@pytest.mark.parametrize("pools, reason", [
+    (("Sandybridge", "Haswell"), "must be pinned to Sandybridge"),
+    (("Sandybridge",), "scipy is not loaded"),
+])
+def test_numerical_workers_refuse_an_ignored_pin_before_running(monkeypatch, kind, pools, reason) -> None:
     ran = []
     monkeypatch.setattr(check, "verify_worker_origins", lambda job: None)
-    monkeypatch.setattr(check, "loaded_pools", lambda: _pools("Sandybridge", "Haswell"))
+    monkeypatch.setattr(check, "loaded_pools", lambda: _pools(*pools))
     monkeypatch.setattr("pytest.main", lambda *a, **k: ran.append(a) or 0)
     monkeypatch.setattr("runpy.run_module", lambda *a, **k: ran.append(a))
-    with pytest.raises(SystemExit, match="must be pinned to Sandybridge"):
+    with pytest.raises(SystemExit, match=reason):
         check.run_worker(dict(kind=kind, inserts=[], argv=["examples.unused"]))
     assert ran == []
 

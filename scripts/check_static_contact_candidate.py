@@ -82,31 +82,46 @@ def _same_file_key(path) -> str:
 
 
 def distribution_files(name: str) -> set[str] | None:
-    """Every file the installed distribution records (its RECORD), or None if it records none."""
+    """Every file the installed distribution's RECORD lists, or None without a RECORD.
+
+    Only RECORD counts: ``Distribution.files`` would fall back to an egg-info SOURCES.txt."""
+    import csv
     import importlib.metadata
     try:
-        files = importlib.metadata.distribution(name).files
+        distribution = importlib.metadata.distribution(name)
     except importlib.metadata.PackageNotFoundError:
         return None
-    if not files:
+    record = distribution.read_text("RECORD")
+    if not record:
         return None
-    return {_same_file_key(file.locate()) for file in files}
+    return {_same_file_key(distribution.locate_file(row[0]))
+            for row in csv.reader(record.splitlines()) if row and row[0]}
 
 
 def kernel_failures(pools: list[dict]) -> list[str]:
     """Fail closed unless NumPy's and SciPy's own OpenBLAS are both loaded and every OpenBLAS pool
     reports the pinned kernel. A pool belongs to NumPy or SciPy only when its library is a file that
-    the installed distribution records, not by folder or file name."""
+    the installed distribution's RECORD lists, not by folder or file name, and the two must be
+    different files.
+
+    Scope: this guards against a pin that the runtime ignored, in installs made from the pinned NumPy
+    and SciPy wheels (the fresh venv of ``install --venv``, as in CI). A numerical site assembled by
+    hand for target mode, for example with relinked libraries or hand-edited metadata, is outside it."""
     openblas = [pool for pool in pools if pool.get("internal_api") == "openblas"]
     found = [pool.get("architecture") for pool in openblas]
     loaded = {_same_file_key(pool["filepath"]) for pool in openblas if pool.get("filepath")}
     failures = []
+    matched = {}
     for name in OPENBLAS_OWNERS:
         recorded = distribution_files(name)
         if recorded is None:
             failures.append(f"{name} records no files, so its OpenBLAS cannot be identified")
         elif not loaded & recorded:
             failures.append(f"OpenBLAS of {name} is not loaded, so its kernel is unverified")
+        else:
+            matched[name] = loaded & recorded
+    if len(matched) == len(OPENBLAS_OWNERS) and len(set().union(*matched.values())) < len(OPENBLAS_OWNERS):
+        failures.append("NumPy and SciPy resolve to the same OpenBLAS file, so one copy is unverified")
     if not found or any(name != OPENBLAS_KERNEL for name in found):
         failures.append(f"OpenBLAS kernel must be pinned to {OPENBLAS_KERNEL}, got {found}")
     return failures
