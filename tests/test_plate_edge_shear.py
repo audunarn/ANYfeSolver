@@ -59,6 +59,7 @@ def test_whole_driven_edge_clamp_and_imperfect_branch(solved):
     m,r=solved;assert r.converged and r.load_factor==1.
     driven=[m.mesh.nodes[n].dofs[1] for n in [3,6,9]]
     fixed=[d for n in [1,4,7] for d in m.mesh.nodes[n].dofs]
+    assert r.snapshots
     for s in r.snapshots:
         np.testing.assert_allclose(s.displacements[driven],s.load_factor*.01,atol=1e-12,rtol=0)
         np.testing.assert_allclose(s.displacements[fixed],0,atol=1e-12,rtol=0)
@@ -85,3 +86,8 @@ def test_adaptive_cutback_keeps_only_accepted_edge_states(cutback):
     factors=[s.load_factor for s in r.snapshots]
     assert all(b>a for a,b in zip(factors,factors[1:]))
     assert factors[-1]==1.
+    driven=[m.mesh.nodes[n].dofs[1] for n in [3,6,9]]
+    fixed=[d for n in [1,4,7] for d in m.mesh.nodes[n].dofs]
+    for s in r.snapshots:
+        np.testing.assert_allclose(s.displacements[driven],s.load_factor*.01,atol=1e-12,rtol=0)
+        np.testing.assert_allclose(s.displacements[fixed],0,atol=1e-12,rtol=0)
