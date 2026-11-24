@@ -136,8 +136,8 @@ the scalar path performs for an admitted element is first verified with pure
 reads (class namespaces along the MRO, module globals, instance and mapping
 namespaces free of shadowing names, the stiffness classification predicates)
 or performed as the identical call (`_beam_material_properties` once per
-element in element order; the sparsity kernel before any element side
-effect).  Subclasses, replaced classes, methods or module globals, shadowing
+element in element order; the sparsity kernel once, after the batch has
+decided to succeed and before any element side effect).  Subclasses, replaced classes, methods or module globals, shadowing
 instance attributes, DOFs outside the matrix or displacement vector, offsets,
 generalized or fibre sections, non-exact materials, element activity, other
 stiffness getters and small models take the unchanged scalar loop.  Results
@@ -150,28 +150,33 @@ every batch disable the batch for the process on a mismatch; they detect a
 broken kernel or platform and do not by themselves prove parity for the
 interior elements of a batch.
 
-Trust boundary of the exact-beam batch (owner decision, 2026-11-24).  The
-batch must behave exactly like the scalar loops for hostile data, instance
-attributes, subclasses, and replacement of ANYfeSolver classes, ANYfeSolver
-module attributes and functions, and of the mapping protocol.  This includes
-the stiffness classification objects (`QualifiedE4PLShellElement`, the Q4
-`FORMULATION_ID`, `ShellElement`, `v2c_fast_candidate`, `v2d_fast_candidate`,
-`reference_s3_candidate`, and the inner predicate and class each reads),
-which are compared by identity with the objects bound at import without
-reading attributes of, or comparing, caller-supplied objects; the recovery
-observation-guard factory `assembly._qualified_recovery_observation_guard`;
-and the element-matrix check kernels `_check_matrix_kernel` and
-`_relative_symmetry_kernel`, whose module functions or private clones (with
-their bound defaults and `np` global) are the only kernels for which the
-batch's own finiteness and symmetry tests stand in.  Any other object takes
-the scalar loop.  Trusted and not defended: library internals (NumPy
-internals such as the `sqrt` global of `numpy.linalg`; ANYmaterial internals
-such as `elastic_compliance_matrix`), Python builtins (including rebinding a
-builtin name in a module's globals), finaliser (`__del__`) order,
-`__code__`/`__closure__` swaps of identity-checked functions, dependencies
-that inspect caller frames, and stateful dependencies that observe repeated
-identical calls (the process probe, the endpoint checks, or a declined batch
-followed by the scalar loop).
+Trust boundary of the exact-beam batch (owner decision B, 2026-11-24).
+In scope, where the batch must behave exactly like the scalar loops: hostile
+data, instance attributes and subclasses of elements, models, materials,
+meshes and mappings; caches held on model or mesh instances (for example
+`_sparsity_cache` and `_topology_signature_cache`); and the inputs of the
+kernels.  Every value the batch reads, looks up, hashes, compares, iterates
+or writes before it decides is first checked with pure reads to be of the
+exact admitted type (`type(x) is ...`; instance namespaces through
+`object.__getattribute__`), and anything else declines before it is touched.
+A declined batch has no side effect: it writes no element cache, builds no
+mesh cache and makes no lookup the scalar loop then repeats on a non-exact
+value (the recovery bracket resolves the first element's material only for an
+exact `str` name; the stiffness endpoint checks do not store
+`_stiffness_matrix`; the sparsity kernel runs once, after the decision).  The
+stiffness classification objects, the recovery observation-guard factory and
+the element-matrix check kernels are compared by identity with the objects
+bound at import, without reading attributes of, or comparing,
+caller-supplied objects.  Trusted and not defended: (1) library internals
+(NumPy, ANYmaterial, Python builtins, finalisers and `__del__` order,
+`__code__`/`__closure__` swaps, frame inspection, and stateful dependencies
+that observe repeated identical calls, such as the process probe, the
+endpoint checks or a declined batch followed by the scalar loop); and (2)
+ANYfeSolver's own guard, lease and check machinery: lease and require
+builders (for example `_run_with_qualified_assembly_runtime_lease` and
+`recovery_batches._build_qualified_recovery_require`), guard factories,
+internal caches as module or class machinery, and module imports and
+aliases.
 
 `ResourceConfig.memory_limit_bytes` limits a conservative storage estimate and
 adapts the requested block size; it refuses a request that cannot fit one case.

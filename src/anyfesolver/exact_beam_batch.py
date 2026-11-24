@@ -40,22 +40,30 @@ batch instead of one Python call per element:
   do not prove parity for the interior elements of a batch.  That parity rests
   on the batch performing the identical floating-point operations (above).
 
-* **Trust boundary (owner decision, 2026-11-24).**  The batch behaves exactly
-  like the scalar loops for hostile *data*, instance attributes, subclasses,
-  and replacement of ANYfeSolver classes, ANYfeSolver module attributes and
-  functions (including the classification predicates, the recovery
-  observation-guard factory and the element-matrix check kernels of the
-  scalar loops), and of the mapping protocol: each is identity-checked
-  against the object captured when this module (or the calling module) was
-  bound, and anything else takes the scalar loop.  Trusted and *not*
-  defended: library internals (NumPy internals such as the ``sqrt`` global of
-  ``numpy.linalg``; ANYmaterial internals such as ``elastic_compliance_matrix``),
-  Python builtins (including rebinding a builtin name in a module's globals),
-  finaliser/``__del__`` order, ``__code__``/``__closure__`` swaps of
-  identity-checked functions, dependencies that inspect caller frames, and
-  stateful dependencies that observe repeated identical calls (for example
-  the probe, the endpoint checks or a declined batch followed by the scalar
-  loop).
+* **Trust boundary (owner decision B, 2026-11-24).**  In scope -- the batch
+  behaves exactly like the scalar loops: hostile *data*, instance attributes
+  and subclasses of elements, models, materials, meshes and mappings; caches
+  held on model/mesh instances (``_sparsity_cache``,
+  ``_topology_signature_cache``); and the kernels' inputs.  Every value the
+  batch reads, looks up, hashes, compares, iterates or writes before its
+  decision first passes an exact-type check made with pure reads
+  (``type(x) is ...``; namespaces through ``object.__getattribute__``);
+  anything non-exact declines before it is touched.  A declined batch has no
+  side effect: no element or mesh cache is written before the decision (the
+  endpoint stiffness checks do not store ``_stiffness_matrix``; the sparsity
+  kernel runs once, after the decision), and the recovery bracket resolves
+  the first material only for an exact ``str`` name.  The classification
+  predicates, the recovery observation-guard factory and the element-matrix
+  check kernels are identity-checked against the objects bound at import.
+  Trusted and *not* defended: (1) library internals -- NumPy, ANYmaterial,
+  Python builtins, finalisers/``__del__`` order, ``__code__``/``__closure__``
+  swaps, frame inspection, and stateful dependencies that observe repeated
+  identical calls (the probe, the endpoint checks, or a declined batch
+  followed by the scalar loop); (2) ANYfeSolver's own guard, lease and check
+  machinery -- lease and require builders (e.g.
+  ``_run_with_qualified_assembly_runtime_lease``,
+  ``recovery_batches._build_qualified_recovery_require``), guard factories,
+  internal caches as module/class machinery, module imports and aliases.
 
 The scalar element methods remain the numerical oracle.  This module keeps no
 model, mesh, material or displacement data beyond one call.
@@ -1299,6 +1307,31 @@ def _bind_exact_beam_batch() -> Any:
             )
         return records
 
+    beam_node_coordinates = resolve_class_attribute(beam_type, "get_node_coordinates")
+    beam_frame_and_transform = resolve_class_attribute(
+        beam_type, "_beam_frame_and_transform"
+    )
+    beam_local_linear_stiffness = resolve_class_attribute(
+        beam_type, "_local_linear_stiffness"
+    )
+
+    def stiffness_oracle(element: Any, mesh: Any, material: Any) -> Any:
+        """``BeamElement.compute_stiffness_matrix`` without its store.
+
+        The verified original methods (``authority_is_exact``; an admitted
+        element shadows none of them), called with the operands and in the
+        order of ``compute_stiffness_matrix``, so the result is the scalar
+        method's value while no ``_stiffness_matrix`` is written before the
+        batch has decided to succeed.  Its zero-matrix branch for a short
+        member cannot be reached (``lengths_admitted``); a ``ValueError``
+        propagates and declines the batch.
+        """
+
+        coordinates = beam_node_coordinates(element, mesh)
+        length, transform = beam_frame_and_transform(element, coordinates)
+        local = beam_local_linear_stiffness(element, length, material)
+        return transform.T @ local @ transform
+
     def same_matrix(oracle: Any, batched: Any) -> bool:
         return (
             exact_type(oracle) is ndarray_type
@@ -1492,6 +1525,19 @@ def _bind_exact_beam_batch() -> Any:
             current = mappingproxy_get(class_namespace(model_type), "current_material")
         nodes = exact_dict_get(mesh_namespace, "nodes")
         elements = exact_dict_get(mesh_namespace, "elements")
+        # Caller-held mesh caches: the scalar sparsity and topology-signature
+        # kernels call their mapping protocol.  Only ``None`` (absent) or an
+        # exact dict is admitted; anything else takes the scalar loop before
+        # the batch touches it.
+        sparsity_cache = exact_dict_get(mesh_namespace, "_sparsity_cache")
+        signature_cache = exact_dict_get(mesh_namespace, "_topology_signature_cache")
+        if (
+            sparsity_cache is not None
+            and exact_type(sparsity_cache) is not exact_dict
+            or signature_cache is not None
+            and exact_type(signature_cache) is not exact_dict
+        ):
+            return None
         if (
             exact_type(materials) is not exact_dict
             or not all_str_keys(materials)
@@ -1544,11 +1590,14 @@ def _bind_exact_beam_batch() -> Any:
     ) -> Any:
         """Batch stiffness for an all-exact-beam model, or ``None``.
 
-        Called inside the caller's guard bracket.  ``prepare_sparsity`` is the
-        scalar path's pre-loop sparsity call; it runs before any element side
-        effect and its exceptions propagate exactly as in the scalar path.  On
-        success every element's ``_stiffness_matrix`` holds an owned copy of
-        its matrix, written in element order after everything else succeeded.
+        Called inside the caller's guard bracket.  Every decline happens
+        before any write and before any caller-held cache is touched.
+        ``prepare_sparsity`` is the scalar path's pre-loop sparsity call; it
+        runs exactly once, after the batch has decided to succeed and before
+        any element side effect, and its exceptions propagate exactly as in
+        the scalar path.  On success every element's ``_stiffness_matrix``
+        holds an owned copy of its matrix, written in element order after
+        everything else succeeded.
         Returns ``(matrices, element_ids, seconds, sparsity)``.
         """
 
@@ -1570,8 +1619,6 @@ def _bind_exact_beam_batch() -> Any:
         if not classified:
             fallback("scalar classification would not leave the beams alone")
             return None
-        # The scalar path's pre-loop step; may raise exactly as there.
-        sparsity = prepare_sparsity()
         if not ready():
             return None
         started = clock()
@@ -1604,18 +1651,13 @@ def _bind_exact_beam_batch() -> Any:
         material_index = plan["material_index"]
         elements = plan["elements"]
         namespaces = plan["namespaces"]
-        # The scalar method stores its result on the element; restore the
-        # previous values if the batch is declined, so a fallback starts from
-        # the untouched input state.
-        touched = []
+        # Endpoint checks without the scalar method's store: nothing is
+        # written before the batch has decided to succeed.
         for position in (0, count - 1):
-            namespace = namespaces[position]
-            touched.append(
-                (namespace, exact_dict_get(namespace, "_stiffness_matrix", missing))
-            )
             try:
                 matched = same_matrix(
-                    elements[position].compute_stiffness_matrix(
+                    stiffness_oracle(
+                        elements[position],
                         mesh,
                         materials[material_index[position]],
                     ),
@@ -1624,28 +1666,26 @@ def _bind_exact_beam_batch() -> Any:
             except exact_exception:
                 matched = None
             if not matched:
-                for namespace, previous in touched:
-                    if previous is missing:
-                        namespace.pop("_stiffness_matrix", None)
-                    else:
-                        namespace["_stiffness_matrix"] = previous
                 if matched is None:
                     fallback("stiffness spot check raised")
                 else:
                     disable("stiffness spot check mismatch")
                 return None
+        # Decided.  The scalar path's pre-loop sparsity step runs once, here,
+        # before any element side effect; it may raise exactly as there.
+        sparsity = prepare_sparsity()
         for namespace, matrix in exact_zip(namespaces, stiffness):
             namespace["_stiffness_matrix"] = matrix.copy()
         counters["stiffness_batches"] += 1
         return stiffness, plan["element_ids"], clock() - started, sparsity
 
     def recovery_candidate(model: Any, mesh: Any, selected: Any) -> Any:
-        """``(first_id, first_element, last_id)`` of the selection, or ``None``.
+        """``(first_id, first_element, first_material, last_id)``, or ``None``.
 
         Authority first, then pure reads; the ids name the first and last
         per-element observation guards of the scalar loop that the bracket
-        replaces, and the first element is the one the scalar loop observes
-        first.
+        replaces, and the first element (with its material) is the one the
+        scalar loop observes first.
         """
 
         if state["disabled_reason"] is not None or not authority_is_exact():
@@ -1674,7 +1714,22 @@ def _bind_exact_beam_batch() -> Any:
         if not element_ids:
             return None
         first_id = element_ids[0]
-        return first_id, exact_dict_get(elements, first_id), element_ids[-1]
+        first_element = exact_dict_get(elements, first_id)
+        # The first element's material, obtained as the scalar loop's first
+        # iteration obtains it (``model.get_material(element.material_name)``,
+        # the verified original), but only for an exact ``str`` name read
+        # from an exact instance namespace: a hostile name declines here,
+        # before anything hashes or compares it.
+        namespace = exact_object_getattribute(first_element, "__dict__")
+        if exact_type(namespace) is not exact_dict or not all_str_keys(namespace):
+            return None
+        material_name = exact_dict_get(namespace, "material_name", missing)
+        if exact_type(material_name) is not exact_str:
+            return None
+        first_material = material_resolver(model)(material_name)
+        if first_material is missing:
+            return None
+        return first_id, first_element, first_material, element_ids[-1]
 
     def recovery_batch(
         model: Any,

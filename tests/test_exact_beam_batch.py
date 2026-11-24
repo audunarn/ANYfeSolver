@@ -1218,3 +1218,247 @@ def test_any_stored_linear_nodal_offsets_take_scalar_path(stored: str) -> None:
     batched, scalar, before, after = _both_paths(_stiffness_and_recovery(prepare))
     assert batched == scalar
     assert after == before
+
+
+
+# ----------------------------------------------------------------------
+# Codex review round 6 reproductions (finding 3; each failed on c95d1f20d).
+# A declined batch must not touch hostile input before deciding, and must
+# leave no side effect before it has decided to succeed.
+# ----------------------------------------------------------------------
+
+
+def _zero_length_fifth_member(model: FEModel) -> None:
+    # Element 5 joins nodes 9 and 10; a zero-length member makes the batch
+    # decline after admission, while the scalar loop returns zeros for it.
+    node = model.mesh.nodes[10]
+    node.x, node.y, node.z = model.mesh.nodes[9].x, 0.0, 0.0
+
+
+class _RaisingGetitemCache(dict):
+    def __getitem__(self, key: Any) -> Any:
+        raise RuntimeError("hostile sparsity cache read")
+
+
+def test_hostile_sparsity_cache_is_not_built_by_a_declined_batch() -> None:
+    # Codex r6 finding 3(a): the batch built the empty hostile cache before
+    # declining on the zero-length member; the scalar fallback then read the
+    # new entry through ``__getitem__`` and raised.  Scalar-only succeeds.
+    def prepare(model: FEModel) -> None:
+        _zero_length_fifth_member(model)
+        object.__setattr__(model.mesh, "_sparsity_cache", _RaisingGetitemCache())
+
+    batched, scalar, before, after = _both_paths(_stiffness_and_recovery(prepare))
+    assert scalar[0][0] == "ok"
+    assert batched == scalar
+    assert after[0] == before[0]
+
+
+def _logging_cache(log: list[str]) -> dict:
+    class LoggingCache(dict):
+        def __contains__(self, key: Any) -> bool:
+            log.append("contains")
+            return dict.__contains__(self, key)
+
+        def __getitem__(self, key: Any) -> Any:
+            log.append("getitem")
+            return dict.__getitem__(self, key)
+
+        def __setitem__(self, key: Any, value: Any) -> None:
+            log.append("setitem")
+            dict.__setitem__(self, key, value)
+
+        def get(self, key: Any, default: Any = None) -> Any:
+            log.append("get")
+            return dict.get(self, key, default)
+
+    return LoggingCache()
+
+
+@pytest.mark.parametrize("cache_name", ["_sparsity_cache", "_topology_signature_cache"])
+@pytest.mark.parametrize("zero_length", [True, False])
+def test_mesh_cache_protocol_calls_match_scalar_path(
+    cache_name: str, zero_length: bool
+) -> None:
+    # Same class as 3(a): every protocol call on a caller-held mesh cache
+    # (dict subclass) happens exactly as in the scalar path, whether the
+    # batch would decline (zero-length member) or not.
+    log: list[str] = []
+
+    def run() -> Any:
+        log.clear()
+        model = _disjoint_model()
+        if zero_length:
+            _zero_length_fifth_member(model)
+        object.__setattr__(model.mesh, cache_name, _logging_cache(log))
+        outcome = _outcome(lambda: assemble_stiffness_matrix(model))
+        return outcome, list(log), _stored_matrices(model)
+
+    batched, scalar, _before, _after = _both_paths(run)
+    assert scalar[0][0] == "ok"
+    assert scalar[1]
+    assert batched == scalar
+
+
+def test_hostile_signature_cache_is_not_read_again_after_a_decline() -> None:
+    # Same class as 3(a) for the topology-signature cache: a ``get`` that
+    # raises on its third call.  Scalar-only assembly calls it twice.
+    calls = [0]
+
+    class ThirdGetRaises(dict):
+        def get(self, key: Any, default: Any = None) -> Any:
+            calls[0] += 1
+            if calls[0] >= 3:
+                raise RuntimeError("hostile signature cache read")
+            return dict.get(self, key, default)
+
+    def run() -> Any:
+        calls[0] = 0
+        model = _disjoint_model()
+        _zero_length_fifth_member(model)
+        object.__setattr__(model.mesh, "_topology_signature_cache", ThirdGetRaises())
+        return _outcome(lambda: assemble_stiffness_matrix(model)), calls[0]
+
+    batched, scalar, _before, _after = _both_paths(run)
+    assert scalar[0][0] == "ok" and scalar[1] == 2
+    assert batched == scalar
+
+
+def _second_hash_raises() -> Any:
+    class SecondHashRaises(str):
+        hashes = 0
+
+        def __hash__(self) -> int:
+            type(self).hashes += 1
+            if type(self).hashes > 1:
+                raise RuntimeError("material name hashed twice")
+            return str.__hash__(self)
+
+    return SecondHashRaises("steel")
+
+
+def test_recovery_bracket_does_not_look_up_a_hostile_material_name() -> None:
+    # Codex r6 finding 3(b): the recovery bracket looked the first beam's
+    # ``material_name`` up before admission; admission declined and the
+    # scalar loop's lookup was the second hash, which raised.
+    def run() -> Any:
+        model = _disjoint_model()
+        vars(model.mesh.elements[1])["material_name"] = _second_hash_raises()
+        u = np.arange(model.mesh.dof_manager.total_dofs, dtype=float) * 1.0e-3
+        outcome: dict[str, Any] = {}
+
+        def recover() -> None:
+            outcome["S"] = _stress_signature(compute_stresses(model, u))
+
+        return _outcome(recover), outcome
+
+    batched, scalar, before, after = _both_paths(run)
+    assert scalar[0][0] == "ok"
+    assert batched == scalar
+    assert after[1] == before[1]
+
+
+def test_recovery_material_name_protocol_calls_match_scalar_path() -> None:
+    # Same class as 3(b): a ``str`` subclass that logs every hash, comparison
+    # and truth test; the bracket must add none before the batch declines.
+    log: list[str] = []
+
+    class LoggingName(str):
+        def __hash__(self) -> int:
+            log.append("hash")
+            return str.__hash__(self)
+
+        def __eq__(self, other: Any) -> bool:
+            log.append("eq")
+            return str.__eq__(self, other)
+
+        def __bool__(self) -> bool:
+            log.append("bool")
+            return True
+
+    def run() -> Any:
+        log.clear()
+        model = _disjoint_model()
+        vars(model.mesh.elements[1])["material_name"] = LoggingName("steel")
+        u = np.arange(model.mesh.dof_manager.total_dofs, dtype=float) * 1.0e-3
+        outcome = _outcome(lambda: compute_stresses(model, u))
+        return outcome, list(log)
+
+    batched, scalar, _before, _after = _both_paths(run)
+    assert scalar[0][0] == "ok"
+    assert scalar[1]
+    assert batched == scalar
+
+
+def test_stiffness_spot_checks_write_no_element_cache_before_success() -> None:
+    # Same finding, write class: the endpoint spot checks called
+    # ``compute_stiffness_matrix``, which stores ``_stiffness_matrix`` on the
+    # first element before the batch had decided to succeed (and restores it
+    # on a decline).  An observer in the material reduction (an ANYmaterial
+    # internal: trusted, not identity-checked) records which elements hold a
+    # stored matrix at every reduction the batch makes.
+    from anymaterial import beam_material_properties
+
+    namespace = beam_material_properties.__globals__
+    original = namespace["elastic_compliance_matrix"]
+    model = _disjoint_model()
+    stored_at_reduction: list[tuple[int, ...]] = []
+
+    def observing(material: Any) -> Any:
+        stored_at_reduction.append(
+            tuple(
+                element_id
+                for element_id, element in dict.items(model.mesh.elements)
+                if dict.get(vars(element), "_stiffness_matrix") is not None
+            )
+        )
+        return original(material)
+
+    assemble_stiffness_matrix(_disjoint_model())  # warm the process probe
+    before = _batches()
+    namespace["elastic_compliance_matrix"] = observing
+    try:
+        matrix, _info = assemble_stiffness_matrix(model)
+    finally:
+        namespace["elastic_compliance_matrix"] = original
+    assert _batches()[0] == before[0] + 1
+    assert stored_at_reduction
+    assert all(stored == () for stored in stored_at_reduction), stored_at_reduction
+    with _scalar_only():
+        scalar_model = _disjoint_model()
+        scalar_matrix, _scalar_info = assemble_stiffness_matrix(scalar_model)
+    assert _csr_bits(matrix) == _csr_bits(scalar_matrix)
+    assert _stored_matrices(model) == _stored_matrices(scalar_model)
+
+
+def test_hostile_entry_of_an_exact_sparsity_cache_is_read_once() -> None:
+    # Same class as 3(a) with an exact-dict cache (admitted) holding a valid
+    # entry of a logging dict subclass: the scalar sparsity kernel reads it
+    # once; a declined batch must not have read it before.
+    log: list[str] = []
+
+    class LoggingEntry(dict):
+        def get(self, key: Any, default: Any = None) -> Any:
+            log.append("get")
+            return dict.get(self, key, default)
+
+        def __getitem__(self, key: Any) -> Any:
+            log.append("getitem")
+            return dict.__getitem__(self, key)
+
+    def run() -> Any:
+        model = _disjoint_model()
+        _zero_length_fifth_member(model)
+        # Populate the exact caches (the batch declines on the zero-length
+        # member, so the scalar loop builds them).
+        assemble_stiffness_matrix(model)
+        cache = vars(model.mesh)["_sparsity_cache"]
+        assert type(cache) is dict
+        cache["stiffness"] = LoggingEntry(cache["stiffness"])
+        log.clear()
+        outcome = _outcome(lambda: assemble_stiffness_matrix(model))
+        return outcome, list(log)
+
+    batched, scalar, _before, _after = _both_paths(run)
+    assert scalar == (("ok", "[]"), ["get", "getitem", "getitem"])
+    assert batched == scalar

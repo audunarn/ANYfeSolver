@@ -1759,12 +1759,16 @@ def _compute_stresses_under_lease(
         # The bracket calls the loop's own observation guard for the first
         # and last per-element observations it replaces, with the same
         # stage, element and material, so a failure reports exactly what the
-        # per-element loop would have reported.  The first element's material
-        # is obtained exactly as the loop's first iteration obtains it.
-        first_bracket_id, first_bracket_element, last_bracket_id = bracket
-        first_bracket_material = model.get_material(
-            first_bracket_element.material_name
-        )
+        # per-element loop would have reported.  The candidate resolves the
+        # first element's material with the loop's own lookup, after checking
+        # with pure reads that its name is an exact ``str`` (otherwise there
+        # is no bracket), so the bracket hashes no hostile key.
+        (
+            first_bracket_id,
+            first_bracket_element,
+            first_bracket_material,
+            last_bracket_id,
+        ) = bracket
         observation_guard(
             stage=f"stress material observation for element {first_bracket_id}",
             element=first_bracket_element,
