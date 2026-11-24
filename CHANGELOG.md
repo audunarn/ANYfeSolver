@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Warped qualified Q4 facets (warpage above `planar_tolerance`, varying-frame
+  kernels) apply a drilling coefficient of at least 0.1: the kernels use
+  `max(drilling_stabilization, 0.1)`, including for explicit smaller values and
+  0; larger values are honoured; the stored value, `to_dict` and cache keys keep
+  the raw value. With the default `1e-3` the MacNeal-Harder twisted beam was
+  +31.4 %/+23.7 % too flexible at 24x4 and did not converge under refinement;
+  it is now -0.1 %/-2.3 % (24x4) and +0.1 %/-0.5 % (48x8). Changed results:
+  linear, nonlinear, modal and buckling results of meshes with warped qualified
+  Q4 facets (for example twisted beam -21 % to -24 % tip displacement, skewed
+  Scordelis-Lo -0.26 %). Planar facets and every other element are
+  bit-identical. Source binding: `docs/reference_cases/e4_pl_source_binding_20261124.json`.
+
 ## 0.5.0 - release candidate
 
 - Require ANYfileio 0.3.3 or later in the 0.3 line for SESTRA shell stress
