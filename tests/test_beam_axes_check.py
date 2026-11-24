@@ -114,3 +114,34 @@ def test_check_is_read_only():
 def test_section_sensitivity(section, sensitive):
     got, reason = section_is_orientation_sensitive(section)
     assert got is sensitive, reason
+
+def _two_member_joint(element_kw):
+    """Two members meeting at node 2, on either side of the |e1.Y| = 0.95 threshold."""
+    model = FEModel("joint")
+    model.add_material("mat", 1.0e7, 0.25)
+    model.add_node(1, 0.0, 0.0, 0.0)
+    model.add_node(2, -np.sin(0.1), np.cos(0.1), 0.0)  # |e1.Y| = 0.995: Z trial
+    model.add_node(3, -np.sin(0.1) - np.sin(0.6), np.cos(0.1) + np.cos(0.6), 0.0)  # 0.825: Y trial
+    for eid, (a, b) in enumerate([(1, 2), (2, 3)], start=1):
+        model.add_element(eid, BeamElement(eid, [a, b], "mat", **element_kw(a, b)))
+    return model
+
+
+def test_generalized_section_from_section_argument_is_checked():
+    stiffness = np.diag([1.0e6, 2.0e5, 3.0e5, 1.0e3, 2.0e3, 5.0e3])
+    report = check_default_beam_axes(
+        _two_member_joint(lambda a, b: {"cross_section": {}, "section": stiffness}))
+    assert dict(report.switch_nodes) == {2: (1, 2)}
+    assert all(r.orientation_sensitive for r in report.records)
+
+
+def test_orientation_parallel_to_the_axis_falls_back_to_the_default_rule():
+    def kw(a, b):
+        axis = {(1, 2): [-np.sin(0.1), np.cos(0.1), 0.0],
+                (2, 3): [-np.sin(0.6), np.cos(0.6), 0.0]}[(a, b)]
+        return {"cross_section": {**_STRIP, "orientation": axis}}
+
+    report = check_default_beam_axes(_two_member_joint(kw))
+    assert report.oriented_elements == ()
+    assert dict(report.switch_nodes) == {2: (1, 2)}
+    assert all("parallel" in r.sensitivity_reason for r in report.records)

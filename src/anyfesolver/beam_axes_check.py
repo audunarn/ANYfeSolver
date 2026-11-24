@@ -3,7 +3,7 @@
 ``BeamElement`` (and ``QuadraticBeamElement``) without ``cross_section["orientation"]``
 take their local axes from a fixed trial vector: local y is global Y projected
 perpendicular to the member axis, unless ``|e1 . Y| > 0.95``, in which case global Z
-is used instead.  Along a member line that passes near global Y this turns the
+is used instead.  Along a member line that passes near global Y this can turn the
 section by 90 degrees between neighbouring elements.  For a section whose
 stiffness differs between its local y and z axes, the result then depends on
 that switch rather than on the intended section orientation (for example the
@@ -56,8 +56,10 @@ class DefaultBeamAxesReport:
     """Result of :func:`check_default_beam_axes`.
 
     ``switch_nodes`` maps a node id to the element ids that meet there with
-    orientation-sensitive sections and different default trial vectors: there
-    the section turns by about 90 degrees from one element to the next.
+    orientation-sensitive sections and different default trial vectors.  A
+    trial-vector switch makes the local axes depend on which side of the
+    threshold each element lies; it is a turn of the section only when the
+    neighbouring local axes actually differ (``local_z`` per record shows it).
     ``z_trial_elements`` lists orientation-sensitive elements that use the
     global-Z trial; that alone is a consistent convention (for example a
     straight member along global Y) and is information, not a finding.
@@ -77,13 +79,14 @@ class DefaultBeamAxesReport:
 def section_is_orientation_sensitive(cross_section: Mapping[str, Any]) -> Tuple[bool, str]:
     """Return ``(sensitive, reason)`` for a ``BeamElement`` cross-section dict.
 
-    Fails closed: a generalized section, a raw generalized stiffness or fibre
+    Fails closed: a generalized section (in the dict or resolved on the
+    element from ``section=``), a raw generalized stiffness or fibre
     plasticity counts as sensitive, because its symmetry is not checked here.
     A scalar section is insensitive only when its y and z values agree (Iy/Iz,
     shear factors, and c_y/c_z when given) to a relative 1e-12.
     """
 
-    for key in ("generalized_section", "generalized_stiffness", "fiber_plasticity"):
+    for key in ("generalized_section", "beam_section", "generalized_stiffness", "fiber_plasticity"):
         if cross_section.get(key) is not None:
             return True, f"{key} (symmetry not checked)"
     defaults = {"Iy": 1.0e-8, "Iz": 1.0e-8, "shear_factor_y": 5.0 / 6.0, "shear_factor_z": 5.0 / 6.0}
@@ -114,9 +117,11 @@ def check_default_beam_axes(model: Any) -> DefaultBeamAxesReport:
     """Report beam elements whose default local axes depend on the global-Y switch.
 
     Inspects every ``BeamElement`` (including ``QuadraticBeamElement``) in
-    ``model``; other element types are ignored.  Elements with
-    ``cross_section["orientation"]`` (or ``"web_direction"``) are listed in
-    ``oriented_elements`` and not checked further.  Read only.
+    ``model``; other element types are ignored.  Elements whose
+    ``cross_section["orientation"]`` (or ``"web_direction"``) the solver uses
+    are listed in ``oriented_elements`` and not checked further; an orientation
+    (nearly) parallel to the member axis falls back to the default rule and is
+    checked like a missing one.  Read only.
     """
 
     mesh = model.mesh
@@ -128,14 +133,24 @@ def check_default_beam_axes(model: Any) -> DefaultBeamAxesReport:
         if not isinstance(element, BeamElement):
             other.append(int(element_id))
             continue
-        if _section_orientation(element.cross_section) is not None:
-            oriented.append(int(element_id))
-            continue
         e1 = _element_axis(element, mesh)
+        orientation = _section_orientation(element.cross_section)
+        if orientation is not None:
+            # Same admission as elements._beam_rotation_matrix: an orientation
+            # (nearly) parallel to the axis falls back to the default rule.
+            candidate = orientation - np.dot(orientation, e1) * e1
+            if float(np.linalg.norm(candidate)) > 1.0e-6 * float(np.linalg.norm(orientation)):
+                oriented.append(int(element_id))
+                continue
         alignment = abs(float(e1[1]))
         trial = "global_Z" if alignment > DEFAULT_AXIS_SWITCH_THRESHOLD else "global_Y"
         local_z = _beam_rotation_matrix(e1, None)[:, 2]
-        sensitive, reason = section_is_orientation_sensitive(element.cross_section)
+        if getattr(element, "generalized_section", None) is not None:
+            sensitive, reason = True, "generalized section (symmetry not checked)"
+        else:
+            sensitive, reason = section_is_orientation_sensitive(element.cross_section)
+        if orientation is not None:
+            reason += "; orientation parallel to the axis, default rule used"
         records.append(
             BeamAxisRecord(
                 element_id=int(element_id),
