@@ -21,6 +21,218 @@ CONFIG_FILE = ROOT / "scripts" / "contact_candidate_050.json"
 CONFIG = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
 
 
+def test_every_worker_gets_the_pinned_openblas_kernel(monkeypatch) -> None:
+    monkeypatch.setenv("OPENBLAS_CORETYPE", "SkylakeX")
+    assert check.clean_env()["OPENBLAS_CORETYPE"] == "Sandybridge"
+
+
+@pytest.mark.parametrize("kernels, accepted", [
+    (["Sandybridge", "Sandybridge"], True),
+    (["Haswell", "Haswell"], False),
+    (["Sandybridge", "SkylakeX"], False),
+    (["Sandybridge", None], False),
+    ([], False),
+])
+def test_an_ignored_kernel_pin_fails_closed(kernels, accepted) -> None:
+    pools = _pools(*kernels)
+    pools.append(dict(internal_api="openmp", architecture=None))
+    assert (check.kernel_failures(pools) == []) is accepted
+
+
+_LIBS = {"numpy": str(Path("site-packages") / "numpy.libs" / "libscipy_openblas64_.so"),
+         "scipy": str(Path("site-packages") / "scipy.libs" / "libscipy_openblas.so")}
+
+
+@pytest.fixture(autouse=True)
+def recorded_libraries(monkeypatch):
+    """The NumPy and SciPy distributions record the libraries in _LIBS (as their RECORD would)."""
+    monkeypatch.setattr(check, "distribution_files",
+                        lambda name: {check._same_file_key(_LIBS[name])})
+
+
+def _pools(*kernels):
+    """OpenBLAS pools as the NumPy and SciPy wheels load them: NumPy's first, then SciPy's."""
+    owners = ("numpy", "scipy")
+    return [dict(internal_api="openblas", architecture=name, num_threads=1, filepath=_LIBS[owners[min(i, 1)]])
+            for i, name in enumerate(kernels)]
+
+
+@pytest.mark.parametrize("libraries, accepted", [
+    (("numpy", "scipy"), True),
+    (("numpy",), False),
+    (("scipy",), False),
+])
+def test_both_bundled_openblas_copies_must_be_seen(libraries, accepted) -> None:
+    pools = [dict(internal_api="openblas", architecture="Sandybridge", filepath=_LIBS[name])
+             for name in libraries]
+    assert (check.kernel_failures(pools) == []) is accepted
+
+
+@pytest.mark.parametrize("impostor", [
+    str(Path("opt") / "scipy.vendor" / "lib" / "libopenblas.so"),
+    str(Path("site-packages") / "scipy.libs" / "libopenblas-other.so"),
+    str(Path("site-packages") / "scipy" / ".dylibs" / "libopenblas.dylib"),
+])
+def test_a_library_scipy_does_not_record_does_not_count_as_scipys(impostor) -> None:
+    pools = [dict(internal_api="openblas", architecture="Sandybridge", filepath=_LIBS["numpy"]),
+             dict(internal_api="openblas", architecture="Sandybridge", filepath=impostor)]
+    assert any("scipy is not loaded" in failure for failure in check.kernel_failures(pools))
+
+
+def test_one_library_cannot_stand_for_both_packages(monkeypatch) -> None:
+    shared = {check._same_file_key(_LIBS["numpy"])}
+    monkeypatch.setattr(check, "distribution_files", lambda name: shared)
+    pools = [dict(internal_api="openblas", architecture="Sandybridge", filepath=_LIBS["numpy"])]
+    assert any("same OpenBLAS file" in failure for failure in check.kernel_failures(pools))
+
+
+def _metadata(tmp_path, folder, files):
+    import importlib.metadata
+    meta = tmp_path / folder
+    meta.mkdir()
+    (meta / "METADATA").write_text("Metadata-Version: 2.1\nName: scipy\nVersion: 1.0\n", encoding="utf-8")
+    for name, text in files.items():
+        (meta / name).write_text(text, encoding="utf-8")
+    return importlib.metadata.PathDistribution(meta)
+
+
+def test_only_record_lists_the_files(tmp_path, monkeypatch) -> None:
+    import importlib.metadata
+    monkeypatch.undo()
+    library = tmp_path / "scipy.libs" / "libscipy_openblas.so"
+    library.parent.mkdir()
+    library.write_bytes(b"")
+    egg = _metadata(tmp_path, "scipy.egg-info", {"SOURCES.txt": "scipy.libs/libscipy_openblas.so\n"})
+    monkeypatch.setattr(importlib.metadata, "distribution", lambda name: egg)
+    assert check.distribution_files("scipy") is None
+    wheel = _metadata(tmp_path, "scipy-1.0.dist-info",
+                      {"RECORD": "scipy.libs/libscipy_openblas.so,sha256=x,0\n"})
+    monkeypatch.setattr(importlib.metadata, "distribution", lambda name: wheel)
+    assert check.distribution_files("scipy") == {check._same_file_key(library)}
+
+
+def test_a_distribution_without_a_record_fails_closed(monkeypatch) -> None:
+    monkeypatch.setattr(check, "distribution_files",
+                        lambda name: None if name == "scipy" else {check._same_file_key(_LIBS[name])})
+    assert any("records no files" in failure for failure in check.kernel_failures(_pools("Sandybridge", "Sandybridge")))
+
+
+def test_the_installed_distributions_record_the_loaded_openblas(monkeypatch) -> None:
+    monkeypatch.undo()
+    pools = check.loaded_pools()
+    assert check.kernel_failures([dict(pool, architecture=check.OPENBLAS_KERNEL) for pool in pools]) == []
+
+
+@pytest.mark.parametrize("pools, accepted", [
+    (lambda: _pools("Sandybridge", "Sandybridge"), True),
+    (lambda: _pools("Sandybridge"), False),
+    (lambda: _pools("Sandybridge", "SkylakeX"), False),
+])
+def test_the_origins_worker_records_the_kernel_check(tmp_path, monkeypatch, pools, accepted) -> None:
+    monkeypatch.setattr(check, "loaded_pools", pools)
+    monkeypatch.setattr(check, "PRIVATE_MODULES", ())
+    monkeypatch.setattr(check, "PRIVATE_PACKAGES", ())
+    monkeypatch.setattr(check, "EXAMPLE_MODULES", ())
+    monkeypatch.setattr(check, "load_config", lambda: dict(numerical_pins=[], private_versions={}))
+    numba = pytest.importorskip("numba")
+    monkeypatch.setattr(numba.config, "DISABLE_JIT", True)
+    monkeypatch.setattr(numba, "get_num_threads", lambda: 1)
+    out = tmp_path / "origins.json"
+    job = dict(kind="origins", inserts=[], root=str(tmp_path), checkout=str(tmp_path / "checkout"),
+               bundle=str(tmp_path / "bundle"), out=str(out))
+    assert (check.run_worker(job) == 0) is accepted
+    record = json.loads(out.read_text(encoding="utf-8"))
+    assert (record["status"] == "PASS") is accepted
+
+
+def test_an_example_exiting_with_success_is_still_checked(monkeypatch) -> None:
+    seen = iter([_pools("Sandybridge", "Sandybridge"), _pools("Sandybridge", "SkylakeX")])
+    monkeypatch.setattr(check, "verify_worker_origins", lambda job: None)
+    monkeypatch.setattr(check, "loaded_pools", lambda: next(seen))
+
+    def example(*args, **kwargs):
+        raise SystemExit(0)
+    monkeypatch.setattr("runpy.run_module", example)
+    with pytest.raises(SystemExit, match="SkylakeX"):
+        check.run_worker(dict(kind="module", inserts=[], argv=["examples.unused"]))
+
+
+def test_venv_install_pins_every_pip_phase(tmp_path, monkeypatch) -> None:
+    seen = []
+    monkeypatch.setenv("OPENBLAS_CORETYPE", "SkylakeX")
+    monkeypatch.setattr(check.subprocess, "run",
+                        lambda cmd, **kw: seen.append(kw["env"]) or type("R", (), {"returncode": 0})())
+    bundle = fake_bundle(tmp_path)
+    assert check.main(["install", "--bundle", str(bundle), "--output", str(tmp_path / "out"),
+                       "--venv", str(tmp_path / "venv")]) == 0
+    assert len(seen) == 4 and all(env["OPENBLAS_CORETYPE"] == "Sandybridge" for env in seen)
+
+
+@pytest.mark.parametrize("kind", ["pytest", "module"])
+@pytest.mark.parametrize("pools, reason", [
+    (("Sandybridge", "Haswell"), "must be pinned to Sandybridge"),
+    (("Sandybridge",), "scipy is not loaded"),
+])
+def test_numerical_workers_refuse_an_ignored_pin_before_running(monkeypatch, kind, pools, reason) -> None:
+    ran = []
+    monkeypatch.setattr(check, "verify_worker_origins", lambda job: None)
+    monkeypatch.setattr(check, "loaded_pools", lambda: _pools(*pools))
+    monkeypatch.setattr("pytest.main", lambda *a, **k: ran.append(a) or 0)
+    monkeypatch.setattr("runpy.run_module", lambda *a, **k: ran.append(a))
+    with pytest.raises(SystemExit, match=reason):
+        check.run_worker(dict(kind=kind, inserts=[], argv=["examples.unused"]))
+    assert ran == []
+
+
+@pytest.mark.parametrize("kind", ["pytest", "module"])
+def test_numerical_workers_check_libraries_loaded_while_running(monkeypatch, kind) -> None:
+    seen = iter([_pools("Sandybridge", "Sandybridge"), _pools("Sandybridge", "SkylakeX")])
+    monkeypatch.setattr(check, "verify_worker_origins", lambda job: None)
+    monkeypatch.setattr(check, "loaded_pools", lambda: next(seen))
+    monkeypatch.setattr("pytest.main", lambda *a, **k: 0)
+    monkeypatch.setattr("runpy.run_module", lambda *a, **k: None)
+    with pytest.raises(SystemExit, match="SkylakeX"):
+        check.run_worker(dict(kind=kind, inserts=[], argv=["examples.unused"]))
+
+
+def test_the_real_worker_pools_report_the_pin(monkeypatch) -> None:
+    import subprocess
+    monkeypatch.setenv("OPENBLAS_CORETYPE", "SkylakeX")
+    code = ("import sys; sys.path.insert(0, sys.argv[1]); "
+            "from scripts import check_static_contact_candidate as c; c.require_pinned_kernel()")
+    completed = subprocess.run([sys.executable, "-c", code, str(ROOT)], env=check.clean_env(),
+                               capture_output=True, text=True, timeout=120)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+
+
+@pytest.mark.parametrize("network", [False, True])
+def test_pip_runs_get_the_pinned_kernel(tmp_path, monkeypatch, network) -> None:
+    seen = []
+    monkeypatch.setenv("OPENBLAS_CORETYPE", "SkylakeX")
+    monkeypatch.setattr(check.subprocess, "run",
+                        lambda cmd, **kw: seen.append(kw["env"]) or type("R", (), {"returncode": 0})())
+    check.pip_run(["pip"], tmp_path, "phase", 10, network=network)
+    assert seen[0]["OPENBLAS_CORETYPE"] == "Sandybridge"
+
+
+def test_target_install_pip_gets_the_pinned_kernel(tmp_path, monkeypatch) -> None:
+    seen = []
+    monkeypatch.setenv("OPENBLAS_CORETYPE", "SkylakeX")
+    monkeypatch.setattr(check.subprocess, "check_call", lambda cmd, **kw: seen.append(kw.get("env")))
+    bundle = fake_bundle(tmp_path)
+    assert check.main(["install", "--bundle", str(bundle), "--output", str(tmp_path / "out"),
+                       "--python", sys.executable, "--numerical-site", str(tmp_path)]) == 0
+    assert seen and seen[0]["OPENBLAS_CORETYPE"] == "Sandybridge"
+
+
+def test_both_guides_state_the_pinned_kernel(tmp_path) -> None:
+    build.write_guide(tmp_path, CONFIG)
+    for guide in (tmp_path / "README.md", ROOT / "docs" / "GENERAL_CONTACT_STATIC_CANDIDATE.md"):
+        text = guide.read_text(encoding="utf-8")
+        assert f'$env:OPENBLAS_CORETYPE = "{check.OPENBLAS_KERNEL}"' in text
+        assert f"export OPENBLAS_CORETYPE={check.OPENBLAS_KERNEL} " in text
+
+
 def test_tools_load_the_050_successor_config() -> None:
     assert build.CONFIG_PATH == CONFIG_FILE
     assert check.CONFIG_PATH == CONFIG_FILE
