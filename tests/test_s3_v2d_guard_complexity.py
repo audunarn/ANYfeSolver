@@ -282,3 +282,97 @@ def test_mixed_q4_v2d_recovery_guard_work_is_linear():
     # Linear work grows with the element ratio (~4x); one complete Q4 guard
     # per V2D observation grew with its square (~16x).
     assert small > 0 and large <= 1.5 * (large_n / small_n) * small, counts
+
+
+# --- review round 1 (Codex, 2026-11-24) -------------------------------------
+
+
+def test_pressure_records_follow_an_instance_get_element_override(monkeypatch):
+    import anyfesolver.matrix_assembly as matrix_assembly
+
+    model, element_ids = _triangle_plate(2)
+    hidden = element_ids[0]
+    original = model.mesh.get_element
+    model.mesh.get_element = lambda element_id: (
+        None if element_id == hidden else original(element_id)
+    )
+    records = _records(model, element_ids)
+    monkeypatch.setattr(
+        matrix_assembly, "_foreign_code_free_v2d_element_mapping", lambda model: None
+    )
+    guarded = _records(model, element_ids)
+    assert records == guarded
+    assert hidden not in [record["element_id"] for record in records]
+
+
+def test_memo_is_inert_in_a_context_copied_during_the_operation():
+    import contextvars
+
+    model, v2d, beam = _v2d_with_beam()
+    with _memo():
+        v2d._validate_model_scope(model.mesh)
+        copied = contextvars.copy_context()
+    beam.__class__ = _LegacyShell
+    with pytest.raises(NativeParityCapabilityError, match="mixed shell scope"):
+        copied.run(v2d._validate_model_scope, model.mesh)
+
+
+class _ForeignElement(BeamElement):
+    """A subclass is not package-owned: its methods may be foreign code."""
+
+
+def test_memo_is_not_used_when_any_element_class_is_not_package_owned():
+    model, v2d, beam = _v2d_with_beam()
+    beam.__class__ = _ForeignElement
+    with pytest.raises(NativeParityCapabilityError, match="mixed shell scope"):
+        with _memo():
+            v2d._validate_model_scope(model.mesh)
+            foreign = model.mesh.elements[99]
+            foreign.__class__ = _LegacyShell
+            try:
+                # Refused at once, not only when the operation ends.
+                v2d._validate_model_scope(model.mesh)
+            finally:
+                foreign.__class__ = _ForeignElement
+            raise AssertionError("the swapped class was not refused at once")
+
+
+def _count_full_scope_scans(call):
+    calls = 0
+
+    def profiler(frame, event, arg):
+        nonlocal calls
+        code = frame.f_code
+        if (
+            event == "call"
+            and code.co_name == "_require_v2d_mixed_shell_scope"
+            and code.co_filename.endswith(_V2D_FILE)
+        ):
+            calls += 1
+
+    previous = sys.getprofile()
+    sys.setprofile(profiler)
+    try:
+        result = call()
+    finally:
+        sys.setprofile(previous)
+    return calls, result
+
+
+def test_static_batch_recovery_scans_the_scope_a_bounded_number_of_times():
+    from anyfesolver.recovery import RecoveryConfig
+    from anyfesolver.static_batch import StaticCase, iter_linear_batches
+
+    counts = []
+    for n in (2, 4):
+        model, element_ids = _triangle_plate(n)
+        case = StaticCase("p", _pressure(element_ids))
+        recovery = RecoveryConfig(include_stresses=True, include_reactions=False)
+        scans, blocks = _count_full_scope_scans(
+            lambda: list(iter_linear_batches(model, [case], recovery_config=recovery))
+        )
+        assert len(blocks) == 1
+        counts.append(scans)
+    # One scan per V2D geometry evaluation (the borrowed-lease route before the
+    # fix) grows with the element count; memoized operations do not.
+    assert 0 < counts[1] <= counts[0] + 4, counts

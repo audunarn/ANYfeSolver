@@ -1540,7 +1540,8 @@ def _qualified_recovery_runtime_lease_scope(
         )
         guard(stage="preflight")
         try:
-            result = operation(guard)
+            with _v2d_model_scope_memo():
+                result = operation(guard)
         except BaseException:
             guard(stage="exceptional output")
             raise

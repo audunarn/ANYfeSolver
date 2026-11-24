@@ -228,6 +228,9 @@ _EXACT_FE_MESH_REVISION_SIGNATURE = type.__getattribute__(
     "__dict__",
 )["revision_signature"]
 _EXACT_FE_MESH_GET_NODE = type.__getattribute__(_FEMesh, "__dict__")["get_node"]
+_EXACT_FE_MESH_GET_ELEMENT = type.__getattribute__(_FEMesh, "__dict__")[
+    "get_element"
+]
 _EXACT_FE_MESH_NUM_NODES = type.__getattribute__(_FEMesh, "__dict__")[
     "num_nodes"
 ]
@@ -6650,7 +6653,16 @@ def _foreign_code_free_v2d_element_mapping(model: "FEModel") -> Any:
     if not _load_model_access_is_builtin(model):
         return None
     mesh = dict.get(object.__getattribute__(model, "__dict__"), "mesh")
-    elements = dict.get(object.__getattribute__(mesh, "__dict__"), "elements")
+    mesh_namespace = object.__getattribute__(mesh, "__dict__")
+    # The guarded route calls ``model.mesh.get_element``; reading the mapping
+    # directly is equivalent only while that is the class's own method.
+    if (
+        "get_element" in mesh_namespace
+        or type.__getattribute__(_FEMesh, "__dict__").get("get_element")
+        is not _EXACT_FE_MESH_GET_ELEMENT
+    ):
+        return None
+    elements = dict.get(mesh_namespace, "elements")
     if not _mapping_reads_are_builtin(elements):
         return None
     return elements

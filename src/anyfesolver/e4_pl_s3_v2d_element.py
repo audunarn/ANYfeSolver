@@ -26,7 +26,7 @@ from ._qualified_authority_epoch import (
     make_authority_epoch_manager,
 )
 from .element_capabilities import ElementCapabilityError
-from .elements import ShellElement
+from .elements import BeamElement, QuadraticBeamElement, ShellElement
 from .e4_pl_element import QualifiedE4PLShellElement
 from .e4_pl_s3_v2c_element import (
     HAMMER_POINTS,
@@ -101,9 +101,24 @@ _DEGENERACY_FACTOR = 64.0 * np.finfo(np.float64).eps
 # Mixed-shell scope memo for one owned batch operation (see
 # ``v2d_model_scope_memo``).  ``None`` outside such an operation, where every
 # element evaluation keeps the complete mesh scan.
-_V2D_SCOPE_MEMO: ContextVar[Optional[Dict[int, Tuple[Any, Any, int, int]]]] = (
-    ContextVar("anyfesolver_s3_v2d_scope_memo", default=None)
+_V2D_SCOPE_MEMO: ContextVar[Optional["_V2DScopeMemo"]] = ContextVar(
+    "anyfesolver_s3_v2d_scope_memo", default=None
 )
+
+
+class _V2DScopeMemo:
+    """Scope verdicts of one operation; inert once the operation has ended.
+
+    A context copied while the operation ran (``contextvars.copy_context``,
+    a task or thread started from it) still references this object after the
+    operation's own context was reset, so it must stop answering then.
+    """
+
+    __slots__ = ("active", "entries")
+
+    def __init__(self) -> None:
+        self.active = True
+        self.entries: Dict[int, Tuple[Any, Any, int, int]] = {}
 
 
 def _require_v2d_mixed_shell_scope(elements: Mapping[Any, Any]) -> None:
@@ -121,6 +136,26 @@ def _require_v2d_mixed_shell_scope(elements: Mapping[Any, Any]) -> None:
         raise NativeParityCapabilityError(
             "S3 V2D mixed shell scope admits only exact V2D, accepted V2C and qualified Q4"
         )
+
+
+def _v2d_scope_memo_eligible(elements: Any) -> bool:
+    """True when every element is an exact package-owned class.
+
+    A memoized verdict could miss a class change made and undone by foreign
+    code in the middle of an operation.  Element methods are the operation's
+    callbacks into model content, so the memo is used only when every
+    element's class is one of this package's own exact classes (no subclass,
+    no generic element) and none of their methods is foreign code.
+    """
+
+    owned = (
+        NativeParityE4PLS3V2DShellElement,
+        StrictFlatLinearE4PLS3V2CShellElement,
+        QualifiedE4PLShellElement,
+        BeamElement,
+        QuadraticBeamElement,
+    )
+    return all(type(element) in owned for element in dict.values(elements))
 
 
 def _v2d_scope_stamp(mesh: FEMesh, elements: Any) -> Optional[Tuple[Any, int, int]]:
@@ -151,22 +186,27 @@ def v2d_model_scope_memo() -> Iterable[None]:
     Inside the block, ``_validate_model_scope`` scans a mesh's elements once
     and then reuses that verdict for as long as the mesh's mutation stamp is
     unchanged, instead of rescanning every element for every element
-    evaluation (quadratic in mesh size).  A change outside the stamped mutation
-    surface (for example ``__class__`` assignment on a non-V2D element) cannot
-    hide: when the block completes normally every memoized mesh is scanned
-    again and the operation is refused exactly as an unmemoized evaluation
-    would have been.  On an exception no rescan is done; the exception
-    propagates unchanged.
+    evaluation (quadratic in mesh size).  Verdicts are memoized only for
+    meshes whose elements are all exact package-owned classes.  A change
+    outside the stamped mutation surface that persists (for example
+    ``__class__`` assignment) is still refused: when the block completes
+    normally every memoized mesh is scanned again.  On an exception no rescan
+    is done and the exception propagates unchanged.  When the block ends the
+    memo becomes inert, including in contexts copied from inside it.
     """
 
-    memo: Dict[int, Tuple[Any, Any, int, int]] = {}
+    memo = _V2DScopeMemo()
     reset = _V2D_SCOPE_MEMO.set(memo)
     try:
         yield
     finally:
+        memo.active = False
         _V2D_SCOPE_MEMO.reset(reset)
-    for elements, _token, _epoch, _length in tuple(memo.values()):
+    for elements, _token, _epoch, _length in tuple(memo.entries.values()):
         _require_v2d_mixed_shell_scope(elements)
+    memo.entries.clear()
+
+
 _ROTATIONAL_INDICES = np.asarray((3, 4, 9, 10, 15, 16), dtype=np.intp)
 _DRILL_PROJECTOR = np.asarray(((1.0, 0.0), (-1.0, 0.0), (0.0, 1.0)))
 _DRILL_INVERSE_METRIC_SQRT = np.diag((1.0 / math.sqrt(2.0), math.sqrt(2.0)))
@@ -750,11 +790,15 @@ class NativeParityE4PLS3V2DShellElement(
                 "S3 V2D evaluation requires exact model-registry ownership"
             )
         memo = _V2D_SCOPE_MEMO.get()
-        stamp = None if memo is None else _v2d_scope_stamp(mesh, elements)
+        stamp = (
+            None
+            if memo is None or not memo.active
+            else _v2d_scope_stamp(mesh, elements)
+        )
         if stamp is None:
             _require_v2d_mixed_shell_scope(elements)
             return
-        entry = memo.get(id(elements))
+        entry = memo.entries.get(id(elements))
         if (
             entry is not None
             and entry[0] is elements
@@ -764,7 +808,8 @@ class NativeParityE4PLS3V2DShellElement(
         ):
             return
         _require_v2d_mixed_shell_scope(elements)
-        memo[id(elements)] = (elements, *stamp)
+        if _v2d_scope_memo_eligible(elements):
+            memo.entries[id(elements)] = (elements, *stamp)
 
     def _geometry(self, mesh: FEMesh) -> Dict[str, Any]:
         self._validate_configuration()
