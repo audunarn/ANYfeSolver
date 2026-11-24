@@ -10,6 +10,7 @@ bytes and digests, or the identical exception type and message.
 from __future__ import annotations
 
 import collections
+import hashlib
 import json
 import math
 from typing import Any, Mapping as TypingMapping, Sequence as TypingSequence
@@ -85,26 +86,30 @@ def _s3_reference(value: Any, *, path: str = "$") -> Any:
 
 
 def _fingerprint(tree: Any) -> Any:
-    """Type-exact, bit-exact structural fingerprint of a canonical tree."""
+    """Type-exact (type objects, not names), bit-exact fingerprint of a tree."""
 
     if type(tree) is float:
-        return ("float", tree.hex(), math.copysign(1.0, tree))
+        return (float, tree.hex(), math.copysign(1.0, tree))
     if type(tree) is dict:
-        return ("dict", tuple((key, type(key).__name__, _fingerprint(member))
-                              for key, member in tree.items()))
+        return (dict, tuple((key, type(key), _fingerprint(member))
+                            for key, member in tree.items()))
     if type(tree) is list:
-        return ("list", tuple(_fingerprint(member) for member in tree))
-    return (type(tree).__name__, repr(tree))
+        return (list, tuple(_fingerprint(member) for member in tree))
+    return (type(tree), repr(tree))
 
 
-def _outcome(function: Any, value: Any) -> Any:
+def _outcome(function: Any, value: Any, **kwargs: Any) -> Any:
     try:
-        tree = function(value)
+        tree = function(value, **kwargs)
     except Exception as exc:  # compared by exact type and message
         return ("error", type(exc), str(exc))
-    text = json.dumps(tree, sort_keys=True, separators=(",", ":"),
-                      ensure_ascii=False, allow_nan=False)
-    return ("ok", _fingerprint(tree), text)
+    try:
+        text = json.dumps(tree, sort_keys=True, separators=(",", ":"),
+                          ensure_ascii=False, allow_nan=False)
+        raw = (text + "\n").encode("utf-8")
+    except Exception as exc:
+        return ("serialise-error", _fingerprint(tree), type(exc), str(exc))
+    return ("ok", _fingerprint(tree), raw, hashlib.sha256(raw).hexdigest().upper())
 
 
 class _ArraySubclass(np.ndarray):
@@ -150,7 +155,7 @@ def _corpus() -> list[Any]:
         np.array([-np.inf]),
         np.array([np.nan, np.inf]).reshape(1, 2),
         special.astype(">f8"),
-        special.astype(np.float32),
+        special[:3].astype(np.float32),
         np.arange(6, dtype=np.int64).reshape(2, 3),
         np.array([True, False]),
         np.array([1.0, "a"], dtype=object),
@@ -173,6 +178,8 @@ def _corpus() -> list[Any]:
         _MappingView({"q": [special, -0.0]}),
         [special, special.astype(">f8"), np.float64(-0.0), {"k": special[::3]}],
         "string-root",
+        chr(0xD800),
+        {"k": chr(0xD800)},
         [b"x"],
         [set()],
         rng.standard_normal(200).tolist(),
@@ -216,6 +223,7 @@ def test_canonical_bytes_and_digest_unchanged_on_random_states(module: Any) -> N
         expected = (json.dumps(reference(state), sort_keys=True, separators=(",", ":"),
                                ensure_ascii=False, allow_nan=False) + "\n").encode("utf-8")
         assert module.canonical_json_bytes(state) == expected
+        assert module.canonical_sha256(state) == hashlib.sha256(expected).hexdigest().upper()
 
 
 def test_fast_path_does_not_call_hostile_array_subclass_differently() -> None:
@@ -231,3 +239,123 @@ def test_fast_path_does_not_call_hostile_array_subclass_differently() -> None:
         calls.clear()
         assert module._canonical_value(value) == [0.0]
         assert calls == [1]
+
+
+class _Path(str):
+    """A caller-supplied path object whose formatting is observable."""
+
+    def __new__(cls, text: str, log: list) -> "_Path":
+        made = super().__new__(cls, text)
+        made.log = log
+        return made
+
+    def __format__(self, spec: str) -> str:
+        self.log.append(("format", spec))
+        return str.__format__(self, spec)
+
+
+def _hostile_builder(log: list) -> Any:
+    """Caller classes whose protocol calls append to ``log``; returns a builder."""
+
+    class LoggedDict(dict):
+        def items(self):
+            log.append("dict.items")
+            return super().items()
+
+    class LoggedList(list):
+        def __iter__(self):
+            log.append("list.iter")
+            return super().__iter__()
+
+    class LoggedTuple(tuple):
+        def __iter__(self):
+            log.append("tuple.iter")
+            return super().__iter__()
+
+    class LoggedKey(str):
+        def __hash__(self):
+            log.append(("key.hash", str(self)))
+            return str.__hash__(self)
+
+        def __eq__(self, other):
+            log.append(("key.eq", str(self)))
+            return str.__eq__(self, other)
+
+        def __format__(self, spec):
+            log.append(("key.format", str(self)))
+            return str.__format__(self, spec)
+
+    class LoggedArray(np.ndarray):
+        def tolist(self):
+            log.append("array.tolist")
+            return np.ndarray.tolist(self)
+
+    class LoggedFloat(float):
+        def __repr__(self):
+            log.append("float.repr")
+            return float.__repr__(self)
+
+    class LoggedView(AbcMapping):
+        def __init__(self, data):
+            self._data = dict(data)
+
+        def __getitem__(self, key):
+            log.append(("view.getitem", key))
+            return self._data[key]
+
+        def __iter__(self):
+            log.append("view.iter")
+            return iter(self._data)
+
+        def __len__(self):
+            return len(self._data)
+
+    def build() -> list[Any]:
+      arr = np.array([[-0.0, 1.5], [2.0, 0.0]])
+      return [
+        LoggedDict({"a": arr, "b": [LoggedFloat(-0.0), 1.0]}),
+        LoggedList([arr, LoggedTuple((0.0, -0.0)), {"x": arr[::-1]}]),
+        {LoggedKey("k"): arr, "z": LoggedList([1, 2])},
+        [arr.view(LoggedArray), {"q": np.array([np.nan]).view(LoggedArray)}],
+        LoggedView({"v": [arr, LoggedDict({"w": -0.0})]}),
+        [LoggedFloat(float("nan"))],
+        {"deep": [[[LoggedDict({LoggedKey("e"): np.array([np.inf])})]]]},
+      ]
+
+    return build
+
+
+@pytest.mark.parametrize(
+    "module, reference",
+    [(v2d_state, _v2d_reference), (s3_state, _s3_reference)],
+    ids=["v2d", "s3"],
+)
+def test_caller_code_is_called_identically(module: Any, reference: Any) -> None:
+    log: list = []
+    build = _hostile_builder(log)
+    for index in range(len(build())):
+        log.clear()
+        old = _outcome(reference, build()[index])
+        old_log = list(log)
+        log.clear()
+        new = _outcome(module._canonical_value, build()[index])
+        new_log = list(log)
+        assert new_log == old_log, index
+        assert new == old, index
+        assert old_log, index  # every value exercises some caller code
+
+
+@pytest.mark.parametrize(
+    "module, reference",
+    [(v2d_state, _v2d_reference), (s3_state, _s3_reference)],
+    ids=["v2d", "s3"],
+)
+def test_caller_path_object_keeps_the_general_path(module: Any, reference: Any) -> None:
+    for value in (np.array([1.0, -0.0]), [1.0, [2.0]], 3.0, float("inf"), None, "s",
+                  {"a": np.array([np.nan])}):
+        old_log: list = []
+        new_log: list = []
+        old = _outcome(reference, value, path=_Path("$", old_log))
+        new = _outcome(module._canonical_value, value, path=_Path("$", new_log))
+        assert new == old
+        assert new_log == old_log
