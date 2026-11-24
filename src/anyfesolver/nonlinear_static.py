@@ -1531,6 +1531,22 @@ def _assemble_nonlinear_system_unchecked(
                 trial_state = committed_states.get(elem_id, trial_state)
             trial_states[elem_id] = trial_state
 
+    beam_batch = None
+    if kinematics == "corotational":
+        # Bit-identical stacked evaluation of admitted plain 2-node beams;
+        # every other element (and any refusal) keeps the scalar call below.
+        from ._corotational_beam_batch import prepare_corotational_beam_batch
+
+        beam_batch = prepare_corotational_beam_batch(
+            model,
+            displacements,
+            tangent=tangent,
+            tangent_mode=corotational_tangent,
+            num_layers=num_layers,
+            stable_shell_rotation=stable_shell_rotation,
+            excluded=deleted_set.union(element_scales),
+        )
+
     for elem_id, element in mesh.elements.items():
         dof_mapping = np.asarray(element.get_dof_mapping(mesh), dtype=np.intp)
         if dof_mapping.size == 0:
@@ -1544,7 +1560,13 @@ def _assemble_nonlinear_system_unchecked(
         else:
             f_elem = None
             k_elem = None
-            if kinematics == "corotational":
+            batched = beam_batch.take(elem_id) if beam_batch is not None else None
+            if batched is not None:
+                f_elem, k_elem = batched
+                cr_trial_state = committed_states.get(elem_id)
+                if cr_trial_state is not None:
+                    trial_states[elem_id] = cr_trial_state
+            elif kinematics == "corotational":
                 from .corotational import corotational_element_response
 
                 f_elem, k_elem, cr_trial_state = corotational_element_response(
