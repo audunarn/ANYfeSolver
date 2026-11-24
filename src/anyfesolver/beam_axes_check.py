@@ -21,7 +21,8 @@ from typing import Any, Dict, List, Mapping, Tuple
 
 import numpy as np
 
-from .elements import BeamElement, _beam_rotation_matrix, _section_orientation
+from .beam_sections import resolve_generalized_beam_section
+from .elements import BeamElement, _beam_material_properties, _beam_rotation_matrix
 
 __all__ = [
     "DEFAULT_AXIS_SWITCH_THRESHOLD",
@@ -33,9 +34,6 @@ __all__ = [
 
 #: ``|e1 . global Y|`` above which the default rule uses global Z as trial vector.
 DEFAULT_AXIS_SWITCH_THRESHOLD = 0.95
-
-_SCALAR_PAIRS = (("Iy", "Iz"), ("shear_factor_y", "shear_factor_z"), ("c_y", "c_z"))
-
 
 @dataclass(frozen=True)
 class BeamAxisRecord:
@@ -76,32 +74,71 @@ class DefaultBeamAxesReport:
         return bool(self.switch_nodes)
 
 
-def section_is_orientation_sensitive(cross_section: Mapping[str, Any]) -> Tuple[bool, str]:
-    """Return ``(sensitive, reason)`` for a ``BeamElement`` cross-section dict.
-
-    Fails closed: a generalized section (in the dict or resolved on the
-    element from ``section=``), a raw generalized stiffness or fibre
-    plasticity counts as sensitive, because its symmetry is not checked here.
-    A scalar section is insensitive only when its y and z values agree (Iy/Iz,
-    shear factors, and c_y/c_z when given) to a relative 1e-12.
-    """
-
-    for key in ("generalized_section", "beam_section", "generalized_stiffness", "fiber_plasticity"):
-        if cross_section.get(key) is not None:
-            return True, f"{key} (symmetry not checked)"
-    defaults = {"Iy": 1.0e-8, "Iz": 1.0e-8, "shear_factor_y": 5.0 / 6.0, "shear_factor_z": 5.0 / 6.0}
-    for y_key, z_key in _SCALAR_PAIRS:
-        y_value = cross_section.get(y_key, defaults.get(y_key))
-        z_value = cross_section.get(z_key, defaults.get(z_key))
+def _pair_difference(pairs) -> Tuple[bool, str]:
+    for name, y_value, z_value in pairs:
         if y_value is None and z_value is None:
             continue
         if y_value is None or z_value is None:
-            return True, f"only one of {y_key}/{z_key} given"
+            return True, f"only one of {name} given"
         y_value, z_value = float(y_value), float(z_value)
-        scale = max(abs(y_value), abs(z_value))
-        if abs(y_value - z_value) > 1.0e-12 * scale:
-            return True, f"{y_key}={y_value:.6g} != {z_key}={z_value:.6g}"
+        if abs(y_value - z_value) > 1.0e-12 * max(abs(y_value), abs(z_value)):
+            return True, f"{name}: {y_value:.6g} != {z_value:.6g}"
     return False, "y and z section values agree"
+
+
+def section_is_orientation_sensitive(cross_section: Mapping[str, Any]) -> Tuple[bool, str]:
+    """Return ``(sensitive, reason)`` for a ``BeamElement`` cross-section dict alone.
+
+    Fails closed: a generalized section (resolved with the solver's own
+    precedence), fibre plasticity or an unresolvable section counts as
+    sensitive, because its symmetry is not checked here.  A scalar section is
+    insensitive only when its y and z values agree (Iy/Iz, shear factors, and
+    c_y/c_z when given) to a relative 1e-12.  The material is not seen here;
+    :func:`check_default_beam_axes` also checks the element's resolved section
+    and its material's G12/G13.
+    """
+
+    try:
+        generalized = resolve_generalized_beam_section(cross_section)
+    except Exception as error:  # conflicting or invalid section data
+        return True, f"section not resolvable ({error})"
+    if generalized is not None:
+        return True, "generalized section (symmetry not checked)"
+    if cross_section.get("fiber_plasticity") is not None:
+        return True, "fiber_plasticity (symmetry not checked)"
+    return _pair_difference(
+        (
+            ("Iy/Iz", cross_section.get("Iy", 1.0e-8), cross_section.get("Iz", 1.0e-8)),
+            ("shear_factor_y/z", cross_section.get("shear_factor_y", 5.0 / 6.0),
+             cross_section.get("shear_factor_z", 5.0 / 6.0)),
+            ("c_y/c_z", cross_section.get("c_y"), cross_section.get("c_z")),
+        )
+    )
+
+
+def _element_sensitivity(element: BeamElement, material: Any) -> Tuple[bool, str]:
+    """Sensitivity from the element's resolved state, as the solver uses it."""
+
+    if getattr(element, "generalized_section", None) is not None:
+        return True, "generalized section (symmetry not checked)"
+    if getattr(element, "_fiber_plasticity", None) is not None:
+        return True, "fiber_plasticity (symmetry not checked)"
+    sensitive, reason = _pair_difference(
+        (
+            ("Iy/Iz", element._Iy, element._Iz),
+            ("shear_factor_y/z", element._ky, element._kz),
+            ("c_y/c_z", element._c_y, element._c_z),
+        )
+    )
+    if sensitive:
+        return sensitive, reason
+    if material is None:
+        return True, f"material {element.material_name!r} not found (not checked)"
+    try:
+        _E, g12, g13, _gj = _beam_material_properties(material, element.cross_section)
+    except Exception as error:
+        return True, f"material not checked ({error})"
+    return _pair_difference((("G12/G13", g12, g13),))
 
 
 def _element_axis(element: BeamElement, mesh: Any) -> np.ndarray:
@@ -117,9 +154,10 @@ def check_default_beam_axes(model: Any) -> DefaultBeamAxesReport:
     """Report beam elements whose default local axes depend on the global-Y switch.
 
     Inspects every ``BeamElement`` (including ``QuadraticBeamElement``) in
-    ``model``; other element types are ignored.  Elements whose
-    ``cross_section["orientation"]`` (or ``"web_direction"``) the solver uses
-    are listed in ``oriented_elements`` and not checked further; an orientation
+    ``model``; other element types are ignored.  It reads the state each
+    element resolved at construction (orientation, section) and its material's
+    G12/G13, not the possibly edited ``cross_section`` dict.  Elements whose
+    orientation the solver uses are listed in ``oriented_elements`` and not checked further; an orientation
     (nearly) parallel to the member axis falls back to the default rule and is
     checked like a missing one.  Read only.
     """
@@ -134,7 +172,8 @@ def check_default_beam_axes(model: Any) -> DefaultBeamAxesReport:
             other.append(int(element_id))
             continue
         e1 = _element_axis(element, mesh)
-        orientation = _section_orientation(element.cross_section)
+        # The orientation stored at construction is the one the solver uses.
+        orientation = getattr(element, "_orientation", None)
         if orientation is not None:
             # Same admission as elements._beam_rotation_matrix: an orientation
             # (nearly) parallel to the axis falls back to the default rule.
@@ -145,10 +184,9 @@ def check_default_beam_axes(model: Any) -> DefaultBeamAxesReport:
         alignment = abs(float(e1[1]))
         trial = "global_Z" if alignment > DEFAULT_AXIS_SWITCH_THRESHOLD else "global_Y"
         local_z = _beam_rotation_matrix(e1, None)[:, 2]
-        if getattr(element, "generalized_section", None) is not None:
-            sensitive, reason = True, "generalized section (symmetry not checked)"
-        else:
-            sensitive, reason = section_is_orientation_sensitive(element.cross_section)
+        sensitive, reason = _element_sensitivity(
+            element, model.materials.get(element.material_name)
+        )
         if orientation is not None:
             reason += "; orientation parallel to the axis, default rule used"
         records.append(

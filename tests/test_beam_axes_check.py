@@ -145,3 +145,29 @@ def test_orientation_parallel_to_the_axis_falls_back_to_the_default_rule():
     assert report.oriented_elements == ()
     assert dict(report.switch_nodes) == {2: (1, 2)}
     assert all("parallel" in r.sensitivity_reason for r in report.records)
+
+
+def test_checker_uses_the_orientation_stored_at_construction():
+    model = _two_member_joint(lambda a, b: {"cross_section": dict(_STRIP)})
+    for element in model.mesh.elements.values():  # edited after construction:
+        element.cross_section["orientation"] = [0.0, 0.0, 1.0]  # the solver ignores it
+    report = check_default_beam_axes(model)
+    assert report.oriented_elements == ()
+    assert dict(report.switch_nodes) == {2: (1, 2)}
+
+
+def test_orthotropic_material_with_symmetric_section_is_sensitive():
+    model = _two_member_joint(
+        lambda a, b: {"cross_section": {**_ROUND, "torsional_rigidity": 1.0}})
+    model.add_orthotropic_material("mat", 1.0e7, 1.0e7, 1.0e7, 0.25, 0.25, 0.25, 4.0e6, 2.0e6, 4.0e6)
+    report = check_default_beam_axes(model)
+    assert dict(report.switch_nodes) == {2: (1, 2)}
+    assert all("G12/G13" in r.sensitivity_reason for r in report.records)
+
+
+def test_beam_section_alias_with_explicit_none_follows_solver_precedence():
+    section = {**_ROUND, "generalized_section": None, "beam_section": np.eye(6)}
+    got, reason = section_is_orientation_sensitive(section)
+    element = BeamElement(1, [1, 2], "mat", dict(section))
+    assert element.generalized_section is None  # the solver resolves a scalar section
+    assert got is False, reason

@@ -89,7 +89,12 @@ Q4_SOURCE_BINDING_SUCCESSOR_SHA256: str | None = '2716B80F2792574F4720CC282C4368
 Q4_SOURCE_BINDING_DELTA = (
     ROOT / 'docs' / 'reference_cases' / 'e4_pl_source_binding_20261124.json'
 )
-Q4_SOURCE_BINDING_DELTA_SHA256: str | None = None
+# Pinned 2026-11-24 after the collector --check ran with the historical objects
+# present and an independent Codex (gpt-6.2-sol, high) review of the record,
+# reader and collector returned PIN APPROVED for these bytes.
+Q4_SOURCE_BINDING_DELTA_SHA256: str | None = (
+    '340CF7EB6B15B01799FA5838CC558BE74C1D6033C267120C5A142F6C257E50A7'
+)
 SIX_CARRIERS = (
     'e4_pl_element.py',
     'e4_pl_s3_element.py',
