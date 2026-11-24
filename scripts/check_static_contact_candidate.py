@@ -77,26 +77,36 @@ def private_requirements(config: dict) -> list[str]:
 OPENBLAS_OWNERS = ("numpy", "scipy")
 
 
-def _openblas_owner(filepath) -> str | None:
-    """'numpy' or 'scipy' for the OpenBLAS copy a wheel bundles (numpy.libs, scipy.libs, .dylibs)."""
-    path = Path(str(filepath or ""))
-    for folder in (path.parent, path.parent.parent):
-        stem = folder.name.split(".")[0]
-        if stem in OPENBLAS_OWNERS:
-            return stem
-    return None
+def _same_file_key(path) -> str:
+    return os.path.normcase(os.path.realpath(str(path)))
+
+
+def distribution_files(name: str) -> set[str] | None:
+    """Every file the installed distribution records (its RECORD), or None if it records none."""
+    import importlib.metadata
+    try:
+        files = importlib.metadata.distribution(name).files
+    except importlib.metadata.PackageNotFoundError:
+        return None
+    if not files:
+        return None
+    return {_same_file_key(file.locate()) for file in files}
 
 
 def kernel_failures(pools: list[dict]) -> list[str]:
-    """Fail closed unless NumPy's and SciPy's OpenBLAS are both loaded and every OpenBLAS pool
-    reports the pinned kernel."""
+    """Fail closed unless NumPy's and SciPy's own OpenBLAS are both loaded and every OpenBLAS pool
+    reports the pinned kernel. A pool belongs to NumPy or SciPy only when its library is a file that
+    the installed distribution records, not by folder or file name."""
     openblas = [pool for pool in pools if pool.get("internal_api") == "openblas"]
     found = [pool.get("architecture") for pool in openblas]
-    owners = {_openblas_owner(pool.get("filepath")) for pool in openblas}
-    missing = [name for name in OPENBLAS_OWNERS if name not in owners]
+    loaded = {_same_file_key(pool["filepath"]) for pool in openblas if pool.get("filepath")}
     failures = []
-    if missing:
-        failures.append(f"OpenBLAS of {', '.join(missing)} is not loaded, so its kernel is unverified")
+    for name in OPENBLAS_OWNERS:
+        recorded = distribution_files(name)
+        if recorded is None:
+            failures.append(f"{name} records no files, so its OpenBLAS cannot be identified")
+        elif not loaded & recorded:
+            failures.append(f"OpenBLAS of {name} is not loaded, so its kernel is unverified")
     if not found or any(name != OPENBLAS_KERNEL for name in found):
         failures.append(f"OpenBLAS kernel must be pinned to {OPENBLAS_KERNEL}, got {found}")
     return failures

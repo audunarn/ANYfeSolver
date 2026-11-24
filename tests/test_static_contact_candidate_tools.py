@@ -39,26 +39,78 @@ def test_an_ignored_kernel_pin_fails_closed(kernels, accepted) -> None:
     assert (check.kernel_failures(pools) == []) is accepted
 
 
+_LIBS = {"numpy": str(Path("site-packages") / "numpy.libs" / "libscipy_openblas64_.so"),
+         "scipy": str(Path("site-packages") / "scipy.libs" / "libscipy_openblas.so")}
+
+
+@pytest.fixture(autouse=True)
+def recorded_libraries(monkeypatch):
+    """The NumPy and SciPy distributions record the libraries in _LIBS (as their RECORD would)."""
+    monkeypatch.setattr(check, "distribution_files",
+                        lambda name: {check._same_file_key(_LIBS[name])})
+
+
 def _pools(*kernels):
-    """OpenBLAS pools as the NumPy and SciPy wheels load them (numpy.libs, then scipy.libs)."""
-    owners = ("numpy.libs", "scipy.libs")
-    return [dict(internal_api="openblas", architecture=name,
-                 filepath=str(Path("site-packages") / owners[min(i, 1)] / f"libscipy_openblas-{i}.so"))
+    """OpenBLAS pools as the NumPy and SciPy wheels load them: NumPy's first, then SciPy's."""
+    owners = ("numpy", "scipy")
+    return [dict(internal_api="openblas", architecture=name, num_threads=1, filepath=_LIBS[owners[min(i, 1)]])
             for i, name in enumerate(kernels)]
 
 
-@pytest.mark.parametrize("folders, accepted", [
-    (("numpy.libs", "scipy.libs"), True),
-    (("numpy/.dylibs", "scipy/.dylibs"), True),
-    (("numpy.libs",), False),
-    (("scipy.libs",), False),
-    (("numpy.libs", "elsewhere"), False),
+@pytest.mark.parametrize("libraries, accepted", [
+    (("numpy", "scipy"), True),
+    (("numpy",), False),
+    (("scipy",), False),
 ])
-def test_both_bundled_openblas_copies_must_be_seen(folders, accepted) -> None:
-    pools = [dict(internal_api="openblas", architecture="Sandybridge",
-                  filepath=str(Path("site-packages") / folder / "libscipy_openblas.so"))
-             for folder in folders]
+def test_both_bundled_openblas_copies_must_be_seen(libraries, accepted) -> None:
+    pools = [dict(internal_api="openblas", architecture="Sandybridge", filepath=_LIBS[name])
+             for name in libraries]
     assert (check.kernel_failures(pools) == []) is accepted
+
+
+@pytest.mark.parametrize("impostor", [
+    str(Path("opt") / "scipy.vendor" / "lib" / "libopenblas.so"),
+    str(Path("site-packages") / "scipy.libs" / "libopenblas-other.so"),
+    str(Path("site-packages") / "scipy" / ".dylibs" / "libopenblas.dylib"),
+])
+def test_a_library_scipy_does_not_record_does_not_count_as_scipys(impostor) -> None:
+    pools = [dict(internal_api="openblas", architecture="Sandybridge", filepath=_LIBS["numpy"]),
+             dict(internal_api="openblas", architecture="Sandybridge", filepath=impostor)]
+    assert any("scipy is not loaded" in failure for failure in check.kernel_failures(pools))
+
+
+def test_a_distribution_without_a_record_fails_closed(monkeypatch) -> None:
+    monkeypatch.setattr(check, "distribution_files",
+                        lambda name: None if name == "scipy" else {check._same_file_key(_LIBS[name])})
+    assert any("records no files" in failure for failure in check.kernel_failures(_pools("Sandybridge", "Sandybridge")))
+
+
+def test_the_installed_distributions_record_the_loaded_openblas(monkeypatch) -> None:
+    monkeypatch.undo()
+    pools = check.loaded_pools()
+    assert check.kernel_failures([dict(pool, architecture=check.OPENBLAS_KERNEL) for pool in pools]) == []
+
+
+@pytest.mark.parametrize("pools, accepted", [
+    (lambda: _pools("Sandybridge", "Sandybridge"), True),
+    (lambda: _pools("Sandybridge"), False),
+    (lambda: _pools("Sandybridge", "SkylakeX"), False),
+])
+def test_the_origins_worker_records_the_kernel_check(tmp_path, monkeypatch, pools, accepted) -> None:
+    monkeypatch.setattr(check, "loaded_pools", pools)
+    monkeypatch.setattr(check, "PRIVATE_MODULES", ())
+    monkeypatch.setattr(check, "PRIVATE_PACKAGES", ())
+    monkeypatch.setattr(check, "EXAMPLE_MODULES", ())
+    monkeypatch.setattr(check, "load_config", lambda: dict(numerical_pins=[], private_versions={}))
+    numba = pytest.importorskip("numba")
+    monkeypatch.setattr(numba.config, "DISABLE_JIT", True)
+    monkeypatch.setattr(numba, "get_num_threads", lambda: 1)
+    out = tmp_path / "origins.json"
+    job = dict(kind="origins", inserts=[], root=str(tmp_path), checkout=str(tmp_path / "checkout"),
+               bundle=str(tmp_path / "bundle"), out=str(out))
+    assert (check.run_worker(job) == 0) is accepted
+    record = json.loads(out.read_text(encoding="utf-8"))
+    assert (record["status"] == "PASS") is accepted
 
 
 def test_an_example_exiting_with_success_is_still_checked(monkeypatch) -> None:
