@@ -194,8 +194,21 @@ def test_planar_plate_is_unchanged(alpha: float) -> None:
     for element in model.mesh.elements.values():
         coordinates = element.get_node_coordinates(model.mesh)
         assert equation7_frame(coordinates)[2] <= element.planar_tolerance
+        # Exact on any machine: planar facets apply the raw coefficient ...
+        assert element._effective_drilling_stabilization(coordinates) == alpha
+    # ... and the planar stiffness does not depend on it, bit for bit.
+    other, _corner = _planar_plate(0.1 if alpha != 0.1 else 1.0e-3)
+    for element_id, element in model.mesh.elements.items():
+        twin = other.mesh.elements[element_id]
+        material = model.get_material(element.material_name)
+        assert np.array_equal(
+            np.asarray(element.compute_stiffness_matrix(model.mesh, material)),
+            np.asarray(twin.compute_stiffness_matrix(other.mesh, other.get_material(twin.material_name))),
+        )
+    # Stored main-branch result; the solve's last bits differ between machines
+    # (CI windows runner: 1.8e-12 relative), so compare across machines at 1e-10.
     baseline = np.array(PLANAR_PLATE_BASELINE[alpha])
-    np.testing.assert_allclose(corner, baseline, rtol=1.0e-12, atol=0.0)
+    np.testing.assert_allclose(corner, baseline, rtol=1.0e-10, atol=0.0)
 
 
 def _zero_state_tangent(model, assembler):
@@ -256,7 +269,7 @@ def test_nonlinear_routes_apply_the_floored_coefficient(route: str) -> None:
     assert_close(default_tangent, tangent_of(warped_explicit))
     assert_close(_element_tangent_sum(warped_default), _element_tangent_sum(warped_explicit))
     honoured, _ = _twisted_beam(4, 1, alpha=1.0)
-    assert not np.allclose(tangent_of(honoured), default_tangent, rtol=1.0e-9, atol=0.0)
+    assert not np.allclose(tangent_of(honoured), default_tangent, rtol=1.0e-10, atol=0.0)
 
 
 @pytest.mark.parametrize("dof", ["uz", "uy"])
