@@ -48,8 +48,7 @@ shear area for transverse shear force in local y, ``shear_factor_z`` for local
 z.  The optional ``cross_section["orientation"]`` vector prescribes the local
 z direction (e.g. the stiffener web direction).  Without it, a heuristic picks
 local y close to global Y (or global Z for members nearly parallel to Y),
-which leaves the section orientation unconstrained for asymmetric sections
-and emits :class:`BeamOrientationWarning` where the rule switches axes.
+which leaves the section orientation unconstrained for asymmetric sections.
 
 Beam-shell coupling
 -------------------
@@ -417,52 +416,6 @@ def _inv2(matrix: np.ndarray) -> Tuple[np.ndarray, float]:
     return inv, float(det)
 
 
-class BeamOrientationWarning(UserWarning):
-    """A beam section's local axes were chosen by the default heuristic.
-
-    Raised for orientation-sensitive sections (``Iy != Iz``, unequal shear
-    factors or a generalized section) without ``cross_section["orientation"]``
-    on members within about 18 degrees of global Y.  There the default rule
-    switches local y from global Y to global Z, so the section is turned by
-    90 degrees relative to neighbouring members of a curved line.  An
-    ``orientation`` (nearly) parallel to the member axis does not define the
-    frame and is treated as absent.  Material orthotropy (unequal transverse
-    shear moduli) is not inspected here.
-    """
-
-
-_DEFAULT_AXIS_SWITCH_COSINE = 0.95
-
-
-def _warn_default_beam_axis_switch(element: Any, e1: np.ndarray) -> None:
-    """Warn when the default local-axis rule switches for an asymmetric section."""
-    if abs(float(e1[1])) <= _DEFAULT_AXIS_SWITCH_COSINE:
-        return
-    orientation = element._orientation
-    if orientation is not None:
-        # Same test as _beam_rotation_matrix: a usable orientation defines the frame.
-        projected = orientation - np.dot(orientation, e1) * e1
-        if float(np.linalg.norm(projected)) > 1.0e-6 * float(np.linalg.norm(orientation)):
-            return
-    asymmetric = (
-        getattr(element, "generalized_section", None) is not None
-        or float(element._Iy) != float(element._Iz)
-        or float(element._ky) != float(element._kz)
-    )
-    if not asymmetric:
-        return
-    warnings.warn(
-        "BeamElement without cross_section['orientation'] on a member within "
-        "about 18 degrees of global Y: the default rule switches local y from "
-        "global Y to global Z there, which turns an orientation-sensitive "
-        "section (Iy != Iz) by 90 degrees relative to other members of a "
-        "curved line. Set cross_section['orientation'] (the local z / web "
-        "direction) to define the section axes.",
-        BeamOrientationWarning,
-        stacklevel=3,
-    )
-
-
 def _section_orientation(cross_section: Dict[str, Any]) -> Optional[np.ndarray]:
     """Return the prescribed local-z (web) direction from a cross-section dict."""
     value = cross_section.get("orientation", cross_section.get("web_direction"))
@@ -490,7 +443,7 @@ def _beam_rotation_matrix(e1: np.ndarray, orientation: Optional[np.ndarray]) -> 
             e2 /= np.linalg.norm(e2)
             return np.column_stack((e1, e2, e3))
     trial = np.array([0.0, 1.0, 0.0])
-    if abs(float(np.dot(e1, trial))) > _DEFAULT_AXIS_SWITCH_COSINE:
+    if abs(float(np.dot(e1, trial))) > 0.95:
         trial = np.array([0.0, 0.0, 1.0])
     e2 = trial - np.dot(trial, e1) * e1
     e2 /= np.linalg.norm(e2)
@@ -3943,7 +3896,6 @@ class BeamElement(Element):
         if length < _SMALL:
             raise ValueError(f"Beam element {self.element_id} has near-zero length")
         e1 = (coords[1] - coords[0]) / length
-        _warn_default_beam_axis_switch(self, e1)
         R = _beam_rotation_matrix(e1, self._orientation)
         T = np.zeros((12, 12), dtype=float)
         Rt = R.T
@@ -5258,7 +5210,6 @@ class QuadraticBeamElement(BeamElement):
         if length < _SMALL:
             raise ValueError(f"Quadratic beam element {self.element_id} has near-zero length")
         e1 = (coords[2] - coords[0]) / length
-        _warn_default_beam_axis_switch(self, e1)
         R = _beam_rotation_matrix(e1, self._orientation)
         T = np.zeros((18, 18), dtype=float)
         Rt = R.T
