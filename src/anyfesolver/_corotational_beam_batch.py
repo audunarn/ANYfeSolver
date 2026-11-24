@@ -30,6 +30,87 @@ formulation, existing reference and local caches, exact model/mesh types,
 and only the ``rotated`` tangent mode.
 """
 
+# --------------------------------------------------------------------------
+# Admission inventory (trust boundary: NumPy, Python builtins, numba and
+# ANYfeSolver's own classes/functions are trusted; every value reachable from
+# the model, mesh, elements, nodes, materials, committed states, displacements
+# and the hook's parameters is caller data).
+#
+# Rule A (exact type): a read is made only after ``type(x) is C`` proves the
+#   exact class; ``is`` and ``type()`` run no caller code.  Type tests never
+#   use ``in``/``==`` on type objects (a metaclass ``__eq__`` could run).
+# Rule B (exact keys): before any ``in``, ``[]``, ``get`` or lookup on a
+#   mapping, ``type(d) is dict`` (or exact ``_QualifiedStateMapping``) is
+#   proven and every key is swept with ``all(t is K for t in map(type, keys))``
+#   (``map(type)`` and ``is`` call nothing), so hashing/equality are builtin.
+# Rule C (instance dicts): ``vars(x)`` is read only for an exact trusted class,
+#   must itself be an exact dict with exact-str keys, and no key may shadow a
+#   class callable (so every method the scalar loop calls is the library one).
+# Rule D (no early raise/warn): admission makes no arithmetic on caller data
+#   before bounds are proven and uses getattr-with-default for slots; every
+#   doubt returns ``None`` (refusal), which itself runs no caller code.
+#
+# Reads/calls, with the rule that makes each one inert:
+#  hook   type(kinematics) is str and kinematics == "corotational"     A (exact
+#         str ==); deleted_set/element_scales are sets/dicts of int()s.
+#  params type(tangent|stable_shell_rotation) is bool; type(num_layers) is
+#         int; type(tangent_mode) is str then .strip().lower() (exact str);
+#         type(excluded) is tuple/set/frozenset then len().               A
+#  numpy  np.geterr()["under"] == "ignore" (numpy-owned dict).
+#  model  type(model) is FEModel; vars(model) ............................. C
+#         ["mesh"], ["materials"] ....................................... B,C
+#  mesh   type(mesh) is FEMesh; vars(mesh) .............................. C
+#         "element_activity" present and None; ["revisions"], ["elements"],
+#         ["nodes"], ["_corotational_cache"] ............................ B,C
+#  materials  exact dict, exact-str keys, then "default" in / [] and the
+#         spot check's dict.get(materials, name, default) ................. B
+#  revisions  exact dict, exact-str keys AND exact-int values swept before
+#         the "topology"/"geometry" lookups (revision_signature int()s them) B
+#  _corotational_cache  exact tuple (exact tuple of 2 exact ints, exact dict
+#         with exact-int keys); signature compared as ints ................ A,B
+#  elements/nodes  exact dict, or exact _QualifiedStateMapping whose vars()
+#         passes C against that class's callables (so .get/.items are
+#         dict's and read the same storage as dict.get/dict.items); keys
+#         swept exact int ............................................... A,B,C
+#  element  type is BeamElement; vars() ................................... C
+#         formulation_native_total_lagrangian absent or `is False`;
+#         _linear_nodal_offsets absent; _fiber_plasticity / generalized_section
+#         present and None; _geometric_nonlinearity exact str not
+#         corotational; material_name exact non-empty str; node_ids exact
+#         list of 2 exact ints; _nl_cache exact dict with exact-str keys .. A,B
+#  _nl_cache  "T"/"K_noax" exact float64 C-contiguous aligned (12,12)
+#         ndarrays; "L"/"EA" exactly float or np.float64 ................. A,B
+#  reference  exact _CorotationalReference (slots, no __dict__); category and
+#         coordinates read with getattr(..., None) (an unset slot cannot
+#         raise); coordinates exact float64 (2,3) ndarray ................ A,D
+#  node   type is Node; vars() ................................................ C
+#         dofs exact list of exact ints, each 0 <= dof < displacements.size
+#         checked before np.intp conversion ............................. A,D
+#  committed_states  exact dict with exact-int keys and every beam id absent
+#         or None; or exact NonlinearStateStore whose vars() passes C, with
+#         exact-dict exact-int-key _element_to_batch (no beam id) and
+#         _fallback_committed (beam id absent or None, so Mapping.get ->
+#         __getitem__ -> deepcopy(None) or KeyError: no caller code) .... A,B,C
+#  displacements  exact float64 1-D ndarray.
+#  numerics  bounds (|U|,|X|,|T|,|K_noax|,|EA| < 1e100, 1e-50 < L < 1e50)
+#         proven before L**2; stacked kernel and rotation under
+#         errstate(all="ignore"); any non-finite final row is routed. With
+#         those bounds every floating-point exception of the scalar arithmetic
+#         propagates to a non-finite output (no division by an unbounded
+#         denominator, overflow only in products feeding the output), so a
+#         batched row is one on which the scalar raises no FP flag; the spot
+#         check additionally runs the oracle with divide/over/invalid=raise and
+#         refuses on any exception.                                      D
+#  take() dict.pop on the exact-int-keyed responses dict; trusted counters.
+#
+# Staleness: with every object above proven exact and free of instance
+# overrides, the scalar loop between prepare() and the last take() executes
+# only library code (dict-backed .items/.get, BeamElement.get_dof_mapping,
+# exact-ndarray indexing, the admitted committed-state lookup, take(), np.add.at)
+# none of which writes a batched input, so the precomputed responses cannot
+# go stale and no caller code can observe a different call order or count.
+# --------------------------------------------------------------------------
+
 from __future__ import annotations
 
 import inspect
@@ -83,7 +164,8 @@ _BEAM_CALLABLES = _class_callables(BeamElement)
 _MODEL_CALLABLES = _class_callables(FEModel)
 _MESH_CALLABLES = _class_callables(FEMesh)
 _NODE_CALLABLES = _class_callables(Node)
-_MAPPING_TYPES = (dict, _QualifiedStateMapping)
+_QUALIFIED_MAPPING_CALLABLES = _class_callables(_QualifiedStateMapping)
+_STORE_CALLABLES = _class_callables(NonlinearStateStore)
 
 # Library functions whose replacement at run time must disable the batch, so a
 # patched (spied, wrapped or altered) scalar route is always honoured.
@@ -418,8 +500,14 @@ def _kernel(X, U, T, K_noax, L, L_squared, EA, tangent: bool):
         R_rig = np.where(route[:, None, None], _EYE3, R_rig)
         if k_ref is not None:
             k_ref = np.where(route[:, None, None], 0.0, k_ref)
-    f, k = _rotate(f_ref, k_ref, R_rig)
-    return f, k, route
+    with np.errstate(all="ignore"):
+        f, k = _rotate(f_ref, k_ref, R_rig)
+        # A rotation that overflows stays with the scalar call (which then
+        # reports it on its own turn).
+        finite = np.isfinite(f).all(axis=1)
+        if k is not None:
+            finite &= np.isfinite(k).all(axis=(1, 2))
+    return f, k, route | ~finite
 
 
 def _scalar_oracle(reference, element, mesh, material, u_element, tangent: bool):
@@ -456,16 +544,43 @@ def _bitwise_equal(a: Optional[np.ndarray], b: Optional[np.ndarray]) -> bool:
 # --------------------------------------------------------------------------
 
 
-def _is_exact_int(value) -> bool:
-    return type(value) is int
+def _keys_are(mapping, key_type) -> bool:
+    """Every key's exact type is ``key_type``; iterates dict storage only."""
+    return all(t is key_type for t in map(type, dict.keys(mapping)))
 
 
-def _is_exact_str(value) -> bool:
-    return type(value) is str
+def _instance_dict(obj, callables: frozenset):
+    """``vars(obj)`` for an object whose exact class the caller has proven.
+
+    Admitted only as an exact dict with exact-str keys none of which shadows
+    a class callable; otherwise ``None``.  Nothing here runs caller code.
+    """
+    attributes = vars(obj)
+    if type(attributes) is not dict or not _keys_are(attributes, str):
+        return None
+    if not callables.isdisjoint(attributes):
+        return None
+    return attributes
 
 
-def _admit(element, elem_id, nodes, references):
-    """Return (reference, cache, dof_mapping) or None.
+def _exact_int_mapping(mapping) -> bool:
+    """Exact dict, or exact ``_QualifiedStateMapping`` without overrides."""
+    kind = type(mapping)
+    if kind is _QualifiedStateMapping:
+        if _instance_dict(mapping, _QUALIFIED_MAPPING_CALLABLES) is None:
+            return False
+    elif kind is not dict:
+        return False
+    return _keys_are(mapping, int)
+
+
+def _is_float_scalar(value) -> bool:
+    kind = type(value)
+    return kind is float or kind is np.float64
+
+
+def _admit(element, elem_id, nodes, references, size):
+    """Return (reference, cache, dof_mapping, material_name) or None.
 
     Only identity/type checks and exact built-in container reads run here; no
     method of the element, mesh, nodes or model is called, so no caller code
@@ -473,11 +588,8 @@ def _admit(element, elem_id, nodes, references):
     """
     if type(element) is not BeamElement or type(elem_id) is not int:
         return None
-    attributes = vars(element)
-    # Exact-str keys first: hashing/comparing a foreign key could run code.
-    if type(attributes) is not dict or not all(map(_is_exact_str, attributes)):
-        return None
-    if not _BEAM_CALLABLES.isdisjoint(attributes):
+    attributes = _instance_dict(element, _BEAM_CALLABLES)
+    if attributes is None:
         return None
     if attributes.get("formulation_native_total_lagrangian", False) is not False:
         return None
@@ -494,7 +606,7 @@ def _admit(element, elem_id, nodes, references):
     if type(name) is not str or not name:
         return None
     cache = attributes.get("_nl_cache")
-    if type(cache) is not dict:
+    if type(cache) is not dict or not _keys_are(cache, str):
         return None
     for key in ("T", "K_noax"):
         matrix = dict.get(cache, key)
@@ -506,16 +618,17 @@ def _admit(element, elem_id, nodes, references):
             or not matrix.flags.aligned
         ):
             return None
-    if type(dict.get(cache, "L")) not in (float, np.float64):
+    if not _is_float_scalar(dict.get(cache, "L")):
         return None
-    if type(dict.get(cache, "EA")) not in (float, np.float64):
+    if not _is_float_scalar(dict.get(cache, "EA")):
         return None
     reference = dict.get(references, elem_id)
     if type(reference) is not _cr._CorotationalReference:
         return None
-    if type(reference.category) is not str or reference.category != "beam":
+    category = getattr(reference, "category", None)  # slots: unset -> None
+    if type(category) is not str or category != "beam":
         return None
-    coordinates = reference.coordinates
+    coordinates = getattr(reference, "coordinates", None)
     if (
         type(coordinates) is not np.ndarray
         or coordinates.dtype != np.float64
@@ -533,18 +646,19 @@ def _admit(element, elem_id, nodes, references):
         node = dict.get(nodes, node_id)
         if type(node) is not Node:
             return None
-        node_attributes = vars(node)
-        if not all(map(_is_exact_str, node_attributes)):
-            return None
-        if not _NODE_CALLABLES.isdisjoint(node_attributes):
+        node_attributes = _instance_dict(node, _NODE_CALLABLES)
+        if node_attributes is None:
             return None
         node_dofs = node_attributes.get("dofs")
-        if type(node_dofs) is not list or not all(map(_is_exact_int, node_dofs)):
+        if type(node_dofs) is not list or len(node_dofs) != 6:
             return None
+        for dof in node_dofs:
+            # Exact-int bounds before any conversion: an out-of-range DOF
+            # must raise on its scalar turn, not here.
+            if type(dof) is not int or dof < 0 or dof >= size:
+                return None
         dof_mapping.extend(node_dofs)
-    if len(dof_mapping) != 12:
-        return None
-    return reference, cache, np.asarray(dof_mapping, dtype=np.intp)
+    return reference, cache, np.array(dof_mapping, dtype=np.intp), name
 
 
 def _cached_references(mesh_attributes):
@@ -555,16 +669,13 @@ def _cached_references(mesh_attributes):
     only, so no caller ``__eq__`` can run or disagree with the scalar test.
     """
     revisions = mesh_attributes.get("revisions")
-    if type(revisions) is not dict:
+    if type(revisions) is not dict or not _keys_are(revisions, str):
+        return None
+    # revision_signature() int()s every value: exact ints only.
+    if not all(t is int for t in map(type, dict.values(revisions))):
         return None
     topology = dict.get(revisions, "topology", 0)
     geometry = dict.get(revisions, "geometry", 0)
-    if type(topology) is not int or type(geometry) is not int:
-        return None
-    if not all(type(key) is str for key in revisions):
-        return None
-    if not all(type(value) is int for value in dict.values(revisions)):
-        return None  # revision_signature() would call int() on them
     cached = mesh_attributes.get("_corotational_cache")
     if type(cached) is not tuple or len(cached) != 2:
         return None
@@ -575,42 +686,65 @@ def _cached_references(mesh_attributes):
         return None
     if signature[0] != topology or signature[1] != geometry:
         return None
-    if type(references) is not dict or not all(map(_is_exact_int, references)):
+    if type(references) is not dict or not _keys_are(references, int):
         return None
     return references
 
 
-def _evaluation_admitted(model, committed_states, displacements):
+def _states_admitted(committed_states, beam_ids) -> bool:
+    """The scalar ``committed_states.get(beam_id)`` runs no caller code.
+
+    Admitted: an exact dict with exact-int keys whose beam entries are absent
+    or None, or an exact NonlinearStateStore (no instance overrides) whose
+    beam ids are in no shell batch and whose fallback entry is absent or
+    None, so ``Mapping.get`` -> ``__getitem__`` ends in ``KeyError`` or
+    ``deepcopy(None)``.
+    """
+    kind = type(committed_states)
+    if kind is dict:
+        if not _keys_are(committed_states, int):
+            return False
+        return all(dict.get(committed_states, i) is None for i in beam_ids)
+    if kind is not NonlinearStateStore:
+        return False
+    attributes = _instance_dict(committed_states, _STORE_CALLABLES)
+    if attributes is None:
+        return False
+    batched = attributes.get("_element_to_batch")
+    fallback = attributes.get("_fallback_committed")
+    if type(batched) is not dict or type(fallback) is not dict:
+        return False
+    if not _keys_are(batched, int) or not _keys_are(fallback, int):
+        return False
+    for i in beam_ids:
+        if i in batched or dict.get(fallback, i) is not None:
+            return False
+    return True
+
+
+def _evaluation_admitted(model, displacements):
     """Whole-evaluation admission by identity/type checks only."""
     if type(model) is not FEModel:
         return None
-    model_attributes = vars(model)
-    if not all(map(_is_exact_str, model_attributes)):
-        return None
-    if not _MODEL_CALLABLES.isdisjoint(model_attributes):
+    model_attributes = _instance_dict(model, _MODEL_CALLABLES)
+    if model_attributes is None:
         return None
     mesh = model_attributes.get("mesh")
     if type(mesh) is not FEMesh:
         return None
-    mesh_attributes = vars(mesh)
-    if not all(map(_is_exact_str, mesh_attributes)):
+    mesh_attributes = _instance_dict(mesh, _MESH_CALLABLES)
+    if mesh_attributes is None:
         return None
-    if not _MESH_CALLABLES.isdisjoint(mesh_attributes):
-        return None
-    if mesh_attributes.get("element_activity", None) is not None:
+    if mesh_attributes.get("element_activity", 0) is not None:
         return None
     materials = model_attributes.get("materials")
-    if type(materials) is not dict or "default" not in materials:
+    if type(materials) is not dict or not _keys_are(materials, str):
         return None
-    if not all(type(key) is str for key in materials):
+    if "default" not in materials:
         return None
     elements = mesh_attributes.get("elements")
     nodes = mesh_attributes.get("nodes")
-    if type(elements) not in _MAPPING_TYPES or type(nodes) not in _MAPPING_TYPES:
-        return None
-    if not all(map(_is_exact_int, nodes)):
-        return None
-    if type(committed_states) not in (dict, NonlinearStateStore):
+    if not _exact_int_mapping(elements) or not _exact_int_mapping(nodes):
         return None
     if (
         type(displacements) is not np.ndarray
@@ -707,26 +841,33 @@ def prepare_corotational_beam_batch(
         return None
     if type(tangent_mode) is not str or tangent_mode.strip().lower() != "rotated":
         return None
-    if excluded:
+    kind = type(excluded)
+    if kind is not tuple and kind is not set and kind is not frozenset:
+        return None
+    if len(excluded):
         return None  # deleted or scaled elements: not a pure evaluation
     if np.geterr().get("under") != _DEFAULT_UNDERFLOW:
         return None
-    admitted_evaluation = _evaluation_admitted(model, committed_states, displacements)
+    # Toggle and library checks first: with the batch off, no caller object
+    # is even read.
+    if not _library_intact() or not _ready():
+        return None
+    admitted_evaluation = _evaluation_admitted(model, displacements)
     if admitted_evaluation is None:
         return None
     mesh, mesh_attributes, materials, elements, nodes = admitted_evaluation
-    if not _library_intact() or not _ready():
-        return None
     references = _cached_references(mesh_attributes)
     if references is None:
         return None
+    size = displacements.size
     ids = []
     element_list = []
     refs = []
     caches = []
     dofs = []
+    names = []
     for elem_id, element in dict.items(elements):
-        admitted = _admit(element, elem_id, nodes, references)
+        admitted = _admit(element, elem_id, nodes, references, size)
         if admitted is None:
             return None  # mixed or unadmitted model: whole evaluation scalar
         ids.append(elem_id)
@@ -734,27 +875,30 @@ def prepare_corotational_beam_batch(
         refs.append(admitted[0])
         caches.append(admitted[1])
         dofs.append(admitted[2])
+        names.append(admitted[3])
     if len(ids) < 2:
         return None
-    dof_matrix = np.stack(dofs)
-    if int(dof_matrix.min()) < 0 or int(dof_matrix.max()) >= displacements.size:
+    if not _states_admitted(committed_states, ids):
         return None
     try:
-        U = displacements[dof_matrix]
-        X = np.stack([reference.coordinates for reference in refs])
-        T = np.stack([dict.__getitem__(cache, "T") for cache in caches])
-        K_noax = np.stack([dict.__getitem__(cache, "K_noax") for cache in caches])
-        L_values = [dict.__getitem__(cache, "L") for cache in caches]
-        L = np.array(L_values, dtype=float)
-        L_squared = np.array([value**2 for value in L_values], dtype=float)
-        EA = np.array([dict.__getitem__(cache, "EA") for cache in caches], dtype=float)
-        # Bounded finite data keeps every scalar intermediate free of
-        # floating-point exceptions; anything else stays scalar.
-        for array in (U, X, T, K_noax, EA):
-            if not np.all(np.abs(array) < _BOUND):
-                return None
-        if not (np.all(L > 1.0e-50) and np.all(L < 1.0e50)):
+        with np.errstate(all="ignore"):
+            U = displacements[np.stack(dofs)]
+            X = np.stack([getattr(reference, "coordinates") for reference in refs])
+            T = np.stack([dict.__getitem__(cache, "T") for cache in caches])
+            K_noax = np.stack([dict.__getitem__(cache, "K_noax") for cache in caches])
+            L_values = [dict.__getitem__(cache, "L") for cache in caches]
+            L = np.array(L_values, dtype=float)
+            EA = np.array([dict.__getitem__(cache, "EA") for cache in caches], dtype=float)
+            # Bounded finite data keeps every scalar floating-point exception
+            # visible as a non-finite (routed) output; anything else stays
+            # scalar.  Bounds come before any arithmetic on the data.
+            bounded = all(
+                bool(np.all(np.abs(array) < _BOUND)) for array in (U, X, T, K_noax, EA)
+            ) and bool(np.all(L > 1.0e-50)) and bool(np.all(L < 1.0e50))
+        if not bounded:
             return None
+        # 1e-100 < L**2 < 1e100: the scalar ``L**2`` cannot flag either.
+        L_squared = np.array([value**2 for value in L_values], dtype=float)
         f, k, route = _kernel(X, U, T, K_noax, L, L_squared, EA, tangent)
     except Exception:  # the batch's own numerics only: refuse, scalar recomputes
         _refuse()
@@ -764,13 +908,20 @@ def prepare_corotational_beam_batch(
         return None
     # Spot check the first and last batched element against the oracle.  The
     # material is resolved as FEModel.get_material would, by exact dict reads.
+    # A batched row must be one on which the scalar raises no floating-point
+    # flag; the oracle runs with those flags raising and any exception refuses.
+    default = dict.__getitem__(materials, "default")
     for position in (int(batched[0]), int(batched[-1])):
-        element = element_list[position]
-        material = dict.get(materials, element.material_name, materials["default"])
-        f_scalar, k_scalar = _scalar_oracle(
-            refs[position], element, mesh, material,
-            displacements[dofs[position]], tangent,
-        )
+        material = dict.get(materials, names[position], default)
+        try:
+            with np.errstate(divide="raise", over="raise", invalid="raise"):
+                f_scalar, k_scalar = _scalar_oracle(
+                    refs[position], element_list[position], mesh, material,
+                    displacements[dofs[position]], tangent,
+                )
+        except Exception:
+            _refuse()
+            return None
         if not (
             _bitwise_equal(f[position], f_scalar)
             and _bitwise_equal(None if k is None else k[position], k_scalar)

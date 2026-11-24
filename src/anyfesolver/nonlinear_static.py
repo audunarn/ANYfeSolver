@@ -1532,7 +1532,9 @@ def _assemble_nonlinear_system_unchecked(
             trial_states[elem_id] = trial_state
 
     beam_batch = None
-    if kinematics == "corotational":
+    # Exact-str test first: a str subclass keeps the scalar loop and this
+    # hook adds no caller-visible comparison.
+    if type(kinematics) is str and kinematics == "corotational":
         # Bit-identical stacked evaluation of admitted plain 2-node beams;
         # every other element (and any refusal) keeps the scalar call below.
         from ._corotational_beam_batch import prepare_corotational_beam_batch

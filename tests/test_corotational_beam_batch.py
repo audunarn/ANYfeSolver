@@ -566,3 +566,448 @@ def test_failed_probe_disables_batch_for_process(monkeypatch):
 def test_probe_passes_on_this_platform():
     passed, reason = batch._run_probe()
     assert passed, reason
+
+
+# --- Codex round 3 reproducers (fail on 572e9df73) ---------------------------
+#
+# The scalar reference is the same assembly with the batch toggled off, which
+# returns before reading any caller object.
+
+
+class _Key:
+    """A key equal to ``value`` whose hash/equality hooks are observable."""
+
+    def __init__(self, value, callback):
+        self.value, self.callback = value, callback
+
+    def __hash__(self):
+        return hash(self.value)
+
+    def __eq__(self, other):
+        self.callback()
+        return self.value == other
+
+    def __lt__(self, other):
+        return self.value < other
+
+    def __gt__(self, other):
+        return self.value > other
+
+
+def _rotations():
+    return cp.corotational_performance_status()["force_block_rotations"]
+
+
+def _double_ea(model):
+    model.mesh.elements[2]._nl_cache["EA"] *= 2
+
+
+def _both(setup, run=None):
+    """Run ``setup(model, u) -> states/options`` scalar then batched."""
+    outcomes = []
+    for enabled in (False, True):
+        model, u = _admission_model()
+        options = setup(model, u) or {}
+        states = options.pop("states", {})
+        batch.set_corotational_beam_batch_enabled(enabled)
+        cp.reset_corotational_performance_status()
+        arguments = {"kinematics": "corotational", **options}
+        if run is None:
+            outcome = _assemble_nonlinear_system_unchecked(
+                model, u, states, 5, tangent=False, **arguments
+            )[0]
+        else:
+            outcome = run(model, u, states, arguments)
+        outcomes.append((outcome, model))
+    return outcomes
+
+
+def _assert_same_force(outcomes):
+    (scalar, _), (stacked, _) = outcomes
+    assert _same(scalar, stacked)
+
+
+def test_r3_hostile_committed_state_key_cannot_stale_a_later_beam():
+    def setup(model, u):
+        return {"states": {_Key(1, lambda: _double_ea(model)): None}}
+
+    _assert_same_force(_both(setup))
+
+
+def test_r3_deepcopy_hooked_store_state_cannot_stale_a_later_beam():
+    from anyfesolver.nonlinear_state import NonlinearStateStore
+
+    def setup(model, u):
+        class State:
+            def __deepcopy__(self, memo):
+                _double_ea(model)
+                return self
+
+        states = NonlinearStateStore()
+        states.add_dictionary_fallback({1: State()})
+        model.mesh.elements[2]._nl_cache["EA"] /= 2  # undo the add-time copy
+        return {"states": states}
+
+    _assert_same_force(_both(setup))
+
+
+@pytest.mark.parametrize("mapping, method", [("nodes", "get"), ("elements", "items")])
+def test_r3_instance_method_on_admitted_mapping_cannot_stale(mapping, method):
+    def setup(model, u):
+        target = getattr(model.mesh, mapping)
+        calls = []
+        original = getattr(dict, method)
+
+        def hook(*args):
+            calls.append(1)
+            if (method == "get" and len(calls) == 1) or (method == "items" and len(calls) == 2):
+                _double_ea(model)
+            return original(target, *args)
+
+        setattr(target, method, hook)
+
+    _assert_same_force(_both(setup))
+
+
+def test_r3_hostile_nl_cache_key_runs_only_scalar_lookups():
+    logs = []
+
+    def setup(model, u):
+        cache = model.mesh.elements[1]._nl_cache
+        calls = []
+        logs.append(calls)
+
+        def on_lookup():
+            calls.append(_rotations())
+            _double_ea(model)
+
+        cache[_Key("T", on_lookup)] = cache.pop("T")
+
+    _assert_same_force(_both(setup))
+    assert logs[0] == logs[1]
+
+
+@pytest.mark.parametrize("case", ["material", "revision", "namespace"])
+def test_r3_admission_reads_run_no_caller_code(case):
+    logs = []
+
+    def setup(model, u):
+        calls = []
+        logs.append(calls)
+
+        def log():
+            calls.append(_rotations())
+
+        if case == "namespace":
+            class Namespace(dict):
+                def get(self, key, default=None):
+                    log()
+                    return super().get(key, default)
+
+            model.__dict__ = Namespace(vars(model))
+        else:
+            mapping, key = ((model.materials, "default") if case == "material"
+                            else (model.mesh.revisions, "topology"))
+            mapping[_Key(key, log)] = mapping.pop(key)
+
+    _assert_same_force(_both(setup))
+    assert logs[0] == logs[1]
+    # The pre-batch scalar trace: get_material's "default" lookup once per
+    # beam before its rotation; the instance namespace is never .get()-read.
+    if case == "material":
+        assert logs[0] == [0, 1, 2, 3, 4, 5]
+    elif case == "namespace":
+        assert logs[0] == []
+
+
+@pytest.mark.parametrize("case", ["dof", "reference", "length"])
+def test_r3_invalid_data_raises_or_warns_on_its_scalar_turn(case):
+    import warnings
+
+    def setup(model, u):
+        if case == "dof":
+            model.mesh.nodes[max(model.mesh.nodes)].dofs[0] = 1 << 200
+        elif case == "reference":
+            del model.mesh._corotational_cache[1][6].coordinates
+        else:
+            model.mesh.elements[6]._nl_cache["L"] = np.float64(1.0e200)
+
+    def run(model, u, states, arguments):
+        with warnings.catch_warnings(record=True) as seen:
+            warnings.simplefilter("always")
+            try:
+                _assemble_nonlinear_system_unchecked(
+                    model, u, states, 5, tangent=False, **arguments
+                )
+            except (OverflowError, AttributeError) as exc:
+                return type(exc).__name__, str(exc), _rotations()
+        return "warnings", [str(w.message) for w in seen], _rotations()
+
+    (scalar, _), (stacked, _) = _both(setup, run)
+    assert scalar == stacked
+    if case == "length":
+        assert scalar[0] == "warnings" and scalar[1] and scalar[2] == 6
+    else:
+        assert scalar[2] == 5  # five beams rotated before the sixth raises
+
+
+def test_r3_hook_adds_no_kinematics_comparison():
+    logs = []
+
+    def setup(model, u):
+        calls = []
+        logs.append(calls)
+
+        class Kinematics(str):
+            __hash__ = str.__hash__
+
+            def __str__(self):
+                return self
+
+            def lower(self):
+                return self
+
+            def __eq__(self, other):
+                calls.append(_rotations())
+                return super().__eq__(other)
+
+        return {"kinematics": Kinematics("corotational")}
+
+    _assert_same_force(_both(setup))
+    assert logs[0] == logs[1]
+    # Pre-batch scalar trace: once in the grouping loop, once per beam.
+    assert logs[0] == [0, 0, 1, 2, 3, 4, 5]
+
+
+# --- Inventory classes: every refusal is silent and runs no caller code -----
+
+
+def _silent_refusal(model, u, committed_states=None, calls=None):
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert _prepared_ids(model, u, committed_states=committed_states) == set()
+    if calls is not None:
+        assert calls == []
+
+
+def _store():
+    from anyfesolver.nonlinear_state import NonlinearStateStore
+
+    return NonlinearStateStore()
+
+
+def test_ordinary_states_and_qualified_mappings_still_batch():
+    from anyfesolver.fe_core import _QualifiedStateMapping
+
+    model, u = _admission_model()
+    assert type(model.mesh.elements) is _QualifiedStateMapping
+    assert type(model.mesh.nodes) is _QualifiedStateMapping
+    assert _prepared_ids(model, u) == ALL
+    assert _prepared_ids(model, u, committed_states={1: None, 99: object()}) == ALL
+    assert _prepared_ids(model, u, committed_states=_store()) == ALL
+    store = _store()
+    store.add_dictionary_fallback({2: None, 99: 1.0})
+    assert _prepared_ids(model, u, committed_states=store) == ALL
+
+
+_KEY_PLACES = [
+    "model_dict", "mesh_dict", "element_dict", "node_dict", "nl_cache",
+    "materials", "revisions", "references", "elements", "nodes",
+    "committed_dict", "store_dict", "store_fallback", "store_batches",
+]
+
+
+@pytest.mark.parametrize("place", _KEY_PLACES)
+def test_hostile_key_in_each_admitted_dict_refuses_silently(place):
+    model, u = _admission_model()
+    calls = []
+
+    def log():
+        calls.append(1)
+
+    states = {}
+    element, node = model.mesh.elements[3], model.mesh.nodes[3]
+    targets = {
+        "model_dict": (vars(model), "mesh"),
+        "mesh_dict": (vars(model.mesh), "nodes"),
+        "element_dict": (vars(element), "_nl_cache"),
+        "node_dict": (vars(node), "dofs"),
+        "nl_cache": (element._nl_cache, "EA"),
+        "materials": (model.materials, "mat"),
+        "revisions": (model.mesh.revisions, "geometry"),
+        "references": (model.mesh._corotational_cache[1], 3),
+        "elements": (model.mesh.elements, 3),
+        "nodes": (model.mesh.nodes, 3),
+    }
+    if place.endswith("_dict") and place in targets:
+        # Instance (split-key) dicts: an extra foreign key; replacing a
+        # shared key in place is not representable there.
+        mapping, key = targets[place]
+        dict.__setitem__(mapping, _Key(key + "_extra", log), None)
+    elif place in targets:
+        mapping, key = targets[place]
+        value = dict.pop(mapping, key)
+        dict.__setitem__(mapping, _Key(key, log), value)
+    elif place == "committed_dict":
+        states = {_Key(4, log): None}
+    else:
+        states = _store()
+        mapping = {
+            "store_dict": vars(states),
+            "store_fallback": vars(states)["_fallback_committed"],
+            "store_batches": vars(states)["_element_to_batch"],
+        }[place]
+        mapping[_Key(4 if place != "store_dict" else "_zz", log)] = None
+    del calls[:]  # insertion hashed the key; only admission reads count
+    _silent_refusal(model, u, states, calls)
+
+
+@pytest.mark.parametrize("target, method", [
+    ("nodes", "get"), ("nodes", "items"), ("nodes", "__getitem__"),
+    ("elements", "items"), ("elements", "get"), ("elements", "values"),
+    ("store", "get"), ("store", "__getitem__"),
+])
+def test_instance_override_on_admitted_mapping_refuses_silently(target, method):
+    model, u = _admission_model()
+    states = {}
+    if target == "store":
+        states = owner = _store()
+    else:
+        owner = getattr(model.mesh, target)
+    vars(owner)[method] = _noop_method
+    _silent_refusal(model, u, states)
+
+
+@pytest.mark.parametrize("owner", ["model", "mesh", "element", "node", "store"])
+def test_instance_dict_subclass_refuses_silently(owner):
+    model, u = _admission_model()
+    calls = []
+
+    class Namespace(dict):
+        def get(self, *args):
+            calls.append(1)
+            return dict.get(self, *args)
+
+        def __iter__(self):
+            calls.append(1)
+            return dict.__iter__(self)
+
+    states = {}
+    target = {
+        "model": model, "mesh": model.mesh, "element": model.mesh.elements[3],
+        "node": model.mesh.nodes[3],
+    }.get(owner)
+    if owner == "store":
+        states = target = _store()
+    object.__setattr__(target, "__dict__", Namespace(vars(target)))
+    _silent_refusal(model, u, states, calls)
+
+
+@pytest.mark.parametrize("case", [
+    "dof_huge", "dof_negative", "dof_size", "dof_bool", "length_huge", "length_nan",
+    "length_tiny", "ea_inf", "coordinates_inf", "displacement_inf",
+    "reference_category", "revision_value", "default_material",
+    "element_activity_absent",
+])
+def test_out_of_range_data_refuses_silently(case):
+    model, u = _admission_model()
+    element = model.mesh.elements[4]
+    if case == "dof_huge":
+        model.mesh.nodes[4].dofs[1] = 1 << 70
+    elif case == "dof_negative":
+        model.mesh.nodes[4].dofs[1] = -1
+    elif case == "dof_size":
+        model.mesh.nodes[4].dofs[1] = u.size
+    elif case == "dof_bool":
+        model.mesh.nodes[4].dofs[1] = True
+    elif case == "length_huge":
+        element._nl_cache["L"] = np.float64(1.0e200)
+    elif case == "length_nan":
+        element._nl_cache["L"] = float("nan")
+    elif case == "length_tiny":
+        element._nl_cache["L"] = 1.0e-200
+    elif case == "ea_inf":
+        element._nl_cache["EA"] = np.inf
+    elif case == "coordinates_inf":
+        model.mesh._corotational_cache[1][4].coordinates = np.full((2, 3), np.inf)
+    elif case == "displacement_inf":
+        u = u.copy()
+        u[7] = np.inf
+    elif case == "reference_category":
+        del model.mesh._corotational_cache[1][4].category
+    elif case == "revision_value":
+        model.mesh.revisions["mass"] = 1.0
+    elif case == "default_material":
+        del model.materials["default"]
+    elif case == "element_activity_absent":
+        del vars(model.mesh)["element_activity"]
+    _silent_refusal(model, u)
+
+
+@pytest.mark.parametrize("kind", ["dict", "store"])
+def test_deepcopy_hooked_committed_state_refuses_silently(kind):
+    model, u = _admission_model()
+    calls = []
+
+    class State:
+        def __deepcopy__(self, memo):
+            calls.append(1)
+            return self
+
+        def __eq__(self, other):
+            calls.append(1)
+            return False
+
+        __hash__ = object.__hash__
+
+    if kind == "dict":
+        states = {3: State()}
+    else:
+        states = _store()
+        states.add_dictionary_fallback({3: State()})
+    del calls[:]
+    _silent_refusal(model, u, states, calls)
+
+
+def test_str_subclass_parameters_refuse_and_type_metaclass_eq_never_runs():
+    model, u = _admission_model()
+    calls = []
+
+    class Mode(str):
+        def strip(self):
+            calls.append(1)
+            return self
+
+    assert _prepared_ids(model, u, tangent_mode=Mode("rotated")) == set()
+
+    class Meta(type):
+        def __eq__(cls, other):
+            calls.append(1)
+            return other is float
+
+        __hash__ = type.__hash__
+
+    Weird = Meta("Weird", (), {})
+    model.mesh.elements[2]._nl_cache["L"] = Weird()
+    _silent_refusal(model, u, None, calls)
+    assert calls == []
+
+
+def test_disabled_batch_reads_no_caller_object():
+    model, u = _admission_model()
+    batch.set_corotational_beam_batch_enabled(False)
+    calls = []
+
+    class Namespace(dict):
+        def get(self, *args):
+            calls.append(1)
+            return dict.get(self, *args)
+
+    model.__dict__ = Namespace(vars(model))
+    assert batch.prepare_corotational_beam_batch(
+        model, u, committed_states={}, tangent=True, tangent_mode="rotated",
+        num_layers=5, stable_shell_rotation=False,
+    ) is None
+    assert calls == []
