@@ -43,6 +43,10 @@ from .cases import make_result_case
 from .constraint_audit import constraint_residual_summary, require_valid_constraints
 from .control import CancellationToken, ProgressCallback, cancellation_safe_point, emit_progress
 from .element_capabilities import require_model_element_capabilities
+from .exact_beam_batch import (
+    exact_beam_recovery_batch as _exact_beam_recovery_batch,
+    exact_beam_recovery_candidate as _exact_beam_recovery_candidate,
+)
 from .linalg import FactorizationCache, MatrixClass, factorize, factorize_cached
 from .matrix_assembly import (
     assemble_load_matrix,
@@ -1731,6 +1735,41 @@ def _compute_stresses_under_lease(
     displacements = np.asarray(displacements, dtype=float)
     if not inputs_are_plain:
         qualified_runtime_guard(stage="stress-recovery input observation")
+    # All-exact-beam recovery (owner decisions D1/D2, 2026-11-24): one
+    # complete guard before the batch reads anything and one after its last
+    # output replace the two per-element observation guards below.  Changing
+    # the model during a request (including from another thread) is outside
+    # the supported contract.  Only the plain lease (no qualified trusted or
+    # exact-beam authority attached) is eligible; any irregularity returns
+    # ``None`` and the unchanged per-element loop runs.
+    bracket_ids = (
+        _exact_beam_recovery_candidate(model, mesh, selected)
+        if type(runtime_namespace) is dict
+        and not runtime_namespace
+        and type(observation_namespace) is dict
+        and not observation_namespace
+        else None
+    )
+    if bracket_ids is not None:
+        # The bracket guards carry the stage names of the first and last
+        # per-element observation guards they replace, so a failure reports
+        # exactly what the per-element loop would have reported.  The ids
+        # come from pure reads after the batch verified its authority.
+        first_bracket_id, last_bracket_id = bracket_ids
+        qualified_runtime_guard(
+            stage=f"stress material observation for element {first_bracket_id}"
+        )
+        batched_stresses = _exact_beam_recovery_batch(
+            model,
+            mesh,
+            displacements,
+            selected,
+        )
+        if batched_stresses is not None:
+            qualified_runtime_guard(
+                stage=f"stress element observation for element {last_bracket_id}"
+            )
+            return batched_stresses
     for elem_id, element in mesh.elements.items():
         if selected is not None and int(elem_id) not in selected:
             continue

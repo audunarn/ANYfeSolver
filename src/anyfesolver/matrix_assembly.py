@@ -73,6 +73,10 @@ from .s3_reference_batch import (
 )
 from .element_capabilities import ElementCapabilityError
 from .elements import BeamElement as _BeamElement, Element as _Element
+from .exact_beam_batch import (
+    exact_beam_stiffness_batch as _EXACT_BEAM_STIFFNESS_BATCH,
+    exact_beam_stiffness_candidate as _EXACT_BEAM_STIFFNESS_CANDIDATE,
+)
 if TYPE_CHECKING:
     from .boundary import LoadCase
     from .fe_core import FEModel
@@ -4006,6 +4010,19 @@ def _shell_quadrature_batch_identity(
     return identity
 
 
+def _standard_element_stiffness(element: Any, mesh: Any, material: Any) -> np.ndarray:
+    """The element's own linear stiffness; the getter of every internal caller.
+
+    Passing exactly this function (not an equivalent lambda) is what admits
+    an all-exact-beam model to the batched beam stiffness below.
+    """
+
+    return element.compute_stiffness_matrix(mesh, material)
+
+
+_EXACT_STANDARD_STIFFNESS_GETTER = _standard_element_stiffness
+
+
 def _assemble_element_matrix_under_lease_impl(
     model: "FEModel",
     matrix_type: str,
@@ -4525,6 +4542,106 @@ def _assemble_element_matrix_under_lease_impl(
             v2d_batch_eligibility,
             v2d_fast_candidate,
         )
+
+        # All-exact-beam linear stiffness (owner decisions D1/D2, 2026-11-24).
+        # One complete guard before the batch reads anything and one after
+        # its last output replace the two per-element material-observation
+        # guards of the scalar loops below.  Changing the model during a
+        # request (including from another thread) is outside the supported
+        # contract.  The batch runs after the imports above (so a missing
+        # name fails identically) and receives the classification objects
+        # the scalar loop would use; it verifies every dispatch of the scalar
+        # path before reading, calls the sparsity kernel of the scalar
+        # pre-loop phase before any element side effect, and returns ``None``
+        # before any side effect whenever anything is irregular, so that the
+        # unchanged scalar loops below run instead.
+        if (
+            matrix_type == "stiffness"
+            and element_matrix_getter is _EXACT_STANDARD_STIFFNESS_GETTER
+            and activity_info is None
+            and _exact_type(activity_scales) is _exact_dict
+            and not activity_scales
+            and owned_mesh is None
+            and raw_mesh is None
+            and owned_items_provider is None
+            and owned_material_provider is None
+            and owned_material_name_provider is None
+            and fast_items_provider is None
+            and raw_items_provider is None
+            and raw_material_provider is None
+            and raw_total_provider is None
+            and raw_s3_material_provider is None
+            and raw_s3_total_provider is None
+            and raw_s3_reference_plan is None
+            and not raw_q4_only
+            and not raw_exact_cached_only
+            and _EXACT_BEAM_STIFFNESS_CANDIDATE(model, mesh, element_items)
+        ):
+            qualified_runtime_guard(
+                model,
+                context=f"{matrix_type} assembly material observation",
+            )
+            beam_batch = _EXACT_BEAM_STIFFNESS_BATCH(
+                model,
+                mesh,
+                element_items,
+                total_dofs,
+                (
+                    QualifiedE4PLShellElement,
+                    QUALIFIED_Q4_FORMULATION_ID,
+                    ShellElement,
+                    v2c_fast_candidate,
+                    v2d_fast_candidate,
+                    reference_s3_candidate,
+                ),
+                lambda: _sparsity_kernel(
+                    mesh,
+                    matrix_type,
+                    element_items=element_items,
+                ),
+            )
+            if beam_batch is not None:
+                (
+                    beam_matrices,
+                    beam_element_ids,
+                    beam_seconds,
+                    (rows_concat, cols_concat),
+                ) = beam_batch
+                beam_count = _exact_len(beam_element_ids)
+                beam_element_seconds = beam_seconds / beam_count
+                element_times = info["element_times"]
+                for beam_element_id in beam_element_ids:
+                    element_times[_exact_int(beam_element_id)] = beam_element_seconds
+                info["num_elements"] += beam_count
+                qualified_runtime_guard(
+                    model,
+                    context=f"{matrix_type} assembly completed elements",
+                )
+                # The scalar loop appends ``(1.0 * matrix).ravel()`` per
+                # element; multiplying finite values by 1.0 is exact, so the
+                # element-order concatenation is the C-order buffer of the
+                # stacked matrices.
+                coo = _coo_constructor(
+                    (beam_matrices.reshape(-1), (rows_concat, cols_concat)),
+                    shape=(total_dofs, total_dofs),
+                    dtype=float,
+                )
+                matrix = _coo_to_csr(coo)
+                info["diagnostics"]["assembled_symmetry_error"] = (
+                    _relative_symmetry_kernel(matrix)
+                )
+                info["diagnostics"]["vectorized_shell_groups"] = []
+                info["diagnostics"]["vectorized_shell_element_count"] = 0
+                info["diagnostics"]["scalar_shell_element_count"] = int(
+                    info["num_elements"]
+                )
+                info["sparsity_signature"] = _topology_signature_kernel(
+                    mesh,
+                    matrix_type,
+                    element_items=element_items,
+                )
+                info["assembly_time"] = time.time() - start_time
+                return matrix, info
 
         groups = {}
         reference_s3_items = []
@@ -5639,7 +5756,7 @@ def assemble_stiffness_matrix(model: "FEModel") -> Tuple[sparse.csr_matrix, Dict
     return _assemble_element_matrix(
         model,
         "stiffness",
-        lambda element, mesh, material: element.compute_stiffness_matrix(mesh, material),
+        _standard_element_stiffness,
     )
 
 
@@ -7446,9 +7563,7 @@ def _assemble_damping_matrix_under_lease(
         K, stiffness_info = _assemble_element_matrix_under_lease(
             model,
             "stiffness",
-            lambda element, mesh, material: element.compute_stiffness_matrix(
-                mesh, material
-            ),
+            _standard_element_stiffness,
             qualified_runtime_guard,
         )
     else:
@@ -7465,9 +7580,7 @@ def _assemble_damping_matrix_under_lease(
         K, stiffness_info = _assemble_element_matrix_under_lease(
             model,
             "stiffness",
-            lambda element, mesh, material: element.compute_stiffness_matrix(
-                mesh, material
-            ),
+            _standard_element_stiffness,
             qualified_runtime_guard,
             activity_quantity="damping",
         )
@@ -7519,9 +7632,7 @@ def _assemble_system_under_lease(
     K, stiffness_info = _assemble_element_matrix_under_lease(
         model,
         "stiffness",
-        lambda element, mesh, material: element.compute_stiffness_matrix(
-            mesh, material
-        ),
+        _standard_element_stiffness,
         qualified_runtime_guard,
     )
     F, load_info = _assemble_load_vector_under_lease(

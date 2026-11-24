@@ -121,6 +121,33 @@ borrowed lease after the scope has closed; recovery dispatched in such a
 copied context takes an ordinary fresh lease capture with full guards, and a
 borrowing operation must present the model the lease was captured for.
 
+Models whose every element is an admitted exact built-in `BeamElement`
+(`anyfesolver.exact_beam_batch`) assemble linear stiffness and recover
+stresses in one batch.  One complete lease guard runs before the batch reads
+anything and one after its last output, in place of the two per-element
+observation guards of the scalar loops; the two bracket guards carry the
+context of the first and last per-element guard they replace.  This relies
+on the existing contract: changing a model during a request, including from
+another thread, is outside the supported contract.  Single-threaded calls
+accept and reject exactly the inputs of the scalar loops.  Every dispatch
+the scalar path performs for an admitted element is first verified with pure
+reads (class namespaces along the MRO, module globals, instance and mapping
+namespaces free of shadowing names, the stiffness classification predicates)
+or performed as the identical call (`_beam_material_properties` once per
+element in element order; the sparsity kernel before any element side
+effect).  Subclasses, replaced classes, methods or module globals, shadowing
+instance attributes, DOFs outside the matrix or displacement vector, offsets,
+generalized or fibre sections, non-exact materials, element activity, other
+stiffness getters and small models take the unchanged scalar loop.  Results
+are bit-identical to the scalar element methods because the batch performs
+the identical floating-point operations: it reproduces each BLAS call with
+stacked `np.matmul`, keeps elementwise operation order and per-element scalar
+powers, and falls back on any floating-point exception.  A probe against the
+scalar methods once per process and a check of the first and last element of
+every batch disable the batch for the process on a mismatch; they detect a
+broken kernel or platform and do not by themselves prove parity for the
+interior elements of a batch.
+
 `ResourceConfig.memory_limit_bytes` limits a conservative storage estimate and
 adapts the requested block size; it refuses a request that cannot fit one case.
 This is an allocation estimate, not an operating-system RSS cap. Native sparse
