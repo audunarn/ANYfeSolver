@@ -270,6 +270,8 @@ class _FakePardisoSolver:
         self.name = name
         self.calls = calls
         self.phase = 0
+        # Clean MKL output report: no perturbed pivots (iparm[13] == 0).
+        self.iparm = np.zeros(64, dtype=np.int32)
 
     def _check_A(self, matrix):
         return matrix
