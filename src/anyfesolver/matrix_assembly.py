@@ -4606,7 +4606,8 @@ def _assemble_element_matrix_under_lease_impl(
         # before any side effect whenever anything is irregular, so that the
         # unchanged scalar loops below run instead.
         if (
-            matrix_type == "stiffness"
+            _exact_type(matrix_type) is str
+            and matrix_type == "stiffness"
             and element_matrix_getter is _EXACT_STANDARD_STIFFNESS_GETTER
             and activity_info is None
             and _exact_type(activity_scales) is _exact_dict
@@ -4677,9 +4678,14 @@ def _assemble_element_matrix_under_lease_impl(
                 # The scalar loop appends ``(1.0 * matrix).ravel()`` per
                 # element; multiplying finite values by 1.0 is exact, so the
                 # element-order concatenation is the C-order buffer of the
-                # stacked matrices.
+                # stacked matrices.  The constructor receives an owned
+                # C-order float64 copy, as ``np.concatenate`` gives the
+                # scalar loop, not a view of the batch's array.
                 coo = _coo_constructor(
-                    (beam_matrices.reshape(-1), (rows_concat, cols_concat)),
+                    (
+                        beam_matrices.reshape(-1).copy(order="C"),
+                        (rows_concat, cols_concat),
+                    ),
                     shape=(total_dofs, total_dofs),
                     dtype=float,
                 )

@@ -51,7 +51,8 @@ batch instead of one Python call per element:
   anything non-exact declines before it is touched.  A declined batch has no
   side effect: no element or mesh cache is written before the decision (the
   endpoint stiffness checks do not store ``_stiffness_matrix``; the sparsity
-  kernel runs once, after the decision), and the recovery bracket resolves
+  kernel runs once, after the decision, and its result is unpacked before any
+  element cache is written), and the recovery bracket resolves
   the first material only for an exact ``str`` name.  The classification
   predicates, the recovery observation-guard factory and the element-matrix
   check kernels are identity-checked against the objects bound at import.
@@ -740,7 +741,12 @@ def _bind_exact_beam_batch() -> Any:
         Returns ``None`` when anything is outside the admitted exact surface.
         """
 
-        if exact_type(dof_limit) is not exact_int:
+        # Exact container types before ``len`` or iteration: a hostile
+        # container declines before any of its protocols runs.
+        if (
+            exact_type(element_items) is not exact_tuple
+            or exact_type(dof_limit) is not exact_int
+        ):
             return None
         count = exact_len(element_items)
         node_index: dict[int, int] = {}
@@ -1593,9 +1599,10 @@ def _bind_exact_beam_batch() -> Any:
         Called inside the caller's guard bracket.  Every decline happens
         before any write and before any caller-held cache is touched.
         ``prepare_sparsity`` is the scalar path's pre-loop sparsity call; it
-        runs exactly once, after the batch has decided to succeed and before
-        any element side effect, and its exceptions propagate exactly as in
-        the scalar path.  On success every element's ``_stiffness_matrix``
+        runs exactly once, after the batch has decided to succeed, and its
+        result is unpacked as the scalar path unpacks it, both before any
+        element side effect; their exceptions propagate exactly as in the
+        scalar path.  On success every element's ``_stiffness_matrix``
         holds an owned copy of its matrix, written in element order after
         everything else succeeded.
         Returns ``(matrices, element_ids, seconds, sparsity)``.
@@ -1672,12 +1679,19 @@ def _bind_exact_beam_batch() -> Any:
                     disable("stiffness spot check mismatch")
                 return None
         # Decided.  The scalar path's pre-loop sparsity step runs once, here,
-        # before any element side effect; it may raise exactly as there.
-        sparsity = prepare_sparsity()
+        # and its result is unpacked exactly as the scalar path unpacks it
+        # (``rows_concat, cols_concat = ...``), both before any element side
+        # effect; either may raise exactly as there, with no element written.
+        rows_concat, cols_concat = prepare_sparsity()
         for namespace, matrix in exact_zip(namespaces, stiffness):
             namespace["_stiffness_matrix"] = matrix.copy()
         counters["stiffness_batches"] += 1
-        return stiffness, plan["element_ids"], clock() - started, sparsity
+        return (
+            stiffness,
+            plan["element_ids"],
+            clock() - started,
+            (rows_concat, cols_concat),
+        )
 
     def recovery_candidate(model: Any, mesh: Any, selected: Any) -> Any:
         """``(first_id, first_element, first_material, last_id)``, or ``None``.

@@ -163,7 +163,9 @@ A declined batch has no side effect: it writes no element cache, builds no
 mesh cache and makes no lookup the scalar loop then repeats on a non-exact
 value (the recovery bracket resolves the first element's material only for an
 exact `str` name; the stiffness endpoint checks do not store
-`_stiffness_matrix`; the sparsity kernel runs once, after the decision).  The
+`_stiffness_matrix`; the sparsity kernel runs once, after the decision, and
+its result is unpacked as the scalar path unpacks it before any element
+cache is written).  The
 stiffness classification objects, the recovery observation-guard factory and
 the element-matrix check kernels are compared by identity with the objects
 bound at import, without reading attributes of, or comparing,

@@ -26,6 +26,7 @@ from anyfesolver.exact_beam_batch import (
     disable_exact_beam_batch,
     enable_exact_beam_batch,
     exact_beam_batch_status,
+    exact_beam_stiffness_batch,
 )
 from anyfesolver.fe_core import Material
 from anyfesolver.matrix_assembly import AssemblyError, assemble_stiffness_matrix
@@ -1462,3 +1463,194 @@ def test_hostile_entry_of_an_exact_sparsity_cache_is_read_once() -> None:
     batched, scalar, _before, _after = _both_paths(run)
     assert scalar == (("ok", "[]"), ["get", "getitem", "getitem"])
     assert batched == scalar
+
+
+# ----------------------------------------------------------------------
+# Codex review round 7 reproductions (each failed on 7f8c84759).
+# ----------------------------------------------------------------------
+
+
+def _default_kernel(name: str) -> Any:
+    return matrix_assembly._assemble_element_matrix_under_lease_impl.__kwdefaults__[name]
+
+
+def _raising_generator() -> Any:
+    yield np.zeros(0, dtype=np.intp)
+    raise RuntimeError("sparsity iteration failed")
+
+
+@pytest.mark.parametrize(
+    "result",
+    ["none", "three", "one", "raising-iterator"],
+)
+def test_failed_sparsity_unpack_writes_no_element_cache(result: str) -> None:
+    # P2: the batch wrote every ``_stiffness_matrix`` before unpacking the
+    # sparsity kernel's result; the scalar path unpacks it before its first
+    # element write, so a failed unpack must leave every element untouched.
+    real = _default_kernel("_sparsity_kernel")
+
+    def kernel(mesh: Any, matrix_type: Any, *, element_items: Any) -> Any:
+        rows, cols = real(mesh, matrix_type, element_items=element_items)
+        return {
+            "none": None,
+            "three": (rows, cols, cols),
+            "one": (rows,),
+            "raising-iterator": _raising_generator(),
+        }[result]
+
+    def run() -> tuple[Any, ...]:
+        model = _disjoint_model()
+        outcome = _outcome(lambda: _direct_assembly(model, _sparsity_kernel=kernel))
+        return outcome, _stored_matrices(model)
+
+    assemble_stiffness_matrix(_disjoint_model())  # warm the process probe
+    batched, scalar, _before, _after = _both_paths(run)
+    assert scalar[0][0] in {"TypeError", "ValueError", "RuntimeError"}
+    assert scalar[1] == [None] * 8
+    assert batched == scalar
+
+
+def test_sparsity_result_iterable_is_unpacked_as_in_scalar_path() -> None:
+    # Same class, success side: a list result is unpacked by the batch
+    # exactly once, as the scalar path unpacks it.
+    real = _default_kernel("_sparsity_kernel")
+
+    def kernel(mesh: Any, matrix_type: Any, *, element_items: Any) -> Any:
+        return list(real(mesh, matrix_type, element_items=element_items))
+
+    model = _disjoint_model()
+    before = _batches()
+    matrix, _info = _direct_assembly(model, _sparsity_kernel=kernel)
+    assert _batches()[0] == before[0] + 1
+    with _scalar_only():
+        scalar_model = _disjoint_model()
+        scalar_matrix, _scalar = _direct_assembly(scalar_model, _sparsity_kernel=kernel)
+    assert _csr_bits(matrix) == _csr_bits(scalar_matrix)
+    assert _stored_matrices(model) == _stored_matrices(scalar_model)
+
+
+def test_coo_constructor_receives_an_owned_buffer_as_in_scalar_path() -> None:
+    # P3: the scalar path passes ``np.concatenate(data_list)`` (owned,
+    # C-order float64); the batch passed a reshape view.
+    real = _default_kernel("_coo_constructor")
+    seen: list[tuple[Any, ...]] = []
+
+    def constructor(arg: Any, **kwargs: Any) -> Any:
+        data = arg[0]
+        seen.append(
+            (
+                type(data),
+                data.dtype.str,
+                data.ndim,
+                bool(data.flags.owndata),
+                bool(data.flags.c_contiguous),
+                bool(data.flags.writeable),
+                data.base is None,
+                _bits(data),
+            )
+        )
+        if not data.flags.owndata:
+            raise ValueError("constructor requires an owned buffer")
+        return real(arg, **kwargs)
+
+    model = _disjoint_model()
+    before = _batches()
+    matrix, _info = _direct_assembly(model, _coo_constructor=constructor)
+    assert _batches()[0] == before[0] + 1
+    with _scalar_only():
+        scalar_matrix, _scalar = _direct_assembly(
+            _disjoint_model(), _coo_constructor=constructor
+        )
+    assert len(seen) == 2
+    assert seen[0] == seen[1]
+    assert _csr_bits(matrix) == _csr_bits(scalar_matrix)
+
+
+@pytest.mark.parametrize("protocol", ["__len__", "__iter__", "__getitem__"])
+def test_direct_stiffness_batch_checks_container_type_first(protocol: str) -> None:
+    # P3: ``exact_beam_stiffness_batch`` called ``len`` on a hostile
+    # ``element_items`` before checking its exact type.
+    calls: list[str] = []
+
+    def hostile(self: Any, *args: Any) -> Any:
+        calls.append(protocol)
+        raise RuntimeError(f"{protocol} called")
+
+    Hostile = type("Hostile", (tuple,), {protocol: hostile})
+    model = _disjoint_model()
+    items = Hostile(tuple(dict.items(model.mesh.elements)))
+    sparsity_calls: list[int] = []
+    result = exact_beam_stiffness_batch(
+        model,
+        model.mesh,
+        items,
+        model.mesh.dof_manager.total_dofs,
+        (),
+        lambda: sparsity_calls.append(1),
+    )
+    assert result is None
+    assert calls == []
+    assert sparsity_calls == []
+    assert _stored_matrices(model) == [None] * 8
+
+
+class _ComparisonLoggingName(str):
+    """A ``str`` subclass recording where it is compared with a string."""
+
+    __hash__ = str.__hash__
+    sites: list[tuple[str, int]] = []
+
+    def __eq__(self, other: Any) -> Any:
+        import sys
+
+        frame = sys._getframe(1)
+        type(self).sites.append((frame.f_code.co_filename, frame.f_lineno))
+        return str.__eq__(self, other)
+
+    def __ne__(self, other: Any) -> Any:
+        import sys
+
+        frame = sys._getframe(1)
+        type(self).sites.append((frame.f_code.co_filename, frame.f_lineno))
+        return str.__ne__(self, other)
+
+
+@pytest.mark.parametrize("count", [1, 8])
+def test_bracket_does_not_compare_a_str_subclass_matrix_type(count: int) -> None:
+    # P3: the bracket condition compared ``matrix_type == "stiffness"``
+    # before any type check, adding one comparison of a hostile ``str``
+    # subclass to those the scalar path makes.
+    import linecache
+
+    def guard(model: Any, *, context: str, final: bool = False) -> None:
+        del model, context, final
+
+    def run() -> tuple[Any, ...]:
+        model = _disjoint_model(count)
+        _ComparisonLoggingName.sites = []
+
+        def call() -> None:
+            matrix, _info = matrix_assembly._assemble_element_matrix_under_lease_impl(
+                model,
+                _ComparisonLoggingName("stiffness"),
+                matrix_assembly._standard_element_stiffness,
+                guard,
+                None,
+            )
+            outcome["K"] = _csr_bits(matrix)
+
+        outcome: dict[str, Any] = {}
+        result = _outcome(call)
+        return result, outcome, list(_ComparisonLoggingName.sites)
+
+    batched, scalar, _before, _after = _both_paths(run)
+    bracket_sites = [
+        (filename, line)
+        for filename, line in batched[2]
+        if "_EXACT_STANDARD_STIFFNESS_GETTER"
+        in linecache.getline(filename, line + 1)
+    ]
+    assert bracket_sites == []
+    assert batched[0] == scalar[0]
+    assert batched[1] == scalar[1]
+    assert len(batched[2]) == len(scalar[2])
