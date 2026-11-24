@@ -109,6 +109,13 @@ def _require_v2d_mixed_shell_scope(elements: Mapping[Any, Any]) -> None:
     ``dict.values``.  For those classes ``isinstance`` equals ``issubclass``
     of the class, decided once per class from a C-level type census.  Any
     other class or machinery takes the element-by-element reference test.
+
+    Contract (owner decision 2026-11-24): the shortcut must give the
+    reference answer in supported use.  Rewriting this package's classes,
+    ``ABCMeta`` or the element mapping class at run time, custom element
+    metaclasses and ``__class__`` reassignment are outside supported use; the
+    checks above make the common forms of them fall back to the reference
+    test, but they are not an exhaustive defence.
     """
 
     allowed = (
@@ -126,14 +133,20 @@ def _require_v2d_mixed_shell_scope(elements: Mapping[Any, Any]) -> None:
                 "S3 V2D mixed shell scope admits only exact V2D, accepted V2C and qualified Q4"
             )
         return
-    if any(kind not in allowed and issubclass(kind, ShellElement) for kind in census):
+    if any(
+        all(kind is not member for member in allowed) and issubclass(kind, ShellElement)
+        for kind in census
+    ):
         raise NativeParityCapabilityError(
             "S3 V2D mixed shell scope admits only exact V2D, accepted V2C and qualified Q4"
         )
 
 
-def _scope_class_machinery(kind: type) -> Tuple[Any, ...]:
-    """The attribute-lookup facts of *kind* that ``isinstance`` depends on."""
+def _scope_class_machinery(
+    kind: type,
+    extra: Tuple[str, ...] = (),
+) -> Tuple[Any, ...]:
+    """The attribute-lookup facts of *kind* the reference test depends on."""
 
     def resolved(name: str) -> Any:
         for base in type.__getattribute__(kind, "__mro__"):
@@ -147,10 +160,13 @@ def _scope_class_machinery(kind: type) -> Tuple[Any, ...]:
         resolved("__getattribute__"),
         resolved("__getattr__"),
         resolved("__class__"),
+        type(kind),
+        *(resolved(name) for name in extra),
     )
 
 
-_SCOPE_CENSUS_SNAPSHOT: Optional[Dict[type, Tuple[Any, ...]]] = None
+_SCOPE_CENSUS_SNAPSHOT: Optional[Dict[int, Tuple[type, Tuple[Any, ...]]]] = None
+_SCOPE_MAPPING_SNAPSHOT: Optional[Tuple[Any, ...]] = None
 
 
 def _owned_scope_census(elements: Any) -> Optional[set]:
@@ -160,15 +176,18 @@ def _owned_scope_census(elements: Any) -> Optional[set]:
     """
 
     snapshot = _SCOPE_CENSUS_SNAPSHOT
-    if snapshot is None:
+    mapping_snapshot = _SCOPE_MAPPING_SNAPSHOT
+    if snapshot is None or mapping_snapshot is None:
         return None
     mapping_kind = type(elements)
     if mapping_kind is _QualifiedStateMapping:
-        # ``values`` is a non-data method: an instance attribute would shadow it.
-        if (
-            _class_attribute_owner(mapping_kind, "values") is not dict
-            or "values" in object.__getattribute__(elements, "__dict__")
-        ):
+        # The reference reads ``elements.values()`` through the class's
+        # attribute machinery; require it unchanged since import, and no
+        # instance attribute shadowing the non-data ``values`` method.
+        current = _scope_class_machinery(mapping_kind, ("values",))
+        if any(now is not then for now, then in zip(current, mapping_snapshot)):
+            return None
+        if "values" in object.__getattribute__(elements, "__dict__"):
             return None
     elif mapping_kind is not dict:
         return None
@@ -179,15 +198,21 @@ def _owned_scope_census(elements: Any) -> Optional[set]:
         or abc_namespace.get("__subclasscheck__") is not _ABC_SUBCLASSCHECK
     ):
         return None
-    census = set(map(type, dict.values(elements)))
-    for kind in census:
-        expected = snapshot.get(kind)
-        if expected is None:
+    # Identities only: hashing or comparing the classes themselves could run
+    # a metaclass ``__hash__``/``__eq__``.  An id found in the snapshot is that
+    # owned class, which the snapshot keeps alive.
+    census = set(map(id, map(type, dict.values(elements))))
+    kinds = []
+    for kind_id in census:
+        entry = dict.get(snapshot, kind_id)
+        if entry is None:
             return None
+        kind, expected = entry
         current = _scope_class_machinery(kind)
         if any(now is not then for now, then in zip(current, expected)):
             return None
-    return census
+        kinds.append(kind)
+    return kinds
 
 
 def _class_attribute_owner(kind: type, name: str) -> Any:
@@ -2736,11 +2761,11 @@ __all__ = [
 ]
 
 
-def _capture_scope_census_snapshot() -> Dict[type, Tuple[Any, ...]]:
+def _capture_scope_census_snapshot() -> Dict[int, Tuple[type, Tuple[Any, ...]]]:
     from .elements import BeamElement, QuadraticBeamElement
 
     return {
-        kind: _scope_class_machinery(kind)
+        id(kind): (kind, _scope_class_machinery(kind))
         for kind in (
             NativeParityE4PLS3V2DShellElement,
             StrictFlatLinearE4PLS3V2CShellElement,
@@ -2752,3 +2777,4 @@ def _capture_scope_census_snapshot() -> Dict[type, Tuple[Any, ...]]:
 
 
 _SCOPE_CENSUS_SNAPSHOT = _capture_scope_census_snapshot()
+_SCOPE_MAPPING_SNAPSHOT = _scope_class_machinery(_QualifiedStateMapping, ("values",))

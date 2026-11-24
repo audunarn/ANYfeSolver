@@ -449,3 +449,49 @@ def test_pressure_records_drop_the_fast_path_after_caller_code(monkeypatch):
     else:
         assert fast == guarded
         assert hidden not in [record["element_id"] for record in fast]
+
+
+# --- review round 4 (Codex, 2026-11-24; reproduced before a content filter stopped it) ---
+
+
+def test_scope_census_compares_classes_by_identity_not_metaclass_equality():
+    from abc import ABCMeta
+
+    from anyfesolver.e4_pl_s3_v2d_element import _require_v2d_mixed_shell_scope
+
+    class _AliasMeta(ABCMeta):
+        def __hash__(cls):
+            return hash(BeamElement)
+
+        def __eq__(cls, other):
+            return other is BeamElement or type.__eq__(cls, other)
+
+    class _AliasedBeam(BeamElement, metaclass=_AliasMeta):
+        def __getattribute__(self, name):
+            if name == "__class__":
+                return _LegacyShell
+            return object.__getattribute__(self, name)
+
+    model, v2d, beam = _v2d_with_beam()
+    aliased = _AliasedBeam.__new__(_AliasedBeam)
+    dict.__setitem__(model.mesh.elements, 98, aliased)
+    assert isinstance(aliased, ShellElement)
+    with pytest.raises(NativeParityCapabilityError, match="mixed shell scope"):
+        _require_v2d_mixed_shell_scope(model.mesh.elements)
+
+
+def test_scope_census_defers_when_the_mapping_class_machinery_changed(monkeypatch):
+    from anyfesolver.e4_pl_s3_v2d_element import _require_v2d_mixed_shell_scope
+    from anyfesolver.fe_core import _QualifiedStateMapping
+
+    model, v2d, beam = _v2d_with_beam()
+    legacy = _LegacyShell.__new__(_LegacyShell)
+
+    def faking(self, name):
+        if name == "values":
+            return lambda: [legacy]
+        return object.__getattribute__(self, name)
+
+    monkeypatch.setattr(_QualifiedStateMapping, "__getattribute__", faking, raising=False)
+    with pytest.raises(NativeParityCapabilityError, match="mixed shell scope"):
+        _require_v2d_mixed_shell_scope(model.mesh.elements)
