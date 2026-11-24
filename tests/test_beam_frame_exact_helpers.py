@@ -126,3 +126,41 @@ def test_explicit_offsets_keep_the_loop() -> None:
     offsets = np.array([[0.0, -0.0, 0.1], [0.2, 0.05, -0.3]])
     element.set_linear_nodal_offsets(offsets)
     assert _bits(element._linear_rigid_arm_map()) == _bits(_reference_arm(offsets))
+
+
+def _base_arm(element: BeamElement) -> np.ndarray:
+    """The pre-change method body: getattr with a zeros default."""
+    return _reference_arm(getattr(element, "_linear_nodal_offsets", np.zeros((2, 3))))
+
+
+def test_stored_arbitrary_object_is_iterated_as_before() -> None:
+    # Codex r3 P3 / r4: no value a caller can store selects the default path.
+    element = BeamElement(1, [1, 2], "steel", {})
+    element._linear_nodal_offsets = object()
+    with pytest.raises(TypeError):
+        _base_arm(element)
+    with pytest.raises(TypeError):
+        element._linear_rigid_arm_map()
+
+
+def test_class_level_offsets_and_raising_property_match_getattr() -> None:
+    class WithClassOffsets(BeamElement):
+        _linear_nodal_offsets = np.array([[0.0, 0.1, 0.0], [0.0, 0.0, -0.2]])
+
+    class RaisingProperty(BeamElement):
+        @property
+        def _linear_nodal_offsets(self) -> np.ndarray:
+            raise AttributeError("not configured")
+
+    for cls in (WithClassOffsets, RaisingProperty):
+        element = cls(1, [1, 2], "steel", {})
+        assert _bits(element._linear_rigid_arm_map()) == _bits(_base_arm(element))
+
+
+def test_default_arm_does_not_look_up_any_module_global(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Codex r4: the default path must not dispatch to a replaceable global
+    # (the base code used only np.zeros/np.eye; the new one only np.eye).
+    calls: list[str] = []
+    monkeypatch.setattr(elements, "object", lambda: calls.append("object") or object(), raising=False)
+    BeamElement(1, [1, 2], "steel", {})._linear_rigid_arm_map()
+    assert calls == []

@@ -427,9 +427,6 @@ def _section_orientation(cross_section: Dict[str, Any]) -> Optional[np.ndarray]:
     return np.array(vector[:3], dtype=float)
 
 
-_NO_LINEAR_NODAL_OFFSETS = object()
-
-
 def _contiguous_vector_norm(vector: Any) -> Any:
     """``np.linalg.norm(vector)`` without its dispatch overhead.
 
@@ -3853,8 +3850,11 @@ class BeamElement(Element):
 
     def _linear_rigid_arm_map(self) -> np.ndarray:
         arm=np.eye(12)
-        offsets=getattr(self,'_linear_nodal_offsets',_NO_LINEAR_NODAL_OFFSETS)
-        if offsets is _NO_LINEAR_NODAL_OFFSETS:
+        # Same lookup as getattr(self, '_linear_nodal_offsets', default):
+        # only AttributeError selects the default, without any sentinel.
+        try:
+            offsets=self._linear_nodal_offsets
+        except AttributeError:
             # Bit-identical to the loop below over zero offsets: each skew
             # block [[0,z,-y],[-z,0,x],[y,-x,0]] built from +0.0 arms holds
             # -0.0 at exactly these three places per node.
