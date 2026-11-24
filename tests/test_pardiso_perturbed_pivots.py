@@ -608,6 +608,119 @@ def test_r2_mtype2_rejection_does_not_publish_a_measured_count(monkeypatch) -> N
     assert first.metadata["pardiso_iparm13_raw"] == {"2": 1}
 
 
+def test_r4_rejected_stale_handle_raises_the_same_perturbation_type_every_time(monkeypatch) -> None:
+    """Codex r3 P2: A=diag(1,2,3) and 2A share a slot; A's private rebuild is perturbed."""
+
+    state = {"report": 0}
+    _backend, first, solvers = _stale_forced_handle(monkeypatch, state)
+    state["report"] = 1
+    with pytest.raises(linalg.PardisoPerturbedPivotError) as first_error:
+        first.solve(np.ones(3))
+    built = len(solvers)
+    state["report"] = 0
+    for call in (first.solve, first.solve_many, first._solver.solve):
+        with pytest.raises(linalg.PardisoPerturbedPivotError) as later:
+            call(np.ones(3))
+        assert str(later.value) == str(first_error.value)
+    assert len(solvers) == built
+
+
+def test_r4_zero_count_native_error_keeps_one_exception_type(monkeypatch) -> None:
+    state = {"report": 0}
+    _backend, first, solvers = _stale_forced_handle(monkeypatch, state)
+    state["report"] = (0, ValueError("simulated native PARDISO error"))
+    with pytest.raises(Exception) as first_error:
+        first.solve(np.ones(3))
+    built = len(solvers)
+    state["report"] = 0
+    for call in (first.solve, first._solver.solve):
+        with pytest.raises(Exception) as later:
+            call(np.ones(3))
+        assert type(later.value) is type(first_error.value)
+        assert str(later.value) == str(first_error.value)
+    assert type(first_error.value) is RuntimeError
+    assert "stale-handle rebuild failed (ValueError: simulated" in str(first_error.value)
+    assert first.status == "failed"
+    assert first.metadata["pardiso_failure_kind"] == "pardiso_error"
+    assert len(solvers) == built
+
+
+@pytest.mark.parametrize(
+    ("report", "expected"),
+    [(1, linalg.PardisoPerturbedPivotError), (0, RuntimeError)],
+)
+def test_r4_interrupt_at_native_call_rejects_and_cleans_up(monkeypatch, report, expected) -> None:
+    """Codex r3 P2: a KeyboardInterrupt at the stale rebuild's phase 12 call."""
+
+    state = {"report": 0}
+    _backend, first, solvers = _stale_forced_handle(monkeypatch, state)
+    interrupt = KeyboardInterrupt()
+    state["report"] = (report, interrupt)
+    with pytest.raises(KeyboardInterrupt) as raised:
+        first.solve(np.ones(3))
+    assert raised.value is interrupt  # re-raised unchanged
+    rebuilt = solvers[-1]
+    assert rebuilt.phases == [12]
+    assert rebuilt.freed  # phase -1 cleanup ran
+    assert first.status == "failed"
+    assert first.metadata["pardiso_failure_stage"] == "stale_rebuild"
+    assert first.metadata["pardiso_failure_kind"] == (
+        "perturbed_pivots" if report else "pardiso_error"
+    )
+    built = len(solvers)
+    state["report"] = 0  # a second rebuild would succeed
+    for call in (first.solve, first._solver.solve):
+        with pytest.raises(expected) as later:
+            call(np.ones(3))
+        assert type(later.value) is expected
+        if expected is RuntimeError:
+            assert "interrupted after KeyboardInterrupt" in str(later.value)
+    assert len(solvers) == built  # never rebuilt, never returned a result
+
+
+def test_r4_mtype2_failure_text_does_not_claim_perturbed_pivots(monkeypatch) -> None:
+    """Codex r3 P3: a raw mtype 2 iparm[13] is not described as a pivot count."""
+
+    _install_fake(monkeypatch, lambda matrix: 1)
+    A = sparse.csr_matrix(np.diag([1.0, 2.0, 3.0]))
+    handle = PyPardisoSolverBackend().factorize(A, MatrixClass.SPD)
+    assert handle.status == "failed"
+    reason = str(handle.failure_reason)
+    assert "pivot(s)" not in reason
+    assert "raw iparm[13]=1" in reason
+    assert "not a documented perturbed-pivot count for mtype 2" in reason
+    assert "fail closed" in reason
+    # Documented mtypes keep the count wording.
+    indefinite = PyPardisoSolverBackend().factorize(A, MatrixClass.SYMMETRIC_INDEFINITE)
+    assert "perturbed 1 pivot(s)" in str(indefinite.failure_reason)
+
+    state = {"report": 0}
+    _backend, first, _solvers = _stale_forced_handle(
+        monkeypatch, state, matrix_class=MatrixClass.SPD
+    )
+    state["report"] = 1
+    with pytest.raises(linalg.PardisoPerturbedPivotError) as raised:
+        first.solve(np.ones(3))
+    for text in (str(raised.value), str(first.failure_reason)):
+        assert "pivot(s)" not in text
+        assert "not a documented perturbed-pivot count for mtype 2" in text
+
+
+def test_r4_open_certification_xfails_match_only_the_intended_failure() -> None:
+    """Codex r3 P3: an unrelated exception must FAIL the strict xfails, not XFAIL them."""
+
+    for name in (
+        "test_open_static_certification_of_rounding_singular_band",
+        "test_open_spd_cholesky_accepts_rounding_singular_chain",
+        "test_open_minres_reports_converged_for_inconsistent_singular_system",
+    ):
+        function = globals()[name]
+        marks = [m for m in getattr(function, "pytestmark", []) if m.name == "xfail"]
+        assert len(marks) == 1, name
+        assert marks[0].kwargs.get("strict") is True, name
+        assert marks[0].kwargs.get("raises") is AssertionError, name
+
+
 def test_fake_pivot_count_metadata_per_mtype(monkeypatch) -> None:
     """Review R2 P3: iparm[13] is documented for mtypes -2 and 11 only."""
 
@@ -725,6 +838,7 @@ _CERTIFICATION_SLICE = (
 @requires_pypardiso
 @pytest.mark.xfail(
     strict=True,
+    raises=AssertionError,
     reason=(
         "OPEN: a rounding-singular matrix (band graph Laplacian, constant "
         "nullspace, inconsistent load) is factorized by SuperLU through an "
@@ -743,6 +857,7 @@ def test_open_static_certification_of_rounding_singular_band(n) -> None:
 @requires_pypardiso
 @pytest.mark.xfail(
     strict=True,
+    raises=AssertionError,
     reason=(
         "OPEN: PARDISO mtype 2 (Cholesky, MatrixClass.SPD) factorizes the "
         "singular free spring chain through a rounding-level pivot and returns "
@@ -759,6 +874,7 @@ def test_open_spd_cholesky_accepts_rounding_singular_chain() -> None:
 
 @pytest.mark.xfail(
     strict=True,
+    raises=AssertionError,
     reason=(
         "OPEN: MINRES reports 'converged' for the inconsistent singular system "
         "A=[[1,-1],[-1,1]], b=[1,1] with x=[0,0] (relative residual 1): the "

@@ -360,21 +360,43 @@ class PardisoPerturbedPivotError(RuntimeError):
     reports the count in output ``iparm(14)`` (0-based ``iparm[13]``).  The
     resulting factorization belongs to a different matrix, so it is refused.
     ``count`` is ``None`` when the count could not be read (also refused).
+    ``mtype`` (when known) selects the wording: for an mtype whose
+    ``iparm[13]`` is not a documented pivot count (mtype 2) a positive raw
+    value is reported as such, never as a number of perturbed pivots.
     """
 
-    def __init__(self, count: Optional[int], *, phase: int, detail: str = "") -> None:
+    def __init__(
+        self,
+        count: Optional[int],
+        *,
+        phase: int,
+        detail: str = "",
+        mtype: Optional[int] = None,
+    ) -> None:
         self.count = count
         self.phase = int(phase)
         self.detail = str(detail)
-        message = (
-            f"{PARDISO_PERTURBED_PIVOTS}: PARDISO phase {int(phase)} "
-            + (
-                f"perturbed {int(count)} pivot(s) (iparm[13])"
-                if count is not None
-                else f"perturbed-pivot count iparm[13] is unreadable ({detail})"
+        self.mtype = None if mtype is None else int(mtype)
+        if count is None:
+            body = f"perturbed-pivot count iparm[13] is unreadable ({detail})"
+        elif self.mtype is not None and self.mtype not in _PARDISO_PIVOT_COUNT_DOCUMENTED_MTYPES:
+            body = (
+                f"(mtype {self.mtype}) returned raw iparm[13]={int(count)}, which is not "
+                f"a documented perturbed-pivot count for mtype {self.mtype}; refused "
+                "fail closed"
             )
+        else:
+            body = f"perturbed {int(count)} pivot(s) (iparm[13])"
+        super().__init__(f"{PARDISO_PERTURBED_PIVOTS}: PARDISO phase {int(phase)} {body}")
+
+    def for_mtype(self, mtype: int) -> "PardisoPerturbedPivotError":
+        """The same rejection, worded for ``mtype`` (chained to this one)."""
+
+        error = PardisoPerturbedPivotError(
+            self.count, phase=self.phase, detail=self.detail, mtype=mtype
         )
-        super().__init__(message)
+        error.__cause__ = self
+        return error
 
 
 def _pardiso_perturbed_pivot_count(solver: Any) -> Tuple[Optional[int], str]:
@@ -499,24 +521,38 @@ class _PardisoFactorization:
         self._handle_ref: Optional["weakref.ReferenceType[FactorizationHandle]"] = None
 
     def _rejection_error(self) -> BaseException:
+        """The typed error every solve of a rejected handle raises.
+
+        The first rejection and every later or concurrent solve raise the same
+        type with the same message: :class:`PardisoPerturbedPivotError` for a
+        perturbation (or an unreadable report), ``RuntimeError`` for any other
+        failed or interrupted rebuild.
+        """
+
         perturbed, count, phase, detail, reason = self._rejection  # type: ignore[misc]
         if perturbed:
-            return PardisoPerturbedPivotError(count, phase=phase, detail=detail)
+            return PardisoPerturbedPivotError(
+                count, phase=phase, detail=detail, mtype=self._mtype
+            )
         return RuntimeError(reason)
 
     def _reject(self, exc: BaseException) -> None:
         """Fail the handle permanently after a failed stale rebuild (lock held)."""
 
         perturbed = isinstance(exc, PardisoPerturbedPivotError)
-        reason = str(exc) if perturbed else f"pypardiso stale-handle rebuild failed: {exc}"
         count = exc.count if perturbed else None
-        self._rejection = (
-            perturbed,
-            count,
-            int(getattr(exc, "phase", 12)),
-            str(getattr(exc, "detail", "")),
-            reason,
-        )
+        phase = int(getattr(exc, "phase", 12))
+        detail = str(getattr(exc, "detail", ""))
+        if perturbed:
+            reason = str(
+                PardisoPerturbedPivotError(count, phase=phase, detail=detail, mtype=self._mtype)
+            )
+        else:
+            reason = (
+                f"pypardiso stale-handle rebuild failed ({type(exc).__name__}: {exc}); "
+                "the handle is rejected permanently"
+            )
+        self._rejection = (perturbed, count, phase, detail, reason)
         handle = self._handle_ref() if self._handle_ref is not None else None
         if handle is None:
             return
@@ -547,6 +583,24 @@ class _PardisoFactorization:
         except Exception:
             _release_mkl_solver(solver)
             raise
+        except BaseException as exc:
+            # An interrupt (KeyboardInterrupt, SystemExit, ...) at the native
+            # call: read the pivot report the call may have written, release
+            # the private solver (phase -1) and reject the handle permanently
+            # (lock still held), then re-raise the original exception.
+            count, detail = _pardiso_perturbed_pivot_count(solver)
+            _release_mkl_solver(solver)
+            interrupt = f"after {type(exc).__name__} at the native call"
+            if count is None or count > 0:
+                self._reject(
+                    PardisoPerturbedPivotError(
+                        count, phase=12, detail=f"{detail}; {interrupt}".lstrip("; "),
+                        mtype=self._mtype,
+                    )
+                )
+            else:
+                self._reject(RuntimeError(f"rebuild interrupted {interrupt}"))
+            raise
         self._private_solver = solver
         weakref.finalize(self, _release_mkl_solver, solver)
         self._slot = None
@@ -564,7 +618,7 @@ class _PardisoFactorization:
             solver = self._active_solver()
         except Exception as exc:
             self._reject(exc)
-            raise
+            raise self._rejection_error() from exc
         b = solver._check_b(self._matrix, np.asarray(rhs, dtype=np.float64))
         solver.set_phase(33)
         return solver._call_pardiso(self._matrix, b)
@@ -755,7 +809,7 @@ class PyPardisoSolverBackend:
                     ):
                         # Refused fail closed, but not a documented count.
                         raw_iparm13[str(int(mtype))] = exc.count
-                    failure_reasons.append(f"mtype={mtype}: {exc}")
+                    failure_reasons.append(f"mtype={mtype}: {exc.for_mtype(mtype)}")
                     break
                 except Exception as exc:
                     failure_reasons.append(f"mtype={mtype}: {exc}")
@@ -1196,6 +1250,10 @@ def cached_inverse_operator(
 
 def solve(handle: FactorizationHandle, rhs: np.ndarray) -> np.ndarray:
     """Solve one right-hand side using an existing factorization."""
+    if isinstance(handle._solver, _PardisoFactorization) and handle._solver._rejection is not None:
+        # A PARDISO handle rejected by a failed stale rebuild raises the same
+        # typed error as its first rejection, on every later solve.
+        raise handle._solver._rejection_error()
     if handle.status != "ok" or handle._solver is None:
         raise RuntimeError(f"Cannot solve with failed factorization: {handle.failure_reason}")
     rhs = np.asarray(rhs, dtype=float)
