@@ -3,6 +3,7 @@ import gc
 import importlib
 import sys
 import types
+from pathlib import Path
 import pytest
 from anyfesolver import boundary,static_batch,prepared_static_loads as loads
 from anyfesolver import _native_authority_dag as dag,_native_guard_dispatch as dispatch
@@ -10,6 +11,22 @@ from anyfesolver import _native_authority_dag as dag,_native_guard_dispatch as d
 @pytest.fixture
 def native():
     return pytest.importorskip('anyfesolver._native_guard')
+
+def editable_install():
+    # An editable install loads the package from this checkout. An installed wheel that lost its RECORD
+    # entry does not. (Metadata is no guide: an egg-info left in src/ hides pip's direct_url.json.)
+    return Path(dispatch.__file__).resolve().parent==Path(__file__).resolve().parents[1]/'src'/'anyfesolver'
+
+@pytest.fixture
+def admitted(native):
+    # An editable install builds the extension in place but has no RECORD for it, so the dispatch
+    # falls back by design. Any other state still runs (and fails) the test. The native-guard
+    # workflow runs this module on a real wheel and fails on any skip.
+    state=dispatch.diagnostics()
+    if (state['backend']=='fallback' and state.get('reason')=='unadmitted_no_binary_record'
+            and editable_install()):
+        pytest.skip('editable install: the in-place extension is not admitted (no binary RECORD)')
+    return native
 
 def plan(native,cls,functions=()):
     classes={cls:static_batch._class_state(cls)}
@@ -253,7 +270,8 @@ def test_plan_owner_order_and_readonly_type(native):
     assert native.compare(value,classes,helpers)==2
     gc.collect()
 
-def test_actual_native_binding_and_unrelated_unsupported_mapping(native):
+def test_actual_native_binding_and_unrelated_unsupported_mapping(admitted):
+    native=admitted
     assert dispatch.diagnostics()['backend']=='native'
     before=dispatch.diagnostics()['native_passes']
     loads.require_native_source_authority()
@@ -265,7 +283,8 @@ def test_actual_native_binding_and_unrelated_unsupported_mapping(native):
     try:loads.require_native_source_authority()
     finally:del native.__dict__[123]
 
-def test_admitted_entry_tamper_and_class_failure_priority(native,monkeypatch):
+def test_admitted_entry_tamper_and_class_failure_priority(admitted,monkeypatch):
+    native=admitted
     original=native.compare
     monkeypatch.setattr(native,'compare',lambda *args:True)
     with pytest.raises(loads.PreparedStaticCapabilityError,match='native helper executable authority changed'):

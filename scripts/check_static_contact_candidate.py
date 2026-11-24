@@ -39,12 +39,17 @@ ROOT = Path(__file__).resolve().parents[1]
 # Packaging-only 0.5.0 successor; the frozen predecessor
 # scripts/contact_candidate_slice2.json is retained unchanged.
 CONFIG_PATH = ROOT / "scripts" / "contact_candidate_050.json"
+# Runner CPUs vary and OpenBLAS picks its kernel from the CPU, which changes the last digits of
+# converged residuals by more than the cross-host bound. Haswell is not usable as the pin: the
+# OpenBLAS in numpy 2.5.4 segfaults under forced Haswell on large matrix products on AVX-512 CPUs.
+OPENBLAS_KERNEL = "Sandybridge"
 THREAD_ENV = {
     "OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "MKL_NUM_THREADS": "1",
     "NUMEXPR_NUM_THREADS": "1", "VECLIB_MAXIMUM_THREADS": "1", "NUMBA_NUM_THREADS": "1",
     "NUMBA_DISABLE_JIT": "1", "PYTHONHASHSEED": "0", "PYTHONDONTWRITEBYTECODE": "1",
     "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
     "ANYMESHER_DISABLE_NATIVE": "1", "ANYMESHER_REQUIRE_NATIVE": "0",
+    "OPENBLAS_CORETYPE": OPENBLAS_KERNEL,
 }
 PRIVATE_PACKAGES = ("ANYfeSolver", "anyfesolver-results", "ANYmaterial",
                     "ANYgeometry", "ANYmesher", "ANYfileio")
@@ -67,6 +72,74 @@ def private_requirements(config: dict) -> list[str]:
     return [f"ANYgeometry[planar]=={config['private_versions']['ANYgeometry']}"
             if p == "ANYgeometry" else f"{p}=={config['private_versions'][p]}"
             for p in PRIVATE_PACKAGES]
+
+
+OPENBLAS_OWNERS = ("numpy", "scipy")
+
+
+def _same_file_key(path) -> str:
+    return os.path.normcase(os.path.realpath(str(path)))
+
+
+def distribution_files(name: str) -> set[str] | None:
+    """Every file the installed distribution's RECORD lists, or None without a RECORD.
+
+    Only RECORD counts: ``Distribution.files`` would fall back to an egg-info SOURCES.txt."""
+    import csv
+    import importlib.metadata
+    try:
+        distribution = importlib.metadata.distribution(name)
+    except importlib.metadata.PackageNotFoundError:
+        return None
+    record = distribution.read_text("RECORD")
+    if not record:
+        return None
+    return {_same_file_key(distribution.locate_file(row[0]))
+            for row in csv.reader(record.splitlines()) if row and row[0]}
+
+
+def kernel_failures(pools: list[dict]) -> list[str]:
+    """Fail closed unless NumPy's and SciPy's own OpenBLAS are both loaded and every OpenBLAS pool
+    reports the pinned kernel. A pool belongs to NumPy or SciPy only when its library is a file that
+    the installed distribution's RECORD lists, not by folder or file name, and the two must be
+    different files.
+
+    Scope: this guards against a pin that the runtime ignored, in installs made from the pinned NumPy
+    and SciPy wheels (the fresh venv of ``install --venv``, as in CI). A numerical site assembled by
+    hand for target mode, for example with relinked libraries or hand-edited metadata, is outside it."""
+    openblas = [pool for pool in pools if pool.get("internal_api") == "openblas"]
+    found = [pool.get("architecture") for pool in openblas]
+    loaded = {_same_file_key(pool["filepath"]) for pool in openblas if pool.get("filepath")}
+    failures = []
+    matched = {}
+    for name in OPENBLAS_OWNERS:
+        recorded = distribution_files(name)
+        if recorded is None:
+            failures.append(f"{name} records no files, so its OpenBLAS cannot be identified")
+        elif not loaded & recorded:
+            failures.append(f"OpenBLAS of {name} is not loaded, so its kernel is unverified")
+        else:
+            matched[name] = loaded & recorded
+    if len(matched) == len(OPENBLAS_OWNERS) and len(set().union(*matched.values())) < len(OPENBLAS_OWNERS):
+        failures.append("NumPy and SciPy resolve to the same OpenBLAS file, so one copy is unverified")
+    if not found or any(name != OPENBLAS_KERNEL for name in found):
+        failures.append(f"OpenBLAS kernel must be pinned to {OPENBLAS_KERNEL}, got {found}")
+    return failures
+
+
+def loaded_pools() -> list[dict]:
+    """Thread pools after loading both bundled OpenBLAS copies (NumPy's and SciPy's)."""
+    import numpy  # noqa: F401
+    import scipy.linalg  # noqa: F401
+    from threadpoolctl import threadpool_info
+    return threadpool_info()
+
+
+def require_pinned_kernel() -> None:
+    """Refuse to run a numerical worker whose OpenBLAS ignored the pin."""
+    failures = kernel_failures(loaded_pools())
+    if failures:
+        raise SystemExit("; ".join(failures))
 
 
 def clean_env(extra: dict | None = None) -> dict:
@@ -137,14 +210,24 @@ def run_worker(job: dict) -> int:
     kind = job["kind"]
     if kind == "pytest":
         verify_worker_origins(job)
+        require_pinned_kernel()
         import pytest
-        raise SystemExit(pytest.main(job["argv"] + ["-o", "pythonpath=",
-                                                    "-p", "no:cacheprovider"]))
+        code = pytest.main(job["argv"] + ["-o", "pythonpath=", "-p", "no:cacheprovider"])
+        # Libraries loaded by the tests themselves are checked as well.
+        require_pinned_kernel()
+        raise SystemExit(code)
     if kind == "module":
         verify_worker_origins(job)
+        require_pinned_kernel()
         import runpy
         sys.argv = job["argv"]
-        runpy.run_module(job["argv"][0], run_name="__main__")
+        try:
+            runpy.run_module(job["argv"][0], run_name="__main__")
+        except SystemExit:
+            # Examples end with raise SystemExit(main()); check before the exit code counts.
+            require_pinned_kernel()
+            raise
+        require_pinned_kernel()
         return 0
     if kind == "extract":
         if len(job["argv"]) != 2:
@@ -181,8 +264,7 @@ def run_worker(job: dict) -> int:
                         f"numerical pin {name}=={version} violated: "
                         f"{record['numerical_versions'].get(name)}")
         import numba
-        from threadpoolctl import threadpool_info
-        pools = threadpool_info()
+        pools = loaded_pools()
         record["runtime"] = dict(
             python=sys.version, executable=sys.executable,
             isolated=bool(sys.flags.isolated),
@@ -195,6 +277,7 @@ def run_worker(job: dict) -> int:
             record["failures"].append("candidate needs JIT off and one numba thread")
         if any(pool["num_threads"] != 1 for pool in pools):
             record["failures"].append("candidate native pools must use one thread")
+        record["failures"].extend(kernel_failures(pools))
         for name in EXAMPLE_MODULES:
             module = __import__(f"examples.{name}", fromlist=["__name__"])
             record["examples"][name] = str(Path(module.__file__).resolve())
@@ -540,6 +623,7 @@ def pip_run(cmd: list[str], out: Path, name: str, timeout: float,
     """One pip subprocess with a cleaned environment and a finite timeout."""
     env = {k: v for k, v in os.environ.items()
            if k not in ("PYTHONPATH", "PYTHONHOME", "PYTHONSTARTUP")}
+    env["OPENBLAS_CORETYPE"] = OPENBLAS_KERNEL
     if not network:
         env["PIP_NO_INDEX"] = "1"
     else:
@@ -605,7 +689,8 @@ def main(argv: list[str] | None = None) -> int:
                 raise SystemExit(f"expected six wheels, found {len(wheels)}")
             subprocess.check_call([args.python, "-m", "pip", "install", "--no-index",
                                   "--no-deps", "--no-compile", f"--target={target}"]
-                                 + [str(w) for w in wheels])
+                                 + [str(w) for w in wheels],
+                                  env={**os.environ, "OPENBLAS_CORETYPE": OPENBLAS_KERNEL})
             record = dict(mode="target", installed=str(target),
                           numerical_site=str(args.numerical_site.resolve()),
                           pip_check="NOT_APPLICABLE_TARGET_MODE")
