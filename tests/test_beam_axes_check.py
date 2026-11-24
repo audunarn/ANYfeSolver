@@ -171,3 +171,12 @@ def test_beam_section_alias_with_explicit_none_follows_solver_precedence():
     element = BeamElement(1, [1, 2], "mat", dict(section))
     assert element.generalized_section is None  # the solver resolves a scalar section
     assert got is False, reason
+
+
+def test_unregistered_material_name_uses_the_solver_default_material():
+    model = _two_member_joint(lambda a, b: {"cross_section": dict(_ROUND)})
+    for element in model.mesh.elements.values():
+        element.material_name = "not_registered"  # solver falls back to "default"
+    report = check_default_beam_axes(model)
+    assert not report.has_findings
+    assert all(not r.orientation_sensitive for r in report.records)

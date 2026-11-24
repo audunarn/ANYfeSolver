@@ -185,7 +185,7 @@ def check_default_beam_axes(model: Any) -> DefaultBeamAxesReport:
         trial = "global_Z" if alignment > DEFAULT_AXIS_SWITCH_THRESHOLD else "global_Y"
         local_z = _beam_rotation_matrix(e1, None)[:, 2]
         sensitive, reason = _element_sensitivity(
-            element, model.materials.get(element.material_name)
+            element, model.get_material(element.material_name)  # solver's lookup
         )
         if orientation is not None:
             reason += "; orientation parallel to the axis, default rule used"
