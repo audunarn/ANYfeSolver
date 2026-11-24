@@ -14,6 +14,8 @@ from __future__ import annotations
 import math
 import threading
 import weakref
+from contextlib import contextmanager
+from contextvars import ContextVar
 from types import MappingProxyType
 from typing import Any, Dict, Iterable, Mapping, Optional, Sequence, Tuple
 
@@ -55,7 +57,12 @@ from .e4_pl_s3_v2d_state import (
     serialize_v2d_state,
     validate_v2d_state,
 )
-from .fe_core import FEMesh, Material
+from .fe_core import (
+    FEMesh,
+    Material,
+    _QualifiedMutationEpoch,
+    _QualifiedStateMapping,
+)
 from .plasticity import plane_stress_return_map
 
 
@@ -90,6 +97,76 @@ CBMIN3 = 2.0
 
 _NORMAL_TOLERANCE = 1.0e-10
 _DEGENERACY_FACTOR = 64.0 * np.finfo(np.float64).eps
+
+# Mixed-shell scope memo for one owned batch operation (see
+# ``v2d_model_scope_memo``).  ``None`` outside such an operation, where every
+# element evaluation keeps the complete mesh scan.
+_V2D_SCOPE_MEMO: ContextVar[Optional[Dict[int, Tuple[Any, Any, int, int]]]] = (
+    ContextVar("anyfesolver_s3_v2d_scope_memo", default=None)
+)
+
+
+def _require_v2d_mixed_shell_scope(elements: Mapping[Any, Any]) -> None:
+    """Refuse a mesh holding any shell outside exact V2D, V2C and qualified Q4."""
+
+    allowed = (
+        NativeParityE4PLS3V2DShellElement,
+        StrictFlatLinearE4PLS3V2CShellElement,
+        QualifiedE4PLShellElement,
+    )
+    if any(
+        isinstance(element, ShellElement) and type(element) not in allowed
+        for element in elements.values()
+    ):
+        raise NativeParityCapabilityError(
+            "S3 V2D mixed shell scope admits only exact V2D, accepted V2C and qualified Q4"
+        )
+
+
+def _v2d_scope_stamp(mesh: FEMesh, elements: Any) -> Optional[Tuple[Any, int, int]]:
+    """Return the mesh mutation stamp of *elements*, or ``None`` if untracked.
+
+    Supported element-mapping mutations (item writes and deletes, wholesale
+    replacement) advance the mesh's qualified mutation epoch.  The length is
+    also stamped so that an insertion through ``dict`` bypasses changes the
+    stamp too.  The epoch is read with ``list.__getitem__``.
+    """
+
+    token = object.__getattribute__(mesh, "__dict__").get(
+        "_qualified_direct_state_token"
+    )
+    if type(token) is not _QualifiedMutationEpoch:
+        return None
+    if type(elements) is not _QualifiedStateMapping:
+        return None
+    if dict.__getitem__(object.__getattribute__(elements, "__dict__"), "_qualified_token") is not token:
+        return None
+    return token, list.__getitem__(token, 0), dict.__len__(elements)
+
+
+@contextmanager
+def v2d_model_scope_memo() -> Iterable[None]:
+    """Check the V2D mixed-shell scope once per unchanged mesh in one operation.
+
+    Inside the block, ``_validate_model_scope`` scans a mesh's elements once
+    and then reuses that verdict for as long as the mesh's mutation stamp is
+    unchanged, instead of rescanning every element for every element
+    evaluation (quadratic in mesh size).  A change outside the stamped mutation
+    surface (for example ``__class__`` assignment on a non-V2D element) cannot
+    hide: when the block completes normally every memoized mesh is scanned
+    again and the operation is refused exactly as an unmemoized evaluation
+    would have been.  On an exception no rescan is done; the exception
+    propagates unchanged.
+    """
+
+    memo: Dict[int, Tuple[Any, Any, int, int]] = {}
+    reset = _V2D_SCOPE_MEMO.set(memo)
+    try:
+        yield
+    finally:
+        _V2D_SCOPE_MEMO.reset(reset)
+    for elements, _token, _epoch, _length in tuple(memo.values()):
+        _require_v2d_mixed_shell_scope(elements)
 _ROTATIONAL_INDICES = np.asarray((3, 4, 9, 10, 15, 16), dtype=np.intp)
 _DRILL_PROJECTOR = np.asarray(((1.0, 0.0), (-1.0, 0.0), (0.0, 1.0)))
 _DRILL_INVERSE_METRIC_SQRT = np.diag((1.0 / math.sqrt(2.0), math.sqrt(2.0)))
@@ -672,18 +749,22 @@ class NativeParityE4PLS3V2DShellElement(
             raise NativeParityCapabilityError(
                 "S3 V2D evaluation requires exact model-registry ownership"
             )
-        allowed = (
-            NativeParityE4PLS3V2DShellElement,
-            StrictFlatLinearE4PLS3V2CShellElement,
-            QualifiedE4PLShellElement,
-        )
-        if any(
-            isinstance(element, ShellElement) and type(element) not in allowed
-            for element in elements.values()
+        memo = _V2D_SCOPE_MEMO.get()
+        stamp = None if memo is None else _v2d_scope_stamp(mesh, elements)
+        if stamp is None:
+            _require_v2d_mixed_shell_scope(elements)
+            return
+        entry = memo.get(id(elements))
+        if (
+            entry is not None
+            and entry[0] is elements
+            and entry[1] is stamp[0]
+            and entry[2] == stamp[1]
+            and entry[3] == stamp[2]
         ):
-            raise NativeParityCapabilityError(
-                "S3 V2D mixed shell scope admits only exact V2D, accepted V2C and qualified Q4"
-            )
+            return
+        _require_v2d_mixed_shell_scope(elements)
+        memo[id(elements)] = (elements, *stamp)
 
     def _geometry(self, mesh: FEMesh) -> Dict[str, Any]:
         self._validate_configuration()

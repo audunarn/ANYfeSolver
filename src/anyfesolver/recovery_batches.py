@@ -1494,6 +1494,14 @@ def _qualified_recovery_runtime_lease_scope(
     stack.close()
 
 
+def _v2d_model_scope_memo() -> Any:
+    """One-operation S3 V2D mixed-shell scope memo (imported lazily)."""
+
+    from .e4_pl_s3_v2d_element import v2d_model_scope_memo
+
+    return v2d_model_scope_memo()
+
+
 def _run_with_qualified_recovery_runtime_lease(
     model: "FEModel",
     *,
@@ -1537,6 +1545,7 @@ def _run_with_qualified_recovery_runtime_lease(
 
             stack.enter_context(_Q4_TRUSTED_OPERATION_SCOPE(q4_elements))
             stack.enter_context(_S3_TRUSTED_OPERATION_SCOPE(s3_elements))
+            stack.enter_context(_v2d_model_scope_memo())
             result = operation(require)
     except BaseException:
         require(stage="exceptional output")
