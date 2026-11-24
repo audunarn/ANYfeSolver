@@ -188,17 +188,11 @@ def test_stress_recovery_scope_scan_is_linear_in_mesh_size():
     assert large <= 1.5 * (large_n / small_n) * small, steps
 
 
-# --- the memoized scope check still refuses ---------------------------------
+# --- the scope check still refuses exactly as before ---------------------
 
 
 class _LegacyShell(ShellElement):
     """A shell class outside the V2D mixed-shell scope."""
-
-
-def _memo():
-    from anyfesolver.e4_pl_s3_v2d_element import v2d_model_scope_memo
-
-    return v2d_model_scope_memo()
 
 
 def _v2d_with_beam() -> tuple[FEModel, NativeParityE4PLS3V2DShellElement, BeamElement]:
@@ -217,38 +211,6 @@ def test_scope_refusal_is_unchanged_outside_an_operation():
     model.mesh.elements[100] = legacy
     with pytest.raises(NativeParityCapabilityError, match="mixed shell scope"):
         v2d._validate_model_scope(model.mesh)
-
-
-def test_memo_sees_mapping_mutations_immediately():
-    model, v2d, _beam = _v2d_with_beam()
-    with pytest.raises(NativeParityCapabilityError, match="mixed shell scope"):
-        with _memo():
-            v2d._validate_model_scope(model.mesh)
-            model.mesh.elements[100] = _LegacyShell.__new__(_LegacyShell)
-            with pytest.raises(NativeParityCapabilityError, match="mixed shell scope"):
-                v2d._validate_model_scope(model.mesh)
-            raise NativeParityCapabilityError("mixed shell scope (propagated)")
-
-
-def test_memo_rescans_at_operation_end_for_unstamped_changes():
-    model, v2d, beam = _v2d_with_beam()
-    with pytest.raises(NativeParityCapabilityError, match="mixed shell scope"):
-        with _memo():
-            v2d._validate_model_scope(model.mesh)
-            # __class__ assignment does not advance the mesh mutation epoch;
-            # the memo may reuse its verdict inside the operation, but the
-            # operation as a whole must still be refused when it completes.
-            beam.__class__ = _LegacyShell
-            v2d._validate_model_scope(model.mesh)
-
-
-def test_memo_does_not_rescan_after_an_exception():
-    model, v2d, beam = _v2d_with_beam()
-    with pytest.raises(KeyError):
-        with _memo():
-            v2d._validate_model_scope(model.mesh)
-            beam.__class__ = _LegacyShell
-            raise KeyError("operation failure wins")
 
 
 def _count_q4_boundary_guards(call):
@@ -305,74 +267,93 @@ def test_pressure_records_follow_an_instance_get_element_override(monkeypatch):
     assert hidden not in [record["element_id"] for record in records]
 
 
-def test_memo_is_inert_in_a_context_copied_during_the_operation():
-    import contextvars
-
-    model, v2d, beam = _v2d_with_beam()
-    with _memo():
-        v2d._validate_model_scope(model.mesh)
-        copied = contextvars.copy_context()
-    beam.__class__ = _LegacyShell
-    with pytest.raises(NativeParityCapabilityError, match="mixed shell scope"):
-        copied.run(v2d._validate_model_scope, model.mesh)
+# --- review round 2 (Codex, 2026-11-24): the scope test stays per-evaluation --
 
 
 class _ForeignElement(BeamElement):
     """A subclass is not package-owned: its methods may be foreign code."""
 
 
-def test_memo_is_not_used_when_any_element_class_is_not_package_owned():
+def test_class_swap_inside_an_element_callback_is_refused_at_once():
+    model, element_ids = _triangle_plate(2)
+    beam = BeamElement(
+        99, [1, 2], "steel", {"A": 1.0e-4, "Iy": 1.0e-8, "Iz": 1.0e-8, "J": 1.0e-8}
+    )
+    model.add_element(99, beam)
+    v2d = model.mesh.elements[element_ids[0]]
+
+    def swapping_compute_stresses(*args, **kwargs):
+        beam.__class__ = _LegacyShell
+        try:
+            v2d._geometry(model.mesh)
+        finally:
+            beam.__class__ = BeamElement
+        return {}
+
+    beam.compute_stresses = swapping_compute_stresses
+    u, _info = solve_linear(model, _pressure(element_ids))
+    with pytest.raises(Exception) as caught:
+        compute_stresses(model, u)
+    # Refused (the scope error itself or the lease's rejection of the callback).
+    assert "scope" in str(caught.value) or "authority" in str(caught.value)
+
+
+def test_census_answers_like_isinstance_for_every_class_shape():
+    from anyfesolver.e4_pl_s3_v2d_element import _require_v2d_mixed_shell_scope
+
     model, v2d, beam = _v2d_with_beam()
-    beam.__class__ = _ForeignElement
+    elements = model.mesh.elements
+    _require_v2d_mixed_shell_scope(elements)
+
+    class _MasqueradingBeam(BeamElement):
+        @property
+        def __class__(self):  # isinstance consults __class__
+            return _LegacyShell
+
+    beam.__class__ = _MasqueradingBeam
+    assert isinstance(beam, ShellElement)
     with pytest.raises(NativeParityCapabilityError, match="mixed shell scope"):
-        with _memo():
-            v2d._validate_model_scope(model.mesh)
-            foreign = model.mesh.elements[99]
-            foreign.__class__ = _LegacyShell
-            try:
-                # Refused at once, not only when the operation ends.
-                v2d._validate_model_scope(model.mesh)
-            finally:
-                foreign.__class__ = _ForeignElement
-            raise AssertionError("the swapped class was not refused at once")
-
-
-def _count_full_scope_scans(call):
-    calls = 0
-
-    def profiler(frame, event, arg):
-        nonlocal calls
-        code = frame.f_code
-        if (
-            event == "call"
-            and code.co_name == "_require_v2d_mixed_shell_scope"
-            and code.co_filename.endswith(_V2D_FILE)
-        ):
-            calls += 1
-
-    previous = sys.getprofile()
-    sys.setprofile(profiler)
+        _require_v2d_mixed_shell_scope(elements)
+    object.__dict__["__class__"].__set__(beam, _ForeignElement)
+    _require_v2d_mixed_shell_scope(elements)
+    ShellElement.register(_ForeignElement)  # virtual subclass
     try:
-        result = call()
+        with pytest.raises(NativeParityCapabilityError, match="mixed shell scope"):
+            _require_v2d_mixed_shell_scope(elements)
     finally:
-        sys.setprofile(previous)
-    return calls, result
+        beam.__class__ = BeamElement
+    _require_v2d_mixed_shell_scope(elements)
+    plain = dict(elements)
+    plain[100] = _LegacyShell.__new__(_LegacyShell)
+    with pytest.raises(NativeParityCapabilityError, match="mixed shell scope"):
+        _require_v2d_mixed_shell_scope(plain)
 
 
-def test_static_batch_recovery_scans_the_scope_a_bounded_number_of_times():
-    from anyfesolver.recovery import RecoveryConfig
-    from anyfesolver.static_batch import StaticCase, iter_linear_batches
+def test_provider_change_from_a_displacement_callback_is_refused():
+    """Codex round 2: a callback installs providers and removes them later."""
 
-    counts = []
-    for n in (2, 4):
-        model, element_ids = _triangle_plate(n)
-        case = StaticCase("p", _pressure(element_ids))
-        recovery = RecoveryConfig(include_stresses=True, include_reactions=False)
-        scans, blocks = _count_full_scope_scans(
-            lambda: list(iter_linear_batches(model, [case], recovery_config=recovery))
-        )
-        assert len(blocks) == 1
-        counts.append(scans)
-    # One scan per V2D geometry evaluation (the borrowed-lease route before the
-    # fix) grows with the element count; memoized operations do not.
-    assert 0 < counts[1] <= counts[0] + 4, counts
+    model, element_ids = _triangle_plate(2, quads_every=3)
+    u, _info = solve_linear(model, _pressure(element_ids))
+    material = model.get_material("steel")
+    mesh = model.mesh
+    calls = {"material": 0}
+
+    def get_material(name):
+        calls["material"] += 1
+        if calls["material"] == 2:
+            # Remove both overrides before the operation's final guard.
+            del model.__dict__["get_material"]
+            del mesh.__dict__["get_node"]
+        return material
+
+    class _Displacements:
+        def __array__(self, dtype=None, copy=None):
+            original_get_node = mesh.get_node
+            model.get_material = get_material
+            mesh.get_node = lambda node_id: original_get_node(node_id)
+            return np.asarray(u, dtype=dtype)
+
+    with pytest.raises(Exception) as caught:
+        compute_stresses(model, _Displacements())
+    assert calls["material"] <= 1, calls
+    assert "authority" in str(caught.value), caught.value

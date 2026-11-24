@@ -14,8 +14,7 @@ from __future__ import annotations
 import math
 import threading
 import weakref
-from contextlib import contextmanager
-from contextvars import ContextVar
+from abc import ABCMeta
 from types import MappingProxyType
 from typing import Any, Dict, Iterable, Mapping, Optional, Sequence, Tuple
 
@@ -26,7 +25,7 @@ from ._qualified_authority_epoch import (
     make_authority_epoch_manager,
 )
 from .element_capabilities import ElementCapabilityError
-from .elements import BeamElement, QuadraticBeamElement, ShellElement
+from .elements import ShellElement
 from .e4_pl_element import QualifiedE4PLShellElement
 from .e4_pl_s3_v2c_element import (
     HAMMER_POINTS,
@@ -57,12 +56,7 @@ from .e4_pl_s3_v2d_state import (
     serialize_v2d_state,
     validate_v2d_state,
 )
-from .fe_core import (
-    FEMesh,
-    Material,
-    _QualifiedMutationEpoch,
-    _QualifiedStateMapping,
-)
+from .fe_core import FEMesh, Material, _QualifiedStateMapping
 from .plasticity import plane_stress_return_map
 
 
@@ -97,114 +91,78 @@ CBMIN3 = 2.0
 
 _NORMAL_TOLERANCE = 1.0e-10
 _DEGENERACY_FACTOR = 64.0 * np.finfo(np.float64).eps
-
-# Mixed-shell scope memo for one owned batch operation (see
-# ``v2d_model_scope_memo``).  ``None`` outside such an operation, where every
-# element evaluation keeps the complete mesh scan.
-_V2D_SCOPE_MEMO: ContextVar[Optional["_V2DScopeMemo"]] = ContextVar(
-    "anyfesolver_s3_v2d_scope_memo", default=None
-)
-
-
-class _V2DScopeMemo:
-    """Scope verdicts of one operation; inert once the operation has ended.
-
-    A context copied while the operation ran (``contextvars.copy_context``,
-    a task or thread started from it) still references this object after the
-    operation's own context was reset, so it must stop answering then.
-    """
-
-    __slots__ = ("active", "entries")
-
-    def __init__(self) -> None:
-        self.active = True
-        self.entries: Dict[int, Tuple[Any, Any, int, int]] = {}
+_ABC_INSTANCECHECK = ABCMeta.__dict__["__instancecheck__"]
+_ABC_SUBCLASSCHECK = ABCMeta.__dict__["__subclasscheck__"]
 
 
 def _require_v2d_mixed_shell_scope(elements: Mapping[Any, Any]) -> None:
-    """Refuse a mesh holding any shell outside exact V2D, V2C and qualified Q4."""
+    """Refuse a mesh holding any shell outside exact V2D, V2C and qualified Q4.
+
+    Equivalent to testing ``isinstance(element, ShellElement) and type(element)
+    not in allowed`` for every element, but the per-element work is a C-level
+    type census; the ``isinstance`` question is then answered once per
+    distinct class with ``issubclass``.  That is the same answer whenever
+    every class keeps ``object``'s own ``__class__`` descriptor (an instance's
+    ``__class__`` is then its type), ``ShellElement`` keeps the unpatched
+    ``ABCMeta`` checks and the mapping's values are read with ``dict.values``;
+    otherwise the element-by-element test runs instead.
+    Called on every V2D geometry evaluation, so it must stay cheap: the old
+    element-by-element ``isinstance`` scan made stress recovery quadratic in
+    mesh size with a large constant.
+    """
 
     allowed = (
         NativeParityE4PLS3V2DShellElement,
         StrictFlatLinearE4PLS3V2CShellElement,
         QualifiedE4PLShellElement,
     )
-    if any(
-        isinstance(element, ShellElement) and type(element) not in allowed
-        for element in elements.values()
-    ):
-        raise NativeParityCapabilityError(
-            "S3 V2D mixed shell scope admits only exact V2D, accepted V2C and qualified Q4"
+    abc_namespace = type.__getattribute__(ABCMeta, "__dict__")
+    mapping_kind = type(elements)
+    if mapping_kind is dict:
+        values_are_builtin = True
+    elif mapping_kind is _QualifiedStateMapping:
+        # ``values`` is a non-data method: an instance attribute would shadow it.
+        values_are_builtin = (
+            _class_attribute_owner(mapping_kind, "values") is dict
+            and "values" not in object.__getattribute__(elements, "__dict__")
         )
-
-
-def _v2d_scope_memo_eligible(elements: Any) -> bool:
-    """True when every element is an exact package-owned class.
-
-    A memoized verdict could miss a class change made and undone by foreign
-    code in the middle of an operation.  Element methods are the operation's
-    callbacks into model content, so the memo is used only when every
-    element's class is one of this package's own exact classes (no subclass,
-    no generic element) and none of their methods is foreign code.
-    """
-
-    owned = (
-        NativeParityE4PLS3V2DShellElement,
-        StrictFlatLinearE4PLS3V2CShellElement,
-        QualifiedE4PLShellElement,
-        BeamElement,
-        QuadraticBeamElement,
+    else:
+        values_are_builtin = False
+    census_is_exact = values_are_builtin and (
+        type(ShellElement) is ABCMeta
+        and abc_namespace.get("__instancecheck__") is _ABC_INSTANCECHECK
+        and abc_namespace.get("__subclasscheck__") is _ABC_SUBCLASSCHECK
     )
-    return all(type(element) in owned for element in dict.values(elements))
-
-
-def _v2d_scope_stamp(mesh: FEMesh, elements: Any) -> Optional[Tuple[Any, int, int]]:
-    """Return the mesh mutation stamp of *elements*, or ``None`` if untracked.
-
-    Supported element-mapping mutations (item writes and deletes, wholesale
-    replacement) advance the mesh's qualified mutation epoch.  The length is
-    also stamped so that an insertion through ``dict`` bypasses changes the
-    stamp too.  The epoch is read with ``list.__getitem__``.
-    """
-
-    token = object.__getattribute__(mesh, "__dict__").get(
-        "_qualified_direct_state_token"
+    if census_is_exact:
+        census = set(map(type, dict.values(elements)))
+        census_is_exact = all(
+            _class_attribute_owner(kind, "__class__") is object for kind in census
+        )
+    if not census_is_exact:
+        if any(
+            isinstance(element, ShellElement) and type(element) not in allowed
+            for element in elements.values()
+        ):
+            raise NativeParityCapabilityError(
+                "S3 V2D mixed shell scope admits only exact V2D, accepted V2C and qualified Q4"
+            )
+        return
+    if not any(
+        kind not in allowed and issubclass(kind, ShellElement) for kind in census
+    ):
+        return
+    raise NativeParityCapabilityError(
+        "S3 V2D mixed shell scope admits only exact V2D, accepted V2C and qualified Q4"
     )
-    if type(token) is not _QualifiedMutationEpoch:
-        return None
-    if type(elements) is not _QualifiedStateMapping:
-        return None
-    if dict.__getitem__(object.__getattribute__(elements, "__dict__"), "_qualified_token") is not token:
-        return None
-    return token, list.__getitem__(token, 0), dict.__len__(elements)
 
 
-@contextmanager
-def v2d_model_scope_memo() -> Iterable[None]:
-    """Check the V2D mixed-shell scope once per unchanged mesh in one operation.
+def _class_attribute_owner(kind: type, name: str) -> Any:
+    """The MRO class whose namespace defines *name*, without running descriptors."""
 
-    Inside the block, ``_validate_model_scope`` scans a mesh's elements once
-    and then reuses that verdict for as long as the mesh's mutation stamp is
-    unchanged, instead of rescanning every element for every element
-    evaluation (quadratic in mesh size).  Verdicts are memoized only for
-    meshes whose elements are all exact package-owned classes.  A change
-    outside the stamped mutation surface that persists (for example
-    ``__class__`` assignment) is still refused: when the block completes
-    normally every memoized mesh is scanned again.  On an exception no rescan
-    is done and the exception propagates unchanged.  When the block ends the
-    memo becomes inert, including in contexts copied from inside it.
-    """
-
-    memo = _V2DScopeMemo()
-    reset = _V2D_SCOPE_MEMO.set(memo)
-    try:
-        yield
-    finally:
-        memo.active = False
-        _V2D_SCOPE_MEMO.reset(reset)
-    for elements, _token, _epoch, _length in tuple(memo.entries.values()):
-        _require_v2d_mixed_shell_scope(elements)
-    memo.entries.clear()
+    for base in type.__getattribute__(kind, "__mro__"):
+        if name in type.__getattribute__(base, "__dict__"):
+            return base
+    return None
 
 
 _ROTATIONAL_INDICES = np.asarray((3, 4, 9, 10, 15, 16), dtype=np.intp)
@@ -789,27 +747,7 @@ class NativeParityE4PLS3V2DShellElement(
             raise NativeParityCapabilityError(
                 "S3 V2D evaluation requires exact model-registry ownership"
             )
-        memo = _V2D_SCOPE_MEMO.get()
-        stamp = (
-            None
-            if memo is None or not memo.active
-            else _v2d_scope_stamp(mesh, elements)
-        )
-        if stamp is None:
-            _require_v2d_mixed_shell_scope(elements)
-            return
-        entry = memo.entries.get(id(elements))
-        if (
-            entry is not None
-            and entry[0] is elements
-            and entry[1] is stamp[0]
-            and entry[2] == stamp[1]
-            and entry[3] == stamp[2]
-        ):
-            return
         _require_v2d_mixed_shell_scope(elements)
-        if _v2d_scope_memo_eligible(elements):
-            memo.entries[id(elements)] = (elements, *stamp)
 
     def _geometry(self, mesh: FEMesh) -> Dict[str, Any]:
         self._validate_configuration()

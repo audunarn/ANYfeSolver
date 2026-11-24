@@ -3644,7 +3644,6 @@ def _run_with_qualified_assembly_runtime_lease(
                 with ExitStack() as stack:
                     stack.enter_context(_Q4_TRUSTED_OPERATION_SCOPE(q4_elements))
                     stack.enter_context(_S3_TRUSTED_OPERATION_SCOPE(s3_elements))
-                    stack.enter_context(_v2d_model_scope_memo())
                     try:
                         result = operation(lease)
                     except BaseException as exc:
@@ -6613,14 +6612,6 @@ def _qualified_s3_pressure_surface_records(
             )
         records.append(_qualified_s3_pressure_surface_record(element_id, offset))
     return records
-
-
-def _v2d_model_scope_memo() -> Any:
-    """One-operation S3 V2D mixed-shell scope memo (imported lazily)."""
-
-    from .e4_pl_s3_v2d_element import v2d_model_scope_memo
-
-    return v2d_model_scope_memo()
 
 
 def _qualified_s3_pressure_surface_record(

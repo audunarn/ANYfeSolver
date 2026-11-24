@@ -1439,7 +1439,12 @@ def _build_trusted_v2d_recovery_require(
         stage: str,
     ) -> bool:
         record = dict.get(v2d_materials, id(element))
-        if record is None or record[0] is not element or record[1] is not material:
+        if (
+            record is None
+            or record[0] is not element
+            or record[1] is not material
+            or not _v2d_recovery_providers_are_builtin(model)
+        ):
             return False
         try:
             trusted_state(model, context=f"{context} {stage}")
@@ -1450,6 +1455,43 @@ def _build_trusted_v2d_recovery_require(
         return True
 
     return trusted_v2d_require
+
+
+def _v2d_recovery_providers_are_builtin(model: "FEModel") -> bool:
+    """True when the model/mesh providers V2D recovery calls are the package's own.
+
+    The lease's trusted state check covers the owned input containers and
+    epochs but not instance or class replacement of ``get_material``,
+    ``get_node`` or ``get_element``; a V2D observation that finds one keeps the
+    complete guard.  Nothing here executes code outside this package.
+    """
+
+    from .matrix_assembly import (
+        _EXACT_FE_MESH_GET_ELEMENT,
+        _EXACT_FE_MESH_GET_NODE,
+        _EXACT_FE_MODEL_GET_MATERIAL,
+    )
+
+    model_namespace = object.__getattribute__(model, "__dict__")
+    if type(model_namespace) is not dict or "get_material" in model_namespace:
+        return False
+    if (
+        type.__getattribute__(type(model), "__dict__").get("get_material")
+        is not _EXACT_FE_MODEL_GET_MATERIAL
+    ):
+        return False
+    mesh = dict.get(model_namespace, "mesh")
+    if type(mesh) is not _FEMesh:
+        return False
+    mesh_namespace = object.__getattribute__(mesh, "__dict__")
+    class_namespace = type.__getattribute__(_FEMesh, "__dict__")
+    return (
+        type(mesh_namespace) is dict
+        and "get_node" not in mesh_namespace
+        and "get_element" not in mesh_namespace
+        and class_namespace.get("get_node") is _EXACT_FE_MESH_GET_NODE
+        and class_namespace.get("get_element") is _EXACT_FE_MESH_GET_ELEMENT
+    )
 
 
 def _qualified_recovery_trusted_elements(
@@ -1540,8 +1582,7 @@ def _qualified_recovery_runtime_lease_scope(
         )
         guard(stage="preflight")
         try:
-            with _v2d_model_scope_memo():
-                result = operation(guard)
+            result = operation(guard)
         except BaseException:
             guard(stage="exceptional output")
             raise
@@ -1587,14 +1628,6 @@ def _qualified_recovery_runtime_lease_scope(
     stack.close()
 
 
-def _v2d_model_scope_memo() -> Any:
-    """One-operation S3 V2D mixed-shell scope memo (imported lazily)."""
-
-    from .e4_pl_s3_v2d_element import v2d_model_scope_memo
-
-    return v2d_model_scope_memo()
-
-
 def _run_with_qualified_recovery_runtime_lease(
     model: "FEModel",
     *,
@@ -1638,7 +1671,6 @@ def _run_with_qualified_recovery_runtime_lease(
 
             stack.enter_context(_Q4_TRUSTED_OPERATION_SCOPE(q4_elements))
             stack.enter_context(_S3_TRUSTED_OPERATION_SCOPE(s3_elements))
-            stack.enter_context(_v2d_model_scope_memo())
             result = operation(require)
     except BaseException:
         require(stage="exceptional output")
