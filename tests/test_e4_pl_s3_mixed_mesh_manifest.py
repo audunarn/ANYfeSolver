@@ -692,17 +692,19 @@ def _require_sole_import_form(relative: str) -> None:
         if entry_name == path.name:
             continue  # exactly the bound file; every OTHER entry is judged below
         name = entry_name.casefold()
-        if name == stem:
-            # A directory (package or namespace, with or without __init__.py)
-            # shadows; an ordinary extensionless regular file does not.  Another
-            # spelling of the bound file's own name (case-fold) is another form.
-            assert not entry_is_dir, f"{relative}: {entry_name} shadows the bound module"
+        if entry_is_dir:
+            # A directory shadows only as a package or namespace of the stem (with
+            # or without __init__.py, compared case-folded); a directory merely
+            # named like a file form (``elements.pyc/``, ``ELEMENTS.PY/``) does not.
+            assert name != stem, f"{relative}: {entry_name} shadows the bound module"
+            continue
+        # A regular file: another spelling of the bound file's own name (case-fold)
+        # or the stem with another importable suffix is another module form; an
+        # ordinary extensionless regular file named like the stem is not.
         assert name != path.name.casefold(), (
             f"{relative}: {entry_name} is another spelling of the bound module"
         )
-        # Only a regular file with an importable suffix is another module form; a
-        # directory merely named like one (e.g. ``elements.pyc/``) is not.
-        assert entry_is_dir or not any(
+        assert not any(
             name.endswith(suffix) and name[: -len(suffix)] == stem for suffix in suffixes
         ), f"{relative}: {entry_name} is another importable form of the bound module"
     if relative.startswith("src/"):
@@ -2565,4 +2567,21 @@ def test_import_form_check_ignores_a_directory_named_like_a_suffix_form(
     (tmp_path / "pkg" / "elements.pyc").rmdir()
     (tmp_path / "pkg" / "elements.pyc").write_bytes(b"\0")  # the regular file still shadows
     with pytest.raises(AssertionError, match="importable form"):
+        _require_sole_import_form("pkg/elements.py")
+
+
+def test_import_form_check_ignores_a_case_variant_directory_of_the_file_name(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    # Codex Astra P3: on a case-sensitive filesystem a directory ``ELEMENTS.PY/``
+    # beside ``elements.py`` is no module form; a regular file of that name is.
+    _listing(tmp_path, monkeypatch, "elements.py")
+    names = [("elements.py", False), ("ELEMENTS.PY", True), ("Elements.Pyc", True)]
+    monkeypatch.setattr(sys.modules[__name__], "_import_form_entries", lambda directory: names)
+    _require_sole_import_form("pkg/elements.py")
+    names[1] = ("ELEMENTS.PY", False)
+    with pytest.raises(AssertionError, match="another spelling"):
+        _require_sole_import_form("pkg/elements.py")
+    names[1:] = [("ELEMENTS", True)]
+    with pytest.raises(AssertionError, match="shadows the bound module"):
         _require_sole_import_form("pkg/elements.py")
