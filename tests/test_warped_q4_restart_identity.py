@@ -15,6 +15,8 @@ import pytest
 from anyfesolver import FEModel
 from anyfesolver.elements import create_shell_element
 from anyfesolver.nonlinear_restart import (
+    NonlinearCheckpointError,
+    _applied_drilling_if_changed,
     _sha256,
     model_configuration_descriptor,
     model_configuration_fingerprint,
@@ -79,3 +81,40 @@ def test_applied_coefficient_uses_the_fingerprint_coordinate_snapshot(monkeypatc
 
     monkeypatch.setattr(model.mesh, "get_node", no_second_read)
     assert model_configuration_fingerprint(model) == expected
+
+
+def _records_and_snapshot(model):
+    descriptor = model_configuration_descriptor(model)
+    snapshot = {r["id"]: r["coordinates"] for r in descriptor["nodes"]}
+    return descriptor["elements"], snapshot
+
+
+@pytest.mark.parametrize("warped", [True, False])
+@pytest.mark.parametrize("alpha", [None, 0.0, 1.0e-3, 0.0999, 0.1, 0.5])
+def test_recorded_marker_matches_the_element_hook(warped, alpha):
+    model = _shell_model(warped=warped, alpha=alpha)
+    records, snapshot = _records_and_snapshot(model)
+    for record in records:
+        element = model.mesh.elements[record["id"]]
+        live = element._effective_drilling_stabilization(element.get_node_coordinates(model.mesh))
+        expected = None if live == element.drilling_stabilization else live
+        assert _applied_drilling_if_changed(record, snapshot) == expected
+
+
+def test_marker_reads_only_recorded_values():
+    # Review round 8: the marker must not reread live element inputs.
+    model = _shell_model(warped=True)
+    records, snapshot = _records_and_snapshot(model)
+    recorded = copy.deepcopy(records)
+    for element in model.mesh.elements.values():
+        element.drilling_stabilization = 0.5  # live change after recording
+    assert [_applied_drilling_if_changed(r, snapshot) for r in recorded] == [0.1] * len(recorded)
+
+
+def test_degenerate_recorded_facet_is_a_typed_checkpoint_error():
+    model = _shell_model(warped=True)
+    records, snapshot = _records_and_snapshot(model)
+    record = records[0]
+    collinear = {n: [float(k), 0.0, 0.0] for k, n in enumerate(record["configuration"]["node_ids"])}
+    with pytest.raises(NonlinearCheckpointError, match="drilling identity"):
+        _applied_drilling_if_changed(record, collinear)

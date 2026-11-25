@@ -686,13 +686,8 @@ def model_configuration_descriptor(
             _guard_model=model,
         )
         descriptor["id"] = int(element_id)
-        applied = _applied_drilling_if_changed(element, node_snapshot)
+        applied = _applied_drilling_if_changed(descriptor, node_snapshot)
         if applied is not None:
-            _checkpoint_observation_guard(
-                _exact_guard,
-                model,
-                context=f"nonlinear checkpoint element {element_id} drilling observation",
-            )
             # Kernels apply a different coefficient than the stored one (the
             # 2026-11-24 warped qualified-Q4 floor): bind it, so checkpoints
             # written under other drilling mechanics are rejected.  Absent for
@@ -775,33 +770,47 @@ def model_configuration_descriptor(
     }
 
 
-def _applied_drilling_if_changed(element: Any, node_snapshot: Mapping[int, Any]) -> Any:
+def _applied_drilling_if_changed(
+    descriptor: Mapping[str, Any], node_snapshot: Mapping[int, Any]
+) -> Any:
     """Applied drilling coefficient when it differs from the stored value, else None.
 
-    Only a class that overrides ``ShellElement._effective_drilling_stabilization``
-    (the warped qualified-Q4 floor) can differ; it is evaluated on the
-    fingerprint's own node-coordinate snapshot.
+    Computed only from values this descriptor already recorded (class, node
+    ids, ``drilling_stabilization``, ``planar_tolerance``) and the node
+    coordinate snapshot; it reads nothing live.  Only the qualified Q4 (a final
+    class) applies the warped-facet floor; this mirrors
+    ``QualifiedE4PLShellElement._effective_drilling_stabilization`` (consistency
+    is tested).
     """
 
-    from .elements import ShellElement
-
-    if not isinstance(element, ShellElement):
+    from .e4_pl_element import (
+        _WARPED_Q4_DRILLING_FLOOR,
+        QualifiedE4PLShellElement,
+        equation7_frame,
+    )
+    if descriptor.get("class") != wire_class_name(QualifiedE4PLShellElement):
         return None
-    hook = getattr(type(element), "_effective_drilling_stabilization", None)
-    if hook is None or hook is ShellElement._effective_drilling_stabilization:
-        return None
+    configuration = descriptor.get("configuration")
     try:
+        alpha = float(configuration["drilling_stabilization"])
+        if not alpha < _WARPED_Q4_DRILLING_FLOOR:
+            return None
+        tolerance = float(configuration["planar_tolerance"])
         coordinates = np.asarray(
-            [node_snapshot[int(node_id)] for node_id in element.node_ids], dtype=float
+            [node_snapshot[int(node_id)] for node_id in configuration["node_ids"]],
+            dtype=float,
         )
-    except KeyError as exc:
+        _frame, _local, warpage = equation7_frame(coordinates)
+    except NonlinearCheckpointError:
+        raise
+    except Exception as exc:  # missing record field, unknown node, degenerate facet
         raise NonlinearCheckpointError(
-            f"element {element.element_id} references a node outside the model"
+            f"element {descriptor.get('id', '?')} drilling identity cannot be "
+            f"established: {exc}"
         ) from exc
-    applied = float(hook(element, coordinates))
-    if applied == float(element.drilling_stabilization):
-        return None
-    return applied
+    if warpage > tolerance:
+        return float(_WARPED_Q4_DRILLING_FLOOR)
+    return None
 
 
 def model_configuration_fingerprint(
