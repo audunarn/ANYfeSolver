@@ -32,8 +32,9 @@ from .fe_core import Node as _CHECKPOINT_NODE_TYPE
 from .e4_pl_element import QualifiedE4PLShellElement as _QUALIFIED_Q4_CLASS
 from .elements import ShellElement as _SHELL_ELEMENT_CLASS
 
-# Drilling hook implementations captured at import: restart identity admits
-# only these, so a hook replaced later on a class or an instance is refused.
+# The package's own drilling hook implementations.  Restart identity assumes
+# unmodified package code; it refuses instance-level hooks and subclass or
+# metaclass overrides, not runtime patching of the package itself.
 _DRILLING_HOOK_NAME = "_effective_drilling_stabilization"
 _BASE_DRILLING_HOOK = _SHELL_ELEMENT_CLASS.__dict__[_DRILLING_HOOK_NAME]
 _QUALIFIED_Q4_DRILLING_HOOK = _QUALIFIED_Q4_CLASS.__dict__[_DRILLING_HOOK_NAME]
@@ -782,12 +783,15 @@ def model_configuration_descriptor(
 def _require_admitted_drilling_hook(element: Any) -> None:
     """Fail closed on drilling hooks that restart identity cannot describe.
 
-    Only the implementations captured at import are admitted: the base
-    ``ShellElement`` hook (stored value) on any shell class that does not
-    override it, and the final qualified Q4 hook (warped-facet floor,
-    described by :func:`_applied_drilling_if_changed`) on that class.  A hook
-    defined on another class, patched onto a class later, or set on the
-    instance is refused.
+    Contract: restart identity binds the model's recorded data under
+    unmodified package code.  Runtime patching of ANYfeSolver kernels, hooks,
+    helpers or modules is unsupported and not detected.  Instance attributes
+    and subclasses are in scope: an instance-level hook, or a class whose hook
+    (ordinary attribute lookup, metaclass included) is not the package's own,
+    is refused.  Admitted are the base ``ShellElement`` hook (stored value) on
+    any shell class that does not override it, and the final qualified Q4 hook
+    (warped-facet floor, described by :func:`_applied_drilling_if_changed`) on
+    that class.
     """
 
     if not isinstance(element, _SHELL_ELEMENT_CLASS):
@@ -796,19 +800,14 @@ def _require_admitted_drilling_hook(element: Any) -> None:
         instance_namespace = object.__getattribute__(element, "__dict__")
     except AttributeError:
         instance_namespace = {}
-    shadowed = _DRILLING_HOOK_NAME in instance_namespace
-    resolved = None
-    for klass in type(element).__mro__:
-        if _DRILLING_HOOK_NAME in klass.__dict__:
-            resolved = klass.__dict__[_DRILLING_HOOK_NAME]
-            break
-    admitted = not shadowed and (
-        resolved is _BASE_DRILLING_HOOK
-        or (
+    if _DRILLING_HOOK_NAME in instance_namespace:
+        admitted = False
+    else:
+        hook = getattr(type(element), _DRILLING_HOOK_NAME, None)
+        admitted = hook is _BASE_DRILLING_HOOK or (
             type(element) is _QUALIFIED_Q4_CLASS
-            and resolved is _QUALIFIED_Q4_DRILLING_HOOK
+            and hook is _QUALIFIED_Q4_DRILLING_HOOK
         )
-    )
     if not admitted:
         raise NonlinearCheckpointError(
             f"element {getattr(element, 'element_id', '?')} of class "

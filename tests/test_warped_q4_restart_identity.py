@@ -216,13 +216,23 @@ def test_instance_level_drilling_hook_fails_closed():
         model_configuration_fingerprint(model)
 
 
-def test_runtime_patched_class_hook_fails_closed(monkeypatch):
-    # Review round 10 P2: a hook patched onto a class after import is refused.
+def test_metaclass_supplied_hook_fails_closed():
+    # Review round 11: the batch helper looks the hook up on the class, where a
+    # metaclass data descriptor wins; restart identity uses the same lookup.
     from anyfesolver.elements import ShellElement
 
-    model = _plain_shell_model()
-    monkeypatch.setattr(
-        ShellElement, "_effective_drilling_stabilization", lambda self, coordinates=None: 0.25
-    )
+    class HookMeta(type(ShellElement)):
+        @property
+        def _effective_drilling_stabilization(cls):
+            return lambda self, coordinates=None: 0.25
+
+    class MetaShell(ShellElement, metaclass=HookMeta):
+        pass
+
+    model = FEModel("meta")
+    model.add_material("mat", 29.0e6, 0.22)
+    for k, (x, y) in enumerate([(0, 0), (1, 0), (1, 1), (0, 1)], start=1):
+        model.add_node(k, float(x), float(y), 0.0)
+    model.add_element(1, MetaShell(1, [1, 2, 3, 4], "mat", thickness=0.1))
     with pytest.raises(NonlinearCheckpointError, match="overrides the drilling coefficient hook"):
         model_configuration_fingerprint(model)

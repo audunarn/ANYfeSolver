@@ -14,6 +14,15 @@
   Scordelis-Lo -0.26 %). Planar facets and every other element are
   bit-identical. Source binding: `docs/reference_cases/e4_pl_source_binding_20261124.json`.
 
+- Nonlinear checkpoints of models with floored warped qualified Q4 facets bind the
+  applied drilling coefficient (`applied_drilling_stabilization` in the model
+  fingerprint), so a checkpoint written before the floor (for example by 0.5.0
+  or main before this change) is refused on resume. Every other model keeps its
+  fingerprint. Restart identity binds the model's recorded data under unmodified
+  package code: runtime patching of ANYfeSolver kernels, hooks, helpers or modules
+  is unsupported and not detected; a shell subclass, metaclass or instance that
+  overrides the drilling coefficient hook is refused.
+
 ## 0.5.0 - release candidate
 
 - Require ANYfileio 0.3.3 or later in the 0.3 line for SESTRA shell stress
