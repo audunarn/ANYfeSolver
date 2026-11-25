@@ -672,6 +672,11 @@ def model_configuration_descriptor(
         model,
         context="nonlinear checkpoint element mapping observation",
     )
+    # The applied drilling coefficient is evaluated on this same coordinate
+    # snapshot, never on a second read of the mesh.
+    node_snapshot = {
+        record["id"]: record["coordinates"] for record in node_records
+    }
     element_records = []
     for element_id, element in sorted(element_items, key=lambda item: int(item[0])):
         descriptor = _object_payload(
@@ -681,8 +686,13 @@ def model_configuration_descriptor(
             _guard_model=model,
         )
         descriptor["id"] = int(element_id)
-        applied = _applied_drilling_if_changed(element, mesh)
+        applied = _applied_drilling_if_changed(element, node_snapshot)
         if applied is not None:
+            _checkpoint_observation_guard(
+                _exact_guard,
+                model,
+                context=f"nonlinear checkpoint element {element_id} drilling observation",
+            )
             # Kernels apply a different coefficient than the stored one (the
             # 2026-11-24 warped qualified-Q4 floor): bind it, so checkpoints
             # written under other drilling mechanics are rejected.  Absent for
@@ -765,19 +775,33 @@ def model_configuration_descriptor(
     }
 
 
-def _applied_drilling_if_changed(element: Any, mesh: Any) -> Any:
-    """Applied drilling coefficient when it differs from the stored value, else None."""
+def _applied_drilling_if_changed(element: Any, node_snapshot: Mapping[int, Any]) -> Any:
+    """Applied drilling coefficient when it differs from the stored value, else None.
 
-    if not hasattr(element, "drilling_stabilization") or mesh is None:
-        return None
-    from .elements import ShellElement, _kernel_drilling_stabilization
+    Only a class that overrides ``ShellElement._effective_drilling_stabilization``
+    (the warped qualified-Q4 floor) can differ; it is evaluated on the
+    fingerprint's own node-coordinate snapshot.
+    """
+
+    from .elements import ShellElement
 
     if not isinstance(element, ShellElement):
         return None
-    applied = _kernel_drilling_stabilization(element, mesh)
+    hook = getattr(type(element), "_effective_drilling_stabilization", None)
+    if hook is None or hook is ShellElement._effective_drilling_stabilization:
+        return None
+    try:
+        coordinates = np.asarray(
+            [node_snapshot[int(node_id)] for node_id in element.node_ids], dtype=float
+        )
+    except KeyError as exc:
+        raise NonlinearCheckpointError(
+            f"element {element.element_id} references a node outside the model"
+        ) from exc
+    applied = float(hook(element, coordinates))
     if applied == float(element.drilling_stabilization):
         return None
-    return float(applied)
+    return applied
 
 
 def model_configuration_fingerprint(

@@ -66,3 +66,16 @@ def test_unfloored_models_keep_their_fingerprint(warped, alpha):
     records = model_configuration_descriptor(model)["elements"]
     assert all("applied_drilling_stabilization" not in r for r in records)
     assert model_configuration_fingerprint(model) == _pre_floor_fingerprint(model)
+
+
+def test_applied_coefficient_uses_the_fingerprint_coordinate_snapshot(monkeypatch):
+    # Review round 7: a second mesh read could describe geometry other than the
+    # snapshotted node coordinates.  The fingerprint must not read the mesh again.
+    model = _shell_model(warped=True)
+    expected = model_configuration_fingerprint(model)
+
+    def no_second_read(node_id):
+        raise AssertionError(f"mesh.get_node({node_id}) read during fingerprinting")
+
+    monkeypatch.setattr(model.mesh, "get_node", no_second_read)
+    assert model_configuration_fingerprint(model) == expected
