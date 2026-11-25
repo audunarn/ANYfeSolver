@@ -257,7 +257,11 @@ def test_trusted_v2d_path_is_bitwise_result_neutral(
     contexts = _count_complete_scans(monkeypatch)
     complete = _solve(*_mixed_model())
 
-    assert "nonlinear static force tangent assembly" in contexts
+    # L1 (owner 2026-11-24): the complete-scan fallback runs at each step's
+    # entry and before it commits instead of at every Newton evaluation.
+    assert "nonlinear static force step cancellation" in contexts
+    assert "nonlinear static step pre-commit" in contexts
+    assert "nonlinear static force tangent assembly" not in contexts
     assert trusted.status == complete.status == "completed"
     assert np.asarray(trusted.displacements).tobytes() == np.asarray(
         complete.displacements

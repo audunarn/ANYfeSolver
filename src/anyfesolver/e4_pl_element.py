@@ -29,7 +29,8 @@ import warnings
 import weakref
 from contextlib import contextmanager
 from contextvars import ContextVar
-from operator import is_ as _operator_is, itemgetter
+from itertools import repeat as _itertools_repeat
+from operator import is_ as _operator_is, is_not as _operator_is_not, itemgetter
 from types import FunctionType as _FunctionType, MappingProxyType, ModuleType
 from typing import Any, Callable, Dict, Mapping, NamedTuple, Optional, Sequence
 
@@ -7517,11 +7518,12 @@ def _make_q4_trusted_operation_scope() -> tuple[Any, Any]:
     @contextmanager
     def operation(elements: Sequence[Any]) -> Any:
         owned = tuple(elements)
-        for element in owned:
-            _require_exact_q4_runtime_authority(
-                element,
-                context="qualified Q4 trusted operation preflight",
-            )
+        with _q4_class_authority_window():
+            for element in owned:
+                _require_exact_q4_runtime_authority(
+                    element,
+                    context="qualified Q4 trusted operation preflight",
+                )
         generation = manager.capture_generation()
         records = {
             id(element): (element, object.__getattribute__(element, "__dict__"))
@@ -7539,21 +7541,22 @@ def _make_q4_trusted_operation_scope() -> tuple[Any, Any]:
             active.reset(marker)
             try:
                 manager.require_generation(generation)
-                for element in owned:
-                    _require_exact_q4_runtime_authority(
-                        element,
-                        context="qualified Q4 trusted operation output",
-                    )
-                    record = records.get(id(element))
-                    if (
-                        record is None
-                        or record[0] is not element
-                        or record[1]
-                        is not object.__getattribute__(element, "__dict__")
-                    ):
-                        raise ValueError(
-                            "qualified Q4 trusted operation identity changed"
+                with _q4_class_authority_window():
+                    for element in owned:
+                        _require_exact_q4_runtime_authority(
+                            element,
+                            context="qualified Q4 trusted operation output",
                         )
+                        record = records.get(id(element))
+                        if (
+                            record is None
+                            or record[0] is not element
+                            or record[1]
+                            is not object.__getattribute__(element, "__dict__")
+                        ):
+                            raise ValueError(
+                                "qualified Q4 trusted operation identity changed"
+                            )
             except BaseException:
                 for element in owned:
                     _invalidate_q4_guarded_call_caches(element)
@@ -7581,6 +7584,112 @@ def _make_q4_trusted_operation_scope() -> tuple[Any, Any]:
     _q4_trusted_operation_scope,
     _q4_trusted_operation_accepts,
 ) = _make_q4_trusted_operation_scope()
+
+
+def _make_q4_class_authority_window() -> tuple[Any, Any]:
+    """Create the context-local class-authority cadence window (owner G2).
+
+    Outside a window every exact class/namespace guard runs completely on
+    every call, exactly as before.  Inside a window each distinct guard runs
+    completely on its first use and is then accepted for the rest of that
+    window; when the window closes normally, every guard used in it runs
+    completely again before the window's results are accepted.  A window is
+    one Newton evaluation or one lease scan; nested windows join the outer
+    one.  Per-element instance, quadrature and epoch checks are unaffected.
+
+    Trust boundary: ANYfeSolver's own classes and guard machinery and the
+    trusted numerical dependencies are not replaced while a window is open,
+    and concurrent mutation during a request is out of contract.  A class
+    change made and reverted inside one window is therefore not detected;
+    a persistent one is refused at the window boundary.  The token is
+    closure-owned and revoked before the closing validation, so a context
+    copied inside the window cannot keep it.
+    """
+
+    active: ContextVar[Any] = ContextVar(
+        "qualified_q4_class_authority_window", default=None
+    )
+
+    class Token:
+        __slots__ = ("validated", "live")
+
+        def __init__(self) -> None:
+            self.validated: list[Any] = []
+            self.live = True
+
+    def require(exact_guard: Any) -> None:
+        token = active.get()
+        if type(token) is Token and token.live:
+            for accepted in token.validated:
+                if accepted is exact_guard:
+                    return
+            exact_guard()
+            token.validated.append(exact_guard)
+            return
+        exact_guard()
+
+    @contextmanager
+    def window() -> Any:
+        outer = active.get()
+        if type(outer) is Token and outer.live:
+            yield
+            return
+        token = Token()
+        marker = active.set(token)
+        try:
+            yield
+        except BaseException:
+            token.live = False
+            active.reset(marker)
+            raise
+        token.live = False
+        active.reset(marker)
+        for exact_guard in tuple(token.validated):
+            exact_guard()
+
+    return window, require
+
+
+(
+    _q4_class_authority_window,
+    _require_q4_class_authority_in_window,
+) = _make_q4_class_authority_window()
+
+
+_q4_identity_sweep_missing = object()
+
+
+def _q4_identity_entries_changed(
+    namespace: Any,
+    names: tuple[str, ...],
+    expected_values: tuple[Any, ...],
+    _missing: Any = _q4_identity_sweep_missing,
+    _is_not: Any = _operator_is_not,
+    _repeat: Any = _itertools_repeat,
+) -> bool:
+    """Exact C-speed form of the guarded identity sweep (owner G1).
+
+    Equivalent to ``any(name not in namespace or namespace[name] is not
+    expected for name, expected in zip(names, expected_values))`` for an exact
+    ``dict`` or class ``mappingproxy``: the private sentinel is never an
+    expected value, the sweep keeps the same order and stops at the first
+    changed entry.
+    """
+
+    return any(
+        map(_is_not, map(namespace.get, names, _repeat(_missing)), expected_values)
+    )
+
+
+def _q4_all_exact_type(
+    values: Any,
+    expected_type: type[Any],
+    _is: Any = _operator_is,
+    _repeat: Any = _itertools_repeat,
+) -> bool:
+    """Exact C-speed form of ``all(type(value) is expected_type ...)``."""
+
+    return all(map(_is, map(type, values), _repeat(expected_type)))
 
 
 def _invalidate_q4_guarded_call_caches(element: Any) -> None:
@@ -7840,24 +7949,53 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
                 + ", ".join(sorted(set(changed)))
             )
 
+    # G1: the same sweeps in the same order with the same messages, with the
+    # per-entry identity comparisons run by C iterators over captured tuples.
+    entries_changed = _q4_identity_entries_changed
+    all_exact_type = _q4_all_exact_type
+    operator_is_not = _operator_is_not
+    namespace_sweeps = tuple(
+        (
+            owner,
+            tuple(expected_namespace),
+            tuple(expected_namespace.values()),
+            len(expected_namespace),
+            metadata[2],
+        )
+        for (owner, expected_namespace), metadata in zip(
+            dependency_namespaces, dependency_class_metadata
+        )
+    )
+    mapping_sweeps = tuple(
+        (
+            label,
+            mapping,
+            tuple(name for name, _expected in expected_items),
+            tuple(expected for _name, expected in expected_items),
+            len(expected_items),
+        )
+        for label, mapping, expected_items in class_mutable_mappings
+    )
+
     def formulation_class_guard() -> None:
         for (
             owner,
-            expected_namespace,
-        ), metadata in zip(dependency_namespaces, dependency_class_metadata):
+            expected_names,
+            expected_values,
+            expected_count,
+            owner_name,
+        ) in namespace_sweeps:
             actual_namespace = type.__getattribute__(owner, "__dict__")
             if (
                 len(actual_namespace)
                 - int(ignored_dependency_class_cache_name in actual_namespace)
-                != len(expected_namespace)
-                or any(
-                    name not in actual_namespace
-                    or actual_namespace[name] is not expected
-                    for name, expected in expected_namespace.items()
+                != expected_count
+                or entries_changed(
+                    actual_namespace, expected_names, expected_values
                 )
             ):
                 raise ValueError(
-                    f"qualified Q4 {metadata[2]} class namespace changed"
+                    f"qualified Q4 {owner_name} class namespace changed"
                 )
         for (
             owner,
@@ -7875,25 +8013,23 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
                 or actual_name != expected_name
                 or type(actual_bases) is not tuple
                 or len(actual_bases) != len(expected_bases)
-                or any(
-                    actual_base is not expected_base
-                    for actual_base, expected_base in zip(
-                        actual_bases, expected_bases
-                    )
-                )
+                or any(map(operator_is_not, actual_bases, expected_bases))
             ):
                 raise ValueError(
                     f"qualified Q4 {expected_name} class identity changed"
                 )
-        for label, mapping, expected_items in class_mutable_mappings:
+        for (
+            label,
+            mapping,
+            expected_names,
+            expected_values,
+            expected_count,
+        ) in mapping_sweeps:
             if (
                 type(mapping) is not dict
-                or not all(type(key) is str for key in mapping)
-                or len(mapping) != len(expected_items)
-                or any(
-                    name not in mapping or mapping[name] is not expected
-                    for name, expected in expected_items
-                )
+                or not all_exact_type(mapping, str)
+                or len(mapping) != expected_count
+                or entries_changed(mapping, expected_names, expected_values)
             ):
                 raise ValueError(
                     f"qualified Q4 {label} mutable class authority changed"
@@ -7914,10 +8050,27 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
             runtime_epoch_guard
         )
 
+    class_window_require = _require_q4_class_authority_in_window
+
     def runtime_guard() -> None:
         numerical_module_guard(context=f"qualified Q4 {method.__name__}")
         runtime_epoch_guard()
-        formulation_class_guard()
+        # G2: complete on every call outside a window; once per evaluation or
+        # lease window (and again when the window closes) inside one.
+        class_window_require(formulation_class_guard)
+
+    expected_topology_names = (
+        "reduced_integration",
+        "_is_3node",
+        "_is_4node",
+        "_is_6node",
+        "_is_8node",
+        "_is_triangular",
+        "_is_quadrilateral",
+    )
+    expected_topology_values = (False, False, True, False, False, False, True)
+    exact_dict_get = dict.get
+    repeat_value = _itertools_repeat
 
     def instance_guard(self: Any) -> None:
         if type(self) is not expected_class:
@@ -7925,7 +8078,7 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
         namespace = object.__getattribute__(self, "__dict__")
         if type(namespace) is not dict:
             raise ValueError("qualified Q4 instance namespace is incompatible")
-        if not all(type(name) is str for name in namespace):
+        if not all_exact_type(namespace, str):
             raise ValueError("qualified Q4 instance keys must be exact strings")
         shadowed = class_data_names.intersection(namespace)
         if shadowed:
@@ -7933,7 +8086,7 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
                 "qualified Q4 class authority has instance shadows: "
                 + ", ".join(sorted(shadowed))
             )
-        if any(callable(value) for value in namespace.values()):
+        if any(map(callable, namespace.values())):
             raise ValueError(
                 "qualified Q4 instance contains a callable authority override"
             )
@@ -7944,7 +8097,7 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
             type(element_id) is not int
             or type(node_ids) is not tuple
             or len(node_ids) != 4
-            or not all(type(node_id) is int for node_id in node_ids)
+            or not all_exact_type(node_ids, int)
             or len(set(node_ids)) != 4
             or type(material_name) is not str
             or _static_mro_attribute(type(self), "element_id") is not None
@@ -7956,18 +8109,12 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
             raise ValueError(
                 "qualified Q4 instance connectivity/material authority is incompatible"
             )
-        expected_topology = {
-            "reduced_integration": False,
-            "_is_3node": False,
-            "_is_4node": True,
-            "_is_6node": False,
-            "_is_8node": False,
-            "_is_triangular": False,
-            "_is_quadrilateral": True,
-        }
         if any(
-            dict.get(namespace, name) is not expected
-            for name, expected in expected_topology.items()
+            map(
+                operator_is_not,
+                map(exact_dict_get, repeat_value(namespace), expected_topology_names),
+                expected_topology_values,
+            )
         ):
             raise ValueError(
                 "qualified Q4 fixed topology authority is incompatible"
