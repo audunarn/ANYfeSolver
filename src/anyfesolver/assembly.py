@@ -1865,7 +1865,10 @@ def _compute_stresses_under_lease(
         and (
             element_ids is None
             or (
-                type(element_ids) in (list, tuple)
+                # Identity, not ``in``: ``==`` on a type could run a metaclass
+                # ``__eq__``, and only an exact list/tuple may be iterated here
+                # without a guard (twice: here and below).
+                (type(element_ids) is list or type(element_ids) is tuple)
                 and all(type(element_id) is int for element_id in element_ids)
             )
         )

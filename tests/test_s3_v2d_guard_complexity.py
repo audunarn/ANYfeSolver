@@ -568,3 +568,27 @@ def test_census_memo_is_inert_in_a_context_copied_during_the_operation():
         copied = contextvars.copy_context()
     memo = copied.run(_SCOPE_CENSUS_MEMO.get)
     assert memo is not None and not memo.active and not memo.entries
+
+
+# --- follow-up 2026-11-25 (Codex on main): exact list/tuple by identity -------
+
+
+def test_element_ids_with_a_list_equal_metaclass_are_not_treated_as_plain():
+    class _ListEqualMeta(type):
+        def __eq__(cls, other):
+            return other is list or type.__eq__(cls, other)
+
+        __hash__ = type.__hash__
+
+    model, element_ids = _triangle_plate(2)
+    u, _info = solve_linear(model, _pressure(element_ids))
+    wanted = element_ids[:3]
+    shared = iter(wanted)
+
+    class _SharedIterator(metaclass=_ListEqualMeta):
+        def __iter__(self):
+            return shared  # one iterator: a second pass sees nothing
+
+    assert type(_SharedIterator()) in (list, tuple)  # the old check's view
+    stresses = compute_stresses(model, u, element_ids=_SharedIterator())
+    assert sorted(stresses) == sorted(wanted)
