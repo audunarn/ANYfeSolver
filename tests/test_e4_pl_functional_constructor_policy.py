@@ -94,6 +94,8 @@ def test_functional_lane_direct_shell_calls_are_non_q4_or_explicit_refusal() -> 
                 "test_shell_shape_functions_partition_unity",
             ): 1,
             ("tests/test_fe_solver_triangular_shell.py", "_tri_model"): 1,
+            # Checkpoint identity of a plain 3-node shell (fingerprint only).
+            ("tests/test_warped_q4_restart_identity.py", "_plain_shell_model"): 1,
             (
                 "tests/test_fe_solver_triangular_shell.py",
                 "test_triangular_shell_shape_functions_interpolate_and_reproduce_fields",

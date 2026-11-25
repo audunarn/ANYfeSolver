@@ -659,6 +659,159 @@ def _backward_error(
     return float(np.max(values)) if values.size else 0.0
 
 
+def _scaled_norm_parts(x: np.ndarray) -> Tuple[float, float]:
+    """Return ``(m, n)`` with ``|x|_2 = m * n``, ``m = max|x_i|`` and ``n`` in ``[1, sqrt(len)]``.
+
+    ``n`` is the 2-norm of ``x / m`` (largest entry exactly 1), so it neither
+    overflows nor underflows; ``m`` is an exact float.  Comparisons are made on
+    these parts (never on ``m * n`` and never across a shared scale), so no
+    norm is squared at a scale other than its own.  Non-finite -> ``(nan, nan)``;
+    zero -> ``(0, 0)``.
+    """
+    if x.size and not np.all(np.isfinite(x)):
+        return float("nan"), float("nan")
+    m = float(np.max(np.abs(x))) if x.size else 0.0
+    if m == 0.0:
+        return 0.0, 0.0
+    return m, float(np.linalg.norm(x / m))
+
+
+_ITERATIVE_SAFE_RANGE = (1.0e-150, 1.0e150)
+
+
+def _iterative_inputs_in_safe_range(K_red: Any, f: np.ndarray, q: np.ndarray) -> bool:
+    """True when the nonzero magnitudes of K, F and q lie in ``_ITERATIVE_SAFE_RANGE``.
+
+    Within it every product K_ij q_j and every entry of Kq - F stays far from the
+    subnormal and overflow ranges, so the float residual decides like the exact one
+    up to ordinary rounding.  Real FE models in SI units sit well inside (stiffness
+    ~1e2..1e13, loads ~1e-3..1e8, displacements ~1e-12..1e2).
+    """
+    lo, hi = _ITERATIVE_SAFE_RANGE
+    data = getattr(K_red, "data", K_red)
+    with np.errstate(all="ignore"):
+        magnitudes = [np.abs(np.asarray(v, dtype=float)).reshape(-1) for v in (data, f, q)]
+    if any(m.size and not np.all(np.isfinite(m)) for m in magnitudes):
+        return True  # non-finite input is reported as NONFINITE by the main check, whatever the order
+    # Known fail-closed limits (review round 5, accepted): a CSR row whose partial sums
+    # overflow although every entry is in range (~1e8 entries cancelling at 1e300) is
+    # refused as NONFINITE; a subnormal RHS entry next to |F| ~ atol can switch the atol
+    # criterion off (false rejection only).  Neither can accept a wrong solve.
+    for magnitude in magnitudes:
+        if magnitude.size == 0:
+            continue
+        nonzero = magnitude[magnitude > 0.0]
+        if nonzero.size and (float(nonzero.max()) > hi or float(nonzero.max()) < lo):
+            return False
+    return True
+
+
+def _verify_iterative_residual(
+    K_red: sparse.csr_matrix,
+    F_red: np.ndarray,
+    q: np.ndarray,
+    scipy_info: int,
+    rtol: float,
+    atol: float,
+) -> Tuple[np.ndarray, Dict[str, Any]]:
+    """Accept an iterative solve only if the true residual meets the tolerance.
+
+    "converged" requires SciPy ``info == 0`` AND the true residual
+    ``r = |Kq-F|_2`` satisfies ``r/|F| <= rtol`` (criterion "rtol"), or
+    ``r <= atol`` where ``atol`` is meaningful, i.e. ``F == 0`` or
+    ``atol < |F|`` (criterion "atol").  Each norm is split as ``max|x| * n``
+    (``_scaled_norm_parts``) and only the parts are compared, so neither
+    overflow nor underflow can change a decision (exact-oracle property test).  ``relative_residual_limit`` /
+    ``residual_limit_abs`` report the applicable threshold, passed or not.
+    Only real input is accepted; anything else is refused as
+    ``UNSUPPORTED_DTYPE``.  ``RESIDUAL_VERIFIED`` certifies the residual only,
+    not the forward error of ``q``.
+    """
+    info: Dict[str, Any] = {
+        # Pre-existing semantics: "iterations" carries SciPy's ``info`` code
+        # (0 = success, >0 = iterations reached maxiter, <0 = breakdown), not an
+        # iteration count.  Kept for compatibility; use "scipy_info".
+        "iterations": scipy_info,
+        "scipy_info": scipy_info,
+    }
+    q_arr = np.asarray(q)
+    f_arr = np.asarray(F_red).reshape(-1)
+    residual = rhs = float("nan")
+    rel_limit: Optional[float] = rtol
+    abs_limit: Optional[float] = None
+    criterion = None
+    if any(np.iscomplexobj(v) for v in (q_arr, f_arr)) or np.iscomplexobj(getattr(K_red, "data", K_red)):
+        disposition = "UNSUPPORTED_DTYPE"
+        q_out = q_arr
+    elif not _iterative_inputs_in_safe_range(K_red, f_arr, q_arr):
+        # Owner option (b), defence in depth: outside this range the float residual
+        # fl(Kq - F) itself can lose the decision to subnormal rounding or overflow
+        # (e.g. K=[[1.25]], F=q=[5e-324] gives fl(r) = 0 although |r|/|F| = 0.25).
+        disposition = "UNSUPPORTED_SCALE"
+        q_out = np.asarray(q_arr, dtype=float)
+    else:
+        q_out = np.asarray(q_arr, dtype=float)
+        with np.errstate(all="ignore"):
+            r_vec = (
+                np.asarray(K_red @ q_out, dtype=float).reshape(-1) - np.asarray(f_arr, dtype=float)
+                if np.all(np.isfinite(q_out))
+                else np.full(f_arr.shape, np.nan)
+            )
+        m_r, n_r = _scaled_norm_parts(r_vec)
+        m_f, n_f = _scaled_norm_parts(np.asarray(f_arr, dtype=float))
+        if not (np.isfinite(m_r) and np.isfinite(m_f)):
+            disposition = "NONFINITE"
+        else:
+            with np.errstate(all="ignore"):
+                f_zero = m_f == 0.0  # decided on the original F
+                # |r|/|F| = (m_r/m_f) * (n_r/n_f): the n-ratio is in [1/sqrt(len), sqrt(len)];
+                # the m-ratio may underflow to 0 (truly tiny) or overflow to inf (truly huge).
+                relative = (
+                    (m_r / m_f) * (n_r / n_f) if not f_zero
+                    else (0.0 if m_r == 0.0 else float("inf"))
+                )
+                # atol is meaningful only for F == 0 or atol < |F| = m_f * n_f.
+                atol_allowed = f_zero or (atol / n_f) < m_f
+                within_atol = m_r == 0.0 or m_r <= atol / n_r  # |r| = m_r * n_r <= atol
+            by_rtol = (not f_zero) and relative <= rtol
+            by_atol = atol_allowed and within_atol
+            criterion = "rtol" if by_rtol else ("atol" if by_atol else None)
+            if scipy_info != 0:
+                disposition = "SOLVER_NOT_CONVERGED"
+            elif by_rtol or by_atol:
+                disposition = "RESIDUAL_VERIFIED"
+            else:
+                disposition = "RESIDUAL_LIMIT_EXCEEDED"
+            with np.errstate(all="ignore"):
+                residual = m_r * n_r  # reporting only (inf only if |r| exceeds the float range)
+                rhs = m_f * n_f
+                info["relative_residual"] = relative
+                if not f_zero:
+                    rhs_abs = m_f * n_f
+                    rtol_abs = rtol * rhs_abs if np.isfinite(rhs_abs) else (rtol * m_f) * n_f
+                    rel_limit = max(rtol, (atol / n_f) / m_f) if atol_allowed else rtol
+                    abs_limit = max(rtol_abs, atol) if atol_allowed else rtol_abs
+                else:
+                    rel_limit = None
+                    abs_limit = atol
+    info.setdefault("relative_residual", residual)
+    info["relative_residual_criterion"] = criterion
+    info["residual_norm"] = residual
+    info["rhs_norm"] = rhs
+    info["residual_limit_abs"] = abs_limit
+    info["relative_residual_limit"] = rel_limit
+    info["relative_residual_disposition"] = disposition
+    if disposition == "RESIDUAL_VERIFIED":
+        info["status"] = "converged"
+    else:
+        info["status"] = "failed"
+        info["error"] = (
+            f"iterative solve not accepted ({disposition}): scipy info={scipy_info}, "
+            f"true |Kq-F|={residual:.3e}, |F|={rhs:.3e}, rtol={rtol:g}, atol={atol:g}"
+        )
+    return q_out, info
+
+
 def _solve_reduced_system(
     K_red: sparse.csr_matrix,
     F_red: np.ndarray,
@@ -751,17 +904,20 @@ def _solve_reduced_system(
         except Exception as exc:
             return np.zeros(K_red.shape[0]), {"status": "failed", "error": str(exc)}
 
-    if solver_type == "gmres":
-        q, info = gmres(K_red, F_red, rtol=1.0e-8, atol=1.0e-12, maxiter=1000)
-        return np.asarray(q, dtype=float), {"status": "converged" if info == 0 else "not_converged", "iterations": info}
-
-    if solver_type == "minres":
-        q, info = minres(K_red, F_red, rtol=1.0e-8, maxiter=1000)
-        return np.asarray(q, dtype=float), {"status": "converged" if info == 0 else "not_converged", "iterations": info}
-
-    if solver_type == "bicgstab":
-        q, info = bicgstab(K_red, F_red, rtol=1.0e-8, atol=1.0e-12, maxiter=1000)
-        return np.asarray(q, dtype=float), {"status": "converged" if info == 0 else "not_converged", "iterations": info}
+    if solver_type in ("gmres", "minres", "bicgstab"):
+        # Option I1: SciPy's ``info == 0`` is not trusted on its own (MINRES in
+        # particular reports success with large true residuals).  The true
+        # residual |K q - F|_2 is recomputed and compared with the tolerance
+        # actually passed to the iteration.  RESIDUAL_VERIFIED means the
+        # residual is verified; the forward error is NOT certified.
+        rtol, atol = 1.0e-8, (0.0 if solver_type == "minres" else 1.0e-12)
+        if solver_type == "gmres":
+            q, info = gmres(K_red, F_red, rtol=rtol, atol=atol, maxiter=1000)
+        elif solver_type == "minres":
+            q, info = minres(K_red, F_red, rtol=rtol, maxiter=1000)
+        else:
+            q, info = bicgstab(K_red, F_red, rtol=rtol, atol=atol, maxiter=1000)
+        return _verify_iterative_residual(K_red, F_red, q, info, rtol, atol)
 
     raise ValueError(f"Unknown solver type: {solver_type}")
 

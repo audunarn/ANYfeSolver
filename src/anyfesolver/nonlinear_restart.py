@@ -29,6 +29,15 @@ from .current_state_tangent import (
 from .element_capabilities import ElementCapabilityError
 from ._wire_types import wire_class_name
 from .fe_core import Node as _CHECKPOINT_NODE_TYPE
+from .e4_pl_element import QualifiedE4PLShellElement as _QUALIFIED_Q4_CLASS
+from .elements import ShellElement as _SHELL_ELEMENT_CLASS
+
+# The package's own drilling hook implementations.  Restart identity assumes
+# unmodified package code; it refuses instance-level hooks and subclass or
+# metaclass overrides, not runtime patching of the package itself.
+_DRILLING_HOOK_NAME = "_effective_drilling_stabilization"
+_BASE_DRILLING_HOOK = _SHELL_ELEMENT_CLASS.__dict__[_DRILLING_HOOK_NAME]
+_QUALIFIED_Q4_DRILLING_HOOK = _QUALIFIED_Q4_CLASS.__dict__[_DRILLING_HOOK_NAME]
 
 
 NONLINEAR_CHECKPOINT_SCHEMA = "ANYSOLVER_NONLINEAR_CHECKPOINT_V1"
@@ -672,6 +681,11 @@ def model_configuration_descriptor(
         model,
         context="nonlinear checkpoint element mapping observation",
     )
+    # The applied drilling coefficient is evaluated on this same coordinate
+    # snapshot, never on a second read of the mesh.
+    node_snapshot = {
+        record["id"]: record["coordinates"] for record in node_records
+    }
     element_records = []
     for element_id, element in sorted(element_items, key=lambda item: int(item[0])):
         descriptor = _object_payload(
@@ -681,6 +695,14 @@ def model_configuration_descriptor(
             _guard_model=model,
         )
         descriptor["id"] = int(element_id)
+        _require_admitted_drilling_hook(element)
+        applied = _applied_drilling_if_changed(descriptor, node_snapshot)
+        if applied is not None:
+            # Kernels apply a different coefficient than the stored one (the
+            # 2026-11-24 warped qualified-Q4 floor): bind it, so checkpoints
+            # written under other drilling mechanics are rejected.  Absent for
+            # every other element, which keeps their fingerprints unchanged.
+            descriptor["applied_drilling_stabilization"] = applied
         element_records.append(descriptor)
 
     material_items = tuple(materials.items())
@@ -756,6 +778,87 @@ def model_configuration_descriptor(
             )
         ],
     }
+
+
+def _require_admitted_drilling_hook(element: Any) -> None:
+    """Fail closed on drilling hooks that restart identity cannot describe.
+
+    Contract: restart identity binds the model's recorded data under
+    unmodified package code.  Runtime patching of ANYfeSolver kernels, hooks,
+    helpers or modules is unsupported and not detected.  User subclasses are
+    covered for their recorded data; behaviour that depends on unrecorded
+    state or dynamic lookup in user code (``__getattribute__``/``__getattr__``,
+    properties, overridden kernels) is the user's responsibility.  As a
+    best-effort guard an instance-level hook, or a class whose hook (ordinary
+    attribute lookup, metaclass included) is not the package's own, is
+    refused.  Out of contract and not detected, for example: a user subclass
+    whose ``__getattribute__`` returns a hook that reads unrecorded instance
+    state (review 2026-11-25, round 12).  Admitted are the base ``ShellElement`` hook (stored value) on
+    any shell class that does not override it, and the final qualified Q4 hook
+    (warped-facet floor, described by :func:`_applied_drilling_if_changed`) on
+    that class.
+    """
+
+    if not isinstance(element, _SHELL_ELEMENT_CLASS):
+        return
+    try:
+        instance_namespace = object.__getattribute__(element, "__dict__")
+    except AttributeError:
+        instance_namespace = {}
+    if _DRILLING_HOOK_NAME in instance_namespace:
+        admitted = False
+    else:
+        hook = getattr(type(element), _DRILLING_HOOK_NAME, None)
+        admitted = hook is _BASE_DRILLING_HOOK or (
+            type(element) is _QUALIFIED_Q4_CLASS
+            and hook is _QUALIFIED_Q4_DRILLING_HOOK
+        )
+    if not admitted:
+        raise NonlinearCheckpointError(
+            f"element {getattr(element, 'element_id', '?')} of class "
+            f"{_class_id(element)} overrides the drilling coefficient hook; its "
+            "applied drilling mechanics cannot be bound into a checkpoint"
+        )
+
+
+def _applied_drilling_if_changed(
+    descriptor: Mapping[str, Any], node_snapshot: Mapping[int, Any]
+) -> Any:
+    """Applied drilling coefficient when it differs from the stored value, else None.
+
+    Computed only from values this descriptor already recorded (class, node
+    ids, ``drilling_stabilization``, ``planar_tolerance``) and the node
+    coordinate snapshot; it reads nothing live.  Only the qualified Q4 (a final
+    class) applies the warped-facet floor; this mirrors
+    ``QualifiedE4PLShellElement._effective_drilling_stabilization`` (consistency
+    is tested).
+    """
+
+    from .e4_pl_element import _WARPED_Q4_DRILLING_FLOOR, equation7_frame
+
+    if descriptor.get("class") != wire_class_name(_QUALIFIED_Q4_CLASS):
+        return None
+    configuration = descriptor.get("configuration")
+    try:
+        coordinates = np.asarray(
+            [node_snapshot[int(node_id)] for node_id in configuration["node_ids"]],
+            dtype=float,
+        )
+        alpha = float(configuration["drilling_stabilization"])
+        if not alpha < _WARPED_Q4_DRILLING_FLOOR:
+            return None
+        tolerance = float(configuration["planar_tolerance"])
+        _frame, _local, warpage = equation7_frame(coordinates)
+    except NonlinearCheckpointError:
+        raise
+    except Exception as exc:  # missing record field, unknown node, degenerate facet
+        raise NonlinearCheckpointError(
+            f"element {descriptor.get('id', '?')} drilling identity cannot be "
+            f"established: {exc}"
+        ) from exc
+    if warpage > tolerance:
+        return float(_WARPED_Q4_DRILLING_FLOOR)
+    return None
 
 
 def model_configuration_fingerprint(

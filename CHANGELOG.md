@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+- Warped qualified Q4 facets (warpage above `planar_tolerance`, varying-frame
+  kernels) apply a drilling coefficient of at least 0.1: the kernels use
+  `max(drilling_stabilization, 0.1)`, including for explicit smaller values and
+  0; larger values are honoured; the stored value, `to_dict` and cache keys keep
+  the raw value. With the default `1e-3` the MacNeal-Harder twisted beam was
+  +31.4 %/+23.7 % too flexible at 24x4 and did not converge under refinement;
+  it is now -0.1 %/-2.3 % (24x4) and +0.1 %/-0.5 % (48x8). Changed results:
+  linear, nonlinear, modal and buckling results of meshes with warped qualified
+  Q4 facets (for example twisted beam -21 % to -24 % tip displacement, skewed
+  Scordelis-Lo -0.26 %). Planar facets and every other element are
+  bit-identical. Source binding: `docs/reference_cases/e4_pl_source_binding_20261124.json`.
+
+- Nonlinear checkpoints of models with floored warped qualified Q4 facets bind the
+  applied drilling coefficient (`applied_drilling_stabilization` in the model
+  fingerprint), so a checkpoint written before the floor (for example by 0.5.0
+  or main before this change) is refused on resume. Every other model keeps its
+  fingerprint. Restart identity binds the model's recorded data under unmodified
+  package code: runtime patching of ANYfeSolver kernels, hooks, helpers or modules
+  is unsupported and not detected. User shell subclasses are covered for their
+  recorded data; behaviour that depends on unrecorded state or dynamic lookup in
+  user code (`__getattribute__`/`__getattr__`, properties, overridden kernels) is
+  the user's responsibility, as for every kernel before. A shell subclass,
+  metaclass or instance that overrides the drilling coefficient hook is refused
+  as a best-effort guard; a user subclass whose `__getattribute__` returns a
+  hook reading unrecorded instance state is outside the contract and is not
+  detected.
+
 ## 0.5.0 - release candidate
 
 - Require ANYfileio 0.3.3 or later in the 0.3 line for SESTRA shell stress
