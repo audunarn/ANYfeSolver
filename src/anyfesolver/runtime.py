@@ -32,6 +32,7 @@ from .e4_pl_s3_element import (
     _s3_trusted_operation_scope as _S3_TRUSTED_OPERATION_SCOPE,
 )
 from .analysis_session import AnalysisSession as _backend_AnalysisSession
+from .linalg import CleanupScope
 from .arc_length import ArcLengthControl as _backend_arc_length_control
 from .arc_length import solve_static_arc_length as _backend_solve_static_arc_length
 from .assembly import compute_stresses as _backend_compute_stresses
@@ -529,8 +530,10 @@ class RuntimeAnalysisContext:
             raise RuntimeError("RuntimeAnalysisContext is closed")
         return self
 
-    def __exit__(self, _exc_type, _exc, _traceback) -> None:
-        self.close()
+    def __exit__(self, _exc_type, exc, _traceback) -> None:
+        from .linalg import close_propagating
+
+        close_propagating(self.close, exc, "closing a runtime analysis context")
 
 
 def _positive(value: float, fallback: float) -> float:
@@ -9409,45 +9412,49 @@ def run_production_fem(
     if analysis_session is not None:
         buckling_kwargs["session"] = analysis_session
     buckling_started = time.perf_counter()
-    try:
-        if capacity_workflow_result is not None:
-            buckling_result = capacity_workflow_result.buckling_result
-        elif _wants_eigenvalue_buckling(config):
-            buckling_result = _backend_solve_buckling(model, prestress_states, num_modes=int(config.num_buckling_modes), **buckling_kwargs)
-        else:
-            # Dummy result if buckling is explicitly skipped by runtime path
-            class DummyBucklingResult:
-                modes = ()
-                failed = False
-                status = "skipped by runtime path"
-                diagnostics = ()
-            buckling_result = DummyBucklingResult()
-        if (
-            _wants_eigenvalue_buckling(config)
-            and not buckling_result.modes
-            and geometry.get("geometry") == "cylinder"
-            and abs(float(effective_pressure)) > 0.0
-        ):
-            pressure_states = _cylinder_pressure_prestress_states(
-                model,
-                float(effective_pressure) * float(config.load_scale),
-                _positive(geometry.get("radius_m", generated_geometry.get("radius_m", 1.0)), 1.0),
-            )
-            if pressure_states:
-                pressure_buckling_result = _backend_solve_buckling(model, pressure_states, num_modes=int(config.num_buckling_modes), **buckling_kwargs)
-                if pressure_buckling_result.modes:
-                    buckling_result = pressure_buckling_result
-                    diagnostics.append("Buckling modes use equivalent external-pressure membrane prestress because the full mixed prestress returned no positive modes.")
-    finally:
+    # An owned session is closed at the scope exit with the exception
+    # actually propagating as primary (linalg.CleanupScope).
+    with CleanupScope() as buckling_cleanup:
         if analysis_session is not None and not context_owned_session:
-            session_diagnostics = analysis_session.diagnostics()
-            prestress_summary["analysis_session"] = session_diagnostics
-            diagnostics.append(
-                "Reused one analysis session across linear prestress and "
-                "eigenvalue buckling."
-            )
-            analysis_session.close()
-            analysis_session = None
+            buckling_cleanup.callback(analysis_session.close, "closing the buckling analysis session")
+        try:
+            if capacity_workflow_result is not None:
+                buckling_result = capacity_workflow_result.buckling_result
+            elif _wants_eigenvalue_buckling(config):
+                buckling_result = _backend_solve_buckling(model, prestress_states, num_modes=int(config.num_buckling_modes), **buckling_kwargs)
+            else:
+                # Dummy result if buckling is explicitly skipped by runtime path
+                class DummyBucklingResult:
+                    modes = ()
+                    failed = False
+                    status = "skipped by runtime path"
+                    diagnostics = ()
+                buckling_result = DummyBucklingResult()
+            if (
+                _wants_eigenvalue_buckling(config)
+                and not buckling_result.modes
+                and geometry.get("geometry") == "cylinder"
+                and abs(float(effective_pressure)) > 0.0
+            ):
+                pressure_states = _cylinder_pressure_prestress_states(
+                    model,
+                    float(effective_pressure) * float(config.load_scale),
+                    _positive(geometry.get("radius_m", generated_geometry.get("radius_m", 1.0)), 1.0),
+                )
+                if pressure_states:
+                    pressure_buckling_result = _backend_solve_buckling(model, pressure_states, num_modes=int(config.num_buckling_modes), **buckling_kwargs)
+                    if pressure_buckling_result.modes:
+                        buckling_result = pressure_buckling_result
+                        diagnostics.append("Buckling modes use equivalent external-pressure membrane prestress because the full mixed prestress returned no positive modes.")
+        finally:
+            if analysis_session is not None and not context_owned_session:
+                session_diagnostics = analysis_session.diagnostics()
+                prestress_summary["analysis_session"] = session_diagnostics
+                diagnostics.append(
+                    "Reused one analysis session across linear prestress and "
+                    "eigenvalue buckling."
+                )
+                analysis_session = None
     phase_timings["buckling"] = float(time.perf_counter() - buckling_started)
     if capacity_workflow_result is None:
         _record_buckling_mesh_adequacy(model, buckling_result, config, prestress_summary, diagnostics)

@@ -49,7 +49,7 @@ from .fracture import (
     state_equivalent_plastic_strain,
     state_rtcl_increment,
 )
-from .linalg import MatrixClass, factorize, lease_from
+from .linalg import CleanupScope, MatrixClass, factorize, lease_from
 from .impact_performance import ImpactTangentReuseController
 from .materials import beam_material_properties, material_symmetry, shell_characteristic_modulus
 from .matrix_assembly import assemble_load_vector, assemble_mass_matrix, assemble_stiffness_matrix
@@ -2849,7 +2849,7 @@ def _solve_transient_sphere_impact_nonlinear(
     # Newton budget on every step of a difficult (yielding/limit-point) phase.
     distress_halvings = 0
     preemptive_substep_count = 0
-    try:
+    with tangent_reuse:  # ends a reusable tangent's lease on every exit
         while segments:
             cancellation_safe_point(
                 cancellation_token,
@@ -3545,9 +3545,6 @@ def _solve_transient_sphere_impact_nonlinear(
             if status == "completed" and contact_step_count > 0 and separation_stop_time > 0.0 and separation_elapsed >= separation_stop_time:
                 stop_reason = "completed_after_contact_separation"
                 break
-    finally:
-        # End the lease of a reusable tangent on every exit.
-        tangent_reuse.release_lease()
 
     if pending_save is not None:
         save_state(
@@ -4009,7 +4006,7 @@ def solve_transient_sphere_impact(
     cached_solver = None
     # The effective operator is solved across contact iterations, callbacks
     # and other factorizations: pin it with a lease (closed on refresh/exit).
-    cached_lease = None
+    # The effective tangent's lease lives in cached_lease_scope (ended at its exit).
     cached_solver_diagnostics: Dict[str, Any] = {}
     status = "completed"
     stop_reason = "completed"
@@ -4054,7 +4051,7 @@ def solve_transient_sphere_impact(
     # post-separation stay fast.
     contact_period_dt = 0.2 * np.sqrt(float(sphere.mass) / max(float(config.penalty_stiffness), 1.0e-30))
     contact_active_last_step = bool(initial_records)
-    try:
+    with CleanupScope() as cached_lease_scope:
         for step_index in range(1, len(times)):
             cancellation_safe_point(
                 cancellation_token,
@@ -4093,11 +4090,12 @@ def solve_transient_sphere_impact(
                 a5 = dt * (gamma / (2.0 * beta) - 1.0)
                 if cached_solver is None or cached_dt is None or not np.isclose(dt, cached_dt):
                     K_eff = (one_plus_alpha * K_red + a0 * M_red + one_plus_alpha * a1 * C_red).tocsr()
-                    if cached_lease is not None:
-                        cached_lease.close()
-                        cached_lease = None
-                    cached_lease = lease_from(factorize, K_eff, MatrixClass.SYMMETRIC_INDEFINITE, signature=f"sphere_impact.effective:{dt:.16g}")
-                    cached_solver = cached_lease.handle
+                    # End the previous lease first: an unconflicted refresh
+                    # then takes exactly the unleased slot path.
+                    cached_lease_scope.release()
+                    cached_solver = cached_lease_scope.hold(
+                        lease_from(factorize, K_eff, MatrixClass.SYMMETRIC_INDEFINITE, signature=f"sphere_impact.effective:{dt:.16g}")
+                    ).handle
                     cached_solver_diagnostics = cached_solver.diagnostics()
                     cached_dt = dt
                     factorization_count += 1
@@ -4262,9 +4260,7 @@ def solve_transient_sphere_impact(
                         M_red = (T.T @ M @ T).tocsr()
                         C_red = (transient_config.rayleigh_alpha * M_red + transient_config.rayleigh_beta * K_red).tocsr()
                         cached_solver = None
-                        if cached_lease is not None:
-                            cached_lease.close()
-                            cached_lease = None
+                        cached_lease_scope.release()
                         cached_dt = None
                         mass_handle = factorize(
                             M_red,
@@ -4343,9 +4339,7 @@ def solve_transient_sphere_impact(
                         M_red = (T.T @ M @ T).tocsr()
                         C_red = (transient_config.rayleigh_alpha * M_red + transient_config.rayleigh_beta * K_red).tocsr()
                         cached_solver = None
-                        if cached_lease is not None:
-                            cached_lease.close()
-                            cached_lease = None
+                        cached_lease_scope.release()
                         cached_dt = None
                         mass_handle = factorize(
                             M_red,
@@ -4381,9 +4375,6 @@ def solve_transient_sphere_impact(
                 save_state(save_time, q_red, v_red, a_red, sphere_position, sphere_velocity, sphere_acceleration, last_sphere_force, last_records)
             if status in {"contact_iteration_failed", "max_deleted_fraction_reached"} or stop_after_separation:
                 break
-    finally:
-        if cached_lease is not None:
-            cached_lease.close()
 
     if contact_step_count == 0 and status == "completed":
         status = "no_contact"

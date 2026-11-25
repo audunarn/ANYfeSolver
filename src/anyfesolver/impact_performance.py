@@ -15,7 +15,7 @@ from typing import Any, Iterable, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 
-from .linalg import lease_from
+from .linalg import CleanupScope, lease_from
 
 
 def _plastic_state_measure(states: Mapping[int, Any]) -> Tuple[float, float, int]:
@@ -79,7 +79,7 @@ class ImpactTangentReuseController:
     plastic_relative_threshold: float = 5.0e-3
     cached_handle: Optional[Any] = field(default=None, init=False, repr=False)
     # Lease pinning ``cached_handle`` while it may be reused (see ``factorize``).
-    _lease: Optional[Any] = field(default=None, init=False, repr=False)
+    _leases: CleanupScope = field(default_factory=CleanupScope, init=False, repr=False, compare=False)
     _reuse_since_refresh: int = field(default=0, init=False, repr=False)
     _pending_refresh_reasons: set[str] = field(default_factory=set, init=False, repr=False)
     _last_dt: Optional[float] = field(default=None, init=False, repr=False)
@@ -164,15 +164,20 @@ class ImpactTangentReuseController:
         self.release_lease()
         if not self.enabled:
             return factorize_function(*args, **kwargs)
-        self._lease = lease_from(factorize_function, *args, **kwargs)
-        return self._lease.handle
+        return self._leases.hold(lease_from(factorize_function, *args, **kwargs)).handle
 
     def release_lease(self) -> None:
-        """End the lease of the cached tangent (idempotent)."""
+        """End the lease of the cached tangent on the normal path (idempotent)."""
 
-        lease, self._lease = self._lease, None
-        if lease is not None:
-            lease.close()
+        self._leases.release()
+
+    def __enter__(self) -> "ImpactTangentReuseController":
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
+        """End the lease with the exception actually propagating as primary."""
+
+        self._leases.__exit__(exc_type, exc, traceback)
 
     def request_refresh(self, reason: str) -> None:
         if self.enabled:

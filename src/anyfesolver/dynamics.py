@@ -36,7 +36,7 @@ from .element_capabilities import ElementCapabilityError, require_model_element_
 from .e4_pl_s3_state import (
     require_exact_numpy_runtime_authority as _EXACT_NUMERICAL_RUNTIME_GUARD,
 )
-from .linalg import MatrixClass, factorize, lease_from
+from .linalg import CleanupScope, MatrixClass, factorize, lease_from
 from .boundary import LoadCase
 from .matrix_assembly import (
     _run_with_qualified_assembly_runtime_lease,
@@ -2146,7 +2146,7 @@ def _solve_transient_newmark_under_lease(
     cached_solver = None
     # The effective operator is solved across progress callbacks and other
     # factorizations: pin it with a lease (closed on refresh and on exit).
-    cached_lease = None
+    # (lease_scope holds it; ended at the scope's exit with the propagating error.)
     cached_solver_diagnostics: Dict[str, Any] = {}
 
     alpha_h, beta, gamma = integration_parameters
@@ -2187,7 +2187,7 @@ def _solve_transient_newmark_under_lease(
         descriptor_algebraic_load_norm_max = float(
             np.linalg.norm(descriptor_previous_load)
         )
-    try:
+    with CleanupScope() as lease_scope:
         for step_index in range(1, len(times)):
             cancellation_safe_point(
                 cancellation_token,
@@ -2293,11 +2293,9 @@ def _solve_transient_newmark_under_lease(
                         )
                     else:
                         factorization_signature = f"transient.effective:{dt:.16g}"
-                if cached_lease is not None:
-                    cached_lease.close()
-                    cached_lease = None
+                lease_scope.release()
                 try:
-                    cached_lease = lease_from(factorize,
+                    cached_lease = lease_scope.hold(lease_from(factorize,
                         K_eff,
                         (
                             MatrixClass.SPD
@@ -2305,7 +2303,7 @@ def _solve_transient_newmark_under_lease(
                             else MatrixClass.SYMMETRIC_INDEFINITE
                         ),
                         signature=factorization_signature,
-                    )
+                    ))
                     cached_solver = cached_lease.handle
                     if (
                         descriptor_guarded
@@ -2565,9 +2563,6 @@ def _solve_transient_newmark_under_lease(
             )
             if progress_callback is not None:
                 reference_authority_guard(model)
-    finally:
-        if cached_lease is not None:
-            cached_lease.close()
 
     impulse_resultant = load_vector_resultant(model, impulse)
     total_energy = np.asarray(energy_kinetic, dtype=float) + np.asarray(energy_strain, dtype=float)

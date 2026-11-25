@@ -26,7 +26,7 @@ from scipy import linalg, sparse
 from scipy.sparse.csgraph import maximum_bipartite_matching
 from scipy.sparse import linalg as sparse_linalg
 
-from .linalg import FactorizationCache, MatrixClass, factorize_cached, lease_from
+from .linalg import CleanupScope, FactorizationCache, MatrixClass, factorize_cached, lease_from
 
 if TYPE_CHECKING:
     from .fe_core import FEModel
@@ -2591,14 +2591,14 @@ def solve_descriptor_spectrum(
     start = _deterministic_start(size)
     # The factorization is applied by the eigensolver across its iterations:
     # pin it with a lease for the eigensolve (closed below).
-    descriptor_lease = None
-    try:
+    # (lease_scope holds it; ended at the scope's exit with the propagating error.)
+    with CleanupScope() as lease_scope:
         if target_shift is None:
-            descriptor_lease = lease_from(factorize_cached,
+            descriptor_lease = lease_scope.hold(lease_from(factorize_cached,
                 metric,
                 MatrixClass.SPD,
                 cache=cache,
-            )
+            ))
             handle = descriptor_lease.handle
             if handle.status != "ok":
                 raise AlgebraicDynamicsError(
@@ -2660,11 +2660,11 @@ def solve_descriptor_spectrum(
                     "descriptor target shift is incompatible with the swapped pencil"
                 )
             shifted_original = _symmetric(K_sym - factor_target * M_sym)
-            descriptor_lease = lease_from(factorize_cached,
+            descriptor_lease = lease_scope.hold(lease_from(factorize_cached,
                 shifted_original,
                 MatrixClass.SYMMETRIC_INDEFINITE,
                 cache=cache,
-            )
+            ))
             handle = descriptor_lease.handle
             if handle.status != "ok":
                 raise AlgebraicDynamicsError(
@@ -2811,9 +2811,6 @@ def solve_descriptor_spectrum(
             diagnostics["target_excluded_algebraic_ritz_vectors"] = int(
                 excluded_target_algebraic
             )
-    finally:
-        if descriptor_lease is not None:
-            descriptor_lease.close()
 
     raw_values = np.asarray(transformed, dtype=float).reshape(-1)
     raw_vectors = np.asarray(vectors, dtype=float)

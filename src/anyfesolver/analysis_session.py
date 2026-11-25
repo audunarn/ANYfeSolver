@@ -384,8 +384,12 @@ class AnalysisSession:
         self._require_model()
         return self
 
-    def __exit__(self, _exc_type, _exc, _traceback) -> None:
-        self.close()
+    def __exit__(self, _exc_type, exc, _traceback) -> None:
+        # The lease is ended with the exception actually propagating as
+        # primary (linalg.close_propagating precedence).
+        from .linalg import close_propagating
+
+        close_propagating(self.close, exc, "closing an analysis session")
 
     def close(self) -> None:
         with self._lock:
@@ -397,7 +401,9 @@ class AnalysisSession:
             self._mass = None
             self._constraint = None
             self._static_operator = None
-            self._replace_static_operator_lease(None)
+            # Detached here, ended last: an interrupt while ending it leaves
+            # the session fully closed.
+            lease, self._static_operator_lease = self._static_operator_lease, None
             self._inertia_relief = None
             self._reduced_mass = None
             self._rigid_modes = None
@@ -406,6 +412,8 @@ class AnalysisSession:
             self._activity_snapshots.clear()
             self._closed = True
             self._counters["close_count"] += 1
+            if lease is not None:
+                lease.close()
 
     release = close
 

@@ -43,7 +43,7 @@ from .cases import make_result_case
 from .constraint_audit import constraint_residual_summary, require_valid_constraints
 from .control import CancellationToken, ProgressCallback, cancellation_safe_point, emit_progress
 from .element_capabilities import require_model_element_capabilities
-from .linalg import FactorizationCache, MatrixClass, factorize, factorize_cached
+from .linalg import CleanupScope, FactorizationCache, MatrixClass, factorize, factorize_cached
 from .matrix_assembly import (
     assemble_load_matrix,
     assemble_mass_matrix as _canonical_assemble_mass_matrix,
@@ -1065,8 +1065,11 @@ def solve_linear_many(
             raise ValueError("nullspace solve requires factorization_cache to match the supplied session cache")
         owned_session = session is None
         active = AnalysisSession(model, factorization_cache=factorization_cache) if owned_session else session
-        primary_failure = None
-        try:
+        # Closed at the scope exit with the exception actually propagating
+        # as primary (linalg.CleanupScope).
+        with CleanupScope() as cleanup:
+            if owned_session:
+                cleanup.callback(active.close, "analysis session cleanup")
             blocks = list(iter_linear_batches(model,
                 (StaticCase(str(index), case) for index, case in enumerate(load_cases)),
                 constraint_mode=mode, allow_unbalanced_free_free=allow_unbalanced_free_free,
@@ -1074,17 +1077,6 @@ def solve_linear_many(
                 session=active, resource_config=resource_config,
                 cancellation_token=cancellation_token, progress_callback=progress_callback))
             cache_info = active.factorization_cache.diagnostics()
-        except BaseException as error:
-            primary_failure = error
-            raise
-        finally:
-            if owned_session:
-                try:
-                    active.close()
-                except BaseException as cleanup_error:
-                    if primary_failure is None:
-                        raise
-                    BaseException.add_note(primary_failure, "analysis session cleanup failed: " + repr(cleanup_error))
         full = np.column_stack([block.displacements for block in blocks]) if blocks else np.zeros((model.mesh.dof_manager.total_dofs, 0))
         effective_mode = blocks[0].diagnostics["constraint_mode"] if blocks else mode
         info = {"status": "converged", "num_result_cases": len(load_cases),

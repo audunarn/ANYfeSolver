@@ -427,13 +427,128 @@ def _raise_interrupt(
 
     if error is None or isinstance(error, Exception):
         return
-    if primary is not None and primary is not error:
-        if not isinstance(primary, Exception):
-            _add_note(primary, f"{context} raised {type(error).__name__}: {error}")
-            return
-        if error.__context__ is None:
+    if _cleanup_outcome(primary, error, context) is error:
+        raise error
+
+
+def _cleanup_outcome(
+    primary: Optional[BaseException],
+    error: Optional[BaseException],
+    context: str,
+) -> Optional[BaseException]:
+    """The one cleanup precedence rule: which exception propagates.
+
+    ``primary`` is the exception actually propagating (``None`` on a normal
+    exit) and ``error`` the one a cleanup raised.  A cleanup interrupt (a
+    non-``Exception``) never replaces a propagating interrupt (it is noted
+    on it) but replaces a propagating ordinary ``Exception`` (chained as
+    ``__context__``), which a caller could otherwise catch and recover from.
+    A cleanup ``Exception`` never replaces a propagating exception (it is
+    noted on it).  With nothing propagating, the cleanup error propagates;
+    ``GeneratorExit`` (an ordinary ``close()`` request, not a failure) counts
+    as nothing propagating, so the cleanup error replaces it (chained).
+    """
+
+    if error is None or error is primary:
+        return primary
+    if primary is None or isinstance(primary, GeneratorExit):
+        if primary is not None and error.__context__ is None:
             error.__context__ = primary
-    raise error
+        return error
+    if isinstance(error, Exception) or not isinstance(primary, Exception):
+        _add_note(primary, f"{context} raised {type(error).__name__}: {error}")
+        return primary
+    if error.__context__ is None:
+        error.__context__ = primary
+    return error
+
+
+def close_propagating(
+    close: Callable[[], Any],
+    primary: Optional[BaseException],
+    context: str = "cleanup",
+) -> None:
+    """Run ``close()`` while ``primary`` propagates (``None``: normal exit).
+
+    Applies :func:`_cleanup_outcome`: raises the cleanup error only when it
+    must replace ``primary`` (or nothing propagates); otherwise it is noted
+    on ``primary`` and the caller's propagation continues.
+    """
+
+    try:
+        close()
+    except BaseException as error:
+        if _cleanup_outcome(primary, error, context) is error:
+            raise
+
+
+class CleanupScope:
+    """``with`` scope that ends leases and closes holders at its exit.
+
+    Every cleanup registered with :meth:`push` (an object with ``__exit__``),
+    :meth:`callback` or held with :meth:`hold` runs at the scope's exit,
+    last registered first, and receives as its primary the exception
+    actually propagating - the body's, or one a previous cleanup raised -
+    and ``None`` on a normal exit, independent of any surrounding ``except``
+    block.  Errors are combined by :func:`_cleanup_outcome`, the rule of
+    :meth:`FactorizationLease.__exit__`.  :meth:`hold` keeps at most one
+    replaceable lease (a cached factorization); :meth:`release` ends it on
+    the normal path, where nothing propagates.  Exit return values are
+    ignored: a scope never suppresses an exception.
+    """
+
+    __slots__ = ("_exits", "_held")
+
+    def __init__(self) -> None:
+        self._exits: List[Tuple[Callable[..., Any], str]] = []
+        self._held: Optional["FactorizationLease"] = None
+
+    @property
+    def held(self) -> Optional["FactorizationLease"]:
+        return self._held
+
+    def hold(self, lease: "FactorizationLease") -> "FactorizationLease":
+        """Hold ``lease`` in place of the previous one (which ends first)."""
+
+        self.release()
+        self._held = lease
+        return lease
+
+    def release(self) -> None:
+        """End the held lease on the normal path (idempotent)."""
+
+        lease, self._held = self._held, None
+        if lease is not None:
+            lease.close()
+
+    def push(self, resource: Any, context: str = "closing a resource") -> Any:
+        self._exits.append((resource.__exit__, context))
+        return resource
+
+    def callback(self, function: Callable[[], Any], context: str = "cleanup") -> None:
+        self._exits.append((lambda _t, _e, _tb: function(), context))
+
+    def __enter__(self) -> "CleanupScope":
+        return self
+
+    def __exit__(self, _exc_type, exc, _traceback) -> None:
+        exits = self._exits[::-1]
+        self._exits = []
+        held, self._held = self._held, None
+        if held is not None:
+            exits.insert(0, (held.__exit__, "ending a factorization lease"))
+        current = exc
+        for exit_function, context in exits:
+            try:
+                exit_function(
+                    None if current is None else type(current),
+                    current,
+                    None if current is None else current.__traceback__,
+                )
+            except BaseException as error:
+                current = _cleanup_outcome(current, error, context)
+        if current is not exc:
+            raise current
 
 
 PARDISO_PERTURBED_PIVOTS = "perturbed_pivots"
@@ -1467,15 +1582,18 @@ class FactorizationCache:
             )
             handle.metadata["cache_name"] = self.name
             handle.metadata["cache_hit"] = False
-            if handle.status == "ok":
+            # One snapshot (as on the hit path): status and stale kind are
+            # never read across a concurrent invalidation's two writes.  A
+            # fresh handle invalidated by another thread before this read is
+            # stale, not failed: not cached, not a failure.
+            fresh_state = _handle_state(handle)
+            if fresh_state == "ok":
                 if self.max_entries > 0 and len(self._handles) >= self.max_entries:
                     oldest = next(iter(self._handles))
                     self._handles.pop(oldest, None)
                 if self.max_entries != 0:
                     self._handles[cache_key] = handle
-            elif handle.metadata.get("pardiso_failure_kind") != PARDISO_STALE_HANDLE:
-                # A fresh handle invalidated by another thread before this
-                # read is stale, not failed: not cached, not a failure.
+            elif fresh_state == "failed":
                 self.factorization_failures += 1
             return handle
 
