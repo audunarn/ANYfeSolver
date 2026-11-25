@@ -432,7 +432,6 @@ def test_r4_open_certification_xfails_match_only_the_intended_failure() -> None:
     for name in (
         "test_open_static_certification_of_rounding_singular_band",
         "test_open_spd_cholesky_accepts_rounding_singular_chain",
-        "test_open_minres_reports_converged_for_inconsistent_singular_system",
     ):
         function = globals()[name]
         marks = [m for m in getattr(function, "pytestmark", []) if m.name == "xfail"]
@@ -679,7 +678,7 @@ def test_b_strict_xfails_fail_on_an_unrelated_assertion_inside_the_call(monkeypa
     monkeypatch.setattr(assembly, "_solve_reduced_system", unrelated)
     monkeypatch.setattr(PyPardisoSolverBackend, "factorize", unrelated)
     for call in (
-        test_open_minres_reports_converged_for_inconsistent_singular_system,
+        test_minres_inconsistent_singular_system_is_not_converged,
         lambda: test_open_static_certification_of_rounding_singular_band(200),
         test_open_spd_cholesky_accepts_rounding_singular_chain,
     ):
@@ -852,21 +851,13 @@ def test_open_spd_cholesky_accepts_rounding_singular_chain() -> None:
     assert handle.status == "failed"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "OPEN: MINRES reports 'converged' for the inconsistent singular system "
-        "A=[[1,-1],[-1,1]], b=[1,1] with x=[0,0] (relative residual 1): the "
-        "iterative solvers' status is SciPy's info flag, not a certified residual "
-        "(assembly._solve_reduced_system)."
-        + _CERTIFICATION_SLICE
-    ),
-)
-def test_open_minres_reports_converged_for_inconsistent_singular_system() -> None:
+def test_minres_inconsistent_singular_system_is_not_converged() -> None:
+    # Formerly a strict xfail (MINRES reported 'converged' for A=[[1,-1],[-1,1]],
+    # b=[1,1] with x=[0,0], relative residual 1). Closed by the iterative
+    # true-residual verification (I1, PR #87): the status is now decided by
+    # the verified residual, not SciPy's info flag.
     matrix = sparse.csr_matrix(np.array([[1.0, -1.0], [-1.0, 1.0]]))
     rhs = np.ones(2)
-    # Only the certification outcome: a correct failure (any iterate) XPASSes.
     _q, info = _call_under_test(assembly._solve_reduced_system, matrix, rhs, "minres")
     assert info["status"] != "converged"
 
