@@ -9,6 +9,12 @@ on:
 env:
   PIP_CONSTRAINT: ${{ github.workspace }}/.github/ci-constraints.txt
 
+# Superseded pull-request runs are cancelled.  Every other run (main pushes, tags, schedules,
+# dispatches) gets a group of its own, so it is never cancelled or replaced by a newer run.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
+  cancel-in-progress: true
+
 jobs:
   license:
     name: License compliance
@@ -50,7 +56,8 @@ jobs:
       Q1M_ANYMESH_ROOT: ${{ github.workspace }}/.ecosystem/ANYmesh
       Q1M_ANYFILEIO_ROOT: ${{ github.workspace }}/.ecosystem/ANYfileIO
     strategy:
-      fail-fast: false
+      # One failing shard stops the remaining pytest shards (owner, 2026-11-25: reduce CI load).
+      fail-fast: true
       matrix:
         include:
           - {os: windows-latest, python-version: "3.11", shard-index: 0, subshard-index: 0}
