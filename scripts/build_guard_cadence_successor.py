@@ -52,8 +52,7 @@ CHANGE_COMMITS = (
     "d81e40216 Canonical state JSON: exact-type fast paths with identical bytes",
     "8d8fbd3ed Canonical fast paths: only under the internal exact-str path; trace tests",
     "7a5bad38f Nonlinear guard cadence: Q4 class authority per evaluation (G2), lifecycle per step (L1), exact sweeps (G1)",
-    "uncommitted round-1 review repair: nested/exceptional window close validation, plan-cache "
-    "eviction, L1 post-commit deferral, LF note identity, change-commit validation",
+    "ac2bfd828 Guard cadence: validate every window close, no publication before validation",
 )
 
 
