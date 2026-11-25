@@ -1531,6 +1531,25 @@ def _assemble_nonlinear_system_unchecked(
                 trial_state = committed_states.get(elem_id, trial_state)
             trial_states[elem_id] = trial_state
 
+    beam_batch = None
+    # Exact-str test first: a str subclass keeps the scalar loop and this
+    # hook adds no caller-visible comparison.
+    if type(kinematics) is str and kinematics == "corotational":
+        # Bit-identical stacked evaluation of admitted plain 2-node beams;
+        # every other element (and any refusal) keeps the scalar call below.
+        from ._corotational_beam_batch import prepare_corotational_beam_batch
+
+        beam_batch = prepare_corotational_beam_batch(
+            model,
+            displacements,
+            committed_states=committed_states,
+            tangent=tangent,
+            tangent_mode=corotational_tangent,
+            num_layers=num_layers,
+            stable_shell_rotation=stable_shell_rotation,
+            excluded=deleted_set.union(element_scales),
+        )
+
     for elem_id, element in mesh.elements.items():
         dof_mapping = np.asarray(element.get_dof_mapping(mesh), dtype=np.intp)
         if dof_mapping.size == 0:
@@ -1545,19 +1564,31 @@ def _assemble_nonlinear_system_unchecked(
             f_elem = None
             k_elem = None
             if kinematics == "corotational":
-                from .corotational import corotational_element_response
-
-                f_elem, k_elem, cr_trial_state = corotational_element_response(
-                    model,
-                    int(elem_id),
-                    element,
-                    displacements[dof_mapping],
-                    tangent,
-                    committed_state=committed_states.get(elem_id),
-                    num_layers=num_layers,
-                    tangent_mode=corotational_tangent,
-                    stable_shell_rotation=stable_shell_rotation,
+                # Same evaluation order as the scalar call's arguments; a
+                # batched response is consumed (and counted) only afterwards.
+                cr_element_id = int(elem_id)
+                cr_u_element = displacements[dof_mapping]
+                cr_committed_state = committed_states.get(elem_id)
+                batched = (
+                    beam_batch.take(elem_id) if beam_batch is not None else None
                 )
+                if batched is not None:
+                    f_elem, k_elem = batched
+                    cr_trial_state = cr_committed_state
+                else:
+                    from .corotational import corotational_element_response
+
+                    f_elem, k_elem, cr_trial_state = corotational_element_response(
+                        model,
+                        cr_element_id,
+                        element,
+                        cr_u_element,
+                        tangent,
+                        committed_state=cr_committed_state,
+                        num_layers=num_layers,
+                        tangent_mode=corotational_tangent,
+                        stable_shell_rotation=stable_shell_rotation,
+                    )
                 if f_elem is not None and cr_trial_state is not None:
                     trial_states[elem_id] = cr_trial_state
             if f_elem is None:
