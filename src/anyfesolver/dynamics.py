@@ -1116,6 +1116,13 @@ class TransientResult:
         return describe_result_quantities(self)
 
 
+# Step-size reuse policy for the non-descriptor Newmark/HHT route and the linear sphere-impact
+# route: "tolerance" (reuse within grid rounding, integrate with the grid dt), "v1" (reuse within
+# grid rounding and integrate with the cached dt, so matrix, right-hand side and state update
+# share one dt) or "v2" (nominal config.dt on interior steps, refactorize on any bitwise change).
+_DT_REUSE_MODE = "tolerance"
+
+
 def same_step_size(dt: float, cached_dt: float, time_scale: float) -> bool:
     """Return True when two step sizes differ only by time-grid rounding.
 
@@ -2234,7 +2241,7 @@ def _solve_transient_newmark_under_lease(
         )
         reference_authority_guard(model)
         dt = float(times[step_index] - times[step_index - 1])
-        if descriptor_guarded:
+        if descriptor_guarded or _DT_REUSE_MODE == "v2":
             final_step_index = len(times) - 1
             nominal_end = float(final_step_index) * float(config.dt)
             end_time = float(config.t_end)
@@ -2254,6 +2261,7 @@ def _solve_transient_newmark_under_lease(
                 ) * float(config.dt)
         if dt <= 0.0:
             continue
+        dt_grid = dt
         a0 = 1.0 / (beta * dt**2)
         a1 = gamma / (beta * dt)
         a2 = 1.0 / (beta * dt)
@@ -2261,12 +2269,13 @@ def _solve_transient_newmark_under_lease(
         a4 = gamma / beta - 1.0
         a5 = dt * (gamma / (2.0 * beta) - 1.0)
         descriptor_dt_changed = (
-            descriptor_guarded
+            (descriptor_guarded or _DT_REUSE_MODE == "v2")
             and cached_dt is not None
             and dt != cached_dt
         )
         ordinary_dt_changed = (
             not descriptor_guarded
+            and _DT_REUSE_MODE != "v2"
             and cached_dt is not None
             # reuse only within grid rounding (see same_step_size, incl. its known limit)
             and not same_step_size(dt, cached_dt, float(times[step_index]))
@@ -2367,8 +2376,16 @@ def _solve_transient_newmark_under_lease(
             cached_dt = dt
             factorization_count += 1
 
+        if _DT_REUSE_MODE == "v1" and not descriptor_guarded and cached_dt is not None and dt != cached_dt:
+            # reused factor: integrate with the dt the matrix was built with
+            dt = cached_dt
+            a0 = 1.0 / (beta * dt**2)
+            a1 = gamma / (beta * dt)
+            a2 = 1.0 / (beta * dt)
+            a5 = dt * (gamma / (2.0 * beta) - 1.0)
+
         load_next = full_load_at(float(times[step_index]))
-        impulse += 0.5 * (load_prev + load_next) * dt
+        impulse += 0.5 * (load_prev + load_next) * dt_grid
         load_prev = load_next
         F_red = reduced_load_at(float(times[step_index]))
         rhs = (
