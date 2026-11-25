@@ -43,6 +43,10 @@ from .cases import make_result_case
 from .constraint_audit import constraint_residual_summary, require_valid_constraints
 from .control import CancellationToken, ProgressCallback, cancellation_safe_point, emit_progress
 from .element_capabilities import require_model_element_capabilities
+from .exact_beam_batch import (
+    exact_beam_recovery_batch as _exact_beam_recovery_batch,
+    exact_beam_recovery_candidate as _exact_beam_recovery_candidate,
+)
 from .linalg import FactorizationCache, MatrixClass, factorize, factorize_cached
 from .matrix_assembly import (
     assemble_load_matrix,
@@ -56,6 +60,10 @@ from .recovery_batches import (
     _run_with_qualified_recovery_runtime_lease,
 )
 from .threading_policy import resource_threaded, thread_policy_diagnostics
+
+# The observation-guard factory as bound at import; the exact-beam recovery
+# bracket is admitted only while the stress loop would call this factory.
+_EXACT_BEAM_RECOVERY_OBSERVATION_FACTORY = _qualified_recovery_observation_guard
 
 if TYPE_CHECKING:
     from .analysis_session import AnalysisSession
@@ -1822,9 +1830,8 @@ def _compute_stresses_under_lease(
     """Compute stresses for all or selected elements."""
     qualified_runtime_guard(stage="stress-recovery preflight")
     qualified_runtime_guard(stage="constraint-force preflight")
-    observation_guard = _qualified_recovery_observation_guard(
-        qualified_runtime_guard
-    )
+    observation_factory = _qualified_recovery_observation_guard
+    observation_guard = observation_factory(qualified_runtime_guard)
     observation_namespace = getattr(observation_guard, "__dict__", {})
     runtime_namespace = getattr(qualified_runtime_guard, "__dict__", {})
     exact_beam_candidate = (
@@ -1887,6 +1894,56 @@ def _compute_stresses_under_lease(
     displacements = np.asarray(displacements, dtype=float)
     if not inputs_are_plain:
         qualified_runtime_guard(stage="stress-recovery input observation")
+    # All-exact-beam recovery (owner decisions D1/D2, 2026-11-24): one
+    # complete guard before the batch reads anything and one after its last
+    # output replace the two per-element observation guards below.  Changing
+    # the model during a request (including from another thread) is outside
+    # the supported contract.  Only the plain lease (no qualified trusted or
+    # exact-beam authority attached) with the observation-guard factory bound
+    # at import is eligible; any irregularity returns ``None`` and the
+    # unchanged per-element loop runs.
+    bracket = (
+        _exact_beam_recovery_candidate(model, mesh, selected)
+        if observation_factory is _EXACT_BEAM_RECOVERY_OBSERVATION_FACTORY
+        and type(runtime_namespace) is dict
+        and not runtime_namespace
+        and type(observation_namespace) is dict
+        and not observation_namespace
+        else None
+    )
+    if bracket is not None:
+        # The bracket calls the loop's own observation guard for the first
+        # and last per-element observations it replaces, with the same
+        # stage, element and material, so a failure reports exactly what the
+        # per-element loop would have reported.  The candidate resolves the
+        # first element's material with the loop's own lookup, after checking
+        # with pure reads that its name is an exact ``str`` (otherwise there
+        # is no bracket), so the bracket hashes no hostile key.
+        (
+            first_bracket_id,
+            first_bracket_element,
+            first_bracket_material,
+            last_bracket_id,
+        ) = bracket
+        observation_guard(
+            stage=f"stress material observation for element {first_bracket_id}",
+            element=first_bracket_element,
+            material=first_bracket_material,
+        )
+        batched = _exact_beam_recovery_batch(
+            model,
+            mesh,
+            displacements,
+            selected,
+        )
+        if batched is not None:
+            batched_stresses, last_bracket_element, last_bracket_material = batched
+            observation_guard(
+                stage=f"stress element observation for element {last_bracket_id}",
+                element=last_bracket_element,
+                material=last_bracket_material,
+            )
+            return batched_stresses
     for elem_id, element in mesh.elements.items():
         if selected is not None and int(elem_id) not in selected:
             continue
