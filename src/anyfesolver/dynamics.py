@@ -1119,8 +1119,10 @@ class TransientResult:
 # Step-size reuse policy for the non-descriptor Newmark/HHT route and the linear sphere-impact
 # route: "tolerance" (reuse within grid rounding, integrate with the grid dt), "v1" (reuse within
 # grid rounding and integrate with the cached dt, so matrix, right-hand side and state update
-# share one dt) or "v2" (nominal config.dt on interior steps, refactorize on any bitwise change).
-_DT_REUSE_MODE = "tolerance"
+# share one dt) or "v2" (nominal config.dt on interior steps, refactorize on any bitwise change;
+# the default, and the rule the descriptor route already uses).  ``same_step_size`` is consulted
+# only in the first two modes.
+_DT_REUSE_MODE = "v2"
 
 
 def same_step_size(dt: float, cached_dt: float, time_scale: float) -> bool:

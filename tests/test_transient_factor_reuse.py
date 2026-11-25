@@ -160,44 +160,40 @@ def _two_step_factorizations(t_end):
 
 
 def test_transient_route_reuse_boundary_end_to_end():
-    # times [0, 0.5, t_end] with t_end in [0.5, 1): tolerance = 8 * 2**-53 = 2**-50
-    t_at = 1.0 - 2.0**-50  # last dt = 0.5 - 2**-50: difference exactly at tolerance
+    # Nominal-dt mode: the final step keeps the nominal dt (no refactorization) while the end
+    # time is within 8 ulp of n * dt, tolerance = 8 * max(ulp(t_end), ulp(n dt), n ulp(dt)).
+    # times [0, 0.5, t_end] with t_end in [0.5, 1): n dt = 1.0, tolerance = 8 * 2**-52 = 2**-49.
+    t_at = 1.0 - 2.0**-49
     count, last_dt = _two_step_factorizations(t_at)
-    assert 0.5 - last_dt == 2.0**-50
+    assert 0.5 - last_dt == 2.0**-49
     assert count == 1
     t_above = float(np.nextafter(t_at, 0.0))  # one representable value further
     count, last_dt = _two_step_factorizations(t_above)
-    assert 0.5 - last_dt > 2.0**-50
+    assert 0.5 - last_dt > 2.0**-49
     assert count == 2
 
 
-def test_reuse_at_the_threshold_changes_the_response_only_at_rounding_level(monkeypatch):
-    # Review (Codex, dt round 1): at exactly 8 ulp the reused matrix was built with the
-    # previous dt while the right-hand side uses the current one.  Bound the effect: the
-    # response must agree with an exact refactorization to rounding level.
-    import anyfesolver.dynamics as dynamics_module
+def test_reuse_at_the_threshold_is_identical_to_the_nominal_run():
+    # With consistent-dt integration a last step shortened by rounding only (here exactly on
+    # the threshold) integrates with the nominal dt, so the whole history is bit-identical to
+    # the run that ends exactly on the nominal grid.
+    dt = 2.0**-30
 
-    t_end = 2.0**-29 - 2.0**-79  # dt = 2**-30, last step exactly on the reuse threshold
-
-    def run(strict):
-        if strict:
-            monkeypatch.setattr(dynamics_module, "same_step_size", lambda dt, cached, scale: dt == cached)
-        else:
-            monkeypatch.setattr(dynamics_module, "same_step_size", same_step_size)
+    def run(t_end):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             model, load = _cantilever()
             result = solve_transient_newmark(
-                model, TransientConfig(dt=2.0**-30, t_end=t_end), base_load_case=load
+                model, TransientConfig(dt=dt, t_end=t_end), base_load_case=load
             )
-        return (result.diagnostics["factorization_count"], np.asarray(result.displacements)[-1],
-                np.asarray(result.accelerations)[-1])
+        return (result.diagnostics["factorization_count"], np.asarray(result.displacements),
+                np.asarray(result.accelerations))
 
-    reused, u_reused, a_reused = run(strict=False)
-    exact, u_exact, a_exact = run(strict=True)
-    assert (reused, exact) == (1, 2)
-    assert np.abs(u_reused - u_exact).max() <= 1.0e-12 * np.abs(u_exact).max()
-    assert np.abs(a_reused - a_exact).max() <= 1.0e-12 * np.abs(a_exact).max()
+    n_nominal, u_nominal, a_nominal = run(2.0**-29)
+    n_edge, u_edge, a_edge = run(2.0**-29 - 2.0**-79)  # last step shortened by 8 ulp
+    assert (n_nominal, n_edge) == (1, 1)
+    assert np.array_equal(u_edge, u_nominal)
+    assert np.array_equal(a_edge, a_nominal)
 
 
 def _unit_oscillator():
@@ -216,48 +212,23 @@ def _unit_oscillator():
     return model, load
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "pre-existing known limit: on reuse the effective matrix keeps the cached dt while the "
-        "right-hand side and state update use the current grid dt, and the reuse tolerance scales "
-        "with |t| (dynamics.py same_step_size ~L1119, reuse site ~L2258; contact.py ~L4085 alike). "
-        "Owner decision pending (option b: consistent-dt integration)."
-    ),
-)
-def test_reused_step_on_a_fine_grid_matches_exact_refactorization(monkeypatch):
+def test_reused_step_on_a_fine_grid_matches_exact_refactorization():
     # Codex P2 (dt round 2), M = K = 1 at static equilibrium (u = 1, v = a = 0, F = 1): the
     # exact response is u = 1, a = 0 for every step.  With dt = 2**-20 and the last step
-    # shortened by exactly 8 ulp(t), the last step is reused with the cached matrix but the
-    # current dt, giving a relative a0 mismatch 2**-40 and a spurious acceleration ~4 m/s^2
-    # (Codex's 2**-4 end time gives 2**-34 and ~512 m/s^2; shortened here to keep the run fast).
-    import anyfesolver.dynamics as dynamics_module
-
+    # shortened by exactly 8 ulp(t), the cached-matrix/grid-dt mismatch gave a spurious
+    # acceleration of ~8 m/s^2 (Codex's 2**-4 end time: ~512).  Consistent-dt integration
+    # integrates that step with the nominal dt on the single factorization.
     dt = 2.0**-20
     t_end = 2.0**-10 - 2.0**-60
-
-    def run(strict):
-        if strict:
-            monkeypatch.setattr(dynamics_module, "same_step_size", lambda d, c, s: d == c)
-        else:
-            monkeypatch.setattr(dynamics_module, "same_step_size", same_step_size)
-        model, load = _unit_oscillator()
-        node = model.mesh.get_node(2)
-        u_start = np.zeros(12)
-        u_start[node.dofs[0]] = 1.0
-        result = solve_transient_newmark(
-            model,
-            TransientConfig(dt=dt, t_end=t_end, initial_displacement=u_start),
-            base_load_case=load,
-        )
-        return (result.diagnostics["factorization_count"],
-                np.asarray(result.displacements)[-1, node.dofs[0]],
-                np.asarray(result.accelerations)[-1, node.dofs[0]])
-
-    reused, u_reused, a_reused = run(strict=False)
-    exact, u_exact, a_exact = run(strict=True)
-    assert (reused, exact) == (1, 2)
-    a0 = 4.0 / dt**2
-    assert abs(u_reused - u_exact) <= 1.0e-13 * abs(u_exact)
-    assert abs(a_reused - a_exact) <= 64.0 * np.finfo(float).eps * abs(u_exact) * a0
+    model, load = _unit_oscillator()
+    node = model.mesh.get_node(2)
+    u_start = np.zeros(12)
+    u_start[node.dofs[0]] = 1.0
+    result = solve_transient_newmark(
+        model, TransientConfig(dt=dt, t_end=t_end, initial_displacement=u_start), base_load_case=load,
+    )
+    assert result.diagnostics["factorization_count"] == 1
+    u = np.asarray(result.displacements)[:, node.dofs[0]]
+    a = np.asarray(result.accelerations)[:, node.dofs[0]]
+    assert np.abs(u - 1.0).max() <= 1.0e-13
+    assert np.abs(a).max() <= 64.0 * np.finfo(float).eps * (4.0 / dt**2)
