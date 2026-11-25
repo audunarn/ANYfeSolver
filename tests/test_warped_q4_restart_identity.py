@@ -17,6 +17,7 @@ from anyfesolver.elements import create_shell_element
 from anyfesolver.nonlinear_restart import (
     NonlinearCheckpointError,
     _applied_drilling_if_changed,
+    _require_admitted_drilling_hook,
     _sha256,
     model_configuration_descriptor,
     model_configuration_fingerprint,
@@ -118,3 +119,65 @@ def test_degenerate_recorded_facet_is_a_typed_checkpoint_error():
     collinear = {n: [float(k), 0.0, 0.0] for k, n in enumerate(record["configuration"]["node_ids"])}
     with pytest.raises(NonlinearCheckpointError, match="drilling identity"):
         _applied_drilling_if_changed(record, collinear)
+
+
+def test_unknown_recorded_node_is_refused_whatever_the_coefficient():
+    # Review round 9 P3: node ids are resolved before the alpha early return.
+    model = _shell_model(warped=True, alpha=0.5)
+    records, snapshot = _records_and_snapshot(model)
+    missing = dict(snapshot)
+    del missing[records[0]["configuration"]["node_ids"][0]]
+    with pytest.raises(NonlinearCheckpointError, match="drilling identity"):
+        _applied_drilling_if_changed(records[0], missing)
+
+
+def test_shell_subclass_overriding_the_drilling_hook_fails_closed():
+    # Review round 9 P2 (owner option C): restart identity cannot describe a
+    # custom applied-drilling hook, so such a model is refused.
+    from anyfesolver.elements import ShellElement
+
+    class CustomDrillingShell(ShellElement):
+        def _effective_drilling_stabilization(self, coordinates=None):
+            return 0.25
+
+    model = FEModel("custom")
+    model.add_material("mat", 29.0e6, 0.22)
+    for k, (x, y) in enumerate([(0, 0), (1, 0), (1, 1), (0, 1)], start=1):
+        model.add_node(k, float(x), float(y), 0.0)
+    model.add_element(1, CustomDrillingShell(1, [1, 2, 3, 4], "mat", thickness=0.1))
+    with pytest.raises(NonlinearCheckpointError, match="overrides the drilling coefficient hook"):
+        model_configuration_fingerprint(model)
+
+
+def _all_shell_classes():
+    import importlib
+    import pathlib
+
+    import anyfesolver
+    from anyfesolver.elements import ShellElement
+
+    root = pathlib.Path(anyfesolver.__file__).parent
+    for path in sorted(root.rglob("*.py")):
+        if "ShellElement" in path.read_text(encoding="utf-8", errors="ignore"):
+            name = ".".join(("anyfesolver",) + path.relative_to(root).with_suffix("").parts)
+            if name.endswith(".__init__"):
+                name = name[: -len(".__init__")]
+            try:
+                importlib.import_module(name)
+            except Exception:  # dev or optional modules that need extras
+                continue
+    seen, stack = [], [ShellElement]
+    while stack:
+        cls = stack.pop()
+        if cls not in seen:
+            seen.append(cls)
+            stack.extend(cls.__subclasses__())
+    return [c for c in seen if c.__module__.startswith(("anyfesolver", "anysolver"))]
+
+
+def test_every_shell_class_in_the_package_is_admitted():
+    classes = _all_shell_classes()
+    assert len(classes) >= 3
+    for cls in classes:
+        element = object.__new__(cls)
+        _require_admitted_drilling_hook(element)  # must not raise

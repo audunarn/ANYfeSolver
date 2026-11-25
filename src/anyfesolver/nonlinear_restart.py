@@ -686,6 +686,7 @@ def model_configuration_descriptor(
             _guard_model=model,
         )
         descriptor["id"] = int(element_id)
+        _require_admitted_drilling_hook(element)
         applied = _applied_drilling_if_changed(descriptor, node_snapshot)
         if applied is not None:
             # Kernels apply a different coefficient than the stored one (the
@@ -770,6 +771,35 @@ def model_configuration_descriptor(
     }
 
 
+def _require_admitted_drilling_hook(element: Any) -> None:
+    """Fail closed on drilling hooks that restart identity cannot describe.
+
+    Only ``ShellElement`` itself (stored value) and the final qualified Q4
+    (warped-facet floor, described by :func:`_applied_drilling_if_changed`)
+    define the applied drilling coefficient.  Any other shell class that
+    overrides ``_effective_drilling_stabilization`` is refused.
+    """
+
+    from .e4_pl_element import QualifiedE4PLShellElement
+    from .elements import ShellElement
+
+    if not isinstance(element, ShellElement):
+        return
+    hook = getattr(type(element), "_effective_drilling_stabilization", None)
+    if hook is ShellElement._effective_drilling_stabilization:
+        return
+    if (
+        type(element) is QualifiedE4PLShellElement
+        and hook is QualifiedE4PLShellElement._effective_drilling_stabilization
+    ):
+        return
+    raise NonlinearCheckpointError(
+        f"element {getattr(element, 'element_id', '?')} of class "
+        f"{_class_id(element)} overrides the drilling coefficient hook; its "
+        "applied drilling mechanics cannot be bound into a checkpoint"
+    )
+
+
 def _applied_drilling_if_changed(
     descriptor: Mapping[str, Any], node_snapshot: Mapping[int, Any]
 ) -> Any:
@@ -792,14 +822,14 @@ def _applied_drilling_if_changed(
         return None
     configuration = descriptor.get("configuration")
     try:
-        alpha = float(configuration["drilling_stabilization"])
-        if not alpha < _WARPED_Q4_DRILLING_FLOOR:
-            return None
-        tolerance = float(configuration["planar_tolerance"])
         coordinates = np.asarray(
             [node_snapshot[int(node_id)] for node_id in configuration["node_ids"]],
             dtype=float,
         )
+        alpha = float(configuration["drilling_stabilization"])
+        if not alpha < _WARPED_Q4_DRILLING_FLOOR:
+            return None
+        tolerance = float(configuration["planar_tolerance"])
         _frame, _local, warpage = equation7_frame(coordinates)
     except NonlinearCheckpointError:
         raise
