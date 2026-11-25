@@ -1792,6 +1792,21 @@ def _compute_stresses_under_lease(
     )
     mesh = model.mesh
     stresses: Dict[int, Dict[str, np.ndarray]] = {}
+    # Converting caller inputs may run foreign code (``__array__``,
+    # ``__float__``, ``__int__``, a custom iterable).  Constant-time element
+    # checks below assume no foreign code ran since the last complete guard,
+    # so such a conversion is followed by one.
+    inputs_are_plain = (
+        type(displacements) is np.ndarray
+        and displacements.dtype.kind in "biuf"
+        and (
+            element_ids is None
+            or (
+                type(element_ids) in (list, tuple)
+                and all(type(element_id) is int for element_id in element_ids)
+            )
+        )
+    )
     selected = None if element_ids is None else {int(element_id) for element_id in element_ids}
     selected_ids = (
         tuple(int(element_id) for element_id in mesh.elements)
@@ -1806,6 +1821,8 @@ def _compute_stresses_under_lease(
             element_ids=selected_ids,
         )
     displacements = np.asarray(displacements, dtype=float)
+    if not inputs_are_plain:
+        qualified_runtime_guard(stage="stress-recovery input observation")
     for elem_id, element in mesh.elements.items():
         if selected is not None and int(elem_id) not in selected:
             continue

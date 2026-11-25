@@ -156,6 +156,17 @@ runs and no other thread mutates V2D elements.
   deletion of `_qualified_v2d_lease_epochs`, resetting an exposed epoch's `value`, plus the bypasses listed under "Not covered"
   above. Such tampering needs the same control as foreign code. The storage was deliberately not restructured.
 
+* Guard-shortcut contract (owner decision 2026-11-24, triangle speed fix, branch `claude/tri-shells-s2-20261124`): a
+  constant-time or census shortcut must give the reference (complete-guard / element-by-element) answer in supported use.
+  Rewriting this package's classes, `ABCMeta` or the element mapping class at run time, custom element metaclasses and
+  `__class__` reassignment are outside supported use ("no monkeypatching, no mid-request surface changes"). The shortcuts
+  in `_require_v2d_mixed_shell_scope` (type census restricted to package-owned classes whose MRO, `__getattribute__`,
+  `__getattr__`, `__class__` and metaclass match an import-time snapshot, classes compared by identity),
+  `_qualified_s3_pressure_surface_records` (exact V2D fields read without running foreign code; dropped for the remaining
+  records once any record takes the guarded route) and `_build_trusted_v2d_recovery_require` (lease trusted-state check
+  plus captured V2D authority plus provider identity; a complete guard after converting non-plain recovery inputs) make
+  the common forms of such rewriting fall back to the reference path, but are not an exhaustive defence against them.
+
 ## static_batch enumeration (round 4; all now identity-classified)
 Inside the core trusted span: none (the span is the kernel, the V2D guard and the load-vector assembly). Upstream/outside the span but
 on the load-input and preparation-witness path: all sites below.
