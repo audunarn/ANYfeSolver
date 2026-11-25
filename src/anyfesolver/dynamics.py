@@ -1116,6 +1116,23 @@ class TransientResult:
         return describe_result_quantities(self)
 
 
+def same_step_size(dt: float, cached_dt: float, time_scale: float) -> bool:
+    """Return True when two step sizes differ only by time-grid rounding.
+
+    A cached effective-matrix factorization may be reused only if the effective
+    matrix is the same.  Step sizes come from differences of grid times
+    (``times[i] - times[i - 1]``), which differ between steps by a few ulps of
+    the largest time involved even on a uniform grid.  Any larger difference
+    (for example a final shortened step) changes the Newmark coefficients and
+    requires a new factorization; a fixed absolute tolerance such as
+    ``np.isclose`` atol=1e-8 does not scale with ``dt`` and wrongly treats
+    ``1e-8`` and ``5e-9`` as equal.
+    """
+
+    tolerance = 8.0 * math.ulp(max(abs(float(time_scale)), abs(float(dt))))
+    return abs(float(dt) - float(cached_dt)) <= tolerance
+
+
 def _time_grid(config: TransientConfig) -> np.ndarray:
     if config.t_end == 0.0:
         return np.array([0.0], dtype=float)
@@ -2225,7 +2242,7 @@ def _solve_transient_newmark_under_lease(
         ordinary_dt_changed = (
             not descriptor_guarded
             and cached_dt is not None
-            and not np.isclose(dt, cached_dt)
+            and not same_step_size(dt, cached_dt, float(times[step_index]))
         )
         if (
             cached_solver is None

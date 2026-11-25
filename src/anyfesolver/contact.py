@@ -33,6 +33,7 @@ from .dynamics import (
     _node_dof_indices,
     _reduced_load,
     _saved_step_count,
+    same_step_size,
     _time_grid,
     _translation_peak,
 )
@@ -4080,7 +4081,7 @@ def solve_transient_sphere_impact(
             a3 = 1.0 / (2.0 * beta) - 1.0
             a4 = gamma / beta - 1.0
             a5 = dt * (gamma / (2.0 * beta) - 1.0)
-            if cached_solver is None or cached_dt is None or not np.isclose(dt, cached_dt):
+            if cached_solver is None or cached_dt is None or not same_step_size(dt, cached_dt, target_time):
                 K_eff = (one_plus_alpha * K_red + a0 * M_red + one_plus_alpha * a1 * C_red).tocsr()
                 cached_solver = factorize(K_eff, MatrixClass.SYMMETRIC_INDEFINITE, signature=f"sphere_impact.effective:{dt:.16g}")
                 cached_solver_diagnostics = cached_solver.diagnostics()
