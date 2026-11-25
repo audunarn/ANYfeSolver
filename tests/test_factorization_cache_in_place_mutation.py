@@ -94,11 +94,12 @@ def test_index_edit_after_factorize_does_not_reach_the_handle(backend_type):
     np.testing.assert_allclose(handle.solve(rhs), expected, rtol=1e-13)
 
 
-def test_cached_inverse_operator_after_in_place_edit():
+@pytest.mark.parametrize("backend_type", _backends())
+def test_cached_inverse_operator_after_in_place_edit(backend_type):
     A = _indefinite()
     rhs = np.array([1.0, -2.0, 0.5])
     expected = np.linalg.solve(A.toarray(), rhs)
-    cache = linalg.FactorizationCache()
+    cache = linalg.FactorizationCache(backend=backend_type())
     operator, _handle = linalg.cached_inverse_operator(A, "general", cache=cache)
     A.data *= 3.0
     edited_operator, _ = linalg.cached_inverse_operator(A, "general", cache=cache)
