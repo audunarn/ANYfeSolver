@@ -26,7 +26,7 @@ from scipy import linalg, sparse
 from scipy.sparse.csgraph import maximum_bipartite_matching
 from scipy.sparse import linalg as sparse_linalg
 
-from .linalg import FactorizationCache, MatrixClass, factorize_cached
+from .linalg import FactorizationCache, MatrixClass, factorize_cached, lease_from
 
 if TYPE_CHECKING:
     from .fe_core import FEModel
@@ -2589,222 +2589,231 @@ def solve_descriptor_spectrum(
         name="descriptor_modal_metric", max_entries=2
     )
     start = _deterministic_start(size)
-    if target_shift is None:
-        handle = factorize_cached(
-            metric,
-            MatrixClass.SPD,
-            cache=cache,
-        )
-        if handle.status != "ok":
-            raise AlgebraicDynamicsError(
-                f"could not factor descriptor metric: {handle.failure_reason}"
+    # The factorization is applied by the eigensolver across its iterations:
+    # pin it with a lease for the eigensolve (closed below).
+    descriptor_lease = None
+    try:
+        if target_shift is None:
+            descriptor_lease = lease_from(factorize_cached,
+                metric,
+                MatrixClass.SPD,
+                cache=cache,
             )
-        inverse = sparse_linalg.LinearOperator(
-            metric.shape,
-            matvec=lambda value: np.asarray(handle.solve(value), dtype=float),
-            matmat=lambda value: np.asarray(handle.solve_many(value), dtype=float),
-            dtype=float,
-        )
-        try:
-            if size <= 5 * candidate_count:
-                all_transformed, all_vectors = linalg.eigh(
-                    np.asarray(M_sym.toarray(), dtype=float),
-                    np.asarray(metric.toarray(), dtype=float),
-                    check_finite=True,
-                    driver="gvd",
+            handle = descriptor_lease.handle
+            if handle.status != "ok":
+                raise AlgebraicDynamicsError(
+                    f"could not factor descriptor metric: {handle.failure_reason}"
                 )
-                selected = np.argsort(all_transformed, kind="stable")[-candidate_count:]
-                transformed = all_transformed[selected]
-                vectors = all_vectors[:, selected]
-                sparse_mode = "lowest_dense_requested_fraction_swapped_eigh"
-            else:
-                # SciPy reports best-iterate convergence with a warning even
-                # when every returned Ritz pair passes our stricter explicit
-                # full-pencil certificate below.  Keep diagnostics stable and
-                # let that certificate, rather than backend prose, adjudicate.
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore", UserWarning)
-                    transformed, vectors = sparse_linalg.lobpcg(
-                        M_sym,
-                        _deterministic_block(size, candidate_count),
-                        B=metric,
-                        M=inverse,
-                        largest=True,
-                        tol=2.0e-11,
-                        maxiter=max(200, min(2000, 5 * size)),
-                    )
-                sparse_mode = "lowest_symmetric_swapped_block_lobpcg"
-        except Exception as error:
-            raise AlgebraicDynamicsError(
-                "sparse descriptor eigensolver failed"
-            ) from error
-        factorization_diagnostics = handle.diagnostics()
-    else:
-        target = float(target_shift)
-        if not np.isfinite(target):
-            raise AlgebraicDynamicsError("descriptor target shift must be finite")
-        target_regularization = float(
-            256.0
-            * np.finfo(float).eps
-            * max(abs(target), float(scales["stiffness_mass_scale"]), 1.0)
-        )
-        factor_target = target + target_regularization
-        target_swapped = 1.0 / (factor_target + shift)
-        if not np.isfinite(target_swapped) or target_swapped == 0.0:
-            raise AlgebraicDynamicsError(
-                "descriptor target shift is incompatible with the swapped pencil"
+            inverse = sparse_linalg.LinearOperator(
+                metric.shape,
+                matvec=lambda value: np.asarray(handle.solve(value), dtype=float),
+                matmat=lambda value: np.asarray(handle.solve_many(value), dtype=float),
+                dtype=float,
             )
-        shifted_original = _symmetric(K_sym - factor_target * M_sym)
-        handle = factorize_cached(
-            shifted_original,
-            MatrixClass.SYMMETRIC_INDEFINITE,
-            cache=cache,
-        )
-        if handle.status != "ok":
-            raise AlgebraicDynamicsError(
-                f"could not factor descriptor target shift: {handle.failure_reason}"
-            )
-        def _target_solve(value: np.ndarray) -> np.ndarray:
-            made = np.asarray(value, dtype=float)
-            if made.ndim == 1:
-                return (
-                    -np.asarray(handle.solve(made), dtype=float) / target_swapped
-                )
-            return -np.asarray(handle.solve_many(made), dtype=float) / target_swapped
-
-        algebraic_metric_factor = None
-        if resolved_algebraic_basis is not None:
-            algebraic_metric_gram = (
-                resolved_algebraic_basis.T @ metric @ resolved_algebraic_basis
-            ).tocsc()
             try:
-                algebraic_metric_factor = sparse_linalg.splu(
-                    algebraic_metric_gram
-                )
+                if size <= 5 * candidate_count:
+                    all_transformed, all_vectors = linalg.eigh(
+                        np.asarray(M_sym.toarray(), dtype=float),
+                        np.asarray(metric.toarray(), dtype=float),
+                        check_finite=True,
+                        driver="gvd",
+                    )
+                    selected = np.argsort(all_transformed, kind="stable")[-candidate_count:]
+                    transformed = all_transformed[selected]
+                    vectors = all_vectors[:, selected]
+                    sparse_mode = "lowest_dense_requested_fraction_swapped_eigh"
+                else:
+                    # SciPy reports best-iterate convergence with a warning even
+                    # when every returned Ritz pair passes our stricter explicit
+                    # full-pencil certificate below.  Keep diagnostics stable and
+                    # let that certificate, rather than backend prose, adjudicate.
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", UserWarning)
+                        transformed, vectors = sparse_linalg.lobpcg(
+                            M_sym,
+                            _deterministic_block(size, candidate_count),
+                            B=metric,
+                            M=inverse,
+                            largest=True,
+                            tol=2.0e-11,
+                            maxiter=max(200, min(2000, 5 * size)),
+                        )
+                    sparse_mode = "lowest_symmetric_swapped_block_lobpcg"
             except Exception as error:
                 raise AlgebraicDynamicsError(
-                    "could not factor the targeted algebraic projection metric"
+                    "sparse descriptor eigensolver failed"
+                ) from error
+            factorization_diagnostics = handle.diagnostics()
+        else:
+            target = float(target_shift)
+            if not np.isfinite(target):
+                raise AlgebraicDynamicsError("descriptor target shift must be finite")
+            target_regularization = float(
+                256.0
+                * np.finfo(float).eps
+                * max(abs(target), float(scales["stiffness_mass_scale"]), 1.0)
+            )
+            factor_target = target + target_regularization
+            target_swapped = 1.0 / (factor_target + shift)
+            if not np.isfinite(target_swapped) or target_swapped == 0.0:
+                raise AlgebraicDynamicsError(
+                    "descriptor target shift is incompatible with the swapped pencil"
+                )
+            shifted_original = _symmetric(K_sym - factor_target * M_sym)
+            descriptor_lease = lease_from(factorize_cached,
+                shifted_original,
+                MatrixClass.SYMMETRIC_INDEFINITE,
+                cache=cache,
+            )
+            handle = descriptor_lease.handle
+            if handle.status != "ok":
+                raise AlgebraicDynamicsError(
+                    f"could not factor descriptor target shift: {handle.failure_reason}"
+                )
+            def _target_solve(value: np.ndarray) -> np.ndarray:
+                made = np.asarray(value, dtype=float)
+                if made.ndim == 1:
+                    return (
+                        -np.asarray(handle.solve(made), dtype=float) / target_swapped
+                    )
+                return -np.asarray(handle.solve_many(made), dtype=float) / target_swapped
+
+            algebraic_metric_factor = None
+            if resolved_algebraic_basis is not None:
+                algebraic_metric_gram = (
+                    resolved_algebraic_basis.T @ metric @ resolved_algebraic_basis
+                ).tocsc()
+                try:
+                    algebraic_metric_factor = sparse_linalg.splu(
+                        algebraic_metric_gram
+                    )
+                except Exception as error:
+                    raise AlgebraicDynamicsError(
+                        "could not factor the targeted algebraic projection metric"
+                    ) from error
+
+            target_operator_inverse = sparse_linalg.LinearOperator(
+                shifted_original.shape,
+                matvec=_target_solve,
+                matmat=_target_solve,
+                dtype=float,
+            )
+            try:
+                target_candidate_count = min(
+                    max(
+                        int(num_modes) + 8 + nullity,
+                        2 * int(num_modes) + nullity,
+                    ),
+                    size - 1,
+                )
+                side_values: list[np.ndarray] = []
+                side_vectors: list[np.ndarray] = []
+                # In shift-invert mode LA and SA select the nearest transformed
+                # values on opposite sides of the target.  Running both sides is
+                # necessary because distance in mu=1/(lambda+sigma) is nonlinear
+                # in lambda and one side can otherwise crowd out the truly nearest
+                # physical eigenvalue.
+                for side in ("LA", "SA"):
+                    made_values, made_vectors = sparse_linalg.eigsh(
+                        M_sym.tocsc(),
+                        k=target_candidate_count,
+                        M=metric.tocsc(),
+                        sigma=target_swapped,
+                        which=side,
+                        OPinv=target_operator_inverse,
+                        v0=start,
+                        tol=2.0e-11,
+                        maxiter=max(1000, 20 * size),
+                    )
+                    side_values.append(np.asarray(made_values, dtype=float))
+                    side_vectors.append(np.asarray(made_vectors, dtype=float))
+                transformed = np.concatenate(side_values)
+                vectors = np.column_stack(side_vectors)
+            except Exception as error:
+                raise AlgebraicDynamicsError(
+                    "sparse descriptor eigensolver failed"
                 ) from error
 
-        target_operator_inverse = sparse_linalg.LinearOperator(
-            shifted_original.shape,
-            matvec=_target_solve,
-            matmat=_target_solve,
-            dtype=float,
-        )
-        try:
-            target_candidate_count = min(
-                max(
-                    int(num_modes) + 8 + nullity,
-                    2 * int(num_modes) + nullity,
-                ),
-                size - 1,
-            )
-            side_values: list[np.ndarray] = []
-            side_vectors: list[np.ndarray] = []
-            # In shift-invert mode LA and SA select the nearest transformed
-            # values on opposite sides of the target.  Running both sides is
-            # necessary because distance in mu=1/(lambda+sigma) is nonlinear
-            # in lambda and one side can otherwise crowd out the truly nearest
-            # physical eigenvalue.
-            for side in ("LA", "SA"):
-                made_values, made_vectors = sparse_linalg.eigsh(
-                    M_sym.tocsc(),
-                    k=target_candidate_count,
-                    M=metric.tocsc(),
-                    sigma=target_swapped,
-                    which=side,
-                    OPinv=target_operator_inverse,
-                    v0=start,
-                    tol=2.0e-11,
-                    maxiter=max(1000, 20 * size),
-                )
-                side_values.append(np.asarray(made_values, dtype=float))
-                side_vectors.append(np.asarray(made_vectors, dtype=float))
-            transformed = np.concatenate(side_values)
-            vectors = np.column_stack(side_vectors)
-        except Exception as error:
-            raise AlgebraicDynamicsError(
-                "sparse descriptor eigensolver failed"
-            ) from error
-
-        # Algebraic Ritz vectors have mu=0.  Remove them with the invariant
-        # (K+sigma M)-metric projector, and clean roundoff contamination from
-        # every physical Ritz vector before the full-pencil certificate.  A
-        # coordinate-wise or Euclidean test would change under a harmless
-        # re-expression of the massless coordinates.
-        retained_values: list[float] = []
-        retained_vectors: list[np.ndarray] = []
-        excluded_target_algebraic = 0
-        for vector in np.asarray(vectors, dtype=float).T:
-            made = np.asarray(vector, dtype=float).reshape(-1)
-            metric_action = np.asarray(metric @ made, dtype=float).reshape(-1)
-            metric_norm = float(made @ metric_action)
-            if not np.isfinite(metric_norm) or metric_norm <= 0.0:
-                raise AlgebraicDynamicsError(
-                    "targeted descriptor candidate has invalid metric norm"
-                )
-            if (
-                resolved_algebraic_basis is not None
-                and algebraic_metric_factor is not None
-            ):
-                rhs = np.asarray(
-                    resolved_algebraic_basis.T @ metric_action,
-                    dtype=float,
-                ).reshape(-1)
-                coefficients = algebraic_metric_factor.solve(rhs)
-                projection = np.asarray(
-                    resolved_algebraic_basis @ coefficients,
-                    dtype=float,
-                ).reshape(-1)
-                projection_energy = float(rhs @ coefficients)
-                remaining_fraction = max(
-                    0.0,
-                    1.0 - projection_energy / metric_norm,
-                )
-                if remaining_fraction <= 8192.0 * np.finfo(float).eps:
-                    excluded_target_algebraic += 1
-                    continue
-                made = made - projection
+            # Algebraic Ritz vectors have mu=0.  Remove them with the invariant
+            # (K+sigma M)-metric projector, and clean roundoff contamination from
+            # every physical Ritz vector before the full-pencil certificate.  A
+            # coordinate-wise or Euclidean test would change under a harmless
+            # re-expression of the massless coordinates.
+            retained_values: list[float] = []
+            retained_vectors: list[np.ndarray] = []
+            excluded_target_algebraic = 0
+            for vector in np.asarray(vectors, dtype=float).T:
+                made = np.asarray(vector, dtype=float).reshape(-1)
                 metric_action = np.asarray(metric @ made, dtype=float).reshape(-1)
                 metric_norm = float(made @ metric_action)
-            modal_mass = float(made @ (M_sym @ made))
-            if (
-                not np.isfinite(metric_norm)
-                or not np.isfinite(modal_mass)
-                or metric_norm <= 0.0
-                or modal_mass <= 0.0
-            ):
-                excluded_target_algebraic += 1
-                continue
-            made = made / np.sqrt(metric_norm)
-            transformed_value = modal_mass / metric_norm
-            # LA and SA can overlap when one side contains fewer requested
-            # values.  Remove only duplicate vectors, never repeated physical
-            # eigenvalues with independent eigendirections.
-            duplicate = False
-            for prior in retained_vectors:
-                correlation = abs(float(prior @ (metric @ made)))
-                if correlation >= 1.0 - 2.0e-9:
-                    duplicate = True
-                    break
-            if duplicate:
-                continue
-            retained_values.append(float(transformed_value))
-            retained_vectors.append(made)
-        if len(retained_vectors) < min(int(num_modes), finite_dimension):
-            raise AlgebraicDynamicsError(
-                "targeted descriptor solve returned too few physical candidates"
+                if not np.isfinite(metric_norm) or metric_norm <= 0.0:
+                    raise AlgebraicDynamicsError(
+                        "targeted descriptor candidate has invalid metric norm"
+                    )
+                if (
+                    resolved_algebraic_basis is not None
+                    and algebraic_metric_factor is not None
+                ):
+                    rhs = np.asarray(
+                        resolved_algebraic_basis.T @ metric_action,
+                        dtype=float,
+                    ).reshape(-1)
+                    coefficients = algebraic_metric_factor.solve(rhs)
+                    projection = np.asarray(
+                        resolved_algebraic_basis @ coefficients,
+                        dtype=float,
+                    ).reshape(-1)
+                    projection_energy = float(rhs @ coefficients)
+                    remaining_fraction = max(
+                        0.0,
+                        1.0 - projection_energy / metric_norm,
+                    )
+                    if remaining_fraction <= 8192.0 * np.finfo(float).eps:
+                        excluded_target_algebraic += 1
+                        continue
+                    made = made - projection
+                    metric_action = np.asarray(metric @ made, dtype=float).reshape(-1)
+                    metric_norm = float(made @ metric_action)
+                modal_mass = float(made @ (M_sym @ made))
+                if (
+                    not np.isfinite(metric_norm)
+                    or not np.isfinite(modal_mass)
+                    or metric_norm <= 0.0
+                    or modal_mass <= 0.0
+                ):
+                    excluded_target_algebraic += 1
+                    continue
+                made = made / np.sqrt(metric_norm)
+                transformed_value = modal_mass / metric_norm
+                # LA and SA can overlap when one side contains fewer requested
+                # values.  Remove only duplicate vectors, never repeated physical
+                # eigenvalues with independent eigendirections.
+                duplicate = False
+                for prior in retained_vectors:
+                    correlation = abs(float(prior @ (metric @ made)))
+                    if correlation >= 1.0 - 2.0e-9:
+                        duplicate = True
+                        break
+                if duplicate:
+                    continue
+                retained_values.append(float(transformed_value))
+                retained_vectors.append(made)
+            if len(retained_vectors) < min(int(num_modes), finite_dimension):
+                raise AlgebraicDynamicsError(
+                    "targeted descriptor solve returned too few physical candidates"
+                )
+            transformed = np.asarray(retained_values, dtype=float)
+            vectors = np.column_stack(retained_vectors)
+            factorization_diagnostics = handle.diagnostics()
+            sparse_mode = "targeted_two_sided_projected_swapped_eigsh"
+            diagnostics["target_factorization_shift"] = factor_target
+            diagnostics["target_factorization_regularization"] = target_regularization
+            diagnostics["target_excluded_algebraic_ritz_vectors"] = int(
+                excluded_target_algebraic
             )
-        transformed = np.asarray(retained_values, dtype=float)
-        vectors = np.column_stack(retained_vectors)
-        factorization_diagnostics = handle.diagnostics()
-        sparse_mode = "targeted_two_sided_projected_swapped_eigsh"
-        diagnostics["target_factorization_shift"] = factor_target
-        diagnostics["target_factorization_regularization"] = target_regularization
-        diagnostics["target_excluded_algebraic_ritz_vectors"] = int(
-            excluded_target_algebraic
-        )
+    finally:
+        if descriptor_lease is not None:
+            descriptor_lease.close()
 
     raw_values = np.asarray(transformed, dtype=float).reshape(-1)
     raw_vectors = np.asarray(vectors, dtype=float)

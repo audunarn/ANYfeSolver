@@ -282,6 +282,9 @@ class AnalysisSession:
         self._mass: Optional[StructuralMatrixPlan] = None
         self._constraint: Optional[ConstraintPlan] = None
         self._static_operator: Optional[StaticOperatorPlan] = None
+        # Lease pinning the current static operator's factorization (see
+        # linalg.FactorizationLease); replaced or closed with the plan.
+        self._static_operator_lease: Any = None
         self._inertia_relief: Optional[Tuple[Tuple[Any, ...], Any]] = None
         self._reduced_mass: Optional[Tuple[Tuple[Any, ...], sparse.csr_matrix]] = None
         self._rigid_modes: Optional[Tuple[Tuple[Any, ...], np.ndarray, Dict[str, Any]]] = None
@@ -394,6 +397,7 @@ class AnalysisSession:
             self._mass = None
             self._constraint = None
             self._static_operator = None
+            self._replace_static_operator_lease(None)
             self._inertia_relief = None
             self._reduced_mass = None
             self._rigid_modes = None
@@ -438,6 +442,11 @@ class AnalysisSession:
         self._activity_snapshots[quantity] = (observed, values, token, epoch)
         return token
 
+    def _replace_static_operator_lease(self, lease: Any) -> None:
+        old, self._static_operator_lease = self._static_operator_lease, lease
+        if old is not None:
+            old.close()
+
     def stiffness_plan(self, model: Optional["FEModel"] = None) -> StructuralMatrixPlan:
         from .matrix_assembly import assemble_stiffness_matrix
 
@@ -454,6 +463,7 @@ class AnalysisSession:
                 self.factorization_cache.clear()
                 self._constraint = None
                 self._static_operator = None
+                self._replace_static_operator_lease(None)
                 self._reduced_mass = None
                 self._rigid_modes = None
                 self._load_vectors.clear()
@@ -471,7 +481,7 @@ class AnalysisSession:
     ) -> StaticOperatorPlan:
         """Reuse preparation and factorization for unchanged static operators."""
         from .assembly import _equilibrate_supported_stiffness, _SYMMETRIC_DIAGONAL_EQUILIBRATION_ID
-        from .linalg import MatrixClass, factorization_is_stale, factorize_cached
+        from .linalg import MatrixClass, leased_factorization
 
         with self._lock:
             owned = self._require_model(model)
@@ -488,14 +498,18 @@ class AnalysisSession:
                    constraint.structure_key, augmented, modes.shape,
                    hashlib.sha256(modes.tobytes()).hexdigest())
             old = self._static_operator
-            # A stale PARDISO handle keeps the prepared operator: the cache
-            # treats it as a miss and refactorizes the same matrix.
-            if old is not None and old.key == key and (old.handle is None or old.handle.status == "ok"
-                                                       or factorization_is_stale(old.handle)):
+            if old is not None and old.key == key and (old.handle is None or old.handle.status == "ok"):
                 self._counters["static_operator_hits"] += 1
-                handle = None if old.handle is None else factorize_cached(old.matrix,
-                    MatrixClass.SYMMETRIC_INDEFINITE, cache=self.factorization_cache,
-                    signature=old.handle.signature)
+                handle = None
+                if old.handle is not None:
+                    # Pin the (normally cached, identical) handle before the
+                    # previous lease ends, so the factorization never goes
+                    # stale between them.
+                    lease = leased_factorization(old.matrix,
+                        MatrixClass.SYMMETRIC_INDEFINITE, cache=self.factorization_cache,
+                        signature=old.handle.signature)
+                    self._replace_static_operator_lease(lease)
+                    handle = lease.handle
                 if old.constraint is constraint and handle is old.handle:
                     return old
                 refreshed = StaticOperatorPlan(constraint, old.matrix, old.scaling,
@@ -512,9 +526,16 @@ class AnalysisSession:
             else:
                 matrix, scaling, equilibration = _equilibrate_supported_stiffness(constraint.K_red)
                 signature = self.factorization_signature("linear_static", constraint) + ":" + _SYMMETRIC_DIAGONAL_EQUILIBRATION_ID
-            handle = None if matrix.shape[0] == 0 else factorize_cached(
-                matrix, MatrixClass.SYMMETRIC_INDEFINITE,
-                cache=self.factorization_cache, signature=signature)
+            # The previous operator is obsolete: end its lease first, so that
+            # a same-pattern refactorization reuses its slot as without leases.
+            self._replace_static_operator_lease(None)
+            handle = None
+            if matrix.shape[0] != 0:
+                lease = leased_factorization(
+                    matrix, MatrixClass.SYMMETRIC_INDEFINITE,
+                    cache=self.factorization_cache, signature=signature)
+                self._replace_static_operator_lease(lease)
+                handle = lease.handle
             plan = StaticOperatorPlan(constraint, matrix, scaling, modes, handle,
                 augmented, key, {"equilibration": equilibration, "nullspace_info": mode_info})
             plan = StaticOperatorPlan(constraint, _immutable_csr(matrix), _immutable_array(scaling),
@@ -578,6 +599,7 @@ class AnalysisSession:
                 self._reduced_mass = None
                 self.factorization_cache.clear()
                 self._static_operator = None
+                self._replace_static_operator_lease(None)
             start = time.perf_counter()
             matrix, info = assemble_mass_matrix(owned)
             plan = StructuralMatrixPlan(_immutable_csr(matrix), dict(info), key, "mass")

@@ -986,15 +986,18 @@ def _stream_cases(n_nodes: int, count: int = 5):
 
 @requires_pypardiso
 @pytest.mark.parametrize("interference", ["none", "shared_slot", "eviction"])
-def test_b_static_stream_refetches_a_stale_handle_bitwise_identically(interference) -> None:
-    """Decision 1: iter_linear_batches re-fetches its handle through the session cache.
+def test_b_static_stream_keeps_its_leased_handle_bitwise_identically(interference) -> None:
+    """iter_linear_batches pins its operator with a lease (design D2).
 
-    A consumer factorization between blocks either refactorizes the stream's
-    shared mtype -2 slot (a SEMIDEFINITE matrix with the same pattern) or
-    evicts it (five other patterns past the 4-slot LRU).  The stream must
-    continue and stay bitwise identical to the undisturbed stream (on
-    d89a7a82b the stale handle was transparently rebuilt; that result was
-    checked bitwise equal to the undisturbed stream as well).
+    A consumer factorization between blocks either targets the stream's
+    mtype -2 slot (a SEMIDEFINITE matrix with the same pattern) or evicts it
+    (five other patterns past the 4-slot LRU).  The stream must continue and
+    stay bitwise identical to the undisturbed stream.  Contract change (owner
+    decision 2026-11-25, D2): on a5beb3f34 the stream re-fetched its stale
+    handle through the session cache (2 extra misses); the leased handle is
+    never stale, so there is no re-fetch, and the same-pattern newcomer takes
+    a new slot (a lease conflict, fresh analysis) instead of refactorizing
+    the stream's slot.
     """
 
     from anyfesolver import AnalysisSession, iter_linear_batches
@@ -1012,7 +1015,10 @@ def test_b_static_stream_refetches_a_stale_handle_bitwise_identically(interferen
                     matrix = session.static_operator_plan().matrix
                     if mode == "shared_slot":
                         other = backend.factorize(matrix * (2.0 + k), MatrixClass.SYMMETRIC_SEMIDEFINITE)
-                        assert other.status == "ok" and other.metadata["pardiso_symbolic_reused"] is True
+                        # Block 0: conflict with the pinned slot (fresh phase 12);
+                        # later blocks reuse the newcomer's own slot (phase 22).
+                        assert other.status == "ok" and other.metadata["pardiso_symbolic_reused"] is (k > 0)
+                        assert other.metadata.get("pardiso_lease_conflict", False) is (k == 0)
                     elif mode == "eviction":
                         for j in range(5):
                             other = sparse.eye(7 + j + 5 * k, format="csr") * (1.0 + j)
@@ -1026,7 +1032,7 @@ def test_b_static_stream_refetches_a_stale_handle_bitwise_identically(interferen
     assert observed.shape == expected.shape and observed.size > 0
     assert observed.tobytes() == expected.tobytes()
     assert diagnostics["factorization_failures"] == 0
-    assert diagnostics["misses"] == (1 if interference == "none" else 3)  # 3 blocks, 2 refetches
+    assert diagnostics["misses"] == 1  # 3 blocks, never re-fetched
 
 
 def test_b_handle_holder_refactorizes_instead_of_solving_a_stale_handle(monkeypatch) -> None:

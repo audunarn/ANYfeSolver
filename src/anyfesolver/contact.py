@@ -49,7 +49,7 @@ from .fracture import (
     state_equivalent_plastic_strain,
     state_rtcl_increment,
 )
-from .linalg import MatrixClass, factorize
+from .linalg import MatrixClass, factorize, lease_from
 from .impact_performance import ImpactTangentReuseController
 from .materials import beam_material_properties, material_symmetry, shell_characteristic_modulus
 from .matrix_assembly import assemble_load_vector, assemble_mass_matrix, assemble_stiffness_matrix
@@ -4000,6 +4000,9 @@ def solve_transient_sphere_impact(
     solve_count = 0
     cached_dt = None
     cached_solver = None
+    # The effective operator is solved across contact iterations, callbacks
+    # and other factorizations: pin it with a lease (closed on refresh/exit).
+    cached_lease = None
     cached_solver_diagnostics: Dict[str, Any] = {}
     status = "completed"
     stop_reason = "completed"
@@ -4044,322 +4047,336 @@ def solve_transient_sphere_impact(
     # post-separation stay fast.
     contact_period_dt = 0.2 * np.sqrt(float(sphere.mass) / max(float(config.penalty_stiffness), 1.0e-30))
     contact_active_last_step = bool(initial_records)
-    for step_index in range(1, len(times)):
-        cancellation_safe_point(
-            cancellation_token,
-            f"sphere_impact.linear.step:{step_index}",
-        )
-        target_time = float(times[step_index])
-        dt_total = float(times[step_index] - times[step_index - 1])
-        if dt_total <= 0.0:
-            continue
-        travel_scale = max(float(sphere.radius) * float(config.max_sphere_travel_fraction), 1.0e-12)
-        predicted_travel = max(float(np.linalg.norm(sphere_velocity)) * dt_total, float(sphere.speed) * dt_total)
-        n_travel = max(int(np.ceil(predicted_travel / travel_scale)), 1)
-        n_contact = int(np.ceil(dt_total / contact_period_dt)) if contact_active_last_step and contact_period_dt > 0.0 else 1
-        n_substeps = min(max(n_travel, n_contact, 1), int(config.max_event_substeps))
-        contact_active_this_step = False
-        total_substep_count += n_substeps
-        if n_substeps > 1:
-            event_substep_count += n_substeps - 1
-        last_records: Tuple[SphereContactRecord, ...] = tuple()
-        last_sphere_force = np.zeros(3, dtype=float)
-        last_step_diag: Dict[str, Any] = {}
-        for substep in range(n_substeps):
+    try:
+        for step_index in range(1, len(times)):
             cancellation_safe_point(
                 cancellation_token,
-                f"sphere_impact.linear.step:{step_index}.substep:{substep + 1}",
+                f"sphere_impact.linear.step:{step_index}",
             )
-            sub_time = float(times[step_index - 1]) + (substep + 1) * dt_total / n_substeps
-            dt = dt_total / n_substeps
-            if sub_time - dt < sphere.t_start <= sub_time and np.linalg.norm(sphere_velocity) == 0.0:
-                sphere_velocity = sphere.travel_velocity.copy()
-            a0 = 1.0 / (beta * dt**2)
-            a1 = gamma / (beta * dt)
-            a2 = 1.0 / (beta * dt)
-            a3 = 1.0 / (2.0 * beta) - 1.0
-            a4 = gamma / beta - 1.0
-            a5 = dt * (gamma / (2.0 * beta) - 1.0)
-            if cached_solver is None or cached_dt is None or not np.isclose(dt, cached_dt):
-                K_eff = (one_plus_alpha * K_red + a0 * M_red + one_plus_alpha * a1 * C_red).tocsr()
-                cached_solver = factorize(K_eff, MatrixClass.SYMMETRIC_INDEFINITE, signature=f"sphere_impact.effective:{dt:.16g}")
-                cached_solver_diagnostics = cached_solver.diagnostics()
-                cached_dt = dt
-                factorization_count += 1
-
-            sphere_x_pred = sphere_position + dt * sphere_velocity + dt**2 * (0.5 - beta) * sphere_acceleration
-            sphere_v_pred = sphere_velocity + dt * (1.0 - gamma) * sphere_acceleration
-            contact_load = np.zeros(total_dofs, dtype=float)
-            sphere_force = np.zeros(3, dtype=float)
-            records: Tuple[SphereContactRecord, ...] = tuple()
-            converged = False
-            q_next = q_red.copy()
-            v_next = v_red.copy()
-            a_next = a_red.copy()
-            sphere_x_next = sphere_x_pred.copy()
-            sphere_v_next = sphere_v_pred.copy()
-            sphere_a_next = np.zeros(3, dtype=float)
-            force_change = 0.0
-            penetration_change = 0.0
-            use_aitken = str(config.contact_relaxation) == "aitken"
-            relaxation = 1.0
-            fixed_point_residual_prev: Optional[np.ndarray] = None
-            for iteration in range(1, int(config.max_contact_iterations) + 1):
+            target_time = float(times[step_index])
+            dt_total = float(times[step_index] - times[step_index - 1])
+            if dt_total <= 0.0:
+                continue
+            travel_scale = max(float(sphere.radius) * float(config.max_sphere_travel_fraction), 1.0e-12)
+            predicted_travel = max(float(np.linalg.norm(sphere_velocity)) * dt_total, float(sphere.speed) * dt_total)
+            n_travel = max(int(np.ceil(predicted_travel / travel_scale)), 1)
+            n_contact = int(np.ceil(dt_total / contact_period_dt)) if contact_active_last_step and contact_period_dt > 0.0 else 1
+            n_substeps = min(max(n_travel, n_contact, 1), int(config.max_event_substeps))
+            contact_active_this_step = False
+            total_substep_count += n_substeps
+            if n_substeps > 1:
+                event_substep_count += n_substeps - 1
+            last_records: Tuple[SphereContactRecord, ...] = tuple()
+            last_sphere_force = np.zeros(3, dtype=float)
+            last_step_diag: Dict[str, Any] = {}
+            for substep in range(n_substeps):
                 cancellation_safe_point(
                     cancellation_token,
-                    f"sphere_impact.linear.step:{step_index}.substep:{substep + 1}.iteration:{iteration}",
+                    f"sphere_impact.linear.step:{step_index}.substep:{substep + 1}",
                 )
-                load_next = base_load + contact_load
-                F_red = _reduced_load(T, K, u0, load_next)
-                rhs = (
-                    one_plus_alpha * F_red
-                    - alpha_h * F_red_prev
-                    + M_red @ (a0 * q_red + a2 * v_red + a3 * a_red)
-                    + one_plus_alpha * (C_red @ (a1 * q_red + a4 * v_red + a5 * a_red))
-                )
-                if alpha_h != 0.0:
-                    rhs += alpha_h * (K_red @ q_red) + alpha_h * (C_red @ v_red)
-                q_next = np.asarray(cached_solver.solve(rhs), dtype=float).reshape(-1)
-                solve_count += 1
-                a_next = a0 * (q_next - q_red) - a2 * v_red - a3 * a_red
-                v_next = v_red + dt * ((1.0 - gamma) * a_red + gamma * a_next)
-                sphere_a_next = sphere_force / float(sphere.mass)
-                sphere_x_next = sphere_x_pred + beta * dt**2 * sphere_a_next
-                sphere_v_next = sphere_v_pred + gamma * dt * sphere_a_next
-                full_u = reconstruct_full_solution(T, q_next, u0)
-                full_v = np.asarray(T @ v_next, dtype=float).reshape(-1)
-                # Linear impact fracture and capacity damage consume public
-                # records below.  Keep eager materialization on this path;
-                # only the nonlinear state-driven loop uses lazy records.
-                new_contact_load, new_sphere_force, new_records = assemble_sphere_contact_load_vector(
-                    model,
-                    sphere,
-                    config,
-                    sphere_x_next,
-                    sphere_v_next,
-                    structural_displacement=full_u,
-                    structural_velocity=full_v,
-                    deleted_element_ids=tuple(deleted_element_ids),
-                    contact_scale_by_element=damage_scale_by_element,
-                    preferred_element_ids=sticky_contact_ids,
-                )
-                if new_records:
-                    sticky_contact_ids = tuple(int(record.element_id) for record in new_records)
-                force_change = float(np.linalg.norm(new_sphere_force - sphere_force))
-                penetration_change = abs(
-                    (max((record.penetration for record in new_records), default=0.0))
-                    - (max((record.penetration for record in records), default=0.0))
-                )
-                scale = max(float(np.linalg.norm(new_sphere_force)), 1.0)
-                fixed_point_residual = new_sphere_force - sphere_force
-                if use_aitken and fixed_point_residual_prev is not None:
-                    residual_difference = fixed_point_residual - fixed_point_residual_prev
-                    denominator = float(residual_difference @ residual_difference)
-                    if denominator > 1.0e-30:
-                        relaxation = -relaxation * float(fixed_point_residual_prev @ residual_difference) / denominator
-                        relaxation = float(min(max(relaxation, 1.0e-4), 1.5))
+                sub_time = float(times[step_index - 1]) + (substep + 1) * dt_total / n_substeps
+                dt = dt_total / n_substeps
+                if sub_time - dt < sphere.t_start <= sub_time and np.linalg.norm(sphere_velocity) == 0.0:
+                    sphere_velocity = sphere.travel_velocity.copy()
+                a0 = 1.0 / (beta * dt**2)
+                a1 = gamma / (beta * dt)
+                a2 = 1.0 / (beta * dt)
+                a3 = 1.0 / (2.0 * beta) - 1.0
+                a4 = gamma / beta - 1.0
+                a5 = dt * (gamma / (2.0 * beta) - 1.0)
+                if cached_solver is None or cached_dt is None or not np.isclose(dt, cached_dt):
+                    K_eff = (one_plus_alpha * K_red + a0 * M_red + one_plus_alpha * a1 * C_red).tocsr()
+                    if cached_lease is not None:
+                        cached_lease.close()
+                        cached_lease = None
+                    cached_lease = lease_from(factorize, K_eff, MatrixClass.SYMMETRIC_INDEFINITE, signature=f"sphere_impact.effective:{dt:.16g}")
+                    cached_solver = cached_lease.handle
+                    cached_solver_diagnostics = cached_solver.diagnostics()
+                    cached_dt = dt
+                    factorization_count += 1
+
+                sphere_x_pred = sphere_position + dt * sphere_velocity + dt**2 * (0.5 - beta) * sphere_acceleration
+                sphere_v_pred = sphere_velocity + dt * (1.0 - gamma) * sphere_acceleration
+                contact_load = np.zeros(total_dofs, dtype=float)
+                sphere_force = np.zeros(3, dtype=float)
+                records: Tuple[SphereContactRecord, ...] = tuple()
+                converged = False
+                q_next = q_red.copy()
+                v_next = v_red.copy()
+                a_next = a_red.copy()
+                sphere_x_next = sphere_x_pred.copy()
+                sphere_v_next = sphere_v_pred.copy()
+                sphere_a_next = np.zeros(3, dtype=float)
+                force_change = 0.0
+                penetration_change = 0.0
+                use_aitken = str(config.contact_relaxation) == "aitken"
+                relaxation = 1.0
+                fixed_point_residual_prev: Optional[np.ndarray] = None
+                for iteration in range(1, int(config.max_contact_iterations) + 1):
+                    cancellation_safe_point(
+                        cancellation_token,
+                        f"sphere_impact.linear.step:{step_index}.substep:{substep + 1}.iteration:{iteration}",
+                    )
+                    load_next = base_load + contact_load
+                    F_red = _reduced_load(T, K, u0, load_next)
+                    rhs = (
+                        one_plus_alpha * F_red
+                        - alpha_h * F_red_prev
+                        + M_red @ (a0 * q_red + a2 * v_red + a3 * a_red)
+                        + one_plus_alpha * (C_red @ (a1 * q_red + a4 * v_red + a5 * a_red))
+                    )
+                    if alpha_h != 0.0:
+                        rhs += alpha_h * (K_red @ q_red) + alpha_h * (C_red @ v_red)
+                    q_next = np.asarray(cached_solver.solve(rhs), dtype=float).reshape(-1)
+                    solve_count += 1
+                    a_next = a0 * (q_next - q_red) - a2 * v_red - a3 * a_red
+                    v_next = v_red + dt * ((1.0 - gamma) * a_red + gamma * a_next)
+                    sphere_a_next = sphere_force / float(sphere.mass)
+                    sphere_x_next = sphere_x_pred + beta * dt**2 * sphere_a_next
+                    sphere_v_next = sphere_v_pred + gamma * dt * sphere_a_next
+                    full_u = reconstruct_full_solution(T, q_next, u0)
+                    full_v = np.asarray(T @ v_next, dtype=float).reshape(-1)
+                    # Linear impact fracture and capacity damage consume public
+                    # records below.  Keep eager materialization on this path;
+                    # only the nonlinear state-driven loop uses lazy records.
+                    new_contact_load, new_sphere_force, new_records = assemble_sphere_contact_load_vector(
+                        model,
+                        sphere,
+                        config,
+                        sphere_x_next,
+                        sphere_v_next,
+                        structural_displacement=full_u,
+                        structural_velocity=full_v,
+                        deleted_element_ids=tuple(deleted_element_ids),
+                        contact_scale_by_element=damage_scale_by_element,
+                        preferred_element_ids=sticky_contact_ids,
+                    )
+                    if new_records:
+                        sticky_contact_ids = tuple(int(record.element_id) for record in new_records)
+                    force_change = float(np.linalg.norm(new_sphere_force - sphere_force))
+                    penetration_change = abs(
+                        (max((record.penetration for record in new_records), default=0.0))
+                        - (max((record.penetration for record in records), default=0.0))
+                    )
+                    scale = max(float(np.linalg.norm(new_sphere_force)), 1.0)
+                    fixed_point_residual = new_sphere_force - sphere_force
+                    if use_aitken and fixed_point_residual_prev is not None:
+                        residual_difference = fixed_point_residual - fixed_point_residual_prev
+                        denominator = float(residual_difference @ residual_difference)
+                        if denominator > 1.0e-30:
+                            relaxation = -relaxation * float(fixed_point_residual_prev @ residual_difference) / denominator
+                            relaxation = float(min(max(relaxation, 1.0e-4), 1.5))
+                        else:
+                            relaxation = 1.0
+                    fixed_point_residual_prev = fixed_point_residual.copy()
+                    if use_aitken and relaxation != 1.0:
+                        contact_load = contact_load + relaxation * (new_contact_load - contact_load)
+                        sphere_force = sphere_force + relaxation * (new_sphere_force - sphere_force)
+                        records = new_records
                     else:
-                        relaxation = 1.0
-                fixed_point_residual_prev = fixed_point_residual.copy()
-                if use_aitken and relaxation != 1.0:
-                    contact_load = contact_load + relaxation * (new_contact_load - contact_load)
-                    sphere_force = sphere_force + relaxation * (new_sphere_force - sphere_force)
-                    records = new_records
-                else:
-                    contact_load, sphere_force, records = new_contact_load, new_sphere_force, new_records
-                if force_change <= config.force_tolerance * scale and penetration_change <= config.penetration_tolerance:
-                    converged = True
-                    iteration_counts.append(iteration)
-                    break
-            if not converged:
-                status = "contact_iteration_failed"
-                stop_reason = "contact_iteration_failed"
-                iteration_counts.append(int(config.max_contact_iterations))
+                        contact_load, sphere_force, records = new_contact_load, new_sphere_force, new_records
+                    if force_change <= config.force_tolerance * scale and penetration_change <= config.penetration_tolerance:
+                        converged = True
+                        iteration_counts.append(iteration)
+                        break
+                if not converged:
+                    status = "contact_iteration_failed"
+                    stop_reason = "contact_iteration_failed"
+                    iteration_counts.append(int(config.max_contact_iterations))
 
-            contact_norm = float(np.linalg.norm(sphere_force))
-            if contact_norm > 0.0:
-                contact_step_count += 1
-                active_contact_duration += dt
-                separation_elapsed = 0.0
-                contact_active_this_step = True
-            elif contact_step_count > 0 and separation_stop_time > 0.0:
-                separation_elapsed += dt
-            if records:
-                max_penetration = max(max_penetration, max(float(record.penetration) for record in records))
-                peak_contact_force = max(peak_contact_force, max(float(record.normal_force) for record in records))
-            load_next = base_load + contact_load
-            impulse += 0.5 * (load_prev + load_next) * dt
-            sphere_impulse += 0.5 * (sphere_force_prev + sphere_force) * dt
-            load_prev = load_next
-            F_red_prev = F_red
-            sphere_force_prev = sphere_force.copy()
-            q_red, v_red, a_red = q_next, v_next, a_next
-            sphere_position, sphere_velocity, sphere_acceleration = sphere_x_next, sphere_v_next, sphere_a_next
-            last_records = records
-            last_sphere_force = sphere_force.copy()
-            last_step_diag = {
-                "step_index": int(step_index),
-                "substep_index": int(substep),
-                "time": float(sub_time),
-                "contact_iterations": int(iteration_counts[-1]),
-                "contact_relaxation_factor": float(relaxation),
-                "force_change_norm": float(force_change),
-                "penetration_change": float(penetration_change),
-                "active_element_ids": [int(record.element_id) for record in records],
-                "max_penetration": float(max((record.penetration for record in records), default=0.0)),
-                "status": "converged" if converged else "contact_iteration_failed",
-            }
-            if fracture_config is not None and records and status != "contact_iteration_failed":
-                new_fracture_records, substep_utilization = _detect_impact_fracture_records(
-                    model,
-                    records,
-                    fracture_config,
-                    sphere,
-                    tuple(deleted_element_ids),
-                    step_index=int(step_index),
-                    time_value=float(sub_time),
-                )
-                max_fracture_utilization = max(max_fracture_utilization, substep_utilization)
-                if new_fracture_records:
-                    fracture_records.extend(new_fracture_records)
-                    deleted_element_ids.update(record.element_id for record in new_fracture_records)
-                    fracture_deleted_element_ids.update(record.element_id for record in new_fracture_records)
-                    filtered_base = filtered_load_case_for_deleted_elements(base_load_case, deleted_element_ids)
-                    base_load, base_load_info = assemble_load_vector(model, filtered_base)
-                    fracture_scales = {int(element_id): float(scale) for element_id, scale in damage_scale_by_element.items()}
-                    for element_id in deleted_element_ids:
-                        fracture_scales[int(element_id)] = min(
-                            fracture_scales.get(int(element_id), 1.0),
-                            float(fracture_config.residual_stiffness_fraction),
-                        )
-                    K, M, linear_matrix_terms, damage_matrix_plan = (
-                        _assemble_damaged_linear_matrices_with_gate(
-                            model,
-                            fracture_scales,
-                            damage_matrix_gate,
-                            opportunity_index=int(step_index),
-                            cached_terms=linear_matrix_terms,
-                            plan=damage_matrix_plan,
-                        )
+                contact_norm = float(np.linalg.norm(sphere_force))
+                if contact_norm > 0.0:
+                    contact_step_count += 1
+                    active_contact_duration += dt
+                    separation_elapsed = 0.0
+                    contact_active_this_step = True
+                elif contact_step_count > 0 and separation_stop_time > 0.0:
+                    separation_elapsed += dt
+                if records:
+                    max_penetration = max(max_penetration, max(float(record.penetration) for record in records))
+                    peak_contact_force = max(peak_contact_force, max(float(record.normal_force) for record in records))
+                load_next = base_load + contact_load
+                impulse += 0.5 * (load_prev + load_next) * dt
+                sphere_impulse += 0.5 * (sphere_force_prev + sphere_force) * dt
+                load_prev = load_next
+                F_red_prev = F_red
+                sphere_force_prev = sphere_force.copy()
+                q_red, v_red, a_red = q_next, v_next, a_next
+                sphere_position, sphere_velocity, sphere_acceleration = sphere_x_next, sphere_v_next, sphere_a_next
+                last_records = records
+                last_sphere_force = sphere_force.copy()
+                last_step_diag = {
+                    "step_index": int(step_index),
+                    "substep_index": int(substep),
+                    "time": float(sub_time),
+                    "contact_iterations": int(iteration_counts[-1]),
+                    "contact_relaxation_factor": float(relaxation),
+                    "force_change_norm": float(force_change),
+                    "penetration_change": float(penetration_change),
+                    "active_element_ids": [int(record.element_id) for record in records],
+                    "max_penetration": float(max((record.penetration for record in records), default=0.0)),
+                    "status": "converged" if converged else "contact_iteration_failed",
+                }
+                if fracture_config is not None and records and status != "contact_iteration_failed":
+                    new_fracture_records, substep_utilization = _detect_impact_fracture_records(
+                        model,
+                        records,
+                        fracture_config,
+                        sphere,
+                        tuple(deleted_element_ids),
+                        step_index=int(step_index),
+                        time_value=float(sub_time),
                     )
-                    eroded_matrix_rebuild_count += 1
-                    K_red = (T.T @ K @ T).tocsr()
-                    M_red = (T.T @ M @ T).tocsr()
-                    C_red = (transient_config.rayleigh_alpha * M_red + transient_config.rayleigh_beta * K_red).tocsr()
-                    cached_solver = None
-                    cached_dt = None
-                    mass_handle = factorize(
-                        M_red,
-                        MatrixClass.SYMMETRIC_SEMIDEFINITE,
-                        signature=f"sphere_impact.fracture_mass:{len(deleted_element_ids)}",
-                    )
-                    current_red_load = _reduced_load(T, K, u0, base_load + contact_load)
-                    F_red_prev = current_red_load
-                    a_red = np.asarray(mass_handle.solve(current_red_load - C_red @ v_red - K_red @ q_red), dtype=float).reshape(-1)
-                    scoped_total = _contact_erodible_element_count(model)
-                    deleted_fraction = len(deleted_element_ids) / max(scoped_total, 1)
-                    last_step_diag["fracture_new_deleted_element_ids"] = [record.element_id for record in new_fracture_records]
-                    last_step_diag["fracture_deleted_fraction"] = float(deleted_fraction)
-                    last_step_diag["fracture_max_utilization"] = float(max_fracture_utilization)
-                    if deleted_fraction > fracture_config.max_deleted_fraction + 1.0e-12:
-                        status = "max_deleted_fraction_reached"
-                        stop_reason = "impact_fracture_max_deleted_fraction_reached"
-                        if not fracture_limit_warning_emitted:
-                            warnings.append("IMPACT_FRACTURE002: maximum deleted contact-target fraction reached; transient stopped at last eroded state.")
-                            fracture_limit_warning_emitted = True
-            if damage_config is not None and records and status not in {"contact_iteration_failed", "max_deleted_fraction_reached"}:
-                new_damage_deletions, substep_damage_utilization, damage_diags, damage_changed = _update_impact_damage_states(
-                    model,
-                    records,
-                    damage_config,
-                    sphere,
-                    impact_damage_states,
-                    tuple(deleted_element_ids),
-                    step_index=int(step_index),
-                    time_value=float(sub_time),
-                    dt=float(dt),
-                )
-                max_damage_utilization = max(max_damage_utilization, substep_damage_utilization)
-                if damage_diags:
-                    damage_state_update_count += len(damage_diags)
-                if damage_diags:
-                    last_step_diag["impact_damage"] = list(damage_diags)
-                    last_step_diag["impact_damage_max_utilization"] = float(max_damage_utilization)
-                if new_damage_deletions:
-                    damage_records.extend(new_damage_deletions)
-                    deleted_element_ids.update(record.element_id for record in new_damage_deletions)
-                    damage_deleted_element_ids.update(record.element_id for record in new_damage_deletions)
-                    for deleted_id in deleted_element_ids:
-                        state = impact_damage_states.setdefault(int(deleted_id), {})
-                        state["damage"] = max(float(state.get("damage", 0.0)), float(damage_config.delete_at))
-                        state["scale"] = float(damage_config.residual_stiffness_fraction)
-                    last_step_diag["impact_damage_new_deleted_element_ids"] = [record.element_id for record in new_damage_deletions]
-                    if not damage_deletion_warning_emitted:
-                        warnings.append("IMPACT_DAMAGE002: one or more shell elements were eroded by impact damage.")
-                        damage_deletion_warning_emitted = True
-                    damage_changed = True
-                if damage_changed:
-                    damage_scale_by_element = {
-                        int(element_id): _impact_damage_scale(float(state.get("damage", 0.0)), damage_config)
-                        for element_id, state in impact_damage_states.items()
-                    }
-                    for element_id in deleted_element_ids:
-                        damage_scale_by_element[int(element_id)] = min(
-                            damage_scale_by_element.get(int(element_id), 1.0),
-                            float(damage_config.residual_stiffness_fraction),
-                        )
-                    filtered_base = filtered_load_case_for_deleted_elements(base_load_case, deleted_element_ids)
-                    base_load, base_load_info = assemble_load_vector(model, filtered_base)
-                    K, M, linear_matrix_terms, damage_matrix_plan = (
-                        _assemble_damaged_linear_matrices_with_gate(
-                            model,
-                            damage_scale_by_element,
-                            damage_matrix_gate,
-                            opportunity_index=int(step_index),
-                            cached_terms=linear_matrix_terms,
-                            plan=damage_matrix_plan,
-                        )
-                    )
-                    eroded_matrix_rebuild_count += 1
-                    K_red = (T.T @ K @ T).tocsr()
-                    M_red = (T.T @ M @ T).tocsr()
-                    C_red = (transient_config.rayleigh_alpha * M_red + transient_config.rayleigh_beta * K_red).tocsr()
-                    cached_solver = None
-                    cached_dt = None
-                    mass_handle = factorize(
-                        M_red,
-                        MatrixClass.SYMMETRIC_SEMIDEFINITE,
-                        signature=f"sphere_impact.damage_mass:{len(damage_scale_by_element)}:{len(deleted_element_ids)}",
-                    )
-                    current_red_load = _reduced_load(T, K, u0, base_load + contact_load)
-                    F_red_prev = current_red_load
-                    a_red = np.asarray(mass_handle.solve(current_red_load - C_red @ v_red - K_red @ q_red), dtype=float).reshape(-1)
-                    scoped_total = sum(1 for element in model.mesh.elements.values() if element_fracture_category(element) == "shell")
-                    deleted_fraction = len(deleted_element_ids) / max(scoped_total, 1)
-                    last_step_diag["impact_damage_deleted_fraction"] = float(deleted_fraction)
-                    if deleted_fraction > float(damage_config.max_deleted_fraction) + 1.0e-12:
-                        status = "max_deleted_fraction_reached"
-                        stop_reason = "impact_damage_max_deleted_fraction_reached"
-                        if not damage_limit_warning_emitted:
-                            warnings.append(
-                                "IMPACT_DAMAGE003: maximum configured shell damage deletion fraction reached; "
-                                "transient stopped at last eroded state."
+                    max_fracture_utilization = max(max_fracture_utilization, substep_utilization)
+                    if new_fracture_records:
+                        fracture_records.extend(new_fracture_records)
+                        deleted_element_ids.update(record.element_id for record in new_fracture_records)
+                        fracture_deleted_element_ids.update(record.element_id for record in new_fracture_records)
+                        filtered_base = filtered_load_case_for_deleted_elements(base_load_case, deleted_element_ids)
+                        base_load, base_load_info = assemble_load_vector(model, filtered_base)
+                        fracture_scales = {int(element_id): float(scale) for element_id, scale in damage_scale_by_element.items()}
+                        for element_id in deleted_element_ids:
+                            fracture_scales[int(element_id)] = min(
+                                fracture_scales.get(int(element_id), 1.0),
+                                float(fracture_config.residual_stiffness_fraction),
                             )
-                            damage_limit_warning_emitted = True
-            step_diagnostics.append(last_step_diag)
-            if status in {"contact_iteration_failed", "max_deleted_fraction_reached"}:
-                break
-            if status == "completed" and contact_step_count > 0 and separation_stop_time > 0.0 and separation_elapsed >= separation_stop_time:
-                stop_reason = "completed_after_contact_separation"
-                stop_after_separation = True
-                break
+                        K, M, linear_matrix_terms, damage_matrix_plan = (
+                            _assemble_damaged_linear_matrices_with_gate(
+                                model,
+                                fracture_scales,
+                                damage_matrix_gate,
+                                opportunity_index=int(step_index),
+                                cached_terms=linear_matrix_terms,
+                                plan=damage_matrix_plan,
+                            )
+                        )
+                        eroded_matrix_rebuild_count += 1
+                        K_red = (T.T @ K @ T).tocsr()
+                        M_red = (T.T @ M @ T).tocsr()
+                        C_red = (transient_config.rayleigh_alpha * M_red + transient_config.rayleigh_beta * K_red).tocsr()
+                        cached_solver = None
+                        if cached_lease is not None:
+                            cached_lease.close()
+                            cached_lease = None
+                        cached_dt = None
+                        mass_handle = factorize(
+                            M_red,
+                            MatrixClass.SYMMETRIC_SEMIDEFINITE,
+                            signature=f"sphere_impact.fracture_mass:{len(deleted_element_ids)}",
+                        )
+                        current_red_load = _reduced_load(T, K, u0, base_load + contact_load)
+                        F_red_prev = current_red_load
+                        a_red = np.asarray(mass_handle.solve(current_red_load - C_red @ v_red - K_red @ q_red), dtype=float).reshape(-1)
+                        scoped_total = _contact_erodible_element_count(model)
+                        deleted_fraction = len(deleted_element_ids) / max(scoped_total, 1)
+                        last_step_diag["fracture_new_deleted_element_ids"] = [record.element_id for record in new_fracture_records]
+                        last_step_diag["fracture_deleted_fraction"] = float(deleted_fraction)
+                        last_step_diag["fracture_max_utilization"] = float(max_fracture_utilization)
+                        if deleted_fraction > fracture_config.max_deleted_fraction + 1.0e-12:
+                            status = "max_deleted_fraction_reached"
+                            stop_reason = "impact_fracture_max_deleted_fraction_reached"
+                            if not fracture_limit_warning_emitted:
+                                warnings.append("IMPACT_FRACTURE002: maximum deleted contact-target fraction reached; transient stopped at last eroded state.")
+                                fracture_limit_warning_emitted = True
+                if damage_config is not None and records and status not in {"contact_iteration_failed", "max_deleted_fraction_reached"}:
+                    new_damage_deletions, substep_damage_utilization, damage_diags, damage_changed = _update_impact_damage_states(
+                        model,
+                        records,
+                        damage_config,
+                        sphere,
+                        impact_damage_states,
+                        tuple(deleted_element_ids),
+                        step_index=int(step_index),
+                        time_value=float(sub_time),
+                        dt=float(dt),
+                    )
+                    max_damage_utilization = max(max_damage_utilization, substep_damage_utilization)
+                    if damage_diags:
+                        damage_state_update_count += len(damage_diags)
+                    if damage_diags:
+                        last_step_diag["impact_damage"] = list(damage_diags)
+                        last_step_diag["impact_damage_max_utilization"] = float(max_damage_utilization)
+                    if new_damage_deletions:
+                        damage_records.extend(new_damage_deletions)
+                        deleted_element_ids.update(record.element_id for record in new_damage_deletions)
+                        damage_deleted_element_ids.update(record.element_id for record in new_damage_deletions)
+                        for deleted_id in deleted_element_ids:
+                            state = impact_damage_states.setdefault(int(deleted_id), {})
+                            state["damage"] = max(float(state.get("damage", 0.0)), float(damage_config.delete_at))
+                            state["scale"] = float(damage_config.residual_stiffness_fraction)
+                        last_step_diag["impact_damage_new_deleted_element_ids"] = [record.element_id for record in new_damage_deletions]
+                        if not damage_deletion_warning_emitted:
+                            warnings.append("IMPACT_DAMAGE002: one or more shell elements were eroded by impact damage.")
+                            damage_deletion_warning_emitted = True
+                        damage_changed = True
+                    if damage_changed:
+                        damage_scale_by_element = {
+                            int(element_id): _impact_damage_scale(float(state.get("damage", 0.0)), damage_config)
+                            for element_id, state in impact_damage_states.items()
+                        }
+                        for element_id in deleted_element_ids:
+                            damage_scale_by_element[int(element_id)] = min(
+                                damage_scale_by_element.get(int(element_id), 1.0),
+                                float(damage_config.residual_stiffness_fraction),
+                            )
+                        filtered_base = filtered_load_case_for_deleted_elements(base_load_case, deleted_element_ids)
+                        base_load, base_load_info = assemble_load_vector(model, filtered_base)
+                        K, M, linear_matrix_terms, damage_matrix_plan = (
+                            _assemble_damaged_linear_matrices_with_gate(
+                                model,
+                                damage_scale_by_element,
+                                damage_matrix_gate,
+                                opportunity_index=int(step_index),
+                                cached_terms=linear_matrix_terms,
+                                plan=damage_matrix_plan,
+                            )
+                        )
+                        eroded_matrix_rebuild_count += 1
+                        K_red = (T.T @ K @ T).tocsr()
+                        M_red = (T.T @ M @ T).tocsr()
+                        C_red = (transient_config.rayleigh_alpha * M_red + transient_config.rayleigh_beta * K_red).tocsr()
+                        cached_solver = None
+                        if cached_lease is not None:
+                            cached_lease.close()
+                            cached_lease = None
+                        cached_dt = None
+                        mass_handle = factorize(
+                            M_red,
+                            MatrixClass.SYMMETRIC_SEMIDEFINITE,
+                            signature=f"sphere_impact.damage_mass:{len(damage_scale_by_element)}:{len(deleted_element_ids)}",
+                        )
+                        current_red_load = _reduced_load(T, K, u0, base_load + contact_load)
+                        F_red_prev = current_red_load
+                        a_red = np.asarray(mass_handle.solve(current_red_load - C_red @ v_red - K_red @ q_red), dtype=float).reshape(-1)
+                        scoped_total = sum(1 for element in model.mesh.elements.values() if element_fracture_category(element) == "shell")
+                        deleted_fraction = len(deleted_element_ids) / max(scoped_total, 1)
+                        last_step_diag["impact_damage_deleted_fraction"] = float(deleted_fraction)
+                        if deleted_fraction > float(damage_config.max_deleted_fraction) + 1.0e-12:
+                            status = "max_deleted_fraction_reached"
+                            stop_reason = "impact_damage_max_deleted_fraction_reached"
+                            if not damage_limit_warning_emitted:
+                                warnings.append(
+                                    "IMPACT_DAMAGE003: maximum configured shell damage deletion fraction reached; "
+                                    "transient stopped at last eroded state."
+                                )
+                                damage_limit_warning_emitted = True
+                step_diagnostics.append(last_step_diag)
+                if status in {"contact_iteration_failed", "max_deleted_fraction_reached"}:
+                    break
+                if status == "completed" and contact_step_count > 0 and separation_stop_time > 0.0 and separation_elapsed >= separation_stop_time:
+                    stop_reason = "completed_after_contact_separation"
+                    stop_after_separation = True
+                    break
 
-        contact_active_last_step = contact_active_this_step
-        save_time = float(last_step_diag.get("time", target_time)) if last_step_diag else target_time
-        if step_index % int(transient_config.save_every) == 0 or step_index == len(times) - 1 or stop_after_separation:
-            save_state(save_time, q_red, v_red, a_red, sphere_position, sphere_velocity, sphere_acceleration, last_sphere_force, last_records)
-        if status in {"contact_iteration_failed", "max_deleted_fraction_reached"} or stop_after_separation:
-            break
+            contact_active_last_step = contact_active_this_step
+            save_time = float(last_step_diag.get("time", target_time)) if last_step_diag else target_time
+            if step_index % int(transient_config.save_every) == 0 or step_index == len(times) - 1 or stop_after_separation:
+                save_state(save_time, q_red, v_red, a_red, sphere_position, sphere_velocity, sphere_acceleration, last_sphere_force, last_records)
+            if status in {"contact_iteration_failed", "max_deleted_fraction_reached"} or stop_after_separation:
+                break
+    finally:
+        if cached_lease is not None:
+            cached_lease.close()
 
     if contact_step_count == 0 and status == "completed":
         status = "no_contact"

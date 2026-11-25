@@ -260,7 +260,7 @@ def iter_linear_batches(
         _qualified_recovery_runtime_lease_scope)
     from .threading_policy import solver_thread_scope
     from .jit_compiler import numba_thread_scope
-    from .linalg import backend_operation_counts, factorization_is_stale
+    from .linalg import backend_operation_counts, lease_handle
 
     if type(batch_size) is not int or batch_size <= 0:
         raise ValueError("batch_size must be a positive integer")
@@ -282,6 +282,7 @@ def iter_linear_batches(
     active = AnalysisSession(model) if owned_session else session
     iterator = None
     primary_failure = None
+    operator_lease = None
     try:
         active._require_model(model)
         recovery = RecoveryConfig(include_displacements=False, include_stresses=False,
@@ -394,6 +395,11 @@ def iter_linear_batches(
         output = active.output_selection_plan(dofs, constraint)
         if operator.handle is not None and operator.handle.status != "ok":
             raise StaticBatchError("static factorization failed", diagnostics=operator.handle.diagnostics())
+        if operator.handle is not None:
+            # Pin the operator's factorization for the stream lifetime: work
+            # between blocks (consumer code, other factorizations, released
+            # pattern slots) can never make it stale or change its backend.
+            operator_lease = lease_handle(operator.handle)
         prepare_seconds = _time.perf_counter() - prepare_start
         pending_first = True
         next_index = 0
@@ -535,20 +541,6 @@ def iter_linear_batches(
             phases["load_reduction_and_compatibility"] = _time.perf_counter() - phase_start
             phase_start = _time.perf_counter()
             cancellation_safe_point(cancellation_token, "static_batch.before_solve")
-            if operator.handle is not None and factorization_is_stale(operator.handle):
-                # Work between blocks replaced this PARDISO factorization (its
-                # pattern slot was refactorized, evicted or released). Stale
-                # handles are never rebuilt: re-fetch through the session
-                # cache, where the stale entry is a miss and is refactorized.
-                with solver_thread_scope(resource_config):
-                    refreshed = active.static_operator_plan(constraint_mode=constraint_mode, model=model)
-                unchanged("operator refresh")
-                if refreshed.key != operator.key or refreshed.constraint is not constraint:
-                    raise StaticBatchError("static operator changed during static stream",
-                        diagnostics={"stage": "operator refresh"})
-                if refreshed.handle is not None and refreshed.handle.status != "ok":
-                    raise StaticBatchError("static factorization failed", diagnostics=refreshed.handle.diagnostics())
-                operator = refreshed
             try:
                 with solver_thread_scope(resource_config):
                     solved = np.zeros_like(solve_rhs) if operator.handle is None else (
@@ -730,10 +722,20 @@ def iter_linear_batches(
                         raise
                     BaseException.add_note(primary_failure, "source iterator cleanup failed: " + repr(cleanup_error))
         finally:
-            if owned_session:
-                try:
-                    active.close()
-                except BaseException as cleanup_error:
-                    if primary_failure is None:
-                        raise
-                    BaseException.add_note(primary_failure, "analysis session cleanup failed: " + repr(cleanup_error))
+            try:
+                if operator_lease is not None:
+                    try:
+                        operator_lease.close()
+                    except BaseException as cleanup_error:
+                        if primary_failure is None:
+                            primary_failure = cleanup_error
+                            raise
+                        BaseException.add_note(primary_failure, "operator lease cleanup failed: " + repr(cleanup_error))
+            finally:
+                if owned_session:
+                    try:
+                        active.close()
+                    except BaseException as cleanup_error:
+                        if primary_failure is None:
+                            raise
+                        BaseException.add_note(primary_failure, "analysis session cleanup failed: " + repr(cleanup_error))
