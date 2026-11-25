@@ -268,3 +268,46 @@ def test_scipy_info_key_reported():
     A = sparse.diags([-1.0, 2.5, -1.0], [-1, 0, 1], shape=(10, 10), format="csr")
     _, info = _solve_reduced_system(A, np.ones(10), "gmres")
     assert info["scipy_info"] == 0 and info["iterations"] == info["scipy_info"]
+
+
+# Review round 2 (Codex): compare norms in one common scale; report the applicable limit.
+def _verify(K, F, q, info=0, rtol=1.0e-8, atol=0.0):
+    from anyfesolver.assembly import _verify_iterative_residual
+
+    return _verify_iterative_residual(sparse.csr_matrix(K), np.asarray(F), np.asarray(q), info, rtol, atol)[1]
+
+
+def test_subnormal_residual_is_not_rounded_into_acceptance():
+    u = np.nextafter(0.0, 1.0)  # smallest subnormal
+    F = np.array([1.2e8 * u, 0.0])
+    q = np.array([1.2e8 * u - u, -u])  # K = I: residual (-u, -u), true r/|F| = sqrt(2)/1.2e8 = 1.18e-8 > rtol
+    out = _verify(np.eye(2), F, q)
+    assert out["relative_residual_disposition"] == "RESIDUAL_LIMIT_EXCEEDED"
+    assert out["relative_residual"] > 1.0e-8
+
+
+def test_near_overflow_rhs_with_exact_iterate_is_verified():
+    F = np.array([1.4e308, 1.4e308])
+    out = _verify(np.eye(2), F, F.copy())
+    assert out["relative_residual_disposition"] == "RESIDUAL_VERIFIED"
+    assert out["relative_residual"] == 0.0
+
+
+def test_failed_check_reports_the_applicable_atol_threshold():
+    F = np.array([2.0e-12])
+    out = _verify(np.eye(1), F, np.array([0.0]), atol=1.0e-12)  # r = 2e-12 > max(rtol|F|, atol)
+    assert out["relative_residual_disposition"] == "RESIDUAL_LIMIT_EXCEEDED"
+    assert out["residual_limit_abs"] == 1.0e-12
+    assert out["relative_residual_limit"] == pytest.approx(0.5)
+
+
+def test_rejected_zero_rhs_reports_atol_as_limit():
+    out = _verify(np.eye(1), np.array([0.0]), np.array([1.0]), atol=1.0e-12)
+    assert out["relative_residual_disposition"] == "RESIDUAL_LIMIT_EXCEEDED"
+    assert out["residual_limit_abs"] == 1.0e-12
+
+
+def test_complex_input_is_refused_not_cast():
+    out = _verify(np.eye(1), np.array([1.0 + 1.0j]), np.array([1.0 + 0.0j]))
+    assert out["relative_residual_disposition"] == "UNSUPPORTED_DTYPE"
+    assert out["status"] == "failed"
