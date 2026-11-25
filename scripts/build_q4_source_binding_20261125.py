@@ -70,16 +70,27 @@ EXPECTED_MODULE_SYMBOLS = {
 CHANGE = {
     "id": "BEAM_FRAME_EXACT_HELPERS_S2_20261125",
     "summary": (
-        "S2 beam frame-math trim in src/anyfesolver/elements.py: "
+        "S2 beam frame-math trim in src/anyfesolver/elements.py.  "
         "BeamElement._beam_frame_and_transform takes its length norm through "
-        "_contiguous_vector_norm; _beam_rotation_matrix takes its norms through "
-        "_contiguous_vector_norm and builds the frame through _frame_columns; "
+        "_contiguous_vector_norm.  _beam_rotation_matrix takes the norms of "
+        "candidate, e2 and e3 through _contiguous_vector_norm and builds the frame "
+        "through _frame_columns; it still calls np.linalg.norm(orientation) directly.  "
         "BeamElement._linear_rigid_arm_map builds the default (no stored offsets) "
         "rigid arm directly, selected by except AttributeError exactly as getattr "
-        "with a default.  The two new module helpers evaluate exactly the original "
-        "np.linalg.norm and np.column_stack expressions for C-contiguous float64 "
-        "input and call them unchanged otherwise.  No qualified-Q4 mechanics symbol "
-        "and no other elements.py symbol changes; results are bit-identical."
+        "with a default.  _contiguous_vector_norm evaluates np.sqrt(x.dot(x)) for an "
+        "exact np.ndarray that is one-dimensional, float64 and C-contiguous (exactly "
+        "what np.linalg.norm evaluates for it) and calls np.linalg.norm otherwise.  "
+        "_frame_columns fills an np.empty((3, 3)) float64 array column by column for "
+        "three exact np.ndarray float64 vectors of shape (3,), contiguous or strided "
+        "(the same values as np.column_stack), and calls np.column_stack otherwise.  "
+        "No qualified-Q4 mechanics symbol and no other elements.py symbol changes; "
+        "results are bit-identical."
+    ),
+    "known_inherited_limitation": (
+        "Inherited from the 2026-11-24 collector: --check compares exact-raw "
+        "carriers only and relies on the pinned test reader for the content of "
+        "portable-text carriers; drift in a portable carrier is rejected by the "
+        "reader, not by this collector."
     ),
     "owner_decision_cited": (
         "Owner decision 2026-11-24/25: S2 may land once PR #79 has put its "

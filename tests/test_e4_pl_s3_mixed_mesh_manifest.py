@@ -800,7 +800,10 @@ def _rebuild_predecessor(live: bytes, hunks: list[dict[str, object]]) -> bytes:
 
 
 def _delta_record() -> dict[str, object]:
-    record = _strict_json(Q4_SOURCE_BINDING_DELTA.read_bytes())
+    raw = Q4_SOURCE_BINDING_DELTA.read_bytes()
+    if Q4_SOURCE_BINDING_DELTA_SHA256 is not None:
+        assert hashlib.sha256(raw).hexdigest().upper() == Q4_SOURCE_BINDING_DELTA_SHA256
+    record = _strict_json(raw)
     predecessor = Q4_SOURCE_BINDING_SUCCESSOR.read_bytes()
     assert record["predecessor"] == {
         "path": Q4_SOURCE_BINDING_SUCCESSOR.relative_to(ROOT).as_posix(),
@@ -810,7 +813,10 @@ def _delta_record() -> dict[str, object]:
 
 
 def _delta2_record() -> dict[str, object]:
-    record = _strict_json(Q4_SOURCE_BINDING_DELTA2.read_bytes())
+    raw = Q4_SOURCE_BINDING_DELTA2.read_bytes()
+    if Q4_SOURCE_BINDING_DELTA2_SHA256 is not None:
+        assert hashlib.sha256(raw).hexdigest().upper() == Q4_SOURCE_BINDING_DELTA2_SHA256
+    record = _strict_json(raw)
     predecessor = Q4_SOURCE_BINDING_DELTA.read_bytes()
     assert Q4_SOURCE_BINDING_DELTA_SHA256 is not None
     assert hashlib.sha256(predecessor).hexdigest().upper() == Q4_SOURCE_BINDING_DELTA_SHA256
@@ -821,24 +827,28 @@ def _delta2_record() -> dict[str, object]:
     return record
 
 
-def _read_delta_bound(relative: str, read=None) -> bytes:
-    """Bytes the 2026-11-24 delta binds: live bytes, or for a file changed by
-    the 2026-11-25 delta, the 2026-11-24-bound bytes rebuilt from the live bytes.
+def _read_delta_bound(relative: str, read=None, record=None) -> bytes:
+    """Bytes the 2026-11-24 delta binds: live bytes, or for elements.py (the
+    only file the 2026-11-25 delta may change), the 2026-11-24-bound bytes
+    rebuilt from the live bytes.
 
-    The rebuild is authenticated by the 2026-11-25 record's predecessor
-    identity, which must equal the live identity the pinned 2026-11-24 record
-    binds; the 2026-11-24 reader then checks the bytes on its own terms.
+    ``record`` is the 2026-11-25 record the rebuild uses; a checker passes the
+    record it has authenticated, never a second copy.  The rebuild is
+    authenticated by the record's predecessor identity, which must equal the
+    live identity the pinned 2026-11-24 record binds; the 2026-11-24 reader
+    then checks the bytes on its own terms.  A record that changes any other
+    file fails closed.
     """
 
+    files = (_delta2_record() if record is None else record)["files"]
+    assert set(files) == {"src/anyfesolver/elements.py"}
     raw = (read or _read_live)(relative)
-    row = _delta2_record()["files"].get(relative)
+    row = files.get(relative)
     if row is None:
         return raw
     rebuilt = _rebuild_predecessor(raw, row["reverse_hunks"])
     assert _identity(rebuilt) == row["predecessor_raw"]
-    delta_row = _delta_record()["files"].get(relative)
-    if delta_row is not None:
-        assert row["predecessor_raw"] == delta_row["live_raw"]
+    assert row["predecessor_raw"] == _delta_record()["files"][relative]["live_raw"]
     return rebuilt
 
 
@@ -2061,7 +2071,8 @@ def _require_q4_source_binding_delta2(record_raw: bytes, read, authority) -> dic
     assert set(files) == {DELTA2_ELEMENTS}
 
     def delta_bound_read(relative: str) -> bytes:
-        return _read_delta_bound(relative, read)
+        # Rebuild only from the record authenticated above, never a second copy.
+        return _read_delta_bound(relative, read, record)
 
     _require_q4_source_binding_delta(predecessor_raw, delta_bound_read, authority)
 
@@ -2181,3 +2192,56 @@ def test_chained_source_binding_delta_rejects_content_and_eol_mutation(relative:
             _require_q4_source_binding_delta2(record, read, authority)
     with pytest.raises(AssertionError):
         _require_q4_source_binding_delta2(record + b" ", _read_live, authority)
+
+
+def _record_with_extra_reverse_hunk(relative: str, drifted: bytes, original: bytes):
+    """The 2026-11-25 record plus a reverse hunk that hides drift in ``relative``."""
+
+    record = json.loads(Q4_SOURCE_BINDING_DELTA2.read_bytes())
+    lines = _DELTA_LINE.findall(drifted)
+    start = len(_DELTA_LINE.findall(original))
+    record["files"][relative] = {
+        "predecessor_raw": _identity(original),
+        "reverse_hunks": [{
+            "live_line_start": start,
+            "live_line_end": len(lines),
+            "live_lines_sha256": hashlib.sha256(b"".join(lines[start:])).hexdigest().upper(),
+            "predecessor_text": "",
+        }],
+    }
+    return record
+
+
+def test_chained_reader_rebuilds_only_from_the_authenticated_record(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Codex review P2 (fd830773e): with authentic ``record_raw`` the nested
+    reader rebuilt from a second, unauthenticated copy of the 2026-11-25
+    record, so a reverse hunk added there hid drift in another carrier."""
+
+    _require_pin()
+    _require_delta_pin()
+    authentic = Q4_SOURCE_BINDING_DELTA2.read_bytes()
+    monkeypatch.setattr(
+        sys.modules[__name__], "Q4_SOURCE_BINDING_DELTA2_SHA256",
+        hashlib.sha256(authentic).hexdigest().upper(),
+    )
+    authority = _strict_json(QUALIFICATION_CONTRACT.read_bytes())["candidate"][
+        "qualified_q4_mechanics_authority"
+    ]
+    relative = "src/anyfesolver/_q4_assumed_strain_plasticity.py"
+    original = _read_live(relative)
+    drifted = original + b"# unrecorded drift\n"
+    tampered = _record_with_extra_reverse_hunk(relative, drifted, original)
+    monkeypatch.setattr(sys.modules[__name__], "_delta2_record", lambda: tampered)
+
+    def read(path: str) -> bytes:
+        return drifted if path == relative else _read_live(path)
+
+    with pytest.raises(AssertionError):
+        _require_q4_source_binding_delta2(authentic, read, authority)
+    # The adapter fails closed on a 2026-11-25 record changing any other file.
+    with pytest.raises(AssertionError):
+        _read_delta_bound(relative, read, tampered)
+    with pytest.raises(AssertionError):
+        _read_delta_bound(relative, read)
