@@ -881,3 +881,29 @@ def test_context_invalidation_interrupt_detaches_closed_session() -> None:
     assert second is not first
     assert not second.closed
     assert hit is False
+
+
+def test_interrupted_context_close_is_terminal() -> None:
+    """D2 closing check: close() must mark the context closed before native
+    cleanup, so an interrupt in the session close cannot leave it reusable."""
+
+    context = runtime.RuntimeAnalysisContext()
+    model = SimpleNamespace(revision_signature=lambda: {})
+    real_session = runtime._backend_AnalysisSession
+    try:
+        runtime._backend_AnalysisSession = lambda _model: SimpleNamespace(
+            closed=False, close=lambda: None
+        )
+        _, session, _ = context.acquire("key", lambda: model)
+
+        def interrupted_close() -> None:
+            session.closed = True
+            raise KeyboardInterrupt
+
+        session.close = interrupted_close
+        with pytest.raises(KeyboardInterrupt):
+            context.close()
+        with pytest.raises(RuntimeError, match="closed"):
+            context.acquire("key", lambda: model)
+    finally:
+        runtime._backend_AnalysisSession = real_session

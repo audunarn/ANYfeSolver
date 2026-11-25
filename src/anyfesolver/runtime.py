@@ -523,8 +523,10 @@ class RuntimeAnalysisContext:
         with self._lock:
             if self._closed:
                 return
-            self._invalidate_locked()
+            # Terminal before native cleanup: an interrupt inside the session close
+            # must not leave a context its owner closed able to build new sessions.
             self._closed = True
+            self._invalidate_locked()
 
     release = close
 
@@ -8574,6 +8576,11 @@ def run_production_fem(
 ) -> LightweightFEMResult:
     """Run the production FE mesh backend for normalized generated geometry."""
 
+    # Known, accepted P3s (D2 closing check, owner 2026-11-25): the owned session
+    # stays alive through result preparation (mesh/mode visualisation) and its
+    # cleanup time falls outside the reported "total"; the linear-failure exits
+    # close it directly and again via this scope (close() is idempotent; the first
+    # call does not use the scope's precedence).  Memory/timing only, no results.
     # An owned AnalysisSession (and its PARDISO lease) is registered in this
     # scope at creation and closed at exit, with the exception actually
     # propagating as primary, whatever phase (stress recovery, prestress
