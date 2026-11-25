@@ -651,6 +651,55 @@ def _backward_error(
     return float(np.max(values)) if values.size else 0.0
 
 
+def _verify_iterative_residual(
+    K_red: sparse.csr_matrix,
+    F_red: np.ndarray,
+    q: np.ndarray,
+    scipy_info: int,
+    rtol: float,
+    atol: float,
+) -> Tuple[np.ndarray, Dict[str, Any]]:
+    """Accept an iterative solve only if the true residual meets the tolerance.
+
+    "converged" requires SciPy ``info == 0`` AND ``|Kq-F|_2 <= max(rtol*|F|_2, atol)``.
+    ``relative_residual_disposition == "RESIDUAL_VERIFIED"`` certifies the
+    residual only; it says nothing about the forward error of ``q``.
+    """
+    q = np.asarray(q, dtype=float)
+    f_norm = float(np.linalg.norm(F_red))
+    limit_abs = max(rtol * f_norm, atol)
+    info: Dict[str, Any] = {
+        "iterations": scipy_info,
+        "relative_residual_limit": rtol,
+    }
+    if not np.all(np.isfinite(q)):
+        residual = float("nan")
+        disposition = "NONFINITE"
+    else:
+        residual = float(np.linalg.norm(np.asarray(K_red @ q).reshape(-1) - F_red))
+        if not np.isfinite(residual):
+            disposition = "NONFINITE"
+        elif scipy_info != 0:
+            disposition = "SOLVER_NOT_CONVERGED"
+        elif residual > limit_abs:
+            disposition = "RESIDUAL_LIMIT_EXCEEDED"
+        else:
+            disposition = "RESIDUAL_VERIFIED"
+    info["relative_residual"] = (
+        residual / f_norm if f_norm > 0.0 and np.isfinite(residual) else residual
+    )
+    info["relative_residual_disposition"] = disposition
+    if disposition == "RESIDUAL_VERIFIED":
+        info["status"] = "converged"
+    else:
+        info["status"] = "failed"
+        info["error"] = (
+            f"iterative solve not accepted ({disposition}): scipy info={scipy_info}, "
+            f"true |Kq-F|={residual:.3e}, limit={limit_abs:.3e}"
+        )
+    return q, info
+
+
 def _solve_reduced_system(
     K_red: sparse.csr_matrix,
     F_red: np.ndarray,
@@ -743,17 +792,20 @@ def _solve_reduced_system(
         except Exception as exc:
             return np.zeros(K_red.shape[0]), {"status": "failed", "error": str(exc)}
 
-    if solver_type == "gmres":
-        q, info = gmres(K_red, F_red, rtol=1.0e-8, atol=1.0e-12, maxiter=1000)
-        return np.asarray(q, dtype=float), {"status": "converged" if info == 0 else "not_converged", "iterations": info}
-
-    if solver_type == "minres":
-        q, info = minres(K_red, F_red, rtol=1.0e-8, maxiter=1000)
-        return np.asarray(q, dtype=float), {"status": "converged" if info == 0 else "not_converged", "iterations": info}
-
-    if solver_type == "bicgstab":
-        q, info = bicgstab(K_red, F_red, rtol=1.0e-8, atol=1.0e-12, maxiter=1000)
-        return np.asarray(q, dtype=float), {"status": "converged" if info == 0 else "not_converged", "iterations": info}
+    if solver_type in ("gmres", "minres", "bicgstab"):
+        # Option I1: SciPy's ``info == 0`` is not trusted on its own (MINRES in
+        # particular reports success with large true residuals).  The true
+        # residual |K q - F|_2 is recomputed and compared with the tolerance
+        # actually passed to the iteration.  RESIDUAL_VERIFIED means the
+        # residual is verified; the forward error is NOT certified.
+        rtol, atol = 1.0e-8, (0.0 if solver_type == "minres" else 1.0e-12)
+        if solver_type == "gmres":
+            q, info = gmres(K_red, F_red, rtol=rtol, atol=atol, maxiter=1000)
+        elif solver_type == "minres":
+            q, info = minres(K_red, F_red, rtol=rtol, maxiter=1000)
+        else:
+            q, info = bicgstab(K_red, F_red, rtol=rtol, atol=atol, maxiter=1000)
+        return _verify_iterative_residual(K_red, F_red, q, info, rtol, atol)
 
     raise ValueError(f"Unknown solver type: {solver_type}")
 
