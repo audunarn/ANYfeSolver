@@ -110,7 +110,7 @@ Q4_SOURCE_BINDING_DELTA_SHA256: str | None = (
 Q4_SOURCE_BINDING_DELTA2 = (
     ROOT / 'docs' / 'reference_cases' / 'e4_pl_source_binding_20261125.json'
 )
-Q4_SOURCE_BINDING_DELTA2_SHA256: str | None = None
+Q4_SOURCE_BINDING_DELTA2_SHA256: str | None = "CFBA512F71CF589FC8C2E31E7EE12FA7A58E90F6ADDBAA28EA7E52FD7B3B3032"
 SIX_CARRIERS = (
     'e4_pl_element.py',
     'e4_pl_s3_element.py',
@@ -658,11 +658,19 @@ def _leaves(value: object, path: tuple[str, ...] = ()) -> dict[str, object]:
 IMPORT_FORM_ROOT = ROOT
 
 
+def _import_form_entries(directory: Path) -> list[tuple[str, bool]]:
+    """(name, is_directory) of every entry beside a bound file."""
+
+    return [(entry.name, entry.is_dir()) for entry in directory.iterdir()]
+
+
 def _require_sole_import_form(relative: str) -> None:
     """Fail closed unless the bound ``.py`` file is the only importable form of
-    its module: no package or namespace directory of that name and no other
-    import suffix (bytecode, extension module) beside it, compared without
-    regard to case; for package modules, the path finder must resolve to
+    its module: no package or namespace directory of that name (with or without
+    ``__init__.py``) and no other import suffix (bytecode, extension module,
+    or another spelling of the ``.py`` name) beside it, compared without regard
+    to case but never against the exact bound file name; an ordinary
+    extensionless regular file of that name does not shadow; for package modules, the path finder must resolve to
     exactly the bound file.
 
     Scope (owner decision 2026-11-25, whole chain 20261111 -> 20261124 -> 20261125):
@@ -680,14 +688,21 @@ def _require_sole_import_form(relative: str) -> None:
     assert path.is_file(), relative
     directory, stem = path.parent, path.name[:-3].casefold()
     suffixes = {suffix.casefold() for suffix in importlib.machinery.all_suffixes()}
-    for entry in directory.iterdir():
-        name = entry.name.casefold()
-        if name == path.name.casefold():
-            continue
-        assert name != stem, f"{relative}: {entry.name} shadows the bound module"
+    for entry_name, entry_is_dir in _import_form_entries(directory):
+        if entry_name == path.name:
+            continue  # exactly the bound file; every OTHER entry is judged below
+        name = entry_name.casefold()
+        if name == stem:
+            # A directory (package or namespace, with or without __init__.py)
+            # shadows; an ordinary extensionless regular file does not.  Another
+            # spelling of the bound file's own name (case-fold) is another form.
+            assert not entry_is_dir, f"{relative}: {entry_name} shadows the bound module"
+        assert name != path.name.casefold(), (
+            f"{relative}: {entry_name} is another spelling of the bound module"
+        )
         assert not any(
             name.endswith(suffix) and name[: -len(suffix)] == stem for suffix in suffixes
-        ), f"{relative}: {entry.name} is another importable form of the bound module"
+        ), f"{relative}: {entry_name} is another importable form of the bound module"
     if relative.startswith("src/"):
         fullname = ".".join(Path(relative[len("src/"):-len(".py")]).parts)
         importlib.invalidate_caches()
@@ -805,6 +820,7 @@ def _require_current_historical_record(
         assert gap['historical_gap'] is True
         assert gap['live_path'] == gap['recorded_path'].replace('src/anysolver/', 'src/anyfesolver/', 1)
         gap_raw = read(gap['live_path'])
+        _require_sole_import_form(gap['live_path'])
         live = hashlib.sha256(_lf(gap_raw)).hexdigest().upper()
         assert gap['live_lf_sha256'] == live
         # Protected (-text) carriers: raw current bytes are pinned as well as LF.
@@ -1130,6 +1146,7 @@ def _require_q4_source_binding_successor(
         "docs/STATIC_RUNTIME_PERFORMANCE.md",
     } <= set(files)
     for relative, digest in files.items():
+        _require_sole_import_form(relative)
         assert hashlib.sha256((ROOT / relative).read_bytes()).hexdigest().upper() == digest
     report = record["static_runtime_performance_report"]
     assert report["path"] == "docs/STATIC_RUNTIME_PERFORMANCE.md" and report["bytes"] == 4561
@@ -1182,6 +1199,7 @@ def _require_q4_source_binding_successor(
     assert "unbound_scope" in record["links"]["L2_UPSTREAM_E0C5F32AB_TO_RELEASE_CANDIDATE"]
 
     _require_successor_mechanics(record, actual, authority)
+    _require_sole_import_form(LIVE_ENTRY)
     source = _lf(read(LIVE_ENTRY)).decode("utf-8")
     _require_successor_imports(record, source, actual["symbols"], read)
     return record
@@ -1953,6 +1971,7 @@ def _require_q4_source_binding_delta(record_raw: bytes, read, authority) -> dict
             assert _identity(read(relative)) == identity
 
     # Live qualified-Q4 mechanics closure and its delta from the predecessor.
+    _require_sole_import_form(LIVE_ENTRY)
     source = _lf(read(LIVE_ENTRY)).decode("utf-8")
     actual = _q4_mechanics_authority_payload(
         source, set(authority["roots"]), schema=authority["schema"],
@@ -2162,6 +2181,7 @@ def _require_q4_source_binding_delta2(record_raw: bytes, read, authority) -> dic
             assert _identity(read(relative)) == identity
 
     # Live qualified-Q4 mechanics closure: unchanged from the predecessor.
+    _require_sole_import_form(LIVE_ENTRY)
     source = _lf(read(LIVE_ENTRY)).decode("utf-8")
     actual = _q4_mechanics_authority_payload(
         source, set(authority["roots"]), schema=authority["schema"],
@@ -2444,3 +2464,91 @@ def test_falsey_reader_callback_is_used_not_replaced(
     assert _read_bound(SHADOWED_CARRIER, read) == drifted
     with pytest.raises(AssertionError):
         _run_reader(which, read)
+
+
+# ---------------------------------------------------------------------------
+# Codex Astra review of d0df326b6.  Every path a reader binds gets the
+# same-directory import-form check (including the historical-gap files of the
+# 2026-11-11 reader); case spellings are judged against the exact bound name;
+# an extensionless regular file is not an importable form.
+
+GAP_SHADOWS = (
+    "tests/test_general_contact_c5_elastic_increment",
+    "tests/test_general_contact_c5_numpy_coordinate_admission",
+)
+
+
+def test_successor_reader_refuses_a_package_beside_each_historical_gap_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    _require_pin()
+    successor = _strict_json(Q4_SOURCE_BINDING_SUCCESSOR.read_bytes())
+    gap_paths = {g["live_path"] for g in successor["historical_gaps_of_current_historical_record"]}
+    for shadow in GAP_SHADOWS:
+        assert shadow + ".py" in gap_paths
+    monkeypatch.setattr(sys.modules[__name__], "IMPORT_FORM_ROOT", tmp_path)
+    for relative in gap_paths:
+        target = tmp_path / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b"")
+    gaps = successor["historical_gaps_of_current_historical_record"]
+    reviewed_raw = Q4_SOURCE_BINDING_AS_REVIEWED.read_bytes()
+    current_raw = Q4_SOURCE_BINDING.read_bytes()
+    for relative in sorted(gap_paths):
+        _require_sole_import_form(relative)  # control
+    for shadow in GAP_SHADOWS:
+        (tmp_path / shadow).mkdir()
+        (tmp_path / shadow / "__init__.py").write_bytes(b"")
+        try:
+            with pytest.raises(AssertionError, match="shadows"):
+                _require_current_historical_record(
+                    current_raw, reviewed_raw, successor,
+                    _read_bound,
+                )
+        finally:
+            os.remove(tmp_path / shadow / "__init__.py")
+            (tmp_path / shadow).rmdir()
+    assert len(gaps) == 5
+
+
+def _listing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *names: str) -> None:
+    monkeypatch.setattr(sys.modules[__name__], "IMPORT_FORM_ROOT", tmp_path)
+    (tmp_path / "pkg").mkdir()
+    for name in names:
+        if name.endswith("/"):
+            (tmp_path / "pkg" / name[:-1]).mkdir()
+        else:
+            (tmp_path / "pkg" / name).write_bytes(b"")
+
+
+def test_import_form_check_rejects_a_case_variant_beside_the_bound_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    _listing(tmp_path, monkeypatch, "elements.py")
+    names = [("elements.py", False), ("ELEMENTS.py", False)]
+    monkeypatch.setattr(sys.modules[__name__], "_import_form_entries", lambda directory: names)
+    with pytest.raises(AssertionError, match="another"):
+        _require_sole_import_form("pkg/elements.py")
+    (tmp_path / "pkg" / "ELEMENTS.py").write_bytes(b"")
+    names[:] = [("ELEMENTS.py", False), ("elements.py", False)]
+    with pytest.raises(AssertionError, match="another"):
+        _require_sole_import_form("pkg/ELEMENTS.py")
+
+
+def test_import_form_check_ignores_an_extensionless_regular_file_but_not_a_directory(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    _listing(tmp_path, monkeypatch, "elements.py", "elements")
+    _require_sole_import_form("pkg/elements.py")  # ordinary file named like the stem
+    (tmp_path / "pkg" / "elements").unlink()
+    (tmp_path / "pkg" / "elements").mkdir()  # namespace directory, no __init__.py
+    with pytest.raises(AssertionError, match="shadows"):
+        _require_sole_import_form("pkg/elements.py")
+    (tmp_path / "pkg" / "elements" / "__init__.py").write_bytes(b"")
+    with pytest.raises(AssertionError, match="shadows"):
+        _require_sole_import_form("pkg/elements.py")
+    (tmp_path / "pkg" / "elements" / "__init__.py").unlink()
+    (tmp_path / "pkg" / "elements").rmdir()
+    (tmp_path / "pkg" / "elements.pyc").write_bytes(b"\0")  # importable suffix
+    with pytest.raises(AssertionError, match="importable form"):
+        _require_sole_import_form("pkg/elements.py")
