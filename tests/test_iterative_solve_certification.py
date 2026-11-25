@@ -311,3 +311,84 @@ def test_complex_input_is_refused_not_cast():
     out = _verify(np.eye(1), np.array([1.0 + 1.0j]), np.array([1.0 + 0.0j]))
     assert out["relative_residual_disposition"] == "UNSUPPORTED_DTYPE"
     assert out["status"] == "failed"
+
+
+# Review round 3 (Codex) and owner option (a): separate-scale ratio, exact-oracle property test.
+def test_nonzero_rhs_is_never_taken_for_zero():
+    # r3 P2: K=[[5e187]], F=[1e-200], q=F: common-scale |F|/s underflowed to 0 -> "F == 0" -> certified.
+    out = _verify(np.array([[5.0e187]]), np.array([1.0e-200]), np.array([1.0e-200]), atol=1.0e-12)
+    assert out["relative_residual_disposition"] == "RESIDUAL_LIMIT_EXCEEDED"
+    assert out["relative_residual"] > 1.0e180
+
+
+def test_reported_abs_limit_is_finite_when_representable():
+    # r3 P3: rtol*|F| ~ 2e300 must not be reported as inf.
+    F = np.array([1.4e308, 1.4e308])
+    out = _verify(np.eye(2), F, F.copy())
+    assert np.isfinite(out["residual_limit_abs"])
+    assert out["residual_limit_abs"] == pytest.approx(1.0e-8 * 1.4e308 * np.sqrt(2.0), rel=1e-12)
+
+
+def _exact_decision(K, F, q, rtol, atol, r_float):
+    """Exact rational verdict, or None when float rounding of r = Kq - F could decide either way."""
+    from fractions import Fraction as Fr
+
+    Kf = [[Fr(float(v)) for v in row] for row in K]
+    Ff = [Fr(float(v)) for v in F]
+    qf = [Fr(float(v)) for v in q]
+    r = [sum(Kf[i][j] * qf[j] for j in range(len(qf))) - Ff[i] for i in range(len(Ff))]
+    r2 = sum(v * v for v in r)
+    f2 = sum(v * v for v in Ff)
+    # Rounding bound of the float residual the verifier sees (|r_float - r| per entry).
+    eps = Fr(2.0 ** -52)
+    tiny = Fr(5.0e-324)
+    bound = [
+        4 * eps * (sum(abs(Kf[i][j] * qf[j]) for j in range(len(qf))) + abs(Ff[i])) + 4 * tiny
+        for i in range(len(Ff))
+    ]
+    lo2 = sum(max(abs(v) - b, Fr(0)) ** 2 for v, b in zip(r, bound))
+    hi2 = sum((abs(v) + b) ** 2 for v, b in zip(r, bound))
+    rt, at = Fr(rtol), Fr(atol)
+
+    def verdict(rr2):
+        by_rtol = f2 > 0 and rr2 <= rt * rt * f2
+        atol_allowed = f2 == 0 or at * at < f2
+        return bool(by_rtol or (atol_allowed and rr2 <= at * at))
+
+    lo, hi = verdict(lo2), verdict(hi2)
+    return lo if lo == hi else None
+
+
+@pytest.mark.parametrize("atol", [0.0, 1.0e-12])
+def test_exact_oracle_property_sweep_over_exponents(atol):
+    exps = list(range(-300, 301, 30)) + [-307, -310, -320, 305, 307]
+    checked = mismatches = 0
+    for ek in exps:
+        for ef in exps:
+            k = 10.0 ** ek if -308 <= ek <= 308 else 10.0 ** -300 * 10.0 ** (ek + 300)
+            f = 10.0 ** ef if -308 <= ef <= 308 else 10.0 ** -300 * 10.0 ** (ef + 300)
+            K = np.array([[k, 0.0], [0.0, 2.0 * k]])
+            F = np.array([f, 3.0 * f])
+            if not (np.all(np.isfinite(K)) and np.all(np.isfinite(F))):
+                continue
+            with np.errstate(all="ignore"):
+                q_exact = F / np.diag(K)
+            candidates = [q_exact, q_exact * (1.0 + 1.0e-6), np.zeros(2), F.copy(), q_exact * (1.0 + 3.0e-9)]
+            for q in candidates:
+                if not np.all(np.isfinite(q)):
+                    continue
+                with np.errstate(all="ignore"):
+                    r_float = K @ q - F
+                if not np.all(np.isfinite(r_float)):
+                    continue
+                expected = _exact_decision(K, F, q, 1.0e-8, atol, r_float)
+                if expected is None:
+                    continue
+                out = _verify(K, F, q, atol=atol)
+                got = out["relative_residual_disposition"] == "RESIDUAL_VERIFIED"
+                checked += 1
+                if got != expected:
+                    mismatches += 1
+                    raise AssertionError(f"k={k:g} f={f:g} q={q} expected {expected} got {out}")
+                assert out["residual_limit_abs"] is None or not np.isnan(out["residual_limit_abs"])
+    assert checked > 2000 and mismatches == 0

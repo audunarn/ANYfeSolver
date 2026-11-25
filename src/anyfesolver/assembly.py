@@ -651,22 +651,21 @@ def _backward_error(
     return float(np.max(values)) if values.size else 0.0
 
 
-def _common_scale_norms(r: np.ndarray, f: np.ndarray) -> Tuple[float, float, float]:
-    """Return ``(s, |r|/s, |f|/s)`` with one common scale ``s = max(|r|_inf, |f|_inf)``.
+def _scaled_norm_parts(x: np.ndarray) -> Tuple[float, float]:
+    """Return ``(m, n)`` with ``|x|_2 = m * n``, ``m = max|x_i|`` and ``n`` in ``[1, sqrt(len)]``.
 
-    Both scaled 2-norms lie in ``[0, sqrt(n)]``, so they neither overflow nor lose
-    precision to subnormals; the acceptance test compares them in this scaled form
-    and never multiplies ``s`` back in.  Non-finite input gives ``(nan, nan, nan)``.
+    ``n`` is the 2-norm of ``x / m`` (largest entry exactly 1), so it neither
+    overflows nor underflows; ``m`` is an exact float.  Comparisons are made on
+    these parts (never on ``m * n`` and never across a shared scale), so no
+    norm is squared at a scale other than its own.  Non-finite -> ``(nan, nan)``;
+    zero -> ``(0, 0)``.
     """
-    if not (np.all(np.isfinite(r)) and np.all(np.isfinite(f))):
-        return float("nan"), float("nan"), float("nan")
-    scale = max(
-        float(np.max(np.abs(r))) if r.size else 0.0,
-        float(np.max(np.abs(f))) if f.size else 0.0,
-    )
-    if scale == 0.0:
-        return 0.0, 0.0, 0.0
-    return scale, float(np.linalg.norm(r / scale)), float(np.linalg.norm(f / scale))
+    if x.size and not np.all(np.isfinite(x)):
+        return float("nan"), float("nan")
+    m = float(np.max(np.abs(x))) if x.size else 0.0
+    if m == 0.0:
+        return 0.0, 0.0
+    return m, float(np.linalg.norm(x / m))
 
 
 def _verify_iterative_residual(
@@ -682,8 +681,9 @@ def _verify_iterative_residual(
     "converged" requires SciPy ``info == 0`` AND the true residual
     ``r = |Kq-F|_2`` satisfies ``r/|F| <= rtol`` (criterion "rtol"), or
     ``r <= atol`` where ``atol`` is meaningful, i.e. ``F == 0`` or
-    ``atol < |F|`` (criterion "atol").  Norms are compared against one common
-    scale (no overflow, no subnormal rounding).  ``relative_residual_limit`` /
+    ``atol < |F|`` (criterion "atol").  Each norm is split as ``max|x| * n``
+    (``_scaled_norm_parts``) and only the parts are compared, so neither
+    overflow nor underflow can change a decision (exact-oracle property test).  ``relative_residual_limit`` /
     ``residual_limit_abs`` report the applicable threshold, passed or not.
     Only real input is accepted; anything else is refused as
     ``UNSUPPORTED_DTYPE``.  ``RESIDUAL_VERIFIED`` certifies the residual only,
@@ -713,15 +713,24 @@ def _verify_iterative_residual(
                 if np.all(np.isfinite(q_out))
                 else np.full(f_arr.shape, np.nan)
             )
-        scale, r_s, f_s = _common_scale_norms(r_vec, np.asarray(f_arr, dtype=float))
-        if not np.isfinite(scale):
+        m_r, n_r = _scaled_norm_parts(r_vec)
+        m_f, n_f = _scaled_norm_parts(np.asarray(f_arr, dtype=float))
+        if not (np.isfinite(m_r) and np.isfinite(m_f)):
             disposition = "NONFINITE"
         else:
             with np.errstate(all="ignore"):
-                atol_s = atol / scale if scale > 0.0 else float("inf")
-            atol_allowed = f_s == 0.0 or atol_s < f_s
-            by_rtol = f_s > 0.0 and r_s <= rtol * f_s
-            by_atol = atol_allowed and r_s <= atol_s
+                f_zero = m_f == 0.0  # decided on the original F
+                # |r|/|F| = (m_r/m_f) * (n_r/n_f): the n-ratio is in [1/sqrt(len), sqrt(len)];
+                # the m-ratio may underflow to 0 (truly tiny) or overflow to inf (truly huge).
+                relative = (
+                    (m_r / m_f) * (n_r / n_f) if not f_zero
+                    else (0.0 if m_r == 0.0 else float("inf"))
+                )
+                # atol is meaningful only for F == 0 or atol < |F| = m_f * n_f.
+                atol_allowed = f_zero or (atol / n_f) < m_f
+                within_atol = m_r == 0.0 or m_r <= atol / n_r  # |r| = m_r * n_r <= atol
+            by_rtol = (not f_zero) and relative <= rtol
+            by_atol = atol_allowed and within_atol
             criterion = "rtol" if by_rtol else ("atol" if by_atol else None)
             if scipy_info != 0:
                 disposition = "SOLVER_NOT_CONVERGED"
@@ -730,21 +739,21 @@ def _verify_iterative_residual(
             else:
                 disposition = "RESIDUAL_LIMIT_EXCEEDED"
             with np.errstate(all="ignore"):
-                residual = scale * r_s  # reporting only (may be inf/0 at extremes)
-                rhs = scale * f_s
-                if f_s > 0.0:
-                    info["relative_residual"] = r_s / f_s
-                    rel_limit = max(rtol, atol_s / f_s) if atol_allowed else rtol
-                    abs_limit = max(rtol * rhs, atol) if atol_allowed else rtol * rhs
+                residual = m_r * n_r  # reporting only (inf only if |r| exceeds the float range)
+                rhs = m_f * n_f
+                info["relative_residual"] = relative
+                if not f_zero:
+                    rtol_abs = (rtol * m_f) * n_f
+                    rel_limit = max(rtol, (atol / n_f) / m_f) if atol_allowed else rtol
+                    abs_limit = max(rtol_abs, atol) if atol_allowed else rtol_abs
                 else:
-                    info["relative_residual"] = 0.0 if r_s == 0.0 else float("inf")
                     rel_limit = None
                     abs_limit = atol
     info.setdefault("relative_residual", residual)
     info["relative_residual_criterion"] = criterion
     info["residual_norm"] = residual
     info["rhs_norm"] = rhs
-    info["residual_limit_abs"] = abs_limit if abs_limit is not None else rtol * rhs
+    info["residual_limit_abs"] = abs_limit
     info["relative_residual_limit"] = rel_limit
     info["relative_residual_disposition"] = disposition
     if disposition == "RESIDUAL_VERIFIED":
