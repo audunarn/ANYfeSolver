@@ -13,7 +13,8 @@ import sys
 import time
 from contextlib import ExitStack
 from dataclasses import dataclass
-from operator import itemgetter
+from itertools import repeat
+from operator import is_, itemgetter
 from types import FunctionType, MappingProxyType
 from typing import TYPE_CHECKING, Any, Callable, Dict, Mapping, Optional, Sequence, Tuple
 from weakref import WeakKeyDictionary, ref
@@ -5417,6 +5418,60 @@ def _make_exact_assembly_operation(implementation: Any) -> tuple[Any, Any]:
         "_reference_s3_formulation_id"
     ]
 
+    # The identity check below runs for every guard of every element, so it
+    # is evaluated with C-level iteration.  ``kw_items_changed`` returns the
+    # same answer as the original generator,
+    #   any(name not in d or d[name] is not expected for name, expected in items)
+    # for the exact ``dict`` objects it is given.  When every key of ``d`` is
+    # an exact ``str`` no caller code can run during the lookups, so one
+    # ``dict.get`` probe per name is equivalent to the ``in``/``[]`` pair.  A
+    # dictionary holding any other key type (whose ``__eq__`` could run, and
+    # could answer differently per probe) keeps the original generator
+    # unchanged.  The helpers are bound here, not looked up in module
+    # globals at call time.
+    exact_kw_map = map
+    exact_kw_all = all
+    exact_kw_any = any
+    exact_kw_type = type
+    exact_kw_is = is_
+    exact_kw_repeat = repeat
+    exact_kw_str = str
+    exact_kw_missing = object()
+
+    def kw_items_changed(
+        current: dict[str, Any],
+        items: tuple[tuple[str, Any], ...],
+        names: tuple[str, ...],
+        values: tuple[Any, ...],
+    ) -> bool:
+        # ``type(key) is str`` for every key; neither ``type`` nor ``is``
+        # dispatches to caller code (no hashing or comparison of key types).
+        if exact_kw_all(
+            exact_kw_map(
+                exact_kw_is,
+                exact_kw_map(exact_kw_type, current),
+                exact_kw_repeat(exact_kw_str),
+            )
+        ):
+            return not exact_kw_all(
+                exact_kw_map(
+                    exact_kw_is,
+                    exact_kw_map(
+                        current.get,
+                        names,
+                        exact_kw_repeat(exact_kw_missing),
+                    ),
+                    values,
+                )
+            )
+        return exact_kw_any(
+            name not in current or current[name] is not expected
+            for name, expected in items
+        )
+
+    expected_kw_names = tuple(name for name, _value in expected_kw_items)
+    expected_kw_values = tuple(value for _name, value in expected_kw_items)
+
     def require() -> None:
         current_kwdefaults = implementation.__kwdefaults__
         if len(published) != 1:
@@ -5427,6 +5482,8 @@ def _make_exact_assembly_operation(implementation: Any) -> tuple[Any, Any]:
             published_defaults,
             published_kwdefaults,
             published_kw_items,
+            published_kw_names,
+            published_kw_values,
         ) = published[0]
         current_published_kwdefaults = published_call.__kwdefaults__
         if (
@@ -5434,20 +5491,22 @@ def _make_exact_assembly_operation(implementation: Any) -> tuple[Any, Any]:
             or implementation.__defaults__ is not expected_defaults
             or current_kwdefaults is not expected_kwdefaults
             or len(current_kwdefaults) != len(expected_kw_items)
-            or any(
-                name not in current_kwdefaults
-                or current_kwdefaults[name] is not expected
-                for name, expected in expected_kw_items
+            or kw_items_changed(
+                current_kwdefaults,
+                expected_kw_items,
+                expected_kw_names,
+                expected_kw_values,
             )
             or published_call.__code__ is not published_code
             or published_call.__defaults__ is not published_defaults
             or current_published_kwdefaults is not published_kwdefaults
             or type(current_published_kwdefaults) is not dict
             or len(current_published_kwdefaults) != len(published_kw_items)
-            or any(
-                name not in current_published_kwdefaults
-                or current_published_kwdefaults[name] is not expected
-                for name, expected in published_kw_items
+            or kw_items_changed(
+                current_published_kwdefaults,
+                published_kw_items,
+                published_kw_names,
+                published_kw_values,
             )
             or vars(runtime_module).get("_assemble_element_matrix_under_lease")
             is not published_call
@@ -5524,13 +5583,16 @@ def _make_exact_assembly_operation(implementation: Any) -> tuple[Any, Any]:
     call_kwdefaults = call.__kwdefaults__
     if type(call_kwdefaults) is not dict:
         raise TypeError("qualified assembly dispatcher defaults are absent")
+    call_kw_items = tuple(call_kwdefaults.items())
     published.append(
         (
             call,
             call.__code__,
             call.__defaults__,
             call_kwdefaults,
-            tuple(call_kwdefaults.items()),
+            call_kw_items,
+            tuple(name for name, _value in call_kw_items),
+            tuple(value for _name, value in call_kw_items),
         )
     )
     return call, require
