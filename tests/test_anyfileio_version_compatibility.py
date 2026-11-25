@@ -372,10 +372,10 @@ def test_workflows_pin_compatibility_graph_and_actions() -> None:
         "name: Tests\n\non:\n  push:\n    branches: [main]\n"
         "  pull_request:\n  workflow_dispatch:\n\n"
         "env:\n  PIP_CONSTRAINT: ${{ github.workspace }}/.github/ci-constraints.txt\n\n"
-        "# Superseded pull-request runs are cancelled.  Every other run (main pushes, tags, schedules,\n"
+        "# Superseded pull-request runs are cancelled.  A re-run attempt and every other run (main pushes, tags, schedules,\n"
         "# dispatches) gets a group of its own, so it is never cancelled or replaced by a newer run.\n"
         "concurrency:\n"
-        "  group: ci-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}\n"
+        "  group: ci-${{ github.event_name == 'pull_request' && github.run_attempt == '1' && format('pr-{0}', github.event.pull_request.number) || format('run-{0}-{1}', github.run_id, github.run_attempt) }}\n"
         "  cancel-in-progress: true\n\n"
     )
     assert re.findall(r"(?m)^  ([a-z0-9-]+):\n", ci_jobs) == [
