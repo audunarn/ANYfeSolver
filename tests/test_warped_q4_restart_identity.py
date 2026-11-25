@@ -142,9 +142,9 @@ def test_shell_subclass_overriding_the_drilling_hook_fails_closed():
 
     model = FEModel("custom")
     model.add_material("mat", 29.0e6, 0.22)
-    for k, (x, y) in enumerate([(0, 0), (1, 0), (1, 1), (0, 1)], start=1):
+    for k, (x, y) in enumerate([(0, 0), (1, 0), (0, 1)], start=1):  # 3-node shell (non-Q4)
         model.add_node(k, float(x), float(y), 0.0)
-    model.add_element(1, CustomDrillingShell(1, [1, 2, 3, 4], "mat", thickness=0.1))
+    model.add_element(1, CustomDrillingShell(1, [1, 2, 3], "mat", thickness=0.1))
     with pytest.raises(NonlinearCheckpointError, match="overrides the drilling coefficient hook"):
         model_configuration_fingerprint(model)
 
@@ -196,9 +196,9 @@ def _plain_shell_model():
 
     model = FEModel("plain")
     model.add_material("mat", 29.0e6, 0.22)
-    for k, (x, y) in enumerate([(0, 0), (1, 0), (1, 1), (0, 1)], start=1):
+    for k, (x, y) in enumerate([(0, 0), (1, 0), (0, 1)], start=1):  # 3-node shell (non-Q4)
         model.add_node(k, float(x), float(y), 0.0)
-    model.add_element(1, ShellElement(1, [1, 2, 3, 4], "mat", thickness=0.1))
+    model.add_element(1, ShellElement(1, [1, 2, 3], "mat", thickness=0.1))
     return model
 
 
@@ -231,8 +231,8 @@ def test_metaclass_supplied_hook_fails_closed():
 
     model = FEModel("meta")
     model.add_material("mat", 29.0e6, 0.22)
-    for k, (x, y) in enumerate([(0, 0), (1, 0), (1, 1), (0, 1)], start=1):
+    for k, (x, y) in enumerate([(0, 0), (1, 0), (0, 1)], start=1):  # 3-node shell (non-Q4)
         model.add_node(k, float(x), float(y), 0.0)
-    model.add_element(1, MetaShell(1, [1, 2, 3, 4], "mat", thickness=0.1))
+    model.add_element(1, MetaShell(1, [1, 2, 3], "mat", thickness=0.1))
     with pytest.raises(NonlinearCheckpointError, match="overrides the drilling coefficient hook"):
         model_configuration_fingerprint(model)

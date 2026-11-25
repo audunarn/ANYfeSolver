@@ -20,8 +20,14 @@
   or main before this change) is refused on resume. Every other model keeps its
   fingerprint. Restart identity binds the model's recorded data under unmodified
   package code: runtime patching of ANYfeSolver kernels, hooks, helpers or modules
-  is unsupported and not detected; a shell subclass, metaclass or instance that
-  overrides the drilling coefficient hook is refused.
+  is unsupported and not detected. User shell subclasses are covered for their
+  recorded data; behaviour that depends on unrecorded state or dynamic lookup in
+  user code (`__getattribute__`/`__getattr__`, properties, overridden kernels) is
+  the user's responsibility, as for every kernel before. A shell subclass,
+  metaclass or instance that overrides the drilling coefficient hook is refused
+  as a best-effort guard; a user subclass whose `__getattribute__` returns a
+  hook reading unrecorded instance state is outside the contract and is not
+  detected.
 
 ## 0.5.0 - release candidate
 

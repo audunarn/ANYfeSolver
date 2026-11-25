@@ -785,10 +785,15 @@ def _require_admitted_drilling_hook(element: Any) -> None:
 
     Contract: restart identity binds the model's recorded data under
     unmodified package code.  Runtime patching of ANYfeSolver kernels, hooks,
-    helpers or modules is unsupported and not detected.  Instance attributes
-    and subclasses are in scope: an instance-level hook, or a class whose hook
-    (ordinary attribute lookup, metaclass included) is not the package's own,
-    is refused.  Admitted are the base ``ShellElement`` hook (stored value) on
+    helpers or modules is unsupported and not detected.  User subclasses are
+    covered for their recorded data; behaviour that depends on unrecorded
+    state or dynamic lookup in user code (``__getattribute__``/``__getattr__``,
+    properties, overridden kernels) is the user's responsibility.  As a
+    best-effort guard an instance-level hook, or a class whose hook (ordinary
+    attribute lookup, metaclass included) is not the package's own, is
+    refused.  Out of contract and not detected, for example: a user subclass
+    whose ``__getattribute__`` returns a hook that reads unrecorded instance
+    state (review 2026-11-25, round 12).  Admitted are the base ``ShellElement`` hook (stored value) on
     any shell class that does not override it, and the final qualified Q4 hook
     (warped-facet floor, described by :func:`_applied_drilling_if_changed`) on
     that class.
