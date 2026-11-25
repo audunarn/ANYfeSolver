@@ -592,3 +592,57 @@ def test_element_ids_with_a_list_equal_metaclass_are_not_treated_as_plain():
     assert type(_SharedIterator()) in (list, tuple)  # the old check's view
     stresses = compute_stresses(model, u, element_ids=_SharedIterator())
     assert sorted(stresses) == sorted(wanted)
+
+
+# --- follow-up 2026-11-25: Codex probes (caller code between guards) ----------
+
+_INPUT_STAGE = "stress-recovery input observation"
+
+
+def _input_guard_runs(call):
+    seen = []
+
+    def profiler(frame, event, arg):
+        if event == "call" and frame.f_locals.get("stage") == _INPUT_STAGE:
+            seen.append(frame.f_code.co_name)
+
+    previous = sys.getprofile()
+    sys.setprofile(profiler)
+    try:
+        result = call()
+    finally:
+        sys.setprofile(previous)
+    return bool(seen), result
+
+
+def test_float64_displacements_need_no_input_guard_but_a_cast_does():
+    model, element_ids = _triangle_plate(2, quads_every=3)
+    u, _info = solve_linear(model, _pressure(element_ids))
+    plain, reference = _input_guard_runs(lambda: compute_stresses(model, u))
+    assert not plain
+    # A dtype cast can call a NumPy floating-point error callback (np.seterrcall).
+    cast, single = _input_guard_runs(lambda: compute_stresses(model, u.astype(np.float32)))
+    assert cast
+    assert sorted(single) == sorted(reference)
+
+
+def test_global_recovery_capability_check_is_followed_by_a_complete_guard():
+    model, element_ids = _triangle_plate(2, quads_every=3)
+    u, _info = solve_linear(model, _pressure(element_ids))
+    guarded, stresses = _input_guard_runs(lambda: compute_stresses(model, u, return_global=True))
+    assert guarded and stresses
+
+
+def test_v2d_recovery_check_requires_builtin_node_mapping_reads():
+    from anyfesolver.recovery_batches import _v2d_recovery_providers_are_builtin
+
+    model, _element_ids = _triangle_plate(2, quads_every=3)
+    assert _v2d_recovery_providers_are_builtin(model)
+    nodes = model.mesh.nodes
+    original = nodes.get
+    object.__setattr__(nodes, "get", lambda key, default=None: original(key, default))
+    try:
+        assert not _v2d_recovery_providers_are_builtin(model)
+    finally:
+        object.__delattr__(nodes, "get")
+    assert _v2d_recovery_providers_are_builtin(model)
