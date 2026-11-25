@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Beam frame construction (`BeamElement` and `_beam_rotation_matrix`) skips
+  NumPy dispatch overhead for C-contiguous float64 vectors and the default rigid
+  arm, evaluating exactly the same expressions; results are bit-identical.
+  Source binding: `docs/reference_cases/e4_pl_source_binding_20261125.json`,
+  chained from the 2026-11-24 record; no qualified-Q4 symbol changes.
+
 - Warped qualified Q4 facets (warpage above `planar_tolerance`, varying-frame
   kernels) apply a drilling coefficient of at least 0.1: the kernels use
   `max(drilling_stabilization, 0.1)`, including for explicit smaller values and
