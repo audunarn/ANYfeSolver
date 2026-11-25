@@ -1694,6 +1694,8 @@ def _solve_eigenvalue_buckling_under_lease(
                     K_sym.tocsc(),
                     MatrixClass.SPD,
                     cache=elastic_cache,
+                    # Eigen results are judged by the per-mode residuals computed downstream; a shift at or near an eigenvalue is legitimate.
+                    options={"forward_error_probe": "report"},
                 )
                 phase_timings["factorization"] = float(
                     time.perf_counter() - factor_started
@@ -1757,6 +1759,8 @@ def _solve_eigenvalue_buckling_under_lease(
                     shift_matrix,
                     MatrixClass.SYMMETRIC_INDEFINITE,
                     cache=cache,
+                    # Eigen results are judged by the per-mode residuals computed downstream; a shift at or near an eigenvalue is legitimate.
+                    options={"forward_error_probe": "report"},
                 )
                 phase_timings["factorization"] = float(
                     time.perf_counter() - factor_started

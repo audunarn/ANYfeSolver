@@ -431,3 +431,46 @@ def test_rule_b_estimate_handles_columns_rows_scaling_and_nonfinite() -> None:
     f = K @ x
     assert linalg.relative_forward_error_estimate(matrix, x, f, handle=handle, scaling=s) == 0.0
     assert handle.solve_count == 2  # certification solves are not counted
+
+
+def _shifted_laplacian_at_eigenvalue(n: int = 50, mode: int = 7):
+    stiffness = sparse.diags([-1.0, 2.0, -1.0], [-1, 0, 1], shape=(n, n)).tocsc()
+    shift = 2.0 - 2.0 * np.cos(np.pi * mode / (n + 1))
+    return (stiffness - shift * sparse.identity(n)).tocsc()
+
+
+def test_shift_at_eigenvalue_refused_by_default_but_reported_in_report_mode():
+    matrix = _shifted_laplacian_at_eigenvalue()
+    with pytest.raises(RuntimeError):
+        linalg.cached_inverse_operator(
+            matrix, MatrixClass.SYMMETRIC_INDEFINITE,
+            cache=FactorizationCache(name="refuse", max_entries=2),
+        )
+    _, handle = linalg.cached_inverse_operator(
+        matrix, MatrixClass.SYMMETRIC_INDEFINITE,
+        cache=FactorizationCache(name="report", max_entries=2),
+        options={"forward_error_probe": "report"},
+    )
+    assert handle.status == "ok"
+    assert handle.metadata["forward_error_probe_mode"] == "report"
+    assert handle.metadata["forward_error_probe"] > 1.0e-3
+
+
+def test_buckling_shift_invert_at_eigenvalue_uses_report_mode():
+    from anyfesolver import solve_eigenvalue_buckling
+    from test_fe_solver_buckling import _beam_column_model
+
+    model, _, _ = _beam_column_model(num_elements=12)
+    states = {element_id: {"axial_compression": 1.0} for element_id in model.mesh.elements}
+    first = solve_eigenvalue_buckling(model, states, num_modes=1, dense_size_limit=2)
+    cache = FactorizationCache(name="buckling_report", max_entries=2)
+    shifted = solve_eigenvalue_buckling(
+        model, states, num_modes=1, dense_size_limit=2,
+        shift_load_factor=first.critical_load_factor, factorization_cache=cache,
+    )
+    assert shifted.solver_status == "ok"
+    assert shifted.critical_load_factor == pytest.approx(first.critical_load_factor, rel=1e-6)
+    handles = list(cache._handles.values())
+    assert handles
+    for handle in handles:
+        assert handle.metadata.get("forward_error_probe_mode") == "report"
