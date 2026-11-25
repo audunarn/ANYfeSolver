@@ -387,6 +387,69 @@ def physical(problems: list[str], name: str, raw: bytes) -> dict[str, Any]:
     return out
 
 
+GUARD_CADENCE_SUCCESSOR = ROOT / "docs" / "reference_cases" / "qualified_shell_nonlinear_guard_cadence_successor.json"
+
+
+def read_live(problems: list[str], relative: str) -> bytes:
+    """Live bytes of *relative*, or the prior bytes reconstructed through the
+    owner-approved guard cadence successor (G2/L1/G1, 2026-11-24).
+
+    The successor binds the exact live bytes of each changed bound carrier
+    (``current_raw`` / ``current_lf``) to an exact reverse line patch that
+    reproduces the bytes this record describes (``prior_raw`` / ``prior_lf``).
+    Every check below then runs unchanged on those prior bytes; any mismatch
+    in the successor is a problem, never a silent fallback.  Files the
+    successor does not bind are returned as read.
+    """
+
+    raw = (ROOT / relative).read_bytes()
+    if not GUARD_CADENCE_SUCCESSOR.is_file():
+        return raw
+    successor_raw = GUARD_CADENCE_SUCCESSOR.read_bytes()
+    successor = strict_json(successor_raw)
+    if successor_raw != (json.dumps(successor, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8"):
+        problems.append("guard cadence successor is not canonical JSON")
+        return raw
+    if successor.get("schema") != "anysolver.qualified-shell-nonlinear-guard-cadence-successor-v1":
+        problems.append("guard cadence successor schema differs")
+        return raw
+    if not all(value is False for value in successor["qualification_boundary"].values()):
+        problems.append("guard cadence successor claims a qualification change")
+        return raw
+    for name, row in successor["change"]["sealed_carriers"].items():
+        if row["live_path"] != relative:
+            continue
+        portable = name in PORTABLE_AUTO_TEXT
+        canonical = lf(raw)
+        if row["portable_text"] is not portable:
+            problems.append(f"guard cadence successor {name}: portable_text differs")
+            return raw
+        if identity(canonical) != row["current_lf"]:
+            problems.append(f"guard cadence successor {name}: live LF bytes are not the recorded current bytes")
+            return raw
+        if portable:
+            if raw not in (canonical, canonical.replace(b"\n", b"\r\n")):
+                problems.append(f"guard cadence successor {name}: live raw is not uniform LF/CRLF")
+                return raw
+            source = canonical
+        else:
+            if identity(raw) != row["current_raw"]:
+                problems.append(f"guard cadence successor {name}: live raw bytes are not the recorded current bytes")
+                return raw
+            source = raw
+        lines = source.decode("utf-8").splitlines(keepends=True)
+        for start, end, replacement in reversed(row["reverse_line_patch"]):
+            lines[start:end] = replacement
+        prior = "".join(lines).encode("utf-8")
+        if identity(lf(prior)) != row["prior_lf"] or (not portable and identity(prior) != row["prior_raw"]):
+            problems.append(f"guard cadence successor {name}: reverse patch does not reproduce the prior bytes")
+            return raw
+        if portable and raw != canonical:
+            return prior.replace(b"\n", b"\r\n")
+        return prior
+    return raw
+
+
 def git_text(*args: str) -> str | None:
     done = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=False)
     return done.stdout.strip() if done.returncode == 0 else None
@@ -470,7 +533,7 @@ def lineage_section(expect, problems: list[str], reviewed: Any, current: Any, li
     }
 
 
-def historical_gaps(current: Any) -> list[dict[str, Any]]:
+def historical_gaps(current: Any, problems: list[str]) -> list[dict[str, Any]]:
     """Whole-file comparisons of the current record that do not describe live bytes."""
     review = current["source_binding_integration_review"]
     external = current["external_arithmetic_dependencies"]["_elements_module"]
@@ -490,7 +553,7 @@ def historical_gaps(current: Any) -> list[dict[str, Any]]:
     gaps = []
     for check, recorded, digest, leaf in checks:
         live = recorded.replace(RECORDED_PREFIX, LIVE_PREFIX, 1)
-        live_bytes = (ROOT / live).read_bytes()  # protected (-text) carriers: raw is pinned too
+        live_bytes = read_live(problems, live)  # protected (-text) carriers: raw is pinned too
         live_sha = sha256_upper(lf(live_bytes))
         gaps.append({
             "historical_leaf": leaf, "live_raw": identity(live_bytes), "live_lf": identity(lf(live_bytes)),
@@ -549,7 +612,7 @@ def build(lineage_dir: Path = LINEAGE_DIR) -> tuple[dict[str, Any], list[str]]:
     for name in CARRIERS:
         live_path = LIVE_PREFIX + name
         recorded_path = RECORDED_PREFIX + name
-        raw = (ROOT / live_path).read_bytes()
+        raw = read_live(problems, live_path)
         live_lf = lf(raw)
         reverse = reverse_spelling(live_lf)
         raw_blob, lf_blob, lf_sha, reverse_blob = EXPECTED_LIVE[name]
@@ -596,6 +659,13 @@ def build(lineage_dir: Path = LINEAGE_DIR) -> tuple[dict[str, Any], list[str]]:
     candidate = closure_payload(live_lf_sources[ENTRY], roots, required, schema, logical_entry)
     candidate_agg = aggregate(candidate)
     expect("candidate closure", (len(candidate["symbols"]), candidate_agg), EXPECTED_CLOSURE["candidate"])
+    # The mechanics closure of the actual live entry bytes (not only of the
+    # prior bytes reconstructed through the guard cadence successor) must be
+    # the same candidate closure.
+    actual_entry = lf((ROOT / LIVE_PREFIX / ENTRY).read_bytes()).decode("utf-8")
+    actual = closure_payload(actual_entry, roots, required, schema, logical_entry)
+    expect("candidate closure of the actual live entry bytes",
+           (len(actual["symbols"]), aggregate(actual)), EXPECTED_CLOSURE["candidate"])
     upstream_source = git_blob_at(REVISIONS["e0c5f32ab"], RECORDED_PREFIX + ENTRY)
     upstream_agg = ""
     upstream_symbols: dict[str, str] = {}
@@ -618,7 +688,7 @@ def build(lineage_dir: Path = LINEAGE_DIR) -> tuple[dict[str, Any], list[str]]:
         if row["file"] is None or row["relative_level"] > 1:
             problems.append(f"unsupported internal import form: {row}")
             continue
-        data = (ROOT / LIVE_PREFIX / row["file"]).read_bytes()
+        data = read_live(problems, LIVE_PREFIX + row["file"])
         row["live_path"] = LIVE_PREFIX + row["file"]
         row["recorded_path"] = RECORDED_PREFIX + row["file"]
         row.update(physical(problems, row["file"], data))
@@ -627,7 +697,7 @@ def build(lineage_dir: Path = LINEAGE_DIR) -> tuple[dict[str, Any], list[str]]:
         for alias, v in oct19["external_arithmetic_dependencies"].items()
     }
     lineage = lineage_section(expect, problems, oct19, current_record, lineage_dir)
-    gaps = historical_gaps(current_record)
+    gaps = historical_gaps(current_record, problems)
     expect("historical gap count", len(gaps), 5)
     for gap in gaps:
         expect(f"gap {gap['check']} is a nonmatch", gap["live_lf_matches_recorded"], False)

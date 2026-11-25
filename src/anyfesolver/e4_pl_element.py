@@ -7586,16 +7586,30 @@ def _make_q4_trusted_operation_scope() -> tuple[Any, Any]:
 ) = _make_q4_trusted_operation_scope()
 
 
-def _make_q4_class_authority_window() -> tuple[Any, Any]:
+def _make_q4_class_authority_window() -> tuple[Any, Any, Any]:
     """Create the context-local class-authority cadence window (owner G2).
 
     Outside a window every exact class/namespace guard runs completely on
     every call, exactly as before.  Inside a window each distinct guard runs
     completely on its first use and is then accepted for the rest of that
-    window; when the window closes normally, every guard used in it runs
-    completely again before the window's results are accepted.  A window is
-    one Newton evaluation or one lease scan; nested windows join the outer
-    one.  Per-element instance, quadrature and epoch checks are unaffected.
+    window.  Every window close - nested or outermost, normal or exceptional -
+    runs every guard used in that window completely again before control
+    returns to the code that opened it; a nested window may only skip the
+    first-use check of a guard that an enclosing live window has already
+    validated.  A window is one Newton evaluation, plan build, K0 assembly,
+    lease scan or trusted-operation preflight/exit.  Per-element instance,
+    quadrature and epoch checks are unaffected.
+
+    Close refusal: the class-authority error is raised (chained to an
+    exception that was already leaving the window, so a class change keeps
+    the precedence of the per-call guards) and every Q4 element whose guarded
+    call ran inside the refused window has its derived caches dropped, as a
+    per-call refusal would have done.  A guard that already refused inside the
+    window is not re-run on the way out: its error is the window's error.
+    Reusable caches written under a window either validate before they
+    publish (their own nested window) or register an eviction with
+    ``on_refusal``: it runs if the innermost live window, or any enclosing
+    window it is handed to on a successful close, refuses.
 
     Trust boundary: ANYfeSolver's own classes and guard machinery and the
     trusted numerical dependencies are not replaced while a window is open,
@@ -7611,48 +7625,137 @@ def _make_q4_class_authority_window() -> tuple[Any, Any]:
     )
 
     class Token:
-        __slots__ = ("validated", "live")
+        __slots__ = (
+            "validated", "live", "parent", "elements", "refusal", "evictions"
+        )
 
-        def __init__(self) -> None:
+        def __init__(self, parent: Any) -> None:
+            # Guards used in this window: validated on first use (or by a live
+            # enclosing window) and validated again when this window closes.
             self.validated: list[Any] = []
             self.live = True
+            self.parent = parent
+            # Q4 elements whose guarded calls ran here (derived caches to drop
+            # on a close refusal).
+            self.elements: dict[int, Any] = {}
+            self.refusal: Any = None
+            # Cache evictions to run if this window (or, after a successful
+            # close, its parent) refuses.
+            self.evictions: list[Any] = []
 
-    def require(exact_guard: Any) -> None:
+    def mark_refused(token: Any, error: BaseException) -> None:
+        while token is not None:
+            if token.refusal is None:
+                token.refusal = error
+            token = token.parent
+
+    def enclosing_validated(token: Any, exact_guard: Any) -> bool:
+        parent = token.parent
+        while parent is not None:
+            if parent.live:
+                for accepted in parent.validated:
+                    if accepted is exact_guard:
+                        return True
+            parent = parent.parent
+        return False
+
+    def require(exact_guard: Any, element: Any = None) -> None:
         token = active.get()
         if type(token) is Token and token.live:
             for accepted in token.validated:
                 if accepted is exact_guard:
-                    return
-            exact_guard()
-            token.validated.append(exact_guard)
+                    break
+            else:
+                if not enclosing_validated(token, exact_guard):
+                    try:
+                        exact_guard()
+                    except BaseException as error:
+                        # Refused on first use, before this call ran: the same
+                        # point and error as the per-call guard.
+                        mark_refused(token, error)
+                        raise
+                token.validated.append(exact_guard)
+            if element is not None:
+                token.elements[id(element)] = element
             return
         exact_guard()
+
+    def drop_caches(token: Any) -> None:
+        elements = tuple(token.elements.values())
+        token.elements.clear()
+        evictions = tuple(token.evictions)
+        token.evictions.clear()
+        for element in elements:
+            _invalidate_q4_guarded_call_caches(element)
+        for eviction in evictions:
+            eviction()
+
+    def on_refusal(eviction: Any) -> None:
+        token = active.get()
+        if type(token) is Token and token.live:
+            token.evictions.append(eviction)
+
+    def validate(token: Any) -> None:
+        try:
+            for exact_guard in tuple(token.validated):
+                exact_guard()
+        except BaseException as error:
+            mark_refused(token, error)
+            drop_caches(token)
+            raise
+        parent = token.parent
+        if parent is not None and parent.live:
+            for exact_guard in token.validated:
+                for accepted in parent.validated:
+                    if accepted is exact_guard:
+                        break
+                else:
+                    parent.validated.append(exact_guard)
+            parent.evictions.extend(token.evictions)
+        token.evictions.clear()
+        token.elements.clear()
+
+    def refusal_in_chain(refusal: BaseException, error: BaseException) -> bool:
+        seen: set[int] = set()
+        current: Any = error
+        while current is not None and id(current) not in seen:
+            if current is refusal:
+                return True
+            seen.add(id(current))
+            current = current.__cause__ or current.__context__
+        return False
 
     @contextmanager
     def window() -> Any:
         outer = active.get()
-        if type(outer) is Token and outer.live:
-            yield
-            return
-        token = Token()
+        token = Token(outer if type(outer) is Token and outer.live else None)
         marker = active.set(token)
         try:
             yield
-        except BaseException:
+        except BaseException as error:
             token.live = False
             active.reset(marker)
+            if token.refusal is not None and refusal_in_chain(token.refusal, error):
+                # The class refusal (possibly wrapped by an assembly lease) is
+                # already leaving: keep it exactly as the per-call guard did.
+                drop_caches(token)
+                raise
+            try:
+                validate(token)
+            except BaseException as refusal:
+                raise refusal from error
             raise
         token.live = False
         active.reset(marker)
-        for exact_guard in tuple(token.validated):
-            exact_guard()
+        validate(token)
 
-    return window, require
+    return window, require, on_refusal
 
 
 (
     _q4_class_authority_window,
     _require_q4_class_authority_in_window,
+    _q4_class_authority_on_refusal,
 ) = _make_q4_class_authority_window()
 
 
@@ -8052,12 +8155,13 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
 
     class_window_require = _require_q4_class_authority_in_window
 
-    def runtime_guard() -> None:
+    def runtime_guard(element: Any = None) -> None:
         numerical_module_guard(context=f"qualified Q4 {method.__name__}")
         runtime_epoch_guard()
         # G2: complete on every call outside a window; once per evaluation or
-        # lease window (and again when the window closes) inside one.
-        class_window_require(formulation_class_guard)
+        # lease window (and again when the window closes) inside one.  The
+        # element is recorded so a close refusal drops its derived caches.
+        class_window_require(formulation_class_guard, element)
 
     expected_topology_names = (
         "reduced_integration",
@@ -8152,7 +8256,7 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
 
     def boundary_guard(self: Any, *, context: str) -> None:
         del context
-        runtime_guard()
+        runtime_guard(self)
         instance_guard(self)
         quadrature_guard(self)
 
@@ -8165,7 +8269,7 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
                 f"{method.__name__} does not accept a caller-supplied runtime guard"
             )
         if method.__name__ == "__init__":
-            runtime_guard()
+            runtime_guard(self)
             call_generation = runtime_manager.capture_generation()
             completed = False
             try:
@@ -8174,7 +8278,7 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
                 return result
             finally:
                 try:
-                    runtime_guard()
+                    runtime_guard(self)
                     runtime_manager.require_generation(call_generation)
                     if completed:
                         instance_guard(self)

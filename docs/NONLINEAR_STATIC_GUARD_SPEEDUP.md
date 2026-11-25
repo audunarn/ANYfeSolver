@@ -327,8 +327,14 @@ justified only inside that boundary.
   (`_assemble_nonlinear_system`, the Batch C direct evaluation and plan build),
   the initial elastic stiffness evaluation of a nonlinear solve, each lease
   scan over the Q4 elements, and the trusted-operation preflight/exit scans.
-  Nested windows join the outer one; the token is revoked before the closing
-  check.  Per-element instance, quadrature and epoch checks are unchanged.
+  Every window close, nested or outermost, runs the checks used in that window
+  again before control returns to the code that opened it; a nested window
+  may skip only the first-use check of a guard an enclosing live window has
+  already validated.  An exception leaving a window runs the close checks
+  first: a class change is raised (chained to the original error), so it keeps
+  the per-call guards' precedence; a check that already refused inside the
+  window is not re-run.  The token is revoked before the closing check.
+  Per-element instance, quadrature and epoch checks are unchanged.
 - **L1, lifecycle scan once per step.**  In force control, when no
   constant-time trusted guard exists (for example pure S3 V2D models), the
   solver-internal complete lifecycle scans of one step attempt run at step
@@ -338,13 +344,47 @@ justified only inside that boundary.
   them rejects, the lifecycle scan runs first so the complete guard's
   precedence is kept.  Every caller-controlled observation (status and
   progress callbacks, untrusted cancellation tokens, external providers) still
-  runs the complete scan immediately.  Other control modes are unchanged.
+  runs the complete scan immediately.  After the pre-commit scan the step's
+  committed-state, reaction and snapshot observations are deferred as well;
+  they are covered by the step's unconditional complete scan at the
+  support-reaction observation (before the step is recorded or reported), or
+  by the next entry scan or the loop-exit scan.  Per committed step the
+  solver-internal complete scans are therefore exactly the entry and the
+  pre-commit scan.  Other control modes are unchanged.
 - **G1, exact C-speed sweeps.**  The remaining class and instance identity
   sweeps use `map`/`operator.is_not` over captured tuples with the same order,
   messages and outcomes (differential tests against verbatim copies).
 
+Caches written under a window (round-1 review inventory).  Nothing produced
+inside a window is served from a reusable cache unless that window's close
+validation passed:
+
+- Nonlinear assembly plan cache (`nonlinear_performance_bootstrap._PLAN_CACHE`):
+  the build is its own window, so its close validation runs before the plan
+  is published; the published plan also registers an eviction with the
+  enclosing window, which runs if that window (or an outer window it is
+  handed to on a successful close) refuses.
+- `nonlinear_performance._PLAN_CACHE` (original getter): replaced by the
+  bootstrap getter on import and keyed by an unhashable `FEModel`; not used.
+- `_activate_nonlinear_state_storage`: the plan comes from the cache above
+  inside a window; the state store and native rotation store are built after
+  that window closed successfully, from the validated plan.
+- Batch C: the reduced plan is built after the plan window closed; the
+  direct evaluation's window closes before its payload is returned; plan
+  buffers and timings are per-call scratch, not reused results.
+- Q4 element caches (`_stiffness_matrix`, `_internal_forces`, `_mass_matrix`,
+  `_nl_cache`, `_qualified_components` and their keys/provenance): every Q4
+  whose guarded call ran in a window is recorded, and a close refusal drops
+  its derived caches with the same invalidation a per-call refusal performs.
+  A first-use refusal happens before the call runs, as the per-call pre-check
+  did, and drops nothing of that call.
+- Assembly execution plans are bound to one per-call lease; the S4 geometric
+  kinematics cache is keyed by coordinate and quadrature bytes.  Neither
+  depends on Q4 class authority.
+
 Persistent changes are refused with the same exception type as before and
-before any result of the affected evaluation or step is accepted.  What
+before any result of the affected evaluation or step is returned, cached for
+reuse or committed.  What
 changes: a class change made and reverted inside one window, or a lifecycle
 change made and reverted between two solver-internal points of one step, is no
 longer detected.  Not changed (not approved): final seal replays, frozen V2D
@@ -369,3 +409,13 @@ element states, step records) is identical across all variants:
 Run-to-run noise is about 5 %.  L1 matters only where the complete lifecycle
 scan is the internal guard (trip: 79 to 40 scans per solve); exact all-Q4
 models already use the constant-time trusted guard.
+
+Round-1 review repair (2026-11-25): nested and exceptional window closes now
+validate, refused plans are never reused, and the post-commit observations are
+deferred (L1).  Result hashes are unchanged (q4el 16x16 u `231fbe76db20e336`,
+q4pl 16x16 u `f39af085eb25a479`, trip 8x8 u `556b4c8fbb0406d2`, tri 8x8 u
+`f5daa0b971e71aa4`).  Warm minimum of three solves after one cold solve:
+q4el 16x16 3.37 s (previous slice commit 3.51 s, base 4.59 s), q4pl 16x16
+3.00 s (3.13 s, base 4.05 s).  Complete Q4 class checks per 6x6 Q4 solve: 424
+(previous slice commit 416, base 1622).  Complete lifecycle scans per trip 8x8
+solve: 23 (previous slice commit 32).

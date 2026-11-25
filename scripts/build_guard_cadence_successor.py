@@ -9,7 +9,14 @@ commit, the identity of the live bytes and an exact reverse line patch from the
 live text to the base text, so the source-binding record keeps being verified
 in full on the reproduced base bytes while the live bytes are pinned exactly.
 
-Git is used read-only (``git show <base>:<path>``).  No numerics run here.
+Byte identities are checkout-independent: ``e4_pl_element.py`` is ``-text``
+(raw bytes are the same on every platform) and every other hashed file that is
+not pinned by ``.gitattributes`` is identified by its LF-normalised text.  The
+change commit is validated (ancestor of HEAD whose diff touches the bound
+entry carrier) both when writing and by ``--check``.
+
+Git is used read-only (``git show``, ``merge-base --is-ancestor``,
+``diff --name-only``).  No numerics run here.
 
 Usage (repository root):
     python scripts/build_guard_cadence_successor.py EVIDENCE.json   # write
@@ -35,12 +42,18 @@ OTHER = (
     "e4_pl_s3_v2d_state.py",
     "matrix_assembly.py",
     "nonlinear_performance_batch_c.py",
+    "nonlinear_performance_bootstrap.py",
     "nonlinear_static.py",
 )
+# The commit that introduced the G2/L1/G1 change to the bound entry carrier.
+CHANGE_COMMIT = "7a5bad38fef15d29db90008a1ebb08d0d6a442c1"
+CHANGE_COMMIT_TOUCHES = "src/anyfesolver/e4_pl_element.py"
 CHANGE_COMMITS = (
     "d81e40216 Canonical state JSON: exact-type fast paths with identical bytes",
     "8d8fbd3ed Canonical fast paths: only under the internal exact-str path; trace tests",
     "7a5bad38f Nonlinear guard cadence: Q4 class authority per evaluation (G2), lifecycle per step (L1), exact sweeps (G1)",
+    "uncommitted round-1 review repair: nested/exceptional window close validation, plan-cache "
+    "eviction, L1 post-commit deferral, LF note identity, change-commit validation",
 )
 
 
@@ -58,6 +71,23 @@ def git(*args: str) -> bytes:
 
 def lf(data: bytes) -> bytes:
     return data.replace(b"\r\n", b"\n")
+
+
+def validated_change_commit(commit: object) -> str:
+    """Return *commit* if it is a full id, an ancestor of HEAD and touches the entry carrier."""
+
+    if type(commit) is not str or len(commit) != 40 or any(c not in "0123456789abcdef" for c in commit):
+        raise SystemExit(f"change.commit is not a full commit id: {commit!r}")
+    ancestor = subprocess.run(
+        ["git", "-C", str(ROOT), "merge-base", "--is-ancestor", commit, "HEAD"],
+        capture_output=True,
+    )
+    if ancestor.returncode != 0:
+        raise SystemExit(f"change.commit {commit} is not an ancestor of HEAD")
+    touched = git("diff", "--name-only", f"{commit}^", commit).decode().split()
+    if CHANGE_COMMIT_TOUCHES not in touched:
+        raise SystemExit(f"change.commit {commit} does not touch {CHANGE_COMMIT_TOUCHES}")
+    return commit
 
 
 def reverse_patch(current: bytes, prior: bytes) -> list:
@@ -110,7 +140,7 @@ def build(evidence: dict) -> dict:
         "schema": "anysolver.qualified-shell-nonlinear-guard-cadence-successor-v1",
         "base": {"commit": base_commit, "tree": base_tree},
         "change": {
-            "commit": "PENDING_UNCOMMITTED",
+            "commit": validated_change_commit(CHANGE_COMMIT),
             "commits": list(CHANGE_COMMITS),
             "sealed_carriers": bound,
             "other_changed_sources": other,
@@ -152,7 +182,12 @@ def build(evidence: dict) -> dict:
             "status": "PENDING",
             "bit_identical_result_hashes": evidence["hashes"],
             "regression_tests": "tests/test_nonlinear_guard_cadence.py",
-            "performance_note": {"path": note.relative_to(ROOT).as_posix(), **ident(note.read_bytes())},
+            # Auto-text file: identified by its LF form (checkout-independent).
+            "performance_note": {
+                "path": note.relative_to(ROOT).as_posix(),
+                "text_identity": "lf",
+                **ident(lf(note.read_bytes())),
+            },
         },
         "review": {"outcome": "PENDING", "finding_count": None, "reviewer": "PENDING", "scope": "PENDING"},
         "terminal": "PENDING_INDEPENDENT_REVIEW",
@@ -166,11 +201,13 @@ def canonical(record: dict) -> bytes:
 def main(argv: list[str]) -> int:
     if argv == ["--check"]:
         current = json.loads(OUTPUT.read_bytes())
+        # Validated, not copied: the recorded commit must be the builder's
+        # validated change commit (the canonical comparison below binds it).
+        validated_change_commit(current["change"]["commit"])
         rebuilt = build({"hashes": current["validation"]["bit_identical_result_hashes"]})
         rebuilt["validation"]["status"] = current["validation"]["status"]
         rebuilt["review"] = current["review"]
         rebuilt["terminal"] = current["terminal"]
-        rebuilt["change"]["commit"] = current["change"]["commit"]
         fresh = canonical(rebuilt) == OUTPUT.read_bytes()
         print("fresh" if fresh else "STALE")
         return 0 if fresh else 1

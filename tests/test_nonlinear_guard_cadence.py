@@ -27,9 +27,12 @@ reverted between solver-internal points of one step, is no longer detected.
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import hashlib
 import json
+import subprocess
+import sys
 import warnings
 from pathlib import Path
 
@@ -187,11 +190,116 @@ def v2d_probe():
 # --------------------------------------------- G2: detection is preserved
 
 
-def test_g2_results_are_unchanged_on_an_unchanged_model() -> None:
-    model, load = _plate()
+def _result_bytes(value) -> bytes:
+    """Exact bytes of a result value (arrays, floats, nested containers)."""
+
+    out = bytearray()
+
+    def feed(item) -> None:
+        if item is None or isinstance(item, (bool, int, str)):
+            out.extend(repr((type(item).__name__, item)).encode())
+        elif isinstance(item, float):
+            out.extend(b"f" + np.float64(item).tobytes())
+        elif isinstance(item, np.ndarray):
+            out.extend(f"a{item.dtype}{item.shape}".encode())
+            if item.dtype == object:
+                for entry in item.ravel():
+                    feed(entry)
+            else:
+                out.extend(np.ascontiguousarray(item).tobytes())
+        elif isinstance(item, np.generic):
+            out.extend(b"g" + np.asarray(item).tobytes())
+        elif isinstance(item, dict):
+            out.extend(b"{")
+            for key in sorted(item, key=repr):
+                feed(key)
+                feed(item[key])
+            out.extend(b"}")
+        elif isinstance(item, (list, tuple)):
+            out.extend(b"[")
+            for entry in item:
+                feed(entry)
+            out.extend(b"]")
+        elif hasattr(item, "__dataclass_fields__"):
+            out.extend(type(item).__name__.encode())
+            feed({name: getattr(item, name) for name in item.__dataclass_fields__})
+        elif hasattr(item, "__dict__"):
+            out.extend(type(item).__name__.encode())
+            feed(dict(vars(item)))
+        else:
+            out.extend(repr(item).encode())
+
+    feed(value)
+    return bytes(out)
+
+
+@contextlib.contextmanager
+def _g2_cadence_off():
+    """Reference: every Q4 class check runs completely on every guarded call.
+
+    The module namespaces are pinned by the lifecycle guards, so the reference
+    replaces, for the duration of the solve, the window hook captured by each
+    bound Q4 runtime guard with the unconditional per-call check (the pre-G2
+    behaviour) and restores it afterwards.
+    """
+
+    cls = _q4.QualifiedE4PLShellElement
+    cells = []
+    for value in type.__getattribute__(cls, "__dict__").values():
+        function = value.fget if isinstance(value, property) else value
+        if not callable(function) or getattr(function, "__closure__", None) is None:
+            continue
+        guarded = _closure_cells(function)
+        runtime_guard = guarded.get("runtime_guard")
+        if runtime_guard is None:
+            continue
+        for name, cell in zip(runtime_guard.__code__.co_freevars, runtime_guard.__closure__):
+            if name == "class_window_require" and cell not in [c for c, _ in cells]:
+                cells.append((cell, cell.cell_contents))
+    assert cells
+
+    calls = []
+
+    def per_call(exact_guard, element=None):
+        del element
+        calls.append(exact_guard)
+        exact_guard()
+
+    try:
+        for cell, _original in cells:
+            cell.cell_contents = per_call
+        yield calls
+    finally:
+        for cell, original in cells:
+            cell.cell_contents = original
+
+
+@pytest.mark.parametrize("plastic", (False, True))
+def test_g2_results_are_unchanged_on_an_unchanged_model(plastic) -> None:
+    """G2 is result-neutral: exact bytes equal a cadence-off reference."""
+
+    from anyfesolver import nonlinear_performance_bootstrap as _bootstrap
+
+    model, load = _plate(plastic=plastic)
+    _bootstrap.clear_nonlinear_assembly_cache()
     result = _solve(model, load)
-    assert result.status == "completed"
-    assert len(result.steps) >= 2
+    reference_model, reference_load = _plate(plastic=plastic)
+    _bootstrap.clear_nonlinear_assembly_cache()
+    with _g2_cadence_off() as per_call_checks:
+        reference = _solve(reference_model, reference_load)
+    assert per_call_checks  # the reference really ran the per-call checks
+    assert result.status == reference.status == "completed"
+    assert len(result.steps) == len(reference.steps) >= 2
+    assert np.asarray(result.displacements).tobytes() == np.asarray(
+        reference.displacements
+    ).tobytes()
+    assert _result_bytes(result.element_states) == _result_bytes(reference.element_states)
+    assert _result_bytes(
+        [(s.load_factor, s.iterations, s.residual_norm) for s in result.steps]
+    ) == _result_bytes(
+        [(s.load_factor, s.iterations, s.residual_norm) for s in reference.steps]
+    )
+    assert result.load_factor == reference.load_factor
 
 
 def test_g2_dependency_class_change_before_solve_is_refused(femesh_probe) -> None:
@@ -306,6 +414,229 @@ def test_g2_window_token_does_not_outlive_its_window(femesh_probe) -> None:
         copied.run(
             _q4._require_exact_q4_runtime_authority, element, context="probe"
         )
+
+
+# ------------------- G2 round 1: every window close validates (P1/P2 repairs)
+
+
+def test_g2_nested_window_validates_before_returning(femesh_probe) -> None:
+    """A nested window may skip only its first-use check, never its close."""
+
+    model, _load = _plate()
+    element = next(iter(model.mesh.elements.values()))
+    with pytest.raises(ValueError, match="qualified Q4 FEMesh class namespace changed"):
+        with _q4._q4_class_authority_window():
+            _q4._require_exact_q4_runtime_authority(element, context="outer")
+            with _q4._q4_class_authority_window():
+                _q4._require_exact_q4_runtime_authority(element, context="nested")
+            femesh_probe.set()
+            returned = []
+            with _q4._q4_class_authority_window():
+                _q4._require_exact_q4_runtime_authority(element, context="nested")
+                returned.append("inside")
+            returned.append("escaped")  # pragma: no cover - must not be reached
+    assert returned == ["inside"]
+
+
+def test_g2_nested_assembly_cannot_return_under_an_active_change(femesh_probe) -> None:
+    """Caller code inside an outer window (e.g. a stiffness-scale mapping)
+    runs a nested assembly: its result is refused while the change persists."""
+
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+
+    model, _load = _plate()
+    assemble_stiffness_matrix(model)
+    returned = []
+    with pytest.raises((ValueError, AssemblyError)) as caught:
+        with _q4._q4_class_authority_window():
+            assemble_stiffness_matrix(model)
+            femesh_probe.set()
+            returned.append(assemble_stiffness_matrix(model))
+    assert returned == []
+    chain = []
+    error = caught.value
+    while error is not None:
+        chain.append(str(error))
+        error = error.__cause__ or error.__context__
+    assert any("qualified Q4 FEMesh class namespace changed" in text for text in chain)
+
+
+def test_g2_exceptional_window_exit_keeps_class_refusal_precedence(femesh_probe) -> None:
+    """An invalid call under an active class change raises the class error
+    first, as the per-call guard does (the original error is chained)."""
+
+    model, _load = _plate()
+    element = next(iter(model.mesh.elements.values()))
+    femesh_probe.set()
+    with pytest.raises(ValueError, match="qualified Q4 FEMesh class namespace changed"):
+        element.get_node_coordinates()
+    femesh_probe.clear()
+    with pytest.raises(ValueError, match="qualified Q4 FEMesh class namespace changed") as caught:
+        with _q4._q4_class_authority_window():
+            element.get_node_coordinates(model.mesh)
+            femesh_probe.set()
+            element.get_node_coordinates()
+    assert isinstance(caught.value.__cause__, TypeError)
+
+
+def test_g2_wrapped_class_refusal_keeps_its_wrapper(femesh_probe) -> None:
+    """A class refusal wrapped by library code (as the assembly lease wraps it
+    into AssemblyError) leaves the enclosing window unchanged."""
+
+    model, _load = _plate()
+    element = next(iter(model.mesh.elements.values()))
+    with pytest.raises(RuntimeError, match="wrapped") as caught:
+        with _q4._q4_class_authority_window():
+            _q4._require_exact_q4_runtime_authority(element, context="outer")
+            femesh_probe.set()
+            try:
+                with _q4._q4_class_authority_window():
+                    _q4._require_exact_q4_runtime_authority(element, context="nested")
+            except ValueError as refusal:
+                raise RuntimeError("wrapped") from refusal
+    assert isinstance(caught.value.__cause__, ValueError)
+
+
+def test_g2_exceptional_exit_without_class_change_is_unchanged() -> None:
+    model, _load = _plate()
+    element = next(iter(model.mesh.elements.values()))
+    with pytest.raises(TypeError, match="mesh"):
+        with _q4._q4_class_authority_window():
+            element.get_node_coordinates(model.mesh)
+            element.get_node_coordinates()
+
+
+def test_g2_close_refusal_drops_element_caches(femesh_probe) -> None:
+    """Derived Q4 caches written under a refused window are dropped."""
+
+    from anyfesolver.matrix_assembly import assemble_stiffness_matrix
+
+    model, _load = _plate()
+    element = next(iter(model.mesh.elements.values()))
+    with pytest.raises(ValueError, match="FEMesh class namespace changed"):
+        with _q4._q4_class_authority_window():
+            _q4._require_exact_q4_runtime_authority(element, context="probe")
+            object.__setattr__(element, "_stiffness_matrix", np.eye(2))
+            femesh_probe.set()
+    assert object.__getattribute__(element, "__dict__").get("_stiffness_matrix") is None
+    femesh_probe.clear()
+    stiffness, _info = assemble_stiffness_matrix(model)
+    assert stiffness.shape[0] > 0
+
+
+def _hook_plan_build(monkeypatch, after_build):
+    from anyfesolver import nonlinear_performance as _performance
+
+    built = []
+    original = _performance.NonlinearAssemblyPlan.__dict__["build"].__func__
+
+    def build(cls, model, num_layers):
+        plan = original(cls, model, num_layers)
+        built.append(plan)
+        after_build()
+        return plan
+
+    monkeypatch.setattr(_performance.NonlinearAssemblyPlan, "build", classmethod(build))
+    return built
+
+
+def test_g2_plan_refused_at_window_close_is_not_reused(monkeypatch, femesh_probe) -> None:
+    """Codex round 1 P1 #2: a plan built while the class change became
+    active is refused and never served from the reusable cache."""
+
+    from anyfesolver import nonlinear_performance_bootstrap as _bootstrap
+
+    model, _load = _plate()
+    element = next(iter(model.mesh.elements.values()))
+    _bootstrap.clear_nonlinear_assembly_cache(model)
+    built = _hook_plan_build(monkeypatch, femesh_probe.set)
+    with pytest.raises(ValueError, match="FEMesh class namespace changed"):
+        with _q4._q4_class_authority_window():
+            _q4._require_exact_q4_runtime_authority(element, context="prime")
+            _bootstrap.get_nonlinear_assembly_plan(model, 5)
+    assert len(built) == 1
+    femesh_probe.clear()
+    monkeypatch.undo()
+    retry = _bootstrap.get_nonlinear_assembly_plan(model, 5)
+    assert retry is not built[0]
+
+
+def test_g2_published_plan_is_evicted_when_an_enclosing_window_refuses(
+    femesh_probe,
+) -> None:
+    from anyfesolver import nonlinear_performance_bootstrap as _bootstrap
+
+    model, _load = _plate()
+    element = next(iter(model.mesh.elements.values()))
+    _bootstrap.clear_nonlinear_assembly_cache(model)
+    with pytest.raises(ValueError, match="FEMesh class namespace changed"):
+        with _q4._q4_class_authority_window():
+            _q4._require_exact_q4_runtime_authority(element, context="prime")
+            plan = _bootstrap.get_nonlinear_assembly_plan(model, 5)
+            femesh_probe.set()
+    femesh_probe.clear()
+    assert _bootstrap.get_nonlinear_assembly_plan(model, 5) is not plan
+    # An accepted window keeps the published plan.
+    with _q4._q4_class_authority_window():
+        kept = _bootstrap.get_nonlinear_assembly_plan(model, 5)
+    assert _bootstrap.get_nonlinear_assembly_plan(model, 5) is kept
+
+
+def test_l1_complete_scans_are_entry_and_pre_commit_per_step(monkeypatch) -> None:
+    """Codex round 1 P2 #4: per committed step exactly one entry and one
+    pre-commit internal complete scan; none at tangent assembly or at the
+    committed-state / reaction observations (covered by the step's
+    unconditional support-reaction scan)."""
+
+    from collections import Counter
+
+    original = _nonlinear_static._EXACT_QUALIFIED_LIFECYCLE_GUARD
+    contexts = []
+
+    def counted(observed_model, *, context):
+        contexts.append(context)
+        return original(observed_model, context=context)
+
+    monkeypatch.setattr(_nonlinear_static, "_EXACT_QUALIFIED_LIFECYCLE_GUARD", counted)
+    result = _solve(*_plate(3, triangles=True))
+    assert result.status == "completed"
+    steps = len(result.steps)
+    assert steps == 2
+    counts = Counter(contexts)
+    assert counts["nonlinear static force step cancellation"] == steps
+    assert counts["nonlinear static step pre-commit"] == steps
+    assert counts["nonlinear static support reactions"] == steps
+    for context in (
+        "nonlinear static force tangent assembly",
+        "nonlinear static committed-state observation",
+        "nonlinear static accepted reaction force",
+        "nonlinear static reaction assembly",
+        "nonlinear static reaction load",
+        "nonlinear static force step window exit",
+    ):
+        assert counts[context] == 0, context
+
+
+def test_l1_post_commit_deferral_is_scanned_before_the_step_is_reported(
+    monkeypatch, v2d_probe
+) -> None:
+    """A persistent change at a deferred post-commit observation is refused
+    before that step is reported to the caller."""
+
+    model, load = _plate(3, triangles=True)
+    committed = []
+    original_commit = _nonlinear_static._commit_nonlinear_state_candidate
+
+    def commit(*args, **kwargs):
+        out = original_commit(*args, **kwargs)
+        if not v2d_probe.active:
+            v2d_probe.set()
+        return out
+
+    monkeypatch.setattr(_nonlinear_static, "_commit_nonlinear_state_candidate", commit)
+    with pytest.raises(ElementCapabilityError):
+        _solve(model, load, progress_callback=committed.append)
+    assert committed == []
 
 
 # ------------------------------- G2: per-element instance checks unchanged
@@ -873,8 +1204,32 @@ OTHER_CHANGED_SOURCES = (
     "e4_pl_s3_v2d_state.py",
     "matrix_assembly.py",
     "nonlinear_performance_batch_c.py",
+    "nonlinear_performance_bootstrap.py",
     "nonlinear_static.py",
 )
+CHANGE_COMMIT_TOUCHES = "src/anyfesolver/e4_pl_element.py"
+GIT_ROOT = ROOT
+
+
+def _read_checkout(relative: str) -> bytes:
+    """Bytes of *relative* as this checkout has them (patched for LF/CRLF)."""
+
+    return (ROOT / relative).read_bytes()
+
+
+def _git(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["git", "-C", str(GIT_ROOT), *args], capture_output=True, check=False
+    )
+
+
+def _assert_change_commit(commit) -> None:
+    assert type(commit) is str and len(commit) == 40
+    assert all(c in "0123456789abcdef" for c in commit)
+    assert _git("merge-base", "--is-ancestor", commit, "HEAD").returncode == 0
+    touched = _git("diff", "--name-only", f"{commit}^", commit)
+    assert touched.returncode == 0
+    assert CHANGE_COMMIT_TOUCHES in touched.stdout.decode().split()
 
 
 def _identity(data: bytes) -> dict:
@@ -920,12 +1275,13 @@ def _assert_successor_bindings(payload: dict) -> None:
         "qualified_recovery_changed": False,
     }
     change = payload["change"]
+    _assert_change_commit(change["commit"])
     assert tuple(sorted(change["sealed_carriers"])) == SEALED_CARRIERS
     for name, row in change["sealed_carriers"].items():
         assert row["live_path"] == f"src/anyfesolver/{name}"
         portable = name in PORTABLE_CARRIERS
         assert row["portable_text"] is portable
-        live = (ROOT / row["live_path"]).read_bytes()
+        live = _read_checkout(row["live_path"])
         canonical = live.replace(b"\r\n", b"\n")
         assert _identity(canonical) == row["current_lf"]
         if not portable:
@@ -941,12 +1297,12 @@ def _assert_successor_bindings(payload: dict) -> None:
         assert row["prior_lf"] != row["current_lf"]
     assert tuple(sorted(change["other_changed_sources"])) == OTHER_CHANGED_SOURCES
     for name, row in change["other_changed_sources"].items():
-        live = (ROOT / row["live_path"]).read_bytes().replace(b"\r\n", b"\n")
+        live = _read_checkout(row["live_path"]).replace(b"\r\n", b"\n")
         assert _identity(live)["git_blob"] == row["current_lf_git_blob"]
         assert row["prior_lf_git_blob"] != row["current_lf_git_blob"]
     preserved = payload["preserved_evidence"]
     assert preserved["path"] == "docs/reference_cases/e4_pl_source_binding_20261111.json"
-    data = (ROOT / preserved["path"]).read_bytes()
+    data = _read_checkout(preserved["path"])
     assert {k: preserved[k] for k in ("bytes", "git_blob", "sha256")} == _identity(data)
     binding = json.loads(data)
     bound_rows = list(binding["carriers"].values()) + list(
@@ -958,7 +1314,9 @@ def _assert_successor_bindings(payload: dict) -> None:
         assert matches
         assert all(r["live_lf"] == row["prior_lf"] for r in matches)
     note = payload["validation"]["performance_note"]
-    note_data = (ROOT / note["path"]).read_bytes()
+    # Auto-text note: identified by its LF form on every checkout.
+    assert note["text_identity"] == "lf"
+    note_data = _read_checkout(note["path"]).replace(b"\r\n", b"\n")
     assert {k: note[k] for k in ("bytes", "git_blob", "sha256")} == _identity(note_data)
     assert payload["validation"]["regression_tests"] == "tests/test_nonlinear_guard_cadence.py"
     assert payload["review"]["outcome"] in {"PENDING", "ACCEPT"}
@@ -968,6 +1326,83 @@ def _assert_successor_bindings(payload: dict) -> None:
 
 def test_guard_cadence_successor_binds_every_changed_source() -> None:
     _assert_successor_bindings(_load_successor())
+
+
+def _checkout_attributes(relative: str) -> dict:
+    done = _git("check-attr", "text", "eol", "--", relative)
+    assert done.returncode == 0
+    values = {}
+    for line in done.stdout.decode().splitlines():
+        _path, attribute, value = line.rsplit(": ", 2)
+        values[attribute] = value
+    return values
+
+
+@pytest.mark.parametrize("ending", (b"\n", b"\r\n"))
+def test_guard_cadence_successor_is_checkout_independent(monkeypatch, ending) -> None:
+    """Codex round 1 P2 #5: the record verifies the bytes an LF (Linux/macOS)
+    or a CRLF (Windows autocrlf) checkout produces: auto-text files are read
+    with either ending, ``-text`` and ``eol=lf`` files keep their bytes."""
+
+    def checkout(relative: str) -> bytes:
+        data = (ROOT / relative).read_bytes()
+        attributes = _checkout_attributes(relative)
+        if attributes.get("text") == "unset" or attributes.get("eol") == "lf":
+            return data
+        canonical = data.replace(b"\r\n", b"\n")
+        return canonical if ending == b"\n" else canonical.replace(b"\n", b"\r\n")
+
+    monkeypatch.setattr(sys.modules[__name__], "_read_checkout", checkout)
+    payload = _load_successor()
+    _assert_successor_bindings(payload)
+    hashed = [row["live_path"] for row in payload["change"]["sealed_carriers"].values()]
+    hashed += [payload["preserved_evidence"]["path"], payload["validation"]["performance_note"]["path"]]
+    for relative in hashed:
+        attributes = _checkout_attributes(relative)
+        raw_bound = relative in {
+            row["live_path"]
+            for row in payload["change"]["sealed_carriers"].values()
+            if not row["portable_text"]
+        } or relative == payload["preserved_evidence"]["path"]
+        if raw_bound:
+            # Raw bytes are hashed: the checkout must not convert them.
+            assert attributes.get("text") == "unset" or attributes.get("eol") == "lf", relative
+
+
+def test_guard_cadence_change_commit_is_validated() -> None:
+    """Codex round 1 P3 #7: change.commit must be an ancestor commit whose
+    diff touches the bound entry carrier."""
+
+    payload = _load_successor()
+    _assert_change_commit(payload["change"]["commit"])
+    for bogus in ("0" * 40, "071910d60031beb455ef0fa2328a027d8ba77c3d"):
+        with pytest.raises(AssertionError):
+            _assert_change_commit(bogus)
+
+
+def test_guard_cadence_builder_check_is_fresh() -> None:
+    done = subprocess.run(
+        [sys.executable, "-B", str(ROOT / "scripts" / "build_guard_cadence_successor.py"), "--check"],
+        cwd=ROOT, capture_output=True, check=False,
+    )
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert done.stdout.decode().strip() == "fresh"
+
+
+def test_original_q4_source_binding_builder_check_still_passes() -> None:
+    """Codex round 1 P2 #6: the standalone 20261111 verifier keeps verifying
+    its historical pins, on the prior bytes reconstructed through the
+    successor, plus the live mechanics closure."""
+
+    revisions = ("e0c5f32ab40e9548ba0ea8981cf5e288ed375a1c",)
+    for revision in revisions:
+        if _git("cat-file", "-e", f"{revision}^{{commit}}").returncode != 0:
+            pytest.skip("historical source-binding revisions are not present")
+    done = subprocess.run(
+        [sys.executable, "-B", str(ROOT / "scripts" / "build_q4_source_binding_20261111.py"), "--check"],
+        cwd=ROOT, capture_output=True, check=False,
+    )
+    assert done.returncode == 0, (done.stdout + done.stderr).decode()[-3000:]
 
 
 @pytest.mark.parametrize(
@@ -983,6 +1418,11 @@ def test_guard_cadence_successor_binds_every_changed_source() -> None:
         (("change", "other_changed_sources", "nonlinear_static.py", "current_lf_git_blob"), "0"),
         (("preserved_evidence", "sha256"), "0"),
         (("owner_decisions", "approved"), ["G2", "L1", "G1", "S2"]),
+        (("change", "commit"), "0" * 40),
+        (("change", "commit"), "071910d60031beb455ef0fa2328a027d8ba77c3d"),
+        (("validation", "performance_note", "sha256"), "0"),
+        (("validation", "performance_note", "text_identity"), "raw"),
+        (("change", "other_changed_sources", "nonlinear_performance_bootstrap.py", "current_lf_git_blob"), "0"),
     ),
 )
 def test_guard_cadence_successor_rejects_mutations(path, value) -> None:

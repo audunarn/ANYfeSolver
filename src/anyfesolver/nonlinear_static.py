@@ -5787,6 +5787,11 @@ def _solve_static_nonlinear_under_lease(
         # and global authority generation, while the exact lifecycle guard
         # validates whichever owned model is being observed.
         _qualified_runtime_guard(lease_model, context=context)
+        # L1: a complete scan of the leased model covers every internal point
+        # deferred before it in the current step window.
+        window = lifecycle_step_window[0]
+        if window is not None and observed_model is lease_model:
+            window[1] = False
         return result
 
     native_generalized_model = any(
@@ -5923,6 +5928,13 @@ def _solve_static_nonlinear_under_lease(
     # numerical and plate-stability checks of a deferred scan still run; if
     # one of them rejects, the lifecycle scan runs first so the rejection keeps
     # the complete guard's precedence.  Window state: [entry scanned, deferred].
+    # After the pre-commit scan the window continues as an already-scanned
+    # post-commit segment: the committed-state, reaction and snapshot
+    # observations of the accepted step are deferred too and are covered by
+    # the step's unconditional complete scan at the support-reaction
+    # observation (``exact_guard``), by the next step's entry scan, or by the
+    # scan at loop exit, whichever comes first.  A complete scan of the leased
+    # model always clears the deferred flag.
     lifecycle_step_window: List[Any] = [None]
 
     def deferred_lifecycle_guard(
@@ -5945,7 +5957,13 @@ def _solve_static_nonlinear_under_lease(
             raise
 
     def open_lifecycle_step_window() -> None:
-        lifecycle_step_window[0] = [False, False]
+        previous = lifecycle_step_window[0]
+        # A deferral still pending from the previous step's post-commit
+        # segment stays pending until the next complete scan.
+        lifecycle_step_window[0] = [
+            False,
+            bool(previous is not None and previous[1]),
+        ]
 
     def close_lifecycle_step_window(*, context: str) -> None:
         window = lifecycle_step_window[0]
@@ -5953,6 +5971,10 @@ def _solve_static_nonlinear_under_lease(
         if window is not None and window[1]:
             record_nonlinear_solver_event("qualified_guard_complete_scan")
             exact_guard(lease_model, context=context)
+
+    def commit_lifecycle_step_window(*, context: str) -> None:
+        close_lifecycle_step_window(context=context)
+        lifecycle_step_window[0] = [True, False]
 
     class _LifecycleStepScope:
         """Close the step window on loop exit; drop it on an exception."""
@@ -8545,7 +8567,7 @@ def _solve_static_nonlinear_under_lease(
                             contact_manager.set_path_factor(lam)
                         raise
 
-                close_lifecycle_step_window(
+                commit_lifecycle_step_window(
                     context="nonlinear static step pre-commit"
                 )
                 q = q_new
