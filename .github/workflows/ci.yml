@@ -494,4 +494,4 @@ jobs:
       - run: python -m pip install -e ".[dev,pardiso]"
       - run: python -m pip check
       - run: python -c "import pypardiso"
-      - run: python -m pytest tests/test_fe_solver_infrastructure.py
+      - run: python -m pytest tests/test_fe_solver_infrastructure.py tests/test_factorization_cache_in_place_mutation.py
