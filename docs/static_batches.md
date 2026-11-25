@@ -121,6 +121,65 @@ borrowed lease after the scope has closed; recovery dispatched in such a
 copied context takes an ordinary fresh lease capture with full guards, and a
 borrowing operation must present the model the lease was captured for.
 
+Models whose every element is an admitted exact built-in `BeamElement`
+(`anyfesolver.exact_beam_batch`) assemble linear stiffness and recover
+stresses in one batch.  One complete lease guard runs before the batch reads
+anything and one after its last output, in place of the two per-element
+observation guards of the scalar loops; the two bracket guards carry the
+context of the first and last per-element guard they replace (in recovery
+they are calls of the loop's own observation guard with the same stage,
+element and material).  This relies
+on the existing contract: changing a model during a request, including from
+another thread, is outside the supported contract.  Single-threaded calls
+accept and reject exactly the inputs of the scalar loops.  Every dispatch
+the scalar path performs for an admitted element is first verified with pure
+reads (class namespaces along the MRO, module globals, instance and mapping
+namespaces free of shadowing names, the stiffness classification predicates)
+or performed as the identical call (`_beam_material_properties` once per
+element in element order; the sparsity kernel once, after the batch has
+decided to succeed and before any element side effect).  Subclasses, replaced classes, methods or module globals, shadowing
+instance attributes, DOFs outside the matrix or displacement vector, offsets,
+generalized or fibre sections, non-exact materials, element activity, other
+stiffness getters and small models take the unchanged scalar loop.  Results
+are bit-identical to the scalar element methods because the batch performs
+the identical floating-point operations: it reproduces each BLAS call with
+stacked `np.matmul`, keeps elementwise operation order and per-element scalar
+powers, and falls back on any floating-point exception.  A probe against the
+scalar methods once per process and a check of the first and last element of
+every batch disable the batch for the process on a mismatch; they detect a
+broken kernel or platform and do not by themselves prove parity for the
+interior elements of a batch.
+
+Trust boundary of the exact-beam batch (owner decision B, 2026-11-24).
+In scope, where the batch must behave exactly like the scalar loops: hostile
+data, instance attributes and subclasses of elements, models, materials,
+meshes and mappings; caches held on model or mesh instances (for example
+`_sparsity_cache` and `_topology_signature_cache`); and the inputs of the
+kernels.  Every value the batch reads, looks up, hashes, compares, iterates
+or writes before it decides is first checked with pure reads to be of the
+exact admitted type (`type(x) is ...`; instance namespaces through
+`object.__getattribute__`), and anything else declines before it is touched.
+A declined batch has no side effect: it writes no element cache, builds no
+mesh cache and makes no lookup the scalar loop then repeats on a non-exact
+value (the recovery bracket resolves the first element's material only for an
+exact `str` name; the stiffness endpoint checks do not store
+`_stiffness_matrix`; the sparsity kernel runs once, after the decision, and
+its result is unpacked as the scalar path unpacks it before any element
+cache is written).  The
+stiffness classification objects, the recovery observation-guard factory and
+the element-matrix check kernels are compared by identity with the objects
+bound at import, without reading attributes of, or comparing,
+caller-supplied objects.  Trusted and not defended: (1) library internals
+(NumPy, ANYmaterial, Python builtins, finalisers and `__del__` order,
+`__code__`/`__closure__` swaps, frame inspection, and stateful dependencies
+that observe repeated identical calls, such as the process probe, the
+endpoint checks or a declined batch followed by the scalar loop); and (2)
+ANYfeSolver's own guard, lease and check machinery: lease and require
+builders (for example `_run_with_qualified_assembly_runtime_lease` and
+`recovery_batches._build_qualified_recovery_require`), guard factories,
+internal caches as module or class machinery, and module imports and
+aliases.
+
 `ResourceConfig.memory_limit_bytes` limits a conservative storage estimate and
 adapts the requested block size; it refuses a request that cannot fit one case.
 This is an allocation estimate, not an operating-system RSS cap. Native sparse
