@@ -27,7 +27,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "docs" / "reference_cases" / "qualified_shell_nonlinear_guard_cadence_successor.json"
-BASE_REF = "d54e6bd49"  # origin/main before V1; resolved to the full id below
+BASE_REF = "071910d60"  # origin/main before V1; resolved to the full id below
 # Bound files of the source-binding record changed by this successor:
 # (file, portable auto-text?)  Portable files are identified by their LF form.
 BOUND = (("e4_pl_element.py", False), ("e4_pl_s3_state.py", True))
@@ -38,9 +38,9 @@ OTHER = (
     "nonlinear_static.py",
 )
 CHANGE_COMMITS = (
-    "76654eb7d Canonical state JSON: exact-type fast paths with identical bytes",
-    "e95759bf9 Canonical fast paths: only under the internal exact-str path; trace tests",
-    "uncommitted G2/L1/G1 guard cadence change",
+    "d81e40216 Canonical state JSON: exact-type fast paths with identical bytes",
+    "8d8fbd3ed Canonical fast paths: only under the internal exact-str path; trace tests",
+    "7a5bad38f Nonlinear guard cadence: Q4 class authority per evaluation (G2), lifecycle per step (L1), exact sweeps (G1)",
 )
 
 

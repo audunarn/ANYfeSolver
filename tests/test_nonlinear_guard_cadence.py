@@ -906,7 +906,7 @@ def _assert_successor_bindings(payload: dict) -> None:
     assert set(payload["base"]) == {"commit", "tree"}
     assert all(len(value) == 40 for value in payload["base"].values())
     # Base: origin/main before the V1 canonical-JSON and G2/L1/G1 changes.
-    assert payload["base"]["commit"].startswith("d54e6bd49")
+    assert payload["base"]["commit"].startswith("071910d60")
     assert payload["owner_decisions"]["date"] == "2026-11-24"
     assert payload["owner_decisions"]["approved"] == ["G2", "L1", "G1"]
     assert payload["qualification_boundary"] == {
