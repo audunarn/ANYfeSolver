@@ -212,7 +212,11 @@ def test_zero_rhs_is_verified_trivially():
 @pytest.mark.parametrize("scale", [1e-200, 1e-170])
 @pytest.mark.parametrize("solver", ["minres", "gmres", "bicgstab"])
 def test_tiny_rhs_underflow_is_not_verified(scale, solver, monkeypatch):
-    """Old code: norms underflow to 0, so 0 <= max(0, atol) passed with relative residual 1."""
+    """Old code: norms underflow to 0, so 0 <= max(0, atol) passed with relative residual 1.
+
+    Tests the option-(a) part-based decision alone (range guard disabled); with the
+    guard these inputs are refused as UNSUPPORTED_SCALE (see the range-guard tests)."""
+    monkeypatch.setattr(asm, "_iterative_inputs_in_safe_range", lambda *a: True)
     A = sparse.identity(1, format="csr")
     b = np.array([scale])
     q, info = asm._verify_iterative_residual(A, b, np.zeros(1), 0, 1e-8, 0.0 if solver == "minres" else 1e-12)
@@ -228,7 +232,9 @@ def test_minres_tiny_rhs_end_to_end():
     assert info["status"] == "failed" or info["relative_residual"] <= 1e-8
 
 
-def test_huge_rhs_does_not_overflow_and_is_judged_relatively():
+def test_huge_rhs_does_not_overflow_and_is_judged_relatively(monkeypatch):
+    # Option-(a) decision alone (range guard disabled; with it 1e200 is UNSUPPORTED_SCALE).
+    monkeypatch.setattr(asm, "_iterative_inputs_in_safe_range", lambda *a: True)
     A = sparse.identity(3, format="csr")
     b = np.full(3, 1e200)
     _, info = asm._verify_iterative_residual(A, b, b.copy(), 0, 1e-8, 1e-12)
@@ -271,10 +277,21 @@ def test_scipy_info_key_reported():
 
 
 # Review round 2 (Codex): compare norms in one common scale; report the applicable limit.
-def _verify(K, F, q, info=0, rtol=1.0e-8, atol=0.0):
-    from anyfesolver.assembly import _verify_iterative_residual
+def _verify(K, F, q, info=0, rtol=1.0e-8, atol=0.0, range_guard=False):
+    """Call the verifier directly.  ``range_guard=False`` disables the option-(b)
+    safe-range refusal so the option-(a) part-based decision is tested on its own
+    over the whole float range; ``True`` tests the shipped behaviour."""
+    from unittest import mock
 
-    return _verify_iterative_residual(sparse.csr_matrix(K), np.asarray(F), np.asarray(q), info, rtol, atol)[1]
+    import anyfesolver.assembly as assembly_module
+
+    call = lambda: assembly_module._verify_iterative_residual(  # noqa: E731
+        sparse.csr_matrix(K), np.asarray(F), np.asarray(q), info, rtol, atol
+    )[1]
+    if range_guard:
+        return call()
+    with mock.patch.object(assembly_module, "_iterative_inputs_in_safe_range", lambda *a: True):
+        return call()
 
 
 def test_subnormal_residual_is_not_rounded_into_acceptance():
@@ -392,3 +409,59 @@ def test_exact_oracle_property_sweep_over_exponents(atol):
                     raise AssertionError(f"k={k:g} f={f:g} q={q} expected {expected} got {out}")
                 assert out["residual_limit_abs"] is None or not np.isnan(out["residual_limit_abs"])
     assert checked > 2000 and mismatches == 0
+
+
+# Owner option (b) on top of (a): typed refusal outside the safe dynamic range.
+def test_subnormal_residual_formation_is_refused_by_the_range_guard():
+    # Codex round 4: fl(1.25*u - u) = 0 for the smallest subnormal u although |r|/|F| = 0.25.
+    u = np.nextafter(0.0, 1.0)
+    out = _verify(np.array([[1.25]]), np.array([u]), np.array([u]), range_guard=True)
+    assert out["relative_residual_disposition"] == "UNSUPPORTED_SCALE"
+    assert out["status"] == "failed"
+
+
+@pytest.mark.parametrize("atol", [0.0, 1.0e-12])
+def test_range_guard_property_sweep(atol):
+    lo, hi = 1.0e-150, 1.0e150
+    for ek in range(-300, 301, 30):
+        for ef in range(-300, 301, 30):
+            K = np.array([[10.0 ** ek, 0.0], [0.0, 2.0 * 10.0 ** ek]])
+            F = np.array([10.0 ** ef, 3.0 * 10.0 ** ef])
+            with np.errstate(all="ignore"):
+                q = F / np.diag(K)
+            if not np.all(np.isfinite(q)) or np.all(q == 0.0):
+                continue
+            out = _verify(K, F, q, atol=atol, range_guard=True)
+            in_range = all(lo <= float(np.max(np.abs(v))) <= hi for v in (K, F, q))
+            if in_range:
+                assert out["relative_residual_disposition"] == "RESIDUAL_VERIFIED", (ek, ef, out)
+            else:
+                assert out["relative_residual_disposition"] == "UNSUPPORTED_SCALE", (ek, ef, out)
+
+
+def test_si_unit_models_sit_inside_the_safe_range():
+    from anyfesolver.assembly import _ITERATIVE_SAFE_RANGE, _iterative_inputs_in_safe_range
+
+    lo, hi = _ITERATIVE_SAFE_RANGE
+    seen = []
+    for builder in (_beam_cantilever, _q4_plate, _scordelis, _grillage):
+        model, load = builder()
+        captured = {}
+
+        def spy(K, F, solver_type, **kwargs):
+            captured["K"], captured["F"] = K, F
+            return original(K, F, solver_type, **kwargs)
+
+        import anyfesolver.assembly as assembly_module
+
+        original = assembly_module._solve_reduced_system
+        assembly_module._solve_reduced_system = spy
+        try:
+            solve_linear(model, load, solver_type="direct")
+        finally:
+            assembly_module._solve_reduced_system = original
+        K, F = captured["K"], captured["F"]
+        q = __import__("scipy").sparse.linalg.spsolve(K.tocsc(), F)
+        assert _iterative_inputs_in_safe_range(K, F, q)
+        seen.append(max(float(abs(K).max()), float(np.abs(F).max()), float(np.abs(q).max())))
+    assert lo < min(seen) and max(seen) < hi

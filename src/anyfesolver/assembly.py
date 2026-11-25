@@ -668,6 +668,32 @@ def _scaled_norm_parts(x: np.ndarray) -> Tuple[float, float]:
     return m, float(np.linalg.norm(x / m))
 
 
+_ITERATIVE_SAFE_RANGE = (1.0e-150, 1.0e150)
+
+
+def _iterative_inputs_in_safe_range(K_red: Any, f: np.ndarray, q: np.ndarray) -> bool:
+    """True when the nonzero magnitudes of K, F and q lie in ``_ITERATIVE_SAFE_RANGE``.
+
+    Within it every product K_ij q_j and every entry of Kq - F stays far from the
+    subnormal and overflow ranges, so the float residual decides like the exact one
+    up to ordinary rounding.  Real FE models in SI units sit well inside (stiffness
+    ~1e2..1e13, loads ~1e-3..1e8, displacements ~1e-12..1e2).
+    """
+    lo, hi = _ITERATIVE_SAFE_RANGE
+    data = getattr(K_red, "data", K_red)
+    for values in (np.asarray(data), np.asarray(f), np.asarray(q)):
+        if values.size == 0:
+            continue
+        with np.errstate(all="ignore"):
+            magnitude = np.abs(np.asarray(values, dtype=float))
+        if not np.all(np.isfinite(magnitude)):
+            return True  # non-finite input is reported as NONFINITE by the main check
+        nonzero = magnitude[magnitude > 0.0]
+        if nonzero.size and (float(nonzero.max()) > hi or float(nonzero.max()) < lo):
+            return False
+    return True
+
+
 def _verify_iterative_residual(
     K_red: sparse.csr_matrix,
     F_red: np.ndarray,
@@ -705,6 +731,12 @@ def _verify_iterative_residual(
     if any(np.iscomplexobj(v) for v in (q_arr, f_arr)) or np.iscomplexobj(getattr(K_red, "data", K_red)):
         disposition = "UNSUPPORTED_DTYPE"
         q_out = q_arr
+    elif not _iterative_inputs_in_safe_range(K_red, f_arr, q_arr):
+        # Owner option (b), defence in depth: outside this range the float residual
+        # fl(Kq - F) itself can lose the decision to subnormal rounding or overflow
+        # (e.g. K=[[1.25]], F=q=[5e-324] gives fl(r) = 0 although |r|/|F| = 0.25).
+        disposition = "UNSUPPORTED_SCALE"
+        q_out = np.asarray(q_arr, dtype=float)
     else:
         q_out = np.asarray(q_arr, dtype=float)
         with np.errstate(all="ignore"):
@@ -743,7 +775,8 @@ def _verify_iterative_residual(
                 rhs = m_f * n_f
                 info["relative_residual"] = relative
                 if not f_zero:
-                    rtol_abs = (rtol * m_f) * n_f
+                    rhs_abs = m_f * n_f
+                    rtol_abs = rtol * rhs_abs if np.isfinite(rhs_abs) else (rtol * m_f) * n_f
                     rel_limit = max(rtol, (atol / n_f) / m_f) if atol_allowed else rtol
                     abs_limit = max(rtol_abs, atol) if atol_allowed else rtol_abs
                 else:
