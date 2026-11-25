@@ -5,6 +5,13 @@ PyPardiso for sufficiently large systems, with matrix-class-aware mtypes,
 pattern-slot symbolic reuse, bounded cache size, and general-matrix fallback.
 All paths report backend, ordering, timings, reuse, and failure diagnostics
 through the same factorization-handle API.
+
+PARDISO notes (leases, D2): Interrupts (KeyboardInterrupt/SystemExit) during native cleanup and
+concurrent cross-thread invalidation fail closed with typed errors; there is no
+promise beyond the tested precedence
+(tests/test_pardiso_lease_cleanup_precedence.py).  Known P3: when two cleanups
+fail during GeneratorExit, a later cleanup interrupt can drop the earlier
+cleanup failure from the exception chain.
 """
 
 from __future__ import annotations
@@ -495,6 +502,13 @@ class CleanupScope:
     replaceable lease (a cached factorization); :meth:`release` ends it on
     the normal path, where nothing propagates.  Exit return values are
     ignored: a scope never suppresses an exception.
+
+    Interrupts (KeyboardInterrupt/SystemExit) during native cleanup and
+    concurrent cross-thread invalidation fail closed with typed errors; there is no
+    promise beyond the tested precedence
+    (tests/test_pardiso_lease_cleanup_precedence.py).  Known P3: when two cleanups
+    fail during GeneratorExit, a later cleanup interrupt can drop the earlier
+    cleanup failure from the exception chain.
     """
 
     __slots__ = ("_exits", "_held")
@@ -860,6 +874,13 @@ class FactorizationLease:
     failed or refused handles are never pinned (``pinned`` is False): the
     lease then only carries the handle, whose status the caller checks as
     before.  ``operator`` is set by :func:`leased_inverse_operator`.
+
+    Interrupts (KeyboardInterrupt/SystemExit) during native cleanup and
+    concurrent cross-thread invalidation fail closed with typed errors; there is no
+    promise beyond the tested precedence
+    (tests/test_pardiso_lease_cleanup_precedence.py).  Known P3: when two cleanups
+    fail during GeneratorExit, a later cleanup interrupt can drop the earlier
+    cleanup failure from the exception chain.
     """
 
     __slots__ = ("handle", "operator", "_finalizer", "__weakref__")

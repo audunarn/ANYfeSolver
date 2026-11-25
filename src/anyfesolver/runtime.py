@@ -491,13 +491,16 @@ class RuntimeAnalysisContext:
             self._structural_revisions = self._revision_tuple(model)
 
     def _invalidate_locked(self) -> None:
-        if self._session is not None:
-            self._session.close()
+        # Detach first: if closing the session raises (an interrupt while its
+        # lease ends), the context no longer references the closed session.
+        session = self._session
         self._key = None
         self._model = None
         self._session = None
         self._structural_revisions = None
         self._invalidations += 1
+        if session is not None:
+            session.close()
 
     def invalidate(self) -> None:
         with self._lock:
@@ -8571,6 +8574,31 @@ def run_production_fem(
 ) -> LightweightFEMResult:
     """Run the production FE mesh backend for normalized generated geometry."""
 
+    # An owned AnalysisSession (and its PARDISO lease) is registered in this
+    # scope at creation and closed at exit, with the exception actually
+    # propagating as primary, whatever phase (stress recovery, prestress
+    # recovery, buckling) raises (linalg.CleanupScope).
+    with CleanupScope() as session_cleanup:
+        return _run_production_fem(
+            geometry,
+            config,
+            status_callback,
+            imported_fem_model,
+            precomputed_generated_geometry,
+            analysis_context,
+            session_cleanup,
+        )
+
+
+def _run_production_fem(
+    geometry: NormalizedGeometry,
+    config: LightweightFEMConfig,
+    status_callback: StatusCallback | None,
+    imported_fem_model: object | None,
+    precomputed_generated_geometry: GeneratedGeometry | None,
+    analysis_context: RuntimeAnalysisContext | None,
+    session_cleanup: CleanupScope,
+) -> LightweightFEMResult:
     runtime_started = time.perf_counter()
     phase_timings: dict[str, float] = {}
     recovery_evaluations = 0
@@ -8980,6 +9008,9 @@ def run_production_fem(
             # assembled once.  Nonlinear/capacity paths remain deliberately
             # excluded because they can change the live state.
             analysis_session = _backend_AnalysisSession(model)
+            session_cleanup.callback(
+                analysis_session.close, "closing the runtime analysis session"
+            )
         displacements, solver_info = _backend_solve_linear(
             model,
             load_case,
@@ -9412,49 +9443,44 @@ def run_production_fem(
     if analysis_session is not None:
         buckling_kwargs["session"] = analysis_session
     buckling_started = time.perf_counter()
-    # An owned session is closed at the scope exit with the exception
-    # actually propagating as primary (linalg.CleanupScope).
-    with CleanupScope() as buckling_cleanup:
+    try:
+        if capacity_workflow_result is not None:
+            buckling_result = capacity_workflow_result.buckling_result
+        elif _wants_eigenvalue_buckling(config):
+            buckling_result = _backend_solve_buckling(model, prestress_states, num_modes=int(config.num_buckling_modes), **buckling_kwargs)
+        else:
+            # Dummy result if buckling is explicitly skipped by runtime path
+            class DummyBucklingResult:
+                modes = ()
+                failed = False
+                status = "skipped by runtime path"
+                diagnostics = ()
+            buckling_result = DummyBucklingResult()
+        if (
+            _wants_eigenvalue_buckling(config)
+            and not buckling_result.modes
+            and geometry.get("geometry") == "cylinder"
+            and abs(float(effective_pressure)) > 0.0
+        ):
+            pressure_states = _cylinder_pressure_prestress_states(
+                model,
+                float(effective_pressure) * float(config.load_scale),
+                _positive(geometry.get("radius_m", generated_geometry.get("radius_m", 1.0)), 1.0),
+            )
+            if pressure_states:
+                pressure_buckling_result = _backend_solve_buckling(model, pressure_states, num_modes=int(config.num_buckling_modes), **buckling_kwargs)
+                if pressure_buckling_result.modes:
+                    buckling_result = pressure_buckling_result
+                    diagnostics.append("Buckling modes use equivalent external-pressure membrane prestress because the full mixed prestress returned no positive modes.")
+    finally:
         if analysis_session is not None and not context_owned_session:
-            buckling_cleanup.callback(analysis_session.close, "closing the buckling analysis session")
-        try:
-            if capacity_workflow_result is not None:
-                buckling_result = capacity_workflow_result.buckling_result
-            elif _wants_eigenvalue_buckling(config):
-                buckling_result = _backend_solve_buckling(model, prestress_states, num_modes=int(config.num_buckling_modes), **buckling_kwargs)
-            else:
-                # Dummy result if buckling is explicitly skipped by runtime path
-                class DummyBucklingResult:
-                    modes = ()
-                    failed = False
-                    status = "skipped by runtime path"
-                    diagnostics = ()
-                buckling_result = DummyBucklingResult()
-            if (
-                _wants_eigenvalue_buckling(config)
-                and not buckling_result.modes
-                and geometry.get("geometry") == "cylinder"
-                and abs(float(effective_pressure)) > 0.0
-            ):
-                pressure_states = _cylinder_pressure_prestress_states(
-                    model,
-                    float(effective_pressure) * float(config.load_scale),
-                    _positive(geometry.get("radius_m", generated_geometry.get("radius_m", 1.0)), 1.0),
-                )
-                if pressure_states:
-                    pressure_buckling_result = _backend_solve_buckling(model, pressure_states, num_modes=int(config.num_buckling_modes), **buckling_kwargs)
-                    if pressure_buckling_result.modes:
-                        buckling_result = pressure_buckling_result
-                        diagnostics.append("Buckling modes use equivalent external-pressure membrane prestress because the full mixed prestress returned no positive modes.")
-        finally:
-            if analysis_session is not None and not context_owned_session:
-                session_diagnostics = analysis_session.diagnostics()
-                prestress_summary["analysis_session"] = session_diagnostics
-                diagnostics.append(
-                    "Reused one analysis session across linear prestress and "
-                    "eigenvalue buckling."
-                )
-                analysis_session = None
+            session_diagnostics = analysis_session.diagnostics()
+            prestress_summary["analysis_session"] = session_diagnostics
+            diagnostics.append(
+                "Reused one analysis session across linear prestress and "
+                "eigenvalue buckling."
+            )
+            analysis_session = None
     phase_timings["buckling"] = float(time.perf_counter() - buckling_started)
     if capacity_workflow_result is None:
         _record_buckling_mesh_adequacy(model, buckling_result, config, prestress_summary, diagnostics)

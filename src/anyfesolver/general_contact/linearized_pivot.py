@@ -12,7 +12,12 @@ import numpy as np
 from scipy import sparse
 from scipy.linalg import null_space
 
-from anyfesolver.linalg import MatrixClass, factorize, lease_from
+from anyfesolver.linalg import (
+    MatrixClass,
+    PardisoStaleHandleError,
+    factorize,
+    lease_from,
+)
 
 from .augmentation import ActiveSetPivot, propose_active_set_pivot
 from .overlap import PlanarFace
@@ -506,8 +511,16 @@ def _constrained_gap_response(manager, displacement, tangent, transform,
                        np.zeros((len(rows), len(active)))))
     # Leased: solved once per active column (pinned against any concurrent
     # factorization, eviction or release in between).
-    with lease_from(factorize, matrix, MatrixClass.GENERAL,
-                    signature="contact:pressure_response") as lease:
+    try:
+        pinned = lease_from(factorize, matrix, MatrixClass.GENERAL,
+                            signature="contact:pressure_response")
+    except PardisoStaleHandleError as exc:
+        # Both pin attempts went stale under a concurrent invalidation: the
+        # optional pivot reports a response failure, it does not abort.
+        if diagnostics is not None:
+            diagnostics["schur_response_failure"] = str(exc)[:240]
+        return None
+    with pinned as lease:
         factor = lease.handle
         if factor.status != "ok":
             if diagnostics is not None:

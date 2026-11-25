@@ -817,3 +817,67 @@ def test_runtime_bridges_generated_loads_and_corotational_arc_length(
         result.prestress_summary["nonlinear_static_kinematics"]
         == "corotational"
     )
+
+
+def test_owned_session_is_closed_when_prestress_recovery_raises(monkeypatch) -> None:
+    """D2: an owned AnalysisSession (and its PARDISO lease) must not leak when a
+    phase between its creation and buckling raises; the original exception
+    propagates and the session is closed."""
+
+    sessions: list = []
+    real_session = runtime._backend_AnalysisSession
+
+    def tracking_session(model):
+        session = real_session(model)
+        sessions.append(session)
+        return session
+
+    class SyntheticRecoveryFailure(RuntimeError):
+        pass
+
+    def failing_recovery(*_args, **_kwargs):
+        raise SyntheticRecoveryFailure("synthetic prestress recovery failure")
+
+    monkeypatch.setattr(runtime, "_backend_AnalysisSession", tracking_session)
+    monkeypatch.setattr(
+        runtime._full_backend, "recover_prestress_from_static_result", failing_recovery
+    )
+    with pytest.raises(SyntheticRecoveryFailure):
+        runtime.run_production_fem(
+            _flat_geometry(),
+            runtime.LightweightFEMConfig(mesh_fidelity="coarse", pressure_pa=10_000.0),
+        )
+
+    assert len(sessions) == 1
+    assert sessions[0].closed
+
+
+def test_context_invalidation_interrupt_detaches_closed_session() -> None:
+    """D2: when closing the cached session raises KeyboardInterrupt, the context
+    must already be detached; a later acquire() with the same key returns a
+    fresh, open session rather than the closed one."""
+
+    context = runtime.RuntimeAnalysisContext()
+
+    first_model = SimpleNamespace(revision_signature=lambda: {})
+    real_session = runtime._backend_AnalysisSession
+    try:
+        runtime._backend_AnalysisSession = lambda _model: SimpleNamespace(
+            closed=False, close=lambda: None
+        )
+        _, first, _ = context.acquire("key", lambda: first_model)
+
+        def interrupted_close() -> None:
+            first.closed = True
+            raise KeyboardInterrupt
+
+        first.close = interrupted_close
+        with pytest.raises(KeyboardInterrupt):
+            context.invalidate()
+        _, second, hit = context.acquire("key", lambda: first_model)
+    finally:
+        runtime._backend_AnalysisSession = real_session
+
+    assert second is not first
+    assert not second.closed
+    assert hit is False
