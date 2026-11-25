@@ -251,7 +251,7 @@ def test_sphere_launch_windows_tile_the_time_grid():
 
 def test_sphere_never_launches_after_t_end():
     dt = 0.1
-    t_end = 0.30000000000000004
+    t_end = 0.3  # three nominal steps of 0.1 sum to 0.30000000000000004 > t_end (review r2)
     res, _ = _launch_step(0.0, dt, t_end)
     # t_start beyond the last grid time is never launched
     _, idx = _launch_step(float(np.nextafter(res.times[-1], 1.0)), dt, t_end)
