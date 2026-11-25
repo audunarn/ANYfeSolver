@@ -14,7 +14,6 @@ from anyfesolver import (
     solve_transient_newmark,
     solve_transient_sphere_impact,
 )
-from anyfesolver.dynamics import same_step_size
 from anyfesolver.elements import BeamElement
 from anyfesolver.fe_core import FEModel
 
@@ -122,7 +121,7 @@ def test_sphere_impact_final_short_step_must_not_reuse_stale_factorization():
 
 
 def test_grid_rounding_in_step_size_still_reuses_the_factorization():
-    # ordinary uniform grid: dt differs between steps only by subtraction rounding
+    # ordinary uniform grid: interior steps use the nominal dt, so one factorization serves them all
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         model, load = _cantilever()
@@ -130,22 +129,6 @@ def test_grid_rounding_in_step_size_still_reuses_the_factorization():
             model, TransientConfig(dt=0.0013, t_end=0.0731), base_load_case=load
         )
     assert result.diagnostics["factorization_count"] == 2  # uniform steps + final short step
-    assert same_step_size(0.0013, 0.0013 + 2.0e-19, 0.07)
-    assert not same_step_size(1.0e-8, 5.0e-9, 1.5e-8)
-
-
-def test_same_step_size_boundary_is_eight_ulp():
-    for cached, scale in ((1.0, 1.0), (0.5, 1024.0)):
-        tol = 8.0 * float(np.spacing(max(abs(scale), abs(cached))))
-        at = cached + tol
-        assert at - cached == tol  # exactly representable
-        assert same_step_size(at, cached, scale)
-        assert same_step_size(cached + 0.5 * tol, cached, scale)
-        above = float(np.nextafter(at, np.inf))
-        assert above - cached > tol
-        assert not same_step_size(above, cached, scale)
-        assert same_step_size(cached - tol, cached, scale)
-        assert not same_step_size(float(np.nextafter(cached - tol, -np.inf)), cached, scale)
 
 
 def _two_step_factorizations(t_end):
@@ -160,7 +143,7 @@ def _two_step_factorizations(t_end):
 
 
 def test_transient_route_reuse_boundary_end_to_end():
-    # Nominal-dt mode: the final step keeps the nominal dt (no refactorization) while the end
+    # Uniform-end rule: the final step keeps the nominal dt (no refactorization) while the end
     # time is within 8 ulp of n * dt, tolerance = 8 * max(ulp(t_end), ulp(n dt), n ulp(dt)).
     # times [0, 0.5, t_end] with t_end in [0.5, 1): n dt = 1.0, tolerance = 8 * 2**-52 = 2**-49.
     t_at = 1.0 - 2.0**-49

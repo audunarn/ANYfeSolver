@@ -28,14 +28,12 @@ from .damage_matrix_performance import (
     DamageMatrixPlanFallback,
     DamageMatrixPlanGate,
 )
-from . import dynamics as _dynamics_module
 from .dynamics import (
     TransientConfig,
     _full_initial_vector,
     _node_dof_indices,
     _reduced_load,
     _saved_step_count,
-    same_step_size,
     _time_grid,
     _translation_peak,
 )
@@ -4056,19 +4054,19 @@ def solve_transient_sphere_impact(
         dt_total = float(times[step_index] - times[step_index - 1])
         if dt_total <= 0.0:
             continue
-        if _dynamics_module._DT_REUSE_MODE == "v2":
-            # nominal step on interior steps (and on a nominally uniform end); only a genuinely
-            # shortened final step differs, and then the factor is rebuilt (see same_step_size)
-            final_index = len(times) - 1
-            nominal_end = float(final_index) * float(transient_config.dt)
-            roundoff = 8.0 * max(
-                math.ulp(float(transient_config.t_end)), math.ulp(nominal_end),
-                float(final_index) * math.ulp(float(transient_config.dt)),
-            )
-            if step_index < final_index or abs(float(transient_config.t_end) - nominal_end) <= roundoff:
-                dt_total = float(transient_config.dt)
-            else:
-                dt_total = float(transient_config.t_end) - float(final_index - 1) * float(transient_config.dt)
+        # Consistent step size (same rule as solve_transient_newmark): nominal dt on interior steps
+        # and on a nominally uniform end (within 8 ulp); only a genuinely shortened last step uses
+        # its true remainder, and then the factor is rebuilt because dt differs bitwise.
+        final_index = len(times) - 1
+        nominal_end = float(final_index) * float(transient_config.dt)
+        roundoff = 8.0 * max(
+            math.ulp(float(transient_config.t_end)), math.ulp(nominal_end),
+            float(final_index) * math.ulp(float(transient_config.dt)),
+        )
+        if step_index < final_index or abs(float(transient_config.t_end) - nominal_end) <= roundoff:
+            dt_total = float(transient_config.dt)
+        else:
+            dt_total = float(transient_config.t_end) - float(final_index - 1) * float(transient_config.dt)
         travel_scale = max(float(sphere.radius) * float(config.max_sphere_travel_fraction), 1.0e-12)
         predicted_travel = max(float(np.linalg.norm(sphere_velocity)) * dt_total, float(sphere.speed) * dt_total)
         n_travel = max(int(np.ceil(predicted_travel / travel_scale)), 1)
@@ -4096,26 +4094,14 @@ def solve_transient_sphere_impact(
             a3 = 1.0 / (2.0 * beta) - 1.0
             a4 = gamma / beta - 1.0
             a5 = dt * (gamma / (2.0 * beta) - 1.0)
-            # reuse only within grid rounding (see same_step_size, incl. its known limit)
-            if _dynamics_module._DT_REUSE_MODE == "v2":
-                refactor = cached_solver is None or cached_dt is None or dt != cached_dt
-            else:
-                refactor = cached_solver is None or cached_dt is None or not same_step_size(dt, cached_dt, target_time)
+            # reuse the factor only for a bitwise-equal dt (matrix, RHS and update share one dt)
+            refactor = cached_solver is None or cached_dt is None or dt != cached_dt
             if refactor:
                 K_eff = (one_plus_alpha * K_red + a0 * M_red + one_plus_alpha * a1 * C_red).tocsr()
                 cached_solver = factorize(K_eff, MatrixClass.SYMMETRIC_INDEFINITE, signature=f"sphere_impact.effective:{dt:.16g}")
                 cached_solver_diagnostics = cached_solver.diagnostics()
                 cached_dt = dt
                 factorization_count += 1
-
-            dt_grid = dt
-            if _dynamics_module._DT_REUSE_MODE == "v1" and dt != cached_dt:
-                # reused factor: integrate with the dt the matrix was built with
-                dt = cached_dt
-                a0 = 1.0 / (beta * dt**2)
-                a1 = gamma / (beta * dt)
-                a2 = 1.0 / (beta * dt)
-                a5 = dt * (gamma / (2.0 * beta) - 1.0)
 
             sphere_x_pred = sphere_position + dt * sphere_velocity + dt**2 * (0.5 - beta) * sphere_acceleration
             sphere_v_pred = sphere_velocity + dt * (1.0 - gamma) * sphere_acceleration
@@ -4209,17 +4195,17 @@ def solve_transient_sphere_impact(
             contact_norm = float(np.linalg.norm(sphere_force))
             if contact_norm > 0.0:
                 contact_step_count += 1
-                active_contact_duration += dt_grid
+                active_contact_duration += dt
                 separation_elapsed = 0.0
                 contact_active_this_step = True
             elif contact_step_count > 0 and separation_stop_time > 0.0:
-                separation_elapsed += dt_grid
+                separation_elapsed += dt
             if records:
                 max_penetration = max(max_penetration, max(float(record.penetration) for record in records))
                 peak_contact_force = max(peak_contact_force, max(float(record.normal_force) for record in records))
             load_next = base_load + contact_load
-            impulse += 0.5 * (load_prev + load_next) * dt_grid
-            sphere_impulse += 0.5 * (sphere_force_prev + sphere_force) * dt_grid
+            impulse += 0.5 * (load_prev + load_next) * dt
+            sphere_impulse += 0.5 * (sphere_force_prev + sphere_force) * dt
             load_prev = load_next
             F_red_prev = F_red
             sphere_force_prev = sphere_force.copy()
@@ -4307,7 +4293,7 @@ def solve_transient_sphere_impact(
                     tuple(deleted_element_ids),
                     step_index=int(step_index),
                     time_value=float(sub_time),
-                    dt=float(dt_grid),
+                    dt=float(dt),
                 )
                 max_damage_utilization = max(max_damage_utilization, substep_damage_utilization)
                 if damage_diags:

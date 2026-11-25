@@ -1116,58 +1116,6 @@ class TransientResult:
         return describe_result_quantities(self)
 
 
-# Step-size reuse policy for the non-descriptor Newmark/HHT route and the linear sphere-impact
-# route: "tolerance" (reuse within grid rounding, integrate with the grid dt), "v1" (reuse within
-# grid rounding and integrate with the cached dt, so matrix, right-hand side and state update
-# share one dt) or "v2" (nominal config.dt on interior steps, refactorize on any bitwise change;
-# the default, and the rule the descriptor route already uses).  ``same_step_size`` is consulted
-# only in the first two modes.
-_DT_REUSE_MODE = "v2"
-
-
-def same_step_size(dt: float, cached_dt: float, time_scale: float) -> bool:
-    """Return True when two step sizes differ only by time-grid rounding.
-
-    A cached effective-matrix factorization may be reused only if the effective
-    matrix is the same.  Step sizes come from differences of grid times
-    (``times[i] - times[i - 1]``), which differ between steps by a few ulps of
-    the largest time involved even on a uniform grid.  Any larger difference
-    (for example a final shortened step) changes the Newmark coefficients and
-    requires a new factorization; a fixed absolute tolerance such as
-    ``np.isclose`` atol=1e-8 does not scale with ``dt`` and wrongly treats
-    ``1e-8`` and ``5e-9`` as equal.
-
-    Known limit: the tolerance scales with ``|time_scale|``, not with ``dt``.
-    On long runs with tiny steps (for example t = 1000 s, dt = 1e-6) the reused
-    factor's ``a0 = 1/(beta dt^2)`` can differ from the step's exact ``a0`` by up
-    to about 1e-6 relative.  This equals the previous ``np.isclose`` behaviour
-    and the rounding of the grid's own ``dt``, so it is not new.  On reuse the
-    matrix keeps the cached ``dt`` while the right-hand side and state update use
-    the current one; at the 8-ulp threshold (dt = 2**-30, cantilever) the response
-    differs from an exact refactorization by 3.5e-15 (u) and 2.7e-14 (a) relative,
-    i.e. rounding level (tests/test_transient_factor_reuse.py,
-    test_reuse_at_the_threshold_changes_the_response_only_at_rounding_level).
-    With a large rigid displacement and a tiny dt the recovered acceleration
-    carries absolute noise of order eps*|u|*a0 either way.
-
-    The matrix/right-hand-side dt mismatch is the same class of effect on every
-    reused step of an ordinary grid: its relative size is |dt_i - cached_dt|/dt,
-    at most 8 ulp(t)/dt at the threshold and about 16 ulp(t)/dt between two
-    grid steps, which is the relative error of ``a0`` (twice that).  It is
-    1e-12 (dt=1e-3, 1e4 steps), 1.5e-11 (dt=1e-4, 1e5 steps) and 1.1e-9
-    (dt=1e-5, 1e7 steps) measured on ordinary grids.  Where the system is
-    well conditioned (M = K = 1, dt = 2**-20, last step shortened by 8
-    ulp(t)) it is not rounding level: the final acceleration of a body at
-    static equilibrium is wrong by ~4 m/s^2 instead of ~0
-    (test_reused_step_on_a_fine_grid_matches_exact_refactorization, strict
-    xfail).  Owner decision pending: consistent-dt integration (reuse the
-    cached dt in the right-hand side and update, or refactorize on any change).
-    """
-
-    tolerance = 8.0 * math.ulp(max(abs(float(time_scale)), abs(float(dt))))
-    return abs(float(dt) - float(cached_dt)) <= tolerance
-
-
 def _time_grid(config: TransientConfig) -> np.ndarray:
     if config.t_end == 0.0:
         return np.array([0.0], dtype=float)
@@ -2243,50 +2191,37 @@ def _solve_transient_newmark_under_lease(
         )
         reference_authority_guard(model)
         dt = float(times[step_index] - times[step_index - 1])
-        if descriptor_guarded or _DT_REUSE_MODE == "v2":
-            final_step_index = len(times) - 1
-            nominal_end = float(final_step_index) * float(config.dt)
-            end_time = float(config.t_end)
-            nominal_roundoff = 8.0 * max(
-                math.ulp(end_time),
-                math.ulp(nominal_end),
-                float(final_step_index) * math.ulp(float(config.dt)),
-            )
-            nominal_uniform_end = (
-                abs(end_time - nominal_end) <= nominal_roundoff
-            )
-            if step_index < final_step_index or nominal_uniform_end:
-                dt = float(config.dt)
-            else:
-                dt = end_time - float(
-                    final_step_index - 1
-                ) * float(config.dt)
+        # Consistent step size: interior steps (and a nominally uniform end, within 8 ulp) integrate
+        # with the nominal config.dt; only a genuinely shortened last step uses its true remainder.
+        # A last step shortened by less than 8 ulp(t) integrates with the nominal dt, so the final
+        # time advance is off by at most 8 ulp(t).  The effective-matrix factorization is reused only
+        # when dt is bitwise equal to the cached dt, so matrix, right-hand side and state update
+        # always share one dt.
+        final_step_index = len(times) - 1
+        nominal_end = float(final_step_index) * float(config.dt)
+        end_time = float(config.t_end)
+        nominal_roundoff = 8.0 * max(
+            math.ulp(end_time),
+            math.ulp(nominal_end),
+            float(final_step_index) * math.ulp(float(config.dt)),
+        )
+        nominal_uniform_end = abs(end_time - nominal_end) <= nominal_roundoff
+        if step_index < final_step_index or nominal_uniform_end:
+            dt = float(config.dt)
+        else:
+            dt = end_time - float(final_step_index - 1) * float(config.dt)
         if dt <= 0.0:
             continue
-        dt_grid = dt
         a0 = 1.0 / (beta * dt**2)
         a1 = gamma / (beta * dt)
         a2 = 1.0 / (beta * dt)
         a3 = 1.0 / (2.0 * beta) - 1.0
         a4 = gamma / beta - 1.0
         a5 = dt * (gamma / (2.0 * beta) - 1.0)
-        descriptor_dt_changed = (
-            (descriptor_guarded or _DT_REUSE_MODE == "v2")
-            and cached_dt is not None
-            and dt != cached_dt
-        )
-        ordinary_dt_changed = (
-            not descriptor_guarded
-            and _DT_REUSE_MODE != "v2"
-            and cached_dt is not None
-            # reuse only within grid rounding (see same_step_size, incl. its known limit)
-            and not same_step_size(dt, cached_dt, float(times[step_index]))
-        )
         if (
             cached_solver is None
             or cached_dt is None
-            or descriptor_dt_changed
-            or ordinary_dt_changed
+            or dt != cached_dt
         ):
             if descriptor_reduction is not None:
                 stiffness_coefficient = one_plus_alpha * (
@@ -2378,16 +2313,8 @@ def _solve_transient_newmark_under_lease(
             cached_dt = dt
             factorization_count += 1
 
-        if _DT_REUSE_MODE == "v1" and not descriptor_guarded and cached_dt is not None and dt != cached_dt:
-            # reused factor: integrate with the dt the matrix was built with
-            dt = cached_dt
-            a0 = 1.0 / (beta * dt**2)
-            a1 = gamma / (beta * dt)
-            a2 = 1.0 / (beta * dt)
-            a5 = dt * (gamma / (2.0 * beta) - 1.0)
-
         load_next = full_load_at(float(times[step_index]))
-        impulse += 0.5 * (load_prev + load_next) * dt_grid
+        impulse += 0.5 * (load_prev + load_next) * dt
         load_prev = load_next
         F_red = reduced_load_at(float(times[step_index]))
         rhs = (
