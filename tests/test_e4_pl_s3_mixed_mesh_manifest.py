@@ -2563,6 +2563,6 @@ def test_import_form_check_ignores_a_directory_named_like_a_suffix_form(
     _listing(tmp_path, monkeypatch, "elements.py", "elements.pyc/")
     _require_sole_import_form("pkg/elements.py")
     (tmp_path / "pkg" / "elements.pyc").rmdir()
-    (tmp_path / "pkg" / "elements.pyc").write_bytes(b" ")  # the regular file still shadows
+    (tmp_path / "pkg" / "elements.pyc").write_bytes(b"\0")  # the regular file still shadows
     with pytest.raises(AssertionError, match="importable form"):
         _require_sole_import_form("pkg/elements.py")
