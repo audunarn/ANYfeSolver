@@ -14,6 +14,9 @@ from __future__ import annotations
 import math
 import threading
 import weakref
+from abc import ABCMeta
+from contextlib import contextmanager
+from contextvars import ContextVar
 from types import MappingProxyType
 from typing import Any, Dict, Iterable, Mapping, Optional, Sequence, Tuple
 
@@ -55,7 +58,7 @@ from .e4_pl_s3_v2d_state import (
     serialize_v2d_state,
     validate_v2d_state,
 )
-from .fe_core import FEMesh, Material
+from .fe_core import FEMesh, Material, _QualifiedMutationEpoch, _QualifiedStateMapping
 from .plasticity import plane_stress_return_map
 
 
@@ -90,6 +93,201 @@ CBMIN3 = 2.0
 
 _NORMAL_TOLERANCE = 1.0e-10
 _DEGENERACY_FACTOR = 64.0 * np.finfo(np.float64).eps
+_ABC_INSTANCECHECK = ABCMeta.__dict__["__instancecheck__"]
+_ABC_SUBCLASSCHECK = ABCMeta.__dict__["__subclasscheck__"]
+
+
+def _require_v2d_mixed_shell_scope(elements: Mapping[Any, Any]) -> None:
+    """Refuse a mesh holding any shell outside exact V2D, V2C and qualified Q4.
+
+    The reference test is ``isinstance(element, ShellElement) and type(element)
+    not in allowed`` for every element.  It runs on every V2D geometry
+    evaluation, and element by element it made stress recovery quadratic in
+    mesh size with a large constant.  A shortcut answers instead only when
+    every element's class belongs to a closed set of this package's own
+    element classes whose attribute machinery (MRO, ``__getattribute__``,
+    ``__getattr__``, ``__class__``) is unchanged since import, ``ShellElement``
+    keeps the unpatched ``ABCMeta`` checks and the mapping is read with
+    ``dict.values``.  For those classes ``isinstance`` equals ``issubclass``
+    of the class, decided once per class from a C-level type census.  Any
+    other class or machinery takes the element-by-element reference test.
+
+    Contract (owner decision 2026-11-24): the shortcut must give the
+    reference answer in supported use.  Rewriting this package's classes,
+    ``ABCMeta`` or the element mapping class at run time, custom element
+    metaclasses and ``__class__`` reassignment are outside supported use; the
+    checks above make the common forms of them fall back to the reference
+    test, but they are not an exhaustive defence.
+    """
+
+    allowed = (
+        NativeParityE4PLS3V2DShellElement,
+        StrictFlatLinearE4PLS3V2CShellElement,
+        QualifiedE4PLShellElement,
+    )
+    census = _owned_scope_census(elements)
+    if census is None:
+        if any(
+            isinstance(element, ShellElement) and type(element) not in allowed
+            for element in elements.values()
+        ):
+            raise NativeParityCapabilityError(
+                "S3 V2D mixed shell scope admits only exact V2D, accepted V2C and qualified Q4"
+            )
+        return
+    if any(
+        all(kind is not member for member in allowed) and issubclass(kind, ShellElement)
+        for kind in census
+    ):
+        raise NativeParityCapabilityError(
+            "S3 V2D mixed shell scope admits only exact V2D, accepted V2C and qualified Q4"
+        )
+
+
+def _scope_class_machinery(
+    kind: type,
+    extra: Tuple[str, ...] = (),
+) -> Tuple[Any, ...]:
+    """The attribute-lookup facts of *kind* the reference test depends on."""
+
+    def resolved(name: str) -> Any:
+        for base in type.__getattribute__(kind, "__mro__"):
+            namespace = type.__getattribute__(base, "__dict__")
+            if name in namespace:
+                return namespace[name]
+        return None
+
+    return (
+        type.__getattribute__(kind, "__mro__"),
+        resolved("__getattribute__"),
+        resolved("__getattr__"),
+        resolved("__class__"),
+        type(kind),
+        *(resolved(name) for name in extra),
+    )
+
+
+_SCOPE_CENSUS_SNAPSHOT: Optional[Dict[int, Tuple[type, Tuple[Any, ...]]]] = None
+_SCOPE_CENSUS_MEMO: ContextVar[Optional["_ScopeCensusMemo"]] = ContextVar(
+    "anyfesolver_s3_v2d_scope_census_memo", default=None
+)
+
+
+class _ScopeCensusMemo:
+    """Element-class census per mesh for one assembly/recovery operation.
+
+    Inside an operation the mesh does not change in supported use (owner
+    contract 2026-11-24: no mid-request surface changes), so the C-level
+    census of element classes, linear in mesh size, is taken once per mesh
+    mutation stamp instead of on every V2D evaluation.  The stamp (the mesh's
+    qualified mutation epoch object and value, and the mapping length) still
+    retakes it after any supported mapping mutation.  The class-machinery
+    checks in ``_owned_scope_census`` run on every call.  The memo is inert
+    once its operation has ended, also in contexts copied from inside it.
+    """
+
+    __slots__ = ("active", "entries")
+
+    def __init__(self) -> None:
+        self.active = True
+        self.entries: Dict[int, Tuple[Any, Any, int, int, frozenset]] = {}
+
+
+@contextmanager
+def v2d_scope_census_memo() -> Iterable[None]:
+    memo = _ScopeCensusMemo()
+    reset = _SCOPE_CENSUS_MEMO.set(memo)
+    try:
+        yield
+    finally:
+        memo.active = False
+        memo.entries.clear()
+        _SCOPE_CENSUS_MEMO.reset(reset)
+
+
+def _census_ids(elements: Any) -> frozenset:
+    return frozenset(map(id, map(type, dict.values(elements))))
+
+
+def _memoized_census_ids(elements: Any) -> frozenset:
+    memo = _SCOPE_CENSUS_MEMO.get()
+    if memo is None or not memo.active or type(elements) is not _QualifiedStateMapping:
+        return _census_ids(elements)
+    token = dict.get(object.__getattribute__(elements, "__dict__"), "_qualified_token")
+    if type(token) is not _QualifiedMutationEpoch:
+        return _census_ids(elements)
+    epoch = list.__getitem__(token, 0)
+    length = dict.__len__(elements)
+    entry = dict.get(memo.entries, id(elements))
+    if (
+        entry is not None
+        and entry[0] is elements
+        and entry[1] is token
+        and entry[2] == epoch
+        and entry[3] == length
+    ):
+        return entry[4]
+    census = _census_ids(elements)
+    memo.entries[id(elements)] = (elements, token, epoch, length, census)
+    return census
+_SCOPE_MAPPING_SNAPSHOT: Optional[Tuple[Any, ...]] = None
+
+
+def _owned_scope_census(elements: Any) -> Optional[set]:
+    """Distinct element classes when the shortcut applies, else ``None``.
+
+    Nothing here executes code outside this package.
+    """
+
+    snapshot = _SCOPE_CENSUS_SNAPSHOT
+    mapping_snapshot = _SCOPE_MAPPING_SNAPSHOT
+    if snapshot is None or mapping_snapshot is None:
+        return None
+    mapping_kind = type(elements)
+    if mapping_kind is _QualifiedStateMapping:
+        # The reference reads ``elements.values()`` through the class's
+        # attribute machinery; require it unchanged since import, and no
+        # instance attribute shadowing the non-data ``values`` method.
+        current = _scope_class_machinery(mapping_kind, ("values",))
+        if any(now is not then for now, then in zip(current, mapping_snapshot)):
+            return None
+        if "values" in object.__getattribute__(elements, "__dict__"):
+            return None
+    elif mapping_kind is not dict:
+        return None
+    abc_namespace = type.__getattribute__(ABCMeta, "__dict__")
+    if (
+        type(ShellElement) is not ABCMeta
+        or abc_namespace.get("__instancecheck__") is not _ABC_INSTANCECHECK
+        or abc_namespace.get("__subclasscheck__") is not _ABC_SUBCLASSCHECK
+    ):
+        return None
+    # Identities only: hashing or comparing the classes themselves could run
+    # a metaclass ``__hash__``/``__eq__``.  An id found in the snapshot is that
+    # owned class, which the snapshot keeps alive.
+    census = _memoized_census_ids(elements)
+    kinds = []
+    for kind_id in census:
+        entry = dict.get(snapshot, kind_id)
+        if entry is None:
+            return None
+        kind, expected = entry
+        current = _scope_class_machinery(kind)
+        if any(now is not then for now, then in zip(current, expected)):
+            return None
+        kinds.append(kind)
+    return kinds
+
+
+def _class_attribute_owner(kind: type, name: str) -> Any:
+    """The MRO class whose namespace defines *name*, without running descriptors."""
+
+    for base in type.__getattribute__(kind, "__mro__"):
+        if name in type.__getattribute__(base, "__dict__"):
+            return base
+    return None
+
+
 _ROTATIONAL_INDICES = np.asarray((3, 4, 9, 10, 15, 16), dtype=np.intp)
 _DRILL_PROJECTOR = np.asarray(((1.0, 0.0), (-1.0, 0.0), (0.0, 1.0)))
 _DRILL_INVERSE_METRIC_SQRT = np.diag((1.0 / math.sqrt(2.0), math.sqrt(2.0)))
@@ -672,18 +870,7 @@ class NativeParityE4PLS3V2DShellElement(
             raise NativeParityCapabilityError(
                 "S3 V2D evaluation requires exact model-registry ownership"
             )
-        allowed = (
-            NativeParityE4PLS3V2DShellElement,
-            StrictFlatLinearE4PLS3V2CShellElement,
-            QualifiedE4PLShellElement,
-        )
-        if any(
-            isinstance(element, ShellElement) and type(element) not in allowed
-            for element in elements.values()
-        ):
-            raise NativeParityCapabilityError(
-                "S3 V2D mixed shell scope admits only exact V2D, accepted V2C and qualified Q4"
-            )
+        _require_v2d_mixed_shell_scope(elements)
 
     def _geometry(self, mesh: FEMesh) -> Dict[str, Any]:
         self._validate_configuration()
@@ -2636,3 +2823,22 @@ __all__ = [
     "SUPPORTED_OPERATIONS",
     "V2C_OPERATOR_SHA256",
 ]
+
+
+def _capture_scope_census_snapshot() -> Dict[int, Tuple[type, Tuple[Any, ...]]]:
+    from .elements import BeamElement, QuadraticBeamElement
+
+    return {
+        id(kind): (kind, _scope_class_machinery(kind))
+        for kind in (
+            NativeParityE4PLS3V2DShellElement,
+            StrictFlatLinearE4PLS3V2CShellElement,
+            QualifiedE4PLShellElement,
+            BeamElement,
+            QuadraticBeamElement,
+        )
+    }
+
+
+_SCOPE_CENSUS_SNAPSHOT = _capture_scope_census_snapshot()
+_SCOPE_MAPPING_SNAPSHOT = _scope_class_machinery(_QualifiedStateMapping, ("values",))
