@@ -24,7 +24,7 @@ import json
 import os
 from pathlib import Path
 import threading
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 import numpy as np
 from scipy import sparse
@@ -48,10 +48,12 @@ _NUMERIC_OPERATIONS = {
 def backend_operation_counts() -> Dict[str, int]:
     """Process-wide monotonic counts of actual numerical backend operations.
 
-    Differences across an isolated run include failed attempts, PARDISO phase
-    22 refreshes and hidden stale-handle refactorizations. These are operations,
-    not cache misses; concurrent analyses are intentionally not attributed to
-    an individual session.
+    Differences across an isolated run include failed attempts and PARDISO
+    phase 22 refreshes. These are operations, not cache misses; concurrent
+    analyses are intentionally not attributed to an individual session.
+    ``pardiso_stale_rebuilds`` is retained for comparability with earlier
+    releases and stays 0: a stale PARDISO handle is never rebuilt (it raises
+    :class:`PardisoStaleHandleError`).
     """
     with _NUMERIC_OPERATION_LOCK:
         return dict(_NUMERIC_OPERATIONS)
@@ -163,9 +165,7 @@ class FactorizationHandle:
             "status": self.status,
             "failure_reason": self.failure_reason,
             "factorization_time": self.factorization_time,
-            "factorization_count": self.factorization_count + int(
-                getattr(self._solver, "stale_rebuild_count", 0)
-            ),
+            "factorization_count": self.factorization_count,
             "solve_count": self.solve_count,
             "solve_time": self.solve_time,
             **self.metadata,
@@ -399,6 +399,35 @@ class PardisoPerturbedPivotError(RuntimeError):
         return error
 
 
+PARDISO_STALE_HANDLE = "pardiso_stale_handle"
+
+
+class PardisoStaleHandleError(RuntimeError):
+    """A PARDISO handle whose factorization no longer exists was solved.
+
+    PARDISO handles are bound to a retained pattern slot of their backend.
+    The slot holds the factorization of the *most recent* matrix with that
+    sparsity pattern: once it is refactorized by another matrix, evicted from
+    the backend's LRU, released (``release_pattern_slots``) or retired after
+    an interrupted factorization, every handle created earlier is stale.  A
+    stale handle is never rebuilt: each solve (sequential or concurrent)
+    raises this error with the same message, without any native call and
+    without returning a solution.  Factorize again to continue;
+    :class:`FactorizationCache` treats a stale cached handle as a miss.
+    """
+
+    MESSAGE = (
+        f"{PARDISO_STALE_HANDLE}: the PARDISO factorization behind this handle no "
+        "longer exists (its pattern slot was refactorized by another matrix, evicted, "
+        "released or retired after an interrupted factorization); stale handles are "
+        "never rebuilt - factorize the matrix again (FactorizationCache treats a "
+        "stale handle as a miss)"
+    )
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
 def _pardiso_perturbed_pivot_count(solver: Any) -> Tuple[Optional[int], str]:
     try:
         iparm = np.asarray(solver.iparm)
@@ -413,14 +442,31 @@ def _pardiso_perturbed_pivot_count(solver: Any) -> Tuple[Optional[int], str]:
 
 
 @_serialized_pypardiso_call
-def _pardiso_numeric_factorize(solver: Any, prepared: sparse.csr_matrix, phase: int) -> int:
-    """Run one PARDISO factorization phase and refuse perturbed pivots.
+def _pardiso_numeric_factorize(
+    solver: Any,
+    prepared: sparse.csr_matrix,
+    phase: int,
+    *,
+    mtype: Optional[int] = None,
+    retire: Optional[Callable[[], None]] = None,
+) -> int:
+    """Run one PARDISO numerical factorization phase; the only such native call.
 
-    Every PARDISO numerical factorization (cold phase 12, reused-pattern
-    phase 22, stale-handle private rebuilds) goes through this function, so
-    ``iparm[13]`` is read for the factorization just performed.  Callers must
-    never retry a raised :class:`PardisoPerturbedPivotError` into an accepted
-    factorization.
+    Every PARDISO numerical factorization (fresh phase 12, reused-pattern
+    phase 22 and the phase 12 re-analysis retry) goes through this function,
+    so ``iparm[13]`` is read for the factorization just performed and a
+    perturbed or unreadable report raises :class:`PardisoPerturbedPivotError`
+    worded for ``mtype``.  Callers must never retry that error into an
+    accepted factorization.
+
+    Interrupt safety: on a ``BaseException`` that is not an ``Exception``
+    (``KeyboardInterrupt``, ``SystemExit``, ...) raised by the native call,
+    ``retire`` (the owning slot's retirement, if any) runs first so that the
+    slot can never be reused, then the pivot report is read, the solver's
+    native memory is released (phase -1) and the original exception is
+    re-raised unchanged (with a note recording the report).  A fresh
+    factorization passes no ``retire``: its solver is released here, so no
+    native memory leaks.
     """
 
     solver.set_phase(int(phase))
@@ -438,24 +484,56 @@ def _pardiso_numeric_factorize(solver: Any, prepared: sparse.csr_matrix, phase: 
                 count,
                 phase=int(phase),
                 detail=f"{detail}; after native error {type(exc).__name__}: {exc}",
+                mtype=mtype,
             ) from exc
+        raise
+    except BaseException as exc:
+        try:
+            if retire is not None:
+                retire()
+        finally:
+            count, detail = _pardiso_perturbed_pivot_count(solver)
+            try:
+                _release_mkl_solver(solver)
+            finally:
+                report = f"iparm[13]={count}" if count is not None else f"iparm[13] unreadable ({detail})"
+                try:
+                    exc.add_note(
+                        f"PARDISO phase {int(phase)} interrupted by {type(exc).__name__}: "
+                        f"{report}; its native memory was released (phase -1) and "
+                        "its pattern slot retired"
+                    )
+                except Exception:
+                    pass
         raise
     count, detail = _pardiso_perturbed_pivot_count(solver)
     if count is None or count > 0:
-        raise PardisoPerturbedPivotError(count, phase=int(phase), detail=detail)
+        raise PardisoPerturbedPivotError(count, phase=int(phase), detail=detail, mtype=mtype)
     return count
 
 
 @_serialized_pypardiso_call
-def _pardiso_full_factorize(solver: Any, prepared: sparse.csr_matrix) -> int:
+def _pardiso_full_factorize(
+    solver: Any,
+    prepared: sparse.csr_matrix,
+    *,
+    mtype: Optional[int] = None,
+    retire: Optional[Callable[[], None]] = None,
+) -> int:
     solver._check_A(prepared)
-    return _pardiso_numeric_factorize(solver, prepared, 12)
+    return _pardiso_numeric_factorize(solver, prepared, 12, mtype=mtype, retire=retire)
 
 
 class _PardisoPatternSlot:
-    """One retained PARDISO instance per sparsity pattern for analysis reuse."""
+    """One retained PARDISO instance per sparsity pattern for analysis reuse.
 
-    __slots__ = ("solver", "mtype", "shape", "indptr", "indices", "generation")
+    ``generation`` changes whenever the slot's factorization is replaced or
+    dropped; handles bound to an older generation are stale.  ``bound``
+    holds the live handle wrappers of the current generation so that an
+    invalidation reports their stale status immediately.
+    """
+
+    __slots__ = ("solver", "mtype", "shape", "indptr", "indices", "generation", "bound")
 
     def __init__(self, solver: Any, mtype: int, prepared: sparse.csr_matrix):
         self.solver = solver
@@ -464,6 +542,7 @@ class _PardisoPatternSlot:
         self.indptr = prepared.indptr.copy()
         self.indices = prepared.indices.copy()
         self.generation = 0
+        self.bound: "weakref.WeakSet[_PardisoFactorization]" = weakref.WeakSet()
 
     @_serialized_pypardiso_call
     def matches(self, prepared: sparse.csr_matrix, mtype: int) -> bool:
@@ -478,147 +557,75 @@ class _PardisoPatternSlot:
         )
 
     @_serialized_pypardiso_call
-    def release(self) -> None:
+    def invalidate(self, cause: str) -> None:
+        """Make every handle bound to the current factorization stale."""
+
         self.generation += 1
+        bound, self.bound = list(self.bound), weakref.WeakSet()
+        for wrapper in bound:
+            wrapper._mark_stale(cause)
+
+    @_serialized_pypardiso_call
+    def retire(self, cause: str) -> None:
+        """Invalidate and drop the solver without a native call (already released)."""
+
+        self.solver = None
+        self.invalidate(cause)
+
+    @_serialized_pypardiso_call
+    def release(self, cause: str = "released") -> None:
         solver, self.solver = self.solver, None
+        self.invalidate(cause)
         if solver is not None:
             _release_mkl_solver(solver)
 
 
 class _PardisoFactorization:
-    """Solve interface bound to a pattern slot.
+    """Solve interface bound to the current factorization of a pattern slot.
 
     The slot's PARDISO instance holds the factorization of the *most recent*
-    matrix with that sparsity pattern.  A handle created earlier therefore
-    checks a generation token before solving; if the slot has moved on (or was
-    evicted), the handle transparently refactorizes its own matrix into a
-    private solver whose MKL memory is released by a finalizer when the handle
-    is garbage collected.
-
-    A failed private rebuild (perturbed pivots, an unreadable pivot report or
-    any other PARDISO error) fails the handle permanently, for the auto and
-    the forced policy alike: there is no solve-time fallback to another
-    backend.  The rejection is recorded inside the process lock before it is
-    released; every later or concurrent solve checks it inside the lock before
-    any rebuild and raises the same typed error, so no second rebuild runs
-    and no PARDISO result is returned after a rejection.  The owning handle
-    reports ``status "failed"`` with ``pardiso_failure_stage
-    "stale_rebuild"``.  The rejection keeps no reference to the triggering
-    right-hand side.  Fresh factorizations keep their factorization-time
-    policy (auto: SuperLU fallback; forced: typed failure).
+    matrix with that sparsity pattern.  A handle created earlier checks the
+    slot's generation token inside the process lock before solving; if the
+    slot has moved on (refactorized, evicted, released or retired), the
+    handle is stale and every solve raises :class:`PardisoStaleHandleError`
+    - one type and message for sequential and concurrent callers, with no
+    native call, no rebuild and no solution.  The owning handle reports
+    ``status "failed"`` with ``pardiso_failure_kind "pardiso_stale_handle"``
+    as soon as the slot is invalidated.
     """
 
     def __init__(self, slot: _PardisoPatternSlot, prepared: sparse.csr_matrix, mtype: int):
-        self._slot: Optional[_PardisoPatternSlot] = slot
+        self._slot = slot
         self._generation = slot.generation
         self._matrix = prepared
         self._mtype = int(mtype)
-        self._private_solver: Any = None
-        self.stale_rebuild_count = 0
-        # Data (not the exception: no traceback, no RHS) of a rejected
-        # stale-handle rebuild: (perturbed, count, phase, detail, reason).
-        self._rejection: Optional[Tuple[bool, Optional[int], int, str, str]] = None
         self._handle_ref: Optional["weakref.ReferenceType[FactorizationHandle]"] = None
+        slot.bound.add(self)
 
-    def _rejection_error(self) -> BaseException:
-        """The typed error every solve of a rejected handle raises.
+    def is_stale(self) -> bool:
+        slot = self._slot
+        return slot.solver is None or slot.generation != self._generation
 
-        The first rejection and every later or concurrent solve raise the same
-        type with the same message: :class:`PardisoPerturbedPivotError` for a
-        perturbation (or an unreadable report), ``RuntimeError`` for any other
-        failed or interrupted rebuild.
-        """
+    def _mark_stale(self, cause: str) -> None:
+        """Report the stale status on the owning handle (process lock held)."""
 
-        perturbed, count, phase, detail, reason = self._rejection  # type: ignore[misc]
-        if perturbed:
-            return PardisoPerturbedPivotError(
-                count, phase=phase, detail=detail, mtype=self._mtype
-            )
-        return RuntimeError(reason)
-
-    def _reject(self, exc: BaseException) -> None:
-        """Fail the handle permanently after a failed stale rebuild (lock held)."""
-
-        perturbed = isinstance(exc, PardisoPerturbedPivotError)
-        count = exc.count if perturbed else None
-        phase = int(getattr(exc, "phase", 12))
-        detail = str(getattr(exc, "detail", ""))
-        if perturbed:
-            reason = str(
-                PardisoPerturbedPivotError(count, phase=phase, detail=detail, mtype=self._mtype)
-            )
-        else:
-            reason = (
-                f"pypardiso stale-handle rebuild failed ({type(exc).__name__}: {exc}); "
-                "the handle is rejected permanently"
-            )
-        self._rejection = (perturbed, count, phase, detail, reason)
         handle = self._handle_ref() if self._handle_ref is not None else None
-        if handle is None:
+        if handle is None or handle.metadata.get("pardiso_failure_kind") == PARDISO_STALE_HANDLE:
             return
         handle.status = "failed"
-        handle.failure_reason = reason
-        handle.metadata["pardiso_failure_kind"] = (
-            PARDISO_PERTURBED_PIVOTS if perturbed else "pardiso_error"
-        )
-        handle.metadata["pardiso_failure_stage"] = "stale_rebuild"
-        if perturbed:
-            key = str(self._mtype)
-            handle.metadata["pardiso_perturbed_pivots"] = {
-                key: _reported_pivot_count(self._mtype, count)
-            }
-            if self._mtype not in _PARDISO_PIVOT_COUNT_DOCUMENTED_MTYPES and count is not None:
-                handle.metadata["pardiso_iparm13_raw"] = {key: count}
-
-    @_serialized_pypardiso_call
-    def _active_solver(self) -> Any:
-        if self._private_solver is not None:
-            return self._private_solver
-        slot = self._slot
-        if slot is not None and slot.solver is not None and slot.generation == self._generation:
-            return slot.solver
-        solver = _new_pypardiso_solver(mtype=self._mtype)
-        try:
-            _pardiso_full_factorize(solver, self._matrix)
-        except Exception:
-            _release_mkl_solver(solver)
-            raise
-        except BaseException as exc:
-            # An interrupt (KeyboardInterrupt, SystemExit, ...) at the native
-            # call: read the pivot report the call may have written, release
-            # the private solver (phase -1) and reject the handle permanently
-            # (lock still held), then re-raise the original exception.
-            count, detail = _pardiso_perturbed_pivot_count(solver)
-            _release_mkl_solver(solver)
-            interrupt = f"after {type(exc).__name__} at the native call"
-            if count is None or count > 0:
-                self._reject(
-                    PardisoPerturbedPivotError(
-                        count, phase=12, detail=f"{detail}; {interrupt}".lstrip("; "),
-                        mtype=self._mtype,
-                    )
-                )
-            else:
-                self._reject(RuntimeError(f"rebuild interrupted {interrupt}"))
-            raise
-        self._private_solver = solver
-        weakref.finalize(self, _release_mkl_solver, solver)
-        self._slot = None
-        self.stale_rebuild_count += 1
-        _count_numeric_operation("pardiso_stale_rebuilds")
-        return solver
+        handle.failure_reason = PardisoStaleHandleError.MESSAGE
+        handle.metadata["pardiso_failure_kind"] = PARDISO_STALE_HANDLE
+        handle.metadata["pardiso_failure_stage"] = "stale_handle"
+        handle.metadata["pardiso_stale_cause"] = str(cause)
 
     @_serialized_pypardiso_call
     def solve(self, rhs: np.ndarray) -> np.ndarray:
         # Inside the process lock: a solve admitted before a concurrent
-        # rejection sees it here and never rebuilds again.
-        if self._rejection is not None:
-            raise self._rejection_error()
-        try:
-            solver = self._active_solver()
-        except Exception as exc:
-            self._reject(exc)
-            raise self._rejection_error() from exc
+        # invalidation sees it here and raises the same typed error.
+        if self.is_stale():
+            self._mark_stale("stale")
+            raise PardisoStaleHandleError()
+        solver = self._slot.solver
         b = solver._check_b(self._matrix, np.asarray(rhs, dtype=np.float64))
         solver.set_phase(33)
         return solver._call_pardiso(self._matrix, b)
@@ -635,8 +642,13 @@ class PyPardisoSolverBackend:
       mtypes (2 / -2), falling back to the general path on numerical failure;
     - refactorizations with an unchanged sparsity pattern reuse the symbolic
       analysis (PARDISO phase 22) through a small LRU of pattern slots;
-    - MKL internal memory is bounded and released: evicted slots and privately
-      rebuilt factorizations free their memory (phase -1) via finalizers.
+    - MKL internal memory is bounded and released: evicted, released, failed
+      and interrupted factorizations free their memory (phase -1).
+
+    A handle is valid only while its slot holds its factorization.  After the
+    slot is refactorized by another matrix, evicted, released or retired, the
+    handle is stale and raises :class:`PardisoStaleHandleError`; it is never
+    rebuilt.
 
     PyPardiso/MKL solver state is serialized process-wide.  This includes
     independent backend instances and handles owned by separate analysis
@@ -651,9 +663,13 @@ class PyPardisoSolverBackend:
 
     @_serialized_pypardiso_call
     def release_pattern_slots(self) -> None:
-        """Release all retained MKL factorization memory."""
+        """Release all retained MKL factorization memory.
+
+        Every handle bound to a released slot becomes stale
+        (:class:`PardisoStaleHandleError` on solve).
+        """
         while self._slots:
-            self._slots.pop().release()
+            self._slots.pop().release("released")
 
     @property
     @_serialized_pypardiso_call
@@ -724,42 +740,56 @@ class PyPardisoSolverBackend:
 
         A perturbed-pivot rejection is final: it is never retried (neither by
         a phase 12 re-analysis nor by another mtype), and a slot whose
-        numerical factorization failed is released and dropped.
+        numerical factorization failed is released and dropped.  An
+        interrupted numerical phase (``BaseException``) retires the slot (it
+        can never be reused) and releases its native memory; an interrupted
+        fresh factorization releases its new solver.  The original exception
+        is re-raised.
         """
 
         for slot in self._slots:
             if slot.matches(prepared, mtype):
                 # Invalidate handles bound to the slot's previous values before
                 # any numerical phase overwrites the slot's factorization.
-                slot.generation += 1
+                slot.invalidate("refactorized")
+
+                def retire(slot: _PardisoPatternSlot = slot) -> None:
+                    if slot in self._slots:
+                        self._slots.remove(slot)
+                    slot.retire("retired after an interrupted factorization")
+
                 symbolic_reused = True
                 try:
                     try:
-                        count = _pardiso_numeric_factorize(slot.solver, prepared, 22)
+                        count = _pardiso_numeric_factorize(
+                            slot.solver, prepared, 22, mtype=mtype, retire=retire
+                        )
                     except PardisoPerturbedPivotError:
                         raise
                     except Exception:
                         # A PARDISO error other than a perturbation: re-analyse
                         # the current values (phase 12, checked again).
-                        count = _pardiso_full_factorize(slot.solver, prepared)
+                        count = _pardiso_full_factorize(
+                            slot.solver, prepared, mtype=mtype, retire=retire
+                        )
                         symbolic_reused = False
                 except Exception:
                     self._slots.remove(slot)
-                    slot.release()
+                    slot.release("released after a failed factorization")
                     raise
                 self._slots.remove(slot)
                 self._slots.insert(0, slot)
                 return _PardisoFactorization(slot, prepared, mtype), symbolic_reused, count
         solver = _new_pypardiso_solver(mtype=int(mtype))
         try:
-            count = _pardiso_full_factorize(solver, prepared)
+            count = _pardiso_full_factorize(solver, prepared, mtype=mtype)
         except Exception:
             _release_mkl_solver(solver)
             raise
         slot = _PardisoPatternSlot(solver, mtype, prepared)
         self._slots.insert(0, slot)
         while len(self._slots) > max(int(self.max_pattern_slots), 1):
-            self._slots.pop().release()
+            self._slots.pop().release("evicted")
         return _PardisoFactorization(slot, prepared, mtype), False, count
 
     @_serialized_pypardiso_call
@@ -809,7 +839,9 @@ class PyPardisoSolverBackend:
                     ):
                         # Refused fail closed, but not a documented count.
                         raw_iparm13[str(int(mtype))] = exc.count
-                    failure_reasons.append(f"mtype={mtype}: {exc.for_mtype(mtype)}")
+                    # ``exc`` is already worded for ``mtype`` (no chained
+                    # cause makes a count claim for mtype 2).
+                    failure_reasons.append(f"mtype={mtype}: {exc}")
                     break
                 except Exception as exc:
                     failure_reasons.append(f"mtype={mtype}: {exc}")
@@ -998,8 +1030,8 @@ class AutoSparseSolverBackend:
             handle.metadata.setdefault(key, value)
         handle.metadata.setdefault("pypardiso_initialized", bool(self.pardiso_backend.initialized))
         if handle.status == "ok":
-            # A stale handle whose solve-time rebuild fails is failed
-            # permanently (no solve-time fallback; see _PardisoFactorization).
+            # A handle that later becomes stale raises PardisoStaleHandleError
+            # (no rebuild, no solve-time fallback; see _PardisoFactorization).
             return handle
         failure_kind = handle.metadata.get("pardiso_failure_kind")
         if selection_policy == "pypardiso_forced" and failure_kind == PARDISO_PERTURBED_PIVOTS:
@@ -1095,9 +1127,14 @@ class FactorizationCache:
         cache_key = self.key(matrix, matrix_class, signature=signature, options=options)
         with self._lock:
             cached = self._handles.get(cache_key)
-            if cached is not None and (cached.status != "ok" or cached._solver is None):
-                # Failed after insertion (e.g. a rejected stale rebuild):
-                # evict it, count the failure and factorize afresh (a miss).
+            if cached is not None and factorization_is_stale(cached):
+                # A stale PARDISO handle (its slot was refactorized, evicted
+                # or released) is never rebuilt: evict it and factorize afresh
+                # (a miss, not a failure).
+                self._handles.pop(cache_key, None)
+            elif cached is not None and (cached.status != "ok" or cached._solver is None):
+                # Failed after insertion: evict it, count the failure and
+                # factorize afresh (a miss).
                 self._handles.pop(cache_key, None)
                 self.factorization_failures += 1
             if cache_key in self._handles:
@@ -1216,6 +1253,42 @@ def factorize(
     return handle
 
 
+def factorization_is_stale(handle: Any) -> bool:
+    """Whether ``handle`` is a PARDISO handle whose factorization no longer exists.
+
+    True after its pattern slot was refactorized by another matrix, evicted,
+    released or retired; solving it raises :class:`PardisoStaleHandleError`.
+    SuperLU and failed handles are never stale.
+    """
+
+    solver = getattr(handle, "_solver", None)
+    return isinstance(solver, _PardisoFactorization) and solver.is_stale()
+
+
+def refactorize_if_stale(
+    handle: Any,
+    matrix: sparse.spmatrix,
+    matrix_class: MatrixClass | str,
+    *,
+    cache: Optional[FactorizationCache] = None,
+    signature: Optional[str] = None,
+    options: Optional[Mapping[str, Any]] = None,
+    backend: Optional[SparseSolverBackend] = None,
+) -> Any:
+    """Return ``handle``, or a fresh factorization of ``matrix`` if it is stale.
+
+    For holders that keep a handle across other factorizations: the fresh
+    factorization goes through ``cache`` (where a stale entry is a miss) or
+    the backend, exactly like the original ``factorize_cached`` call.
+    """
+
+    if handle is None or not factorization_is_stale(handle):
+        return handle
+    return factorize_cached(
+        matrix, matrix_class, cache=cache, signature=signature, options=options, backend=backend
+    )
+
+
 def factorize_cached(
     matrix: sparse.spmatrix,
     matrix_class: MatrixClass | str,
@@ -1250,10 +1323,10 @@ def cached_inverse_operator(
 
 def solve(handle: FactorizationHandle, rhs: np.ndarray) -> np.ndarray:
     """Solve one right-hand side using an existing factorization."""
-    if isinstance(handle._solver, _PardisoFactorization) and handle._solver._rejection is not None:
-        # A PARDISO handle rejected by a failed stale rebuild raises the same
-        # typed error as its first rejection, on every later solve.
-        raise handle._solver._rejection_error()
+    if factorization_is_stale(handle):
+        # A stale PARDISO handle raises one typed error on every solve; the
+        # wrapper re-checks inside the process lock for concurrent callers.
+        raise PardisoStaleHandleError()
     if handle.status != "ok" or handle._solver is None:
         raise RuntimeError(f"Cannot solve with failed factorization: {handle.failure_reason}")
     rhs = np.asarray(rhs, dtype=float)

@@ -14,7 +14,7 @@ from scipy import sparse
 
 from ._b2_physical_linear_definition import CompiledPhysicalB2Member
 from .control import CancellationToken
-from .linalg import FactorizationCache, MatrixClass, factorize_cached
+from .linalg import FactorizationCache, MatrixClass, factorize_cached, refactorize_if_stale
 
 
 class B2NumericalSolveFailure(RuntimeError):
@@ -275,6 +275,10 @@ class CompiledB2AffineBatch:
         self._length_scale = max(member.definition.length_m for member in compiled)
         self._selected = selected
         self._handle = handle
+        # A stale PARDISO handle is never rebuilt: keep the scaled operator
+        # and cache to refactorize it (SuperLU handles never become stale).
+        self._factor_matrix = scaled if handle.backend_name == "pypardiso" else None
+        self._factor_cache = factorization_cache
         scaling.setflags(write=False)
         self._scaling = scaling
         self._max_chunk = max_chunk
@@ -304,8 +308,16 @@ class CompiledB2AffineBatch:
         try:
             self._closed = True
             self._handle = None
+            self._factor_matrix = None
         finally:
             self._operation_lock.release()
+
+    def _current_handle(self):
+        """The batch handle, refactorized (same cache) if its PARDISO slot moved on."""
+        if self._factor_matrix is not None:
+            self._handle = refactorize_if_stale(
+                self._handle, self._factor_matrix, MatrixClass.SPD, cache=self._factor_cache)
+        return self._handle
 
     def solve_many(self, cases: Sequence[tuple[str, np.ndarray]], *,
                    cancellation_token: CancellationToken | None = None,
@@ -402,7 +414,7 @@ class CompiledB2AffineBatch:
                     np.any((rhs != 0.) & (scaled_rhs == 0.))):
                 raise B2NumericalSolveFailure("physical B2 scaled load is not representable")
             try:
-                solved = np.asarray(self._handle.solve_many(scaled_rhs), dtype=float)
+                solved = np.asarray(self._current_handle().solve_many(scaled_rhs), dtype=float)
             except RuntimeError as exc:
                 raise B2NumericalSolveFailure(
                     "physical B2 sparse solve failed: " + str(exc)) from exc
@@ -439,7 +451,7 @@ class CompiledB2AffineBatch:
                     if not np.isfinite(correction_rhs).all():
                         raise B2NumericalSolveFailure("physical B2 batch solve residual failed")
                     try:
-                        correction = np.asarray(self._handle.solve_many(
+                        correction = np.asarray(self._current_handle().solve_many(
                             correction_rhs), dtype=float)
                     except RuntimeError as exc:
                         raise B2NumericalSolveFailure(

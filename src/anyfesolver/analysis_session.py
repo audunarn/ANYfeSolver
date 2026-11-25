@@ -471,7 +471,7 @@ class AnalysisSession:
     ) -> StaticOperatorPlan:
         """Reuse preparation and factorization for unchanged static operators."""
         from .assembly import _equilibrate_supported_stiffness, _SYMMETRIC_DIAGONAL_EQUILIBRATION_ID
-        from .linalg import MatrixClass, factorize_cached
+        from .linalg import MatrixClass, factorization_is_stale, factorize_cached
 
         with self._lock:
             owned = self._require_model(model)
@@ -488,7 +488,10 @@ class AnalysisSession:
                    constraint.structure_key, augmented, modes.shape,
                    hashlib.sha256(modes.tobytes()).hexdigest())
             old = self._static_operator
-            if old is not None and old.key == key and (old.handle is None or old.handle.status == "ok"):
+            # A stale PARDISO handle keeps the prepared operator: the cache
+            # treats it as a miss and refactorizes the same matrix.
+            if old is not None and old.key == key and (old.handle is None or old.handle.status == "ok"
+                                                       or factorization_is_stale(old.handle)):
                 self._counters["static_operator_hits"] += 1
                 handle = None if old.handle is None else factorize_cached(old.matrix,
                     MatrixClass.SYMMETRIC_INDEFINITE, cache=self.factorization_cache,

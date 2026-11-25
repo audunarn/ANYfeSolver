@@ -55,7 +55,7 @@ from .e4_pl_element import _retire_q4_private_mesh_caches
 from ._stiffened_shell_b2_assembly_diagnostics import active_capture, DiagnosticRefusal
 from .elements import create_shell_element
 from .fe_core import FEModel
-from .linalg import MatrixClass, factorize_cached
+from .linalg import MatrixClass, factorize_cached, refactorize_if_stale
 
 B2_FIXED_END_LOADED_POINT_TRACE_V1_DEV = "B2_FIXED_END_LOADED_POINT_TRACE_V1_DEV"
 
@@ -1280,6 +1280,11 @@ class ExperimentalB2Q4PanelAnalysis:
             self._physical_singletons = self._structural_physical_singletons(C, T, u0)
         self._factor_scale = factor_scale
         self._handle = handle
+        # A stale PARDISO handle is never rebuilt; keep the factorized
+        # operator so the panel can refactorize it (attachment handles
+        # refresh themselves; SuperLU handles never become stale).
+        self._handle_matrix = (scaled_kkt if attachment_maps is None and handle is not None
+                               and handle.backend_name == "pypardiso" else None)
         self._attachment_elimination = attachment_maps
         self._attachment_elimination_info = ({"status": "eligible", **attachment_maps.info}
                                              if attachment_maps is not None else
@@ -1428,6 +1433,13 @@ class ExperimentalB2Q4PanelAnalysis:
             raise _NumericalFailure("original physical correction target is not representable")
         return target
 
+    def _current_handle(self):
+        """The panel handle, refactorized if its PARDISO slot moved on."""
+        if self._handle_matrix is not None:
+            self._handle = refactorize_if_stale(
+                self._handle, self._handle_matrix, MatrixClass.SYMMETRIC_INDEFINITE)
+        return self._handle
+
     def _correct_physical_equilibrium(self, scaled_answer, scaled_rhs, applied):
         """One original-operator correction using the existing factorization.
 
@@ -1449,7 +1461,7 @@ class ExperimentalB2Q4PanelAnalysis:
                 np.any((original_target != 0.) & (correction_rhs == 0.))):
             raise _NumericalFailure("panel equilibrium correction is not representable")
         try:
-            delta = np.asarray(self._handle.solve(correction_rhs), dtype=float)
+            delta = np.asarray(self._current_handle().solve(correction_rhs), dtype=float)
         except RuntimeError as exc:
             raise _NumericalFailure("panel equilibrium correction failed: " + str(exc)) from exc
         with np.errstate(over="ignore", under="ignore", invalid="ignore"):
@@ -1938,7 +1950,7 @@ class ExperimentalB2Q4PanelAnalysis:
                 solve_count=self._handle.solve_count,
                 failure_reason="panel right-hand side scaling is not representable")
         try:
-            scaled_answer = np.asarray(self._handle.solve(scaled_rhs), dtype=float)
+            scaled_answer = np.asarray(self._current_handle().solve(scaled_rhs), dtype=float)
             answer = self._factor_scale*scaled_answer
             if self._physical_footprint_law and answer.shape == rhs.shape and np.isfinite(answer).all():
                 answer = self._correct_physical_equilibrium(
@@ -2319,6 +2331,7 @@ class ExperimentalB2Q4PanelAnalysis:
             _retire_private_q4_mesh(self)
         finally:
             self._handle = None
+            self._handle_matrix = None
             self._physical_scaled_kkt = None
             self._attachment_elimination = None
             if self._point_trace_policy is not None:
