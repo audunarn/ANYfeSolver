@@ -228,6 +228,9 @@ _EXACT_FE_MESH_REVISION_SIGNATURE = type.__getattribute__(
     "__dict__",
 )["revision_signature"]
 _EXACT_FE_MESH_GET_NODE = type.__getattribute__(_FEMesh, "__dict__")["get_node"]
+_EXACT_FE_MESH_GET_ELEMENT = type.__getattribute__(_FEMesh, "__dict__")[
+    "get_element"
+]
 _EXACT_FE_MESH_NUM_NODES = type.__getattribute__(_FEMesh, "__dict__")[
     "num_nodes"
 ]
@@ -3641,6 +3644,7 @@ def _run_with_qualified_assembly_runtime_lease(
                 with ExitStack() as stack:
                     stack.enter_context(_Q4_TRUSTED_OPERATION_SCOPE(q4_elements))
                     stack.enter_context(_S3_TRUSTED_OPERATION_SCOPE(s3_elements))
+                    stack.enter_context(_v2d_scope_census_memo())
                     try:
                         result = operation(lease)
                     except BaseException as exc:
@@ -6554,8 +6558,42 @@ def _qualified_s3_pressure_surface_records(
         exact_qualified_guard(
             context="qualified S3 pressure-surface mapping observation",
         )
+    # Without the lease's constant-time input guard (pure S3 V2D and mixed
+    # V2D models) the complete guard after every record made this walk
+    # O(records x elements).  Exact S3 V2D records are instead read without
+    # executing any code outside this package, so nothing can change between
+    # them: the opening guard above still covers their state and the caller's
+    # closing guard follows as before.  Every other record keeps the original
+    # read-then-guard route.
+    v2d_elements = (
+        _foreign_code_free_v2d_element_mapping(model)
+        if trusted_input_guard is None
+        else None
+    )
     records: list[Dict[str, Any]] = []
     for raw_element_id in pressure_ids:
+        if v2d_elements is not None and type(raw_element_id) is int:
+            element = dict.get(v2d_elements, raw_element_id)
+            if element is None:
+                # ``get_element`` (verified to be FEMesh's own) returns None
+                # for it too, and the guarded route skips it without a guard.
+                continue
+            fields = _foreign_code_free_v2d_pressure_fields(element)
+            if fields is not None:
+                formulation, pressure_policy, offset = fields
+                if (
+                    formulation != "E4_PL_QUALIFIED_S3_COMPANION_V1"
+                    and pressure_policy != "ELEMENT_NODAL_REFERENCE_SURFACE_V1"
+                ):
+                    continue
+                records.append(
+                    _qualified_s3_pressure_surface_record(raw_element_id, offset)
+                )
+                continue
+        # The guarded route below may run caller code (``__int__``, a
+        # provider, a descriptor) that changes what the mapping read above
+        # would mean; the remaining records keep the guarded route.
+        v2d_elements = None
         element_id = int(raw_element_id)
         element = model.mesh.get_element(element_id)
         if element is None:
@@ -6580,19 +6618,103 @@ def _qualified_s3_pressure_surface_records(
             raise AssemblyError(
                 f"Qualified S3 element {element_id} has a non-finite reference-surface offset."
             )
-        records.append(
-            {
-                "element_id": element_id,
-                "pressure_surface_id": "ELEMENT_NODAL_REFERENCE_SURFACE_V1",
-                "reference_surface_offset": offset,
-                "resultant_and_reaction_reference": (
-                    "GLOBAL_NODAL_REFERENCE_COORDINATES"
-                ),
-                "section_origin_offset_from_reference": -offset,
-                "virtual_work": "TRANSLATIONAL_NODAL_REFERENCE_SURFACE_ONLY",
-            }
-        )
+        records.append(_qualified_s3_pressure_surface_record(element_id, offset))
     return records
+
+
+def _v2d_scope_census_memo() -> Any:
+    """One-operation S3 V2D scope-census memo (imported lazily)."""
+
+    from .e4_pl_s3_v2d_element import v2d_scope_census_memo
+
+    return v2d_scope_census_memo()
+
+
+def _qualified_s3_pressure_surface_record(
+    element_id: int,
+    offset: float,
+) -> Dict[str, Any]:
+    return {
+        "element_id": element_id,
+        "pressure_surface_id": "ELEMENT_NODAL_REFERENCE_SURFACE_V1",
+        "reference_surface_offset": offset,
+        "resultant_and_reaction_reference": (
+            "GLOBAL_NODAL_REFERENCE_COORDINATES"
+        ),
+        "section_origin_offset_from_reference": -offset,
+        "virtual_work": "TRANSLATIONAL_NODAL_REFERENCE_SURFACE_ONLY",
+    }
+
+
+def _foreign_code_free_v2d_element_mapping(model: "FEModel") -> Any:
+    """Return the mesh element mapping when reading it runs no foreign code.
+
+    ``None`` unless the model, mesh and DOF reads are the package's own
+    builtin routes and the element mapping is a plain ``dict`` or the
+    package's state mapping whose ``get`` is ``dict.get``.  Nothing here
+    executes code outside this package.
+    """
+
+    from .boundary import _load_model_access_is_builtin, _mapping_reads_are_builtin
+
+    if not _load_model_access_is_builtin(model):
+        return None
+    mesh = dict.get(object.__getattribute__(model, "__dict__"), "mesh")
+    mesh_namespace = object.__getattribute__(mesh, "__dict__")
+    # The guarded route calls ``model.mesh.get_element``; reading the mapping
+    # directly is equivalent only while that is the class's own method.
+    if (
+        "get_element" in mesh_namespace
+        or type.__getattribute__(_FEMesh, "__dict__").get("get_element")
+        is not _EXACT_FE_MESH_GET_ELEMENT
+    ):
+        return None
+    elements = dict.get(mesh_namespace, "elements")
+    if not _mapping_reads_are_builtin(elements):
+        return None
+    return elements
+
+
+def _foreign_code_free_v2d_pressure_fields(
+    element: Any,
+) -> Optional[Tuple[str, str, float]]:
+    """Read an exact S3 V2D element's pressure-surface fields, or ``None``.
+
+    Returns ``(formulation_id, pressure_surface_policy_id, offset)`` exactly as
+    ``getattr`` would, reading only the class namespaces along the MRO and the
+    plain instance dictionary, so no descriptor or other foreign code runs.
+    ``None`` (keep the guarded ``getattr`` route) for anything else: another
+    class, a replaced ``__getattribute__``, a class-level data descriptor or
+    instance shadow for one of the fields, or a non-float or non-finite offset.
+    """
+
+    import math
+
+    from .current_state_tangent import _static_mro_attribute
+    from .e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
+
+    owner = type(element)
+    if owner is not NativeParityE4PLS3V2DShellElement:
+        return None
+    if _static_mro_attribute(owner, "__getattribute__") is not object.__getattribute__:
+        return None
+    namespace = object.__getattribute__(element, "__dict__")
+    if type(namespace) is not dict:
+        return None
+    formulation = _static_mro_attribute(owner, "formulation_id")
+    pressure_policy = _static_mro_attribute(owner, "pressure_surface_policy_id")
+    offset = dict.get(namespace, "reference_surface_offset")
+    if (
+        type(formulation) is not str
+        or type(pressure_policy) is not str
+        or "formulation_id" in namespace
+        or "pressure_surface_policy_id" in namespace
+        or _static_mro_attribute(owner, "reference_surface_offset") is not None
+        or type(offset) is not float
+        or not math.isfinite(offset)
+    ):
+        return None
+    return formulation, pressure_policy, offset
 
 
 def _qualified_trusted_state_guard(qualified_runtime_guard: Any) -> Any:
