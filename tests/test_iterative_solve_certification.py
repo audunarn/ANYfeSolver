@@ -146,10 +146,8 @@ def _run_with_spy(builder, solver):
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            try:
-                solve_linear(model, lc, solver_type=solver)
-            except Exception:
-                pass
+            _, solver_info = solve_linear(model, lc, solver_type=solver)
+        seen["solver_info"] = solver_info
     finally:
         asm._solve_reduced_system = orig
     return seen
@@ -170,6 +168,9 @@ def test_minres_inconsistent_2x2_is_not_converged():
 def test_converged_status_carries_a_verified_residual(builder, solver):
     seen = _run_with_spy(builder, solver)
     info = seen["info"]
+    assert seen["solver_info"]["convergence_info"]["status"] == info["status"]
+    assert (seen["solver_info"]["convergence_info"]["relative_residual_disposition"]
+            == info["relative_residual_disposition"])
     if info["status"] == "converged":
         assert seen["res"] <= 1.0e-8 * (1 + 1e-6)
         assert info["relative_residual_disposition"] == "RESIDUAL_VERIFIED"
@@ -206,3 +207,64 @@ def test_zero_rhs_is_verified_trivially():
     q, info = _solve_reduced_system(A, np.zeros(5), "minres")
     assert info["status"] == "converged"
     assert info["relative_residual_disposition"] == "RESIDUAL_VERIFIED"
+
+
+@pytest.mark.parametrize("scale", [1e-200, 1e-170])
+@pytest.mark.parametrize("solver", ["minres", "gmres", "bicgstab"])
+def test_tiny_rhs_underflow_is_not_verified(scale, solver, monkeypatch):
+    """Old code: norms underflow to 0, so 0 <= max(0, atol) passed with relative residual 1."""
+    A = sparse.identity(1, format="csr")
+    b = np.array([scale])
+    q, info = asm._verify_iterative_residual(A, b, np.zeros(1), 0, 1e-8, 0.0 if solver == "minres" else 1e-12)
+    assert info["status"] == "failed"
+    assert info["relative_residual_disposition"] == "RESIDUAL_LIMIT_EXCEEDED"
+    assert info["relative_residual"] == pytest.approx(1.0)
+
+
+def test_minres_tiny_rhs_end_to_end():
+    A = sparse.identity(1, format="csr")
+    q, info = _solve_reduced_system(A, np.array([1e-200]), "minres")
+    assert info["relative_residual_disposition"] != "RESIDUAL_VERIFIED" or q[0] == pytest.approx(1e-200, rel=1e-6)
+    assert info["status"] == "failed" or info["relative_residual"] <= 1e-8
+
+
+def test_huge_rhs_does_not_overflow_and_is_judged_relatively():
+    A = sparse.identity(3, format="csr")
+    b = np.full(3, 1e200)
+    _, info = asm._verify_iterative_residual(A, b, b.copy(), 0, 1e-8, 1e-12)
+    assert info["status"] == "converged"
+    assert info["relative_residual"] == 0.0
+    _, info = asm._verify_iterative_residual(A, b, np.zeros(3), 0, 1e-8, 1e-12)
+    assert info["status"] == "failed"
+    assert info["relative_residual"] == pytest.approx(1.0)
+
+
+def test_zero_rhs_nonzero_iterate_fails_and_zero_passes():
+    A = sparse.identity(3, format="csr")
+    _, info = asm._verify_iterative_residual(A, np.zeros(3), np.zeros(3), 0, 1e-8, 1e-12)
+    assert info["status"] == "converged"
+    _, info = asm._verify_iterative_residual(A, np.zeros(3), np.full(3, 1.0), 0, 1e-8, 1e-12)
+    assert info["status"] == "failed"
+
+
+def test_reported_limit_is_the_deciding_one():
+    A = sparse.identity(1, format="csr")
+    b = np.array([1.0])
+    # relative residual 1e-10 -> accepted by rtol
+    _, info = asm._verify_iterative_residual(A, b, np.array([1.0 - 1e-10]), 0, 1e-8, 1e-12)
+    assert info["relative_residual_criterion"] == "rtol"
+    assert info["relative_residual_limit"] == 1e-8
+    assert info["residual_limit_abs"] == pytest.approx(1e-8)
+    assert info["residual_norm"] == pytest.approx(1e-10, rel=1e-3)
+    # rtol too tight, atol (1e-3 < |F|) accepts residual 1e-5
+    _, info = asm._verify_iterative_residual(A, b, np.array([1.0 - 1e-5]), 0, 1e-8, 1e-3)
+    assert info["status"] == "converged"
+    assert info["relative_residual_criterion"] == "atol"
+    assert info["residual_limit_abs"] == 1e-3
+    assert info["relative_residual"] <= info["relative_residual_limit"]
+
+
+def test_scipy_info_key_reported():
+    A = sparse.diags([-1.0, 2.5, -1.0], [-1, 0, 1], shape=(10, 10), format="csr")
+    _, info = _solve_reduced_system(A, np.ones(10), "gmres")
+    assert info["scipy_info"] == 0 and info["iterations"] == info["scipy_info"]

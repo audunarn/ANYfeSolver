@@ -651,6 +651,19 @@ def _backward_error(
     return float(np.max(values)) if values.size else 0.0
 
 
+def _scaled_norm2(x: np.ndarray) -> float:
+    """2-norm that neither underflows nor overflows (scales by max |x|)."""
+    x = np.asarray(x, dtype=float).reshape(-1)
+    if x.size == 0:
+        return 0.0
+    if not np.all(np.isfinite(x)):
+        return float("nan")
+    scale = float(np.max(np.abs(x)))
+    if scale == 0.0:
+        return 0.0
+    return scale * float(np.linalg.norm(x / scale))
+
+
 def _verify_iterative_residual(
     K_red: sparse.csr_matrix,
     F_red: np.ndarray,
@@ -661,33 +674,60 @@ def _verify_iterative_residual(
 ) -> Tuple[np.ndarray, Dict[str, Any]]:
     """Accept an iterative solve only if the true residual meets the tolerance.
 
-    "converged" requires SciPy ``info == 0`` AND ``|Kq-F|_2 <= max(rtol*|F|_2, atol)``.
-    ``relative_residual_disposition == "RESIDUAL_VERIFIED"`` certifies the
-    residual only; it says nothing about the forward error of ``q``.
+    "converged" requires SciPy ``info == 0`` AND the true residual
+    ``r = |Kq-F|_2`` (scale-safe norms) satisfies, for ``|F| > 0``,
+    ``r/|F| <= rtol`` (criterion "rtol"), or ``r <= atol`` where ``atol`` is
+    meaningful, i.e. ``atol < |F|`` (criterion "atol").  For ``F == 0`` the
+    absolute criterion ``r <= atol`` is used.  ``relative_residual_limit`` and
+    ``residual_limit_abs`` always report the limit that decided.
+    ``RESIDUAL_VERIFIED`` certifies the residual only, not the forward error
+    of ``q``.
     """
     q = np.asarray(q, dtype=float)
-    f_norm = float(np.linalg.norm(F_red))
-    limit_abs = max(rtol * f_norm, atol)
+    f_norm = _scaled_norm2(F_red)
     info: Dict[str, Any] = {
+        # Pre-existing semantics: "iterations" carries SciPy's ``info`` code
+        # (0 = success, >0 = iterations reached maxiter, <0 = breakdown), not an
+        # iteration count.  Kept for compatibility; use "scipy_info".
         "iterations": scipy_info,
-        "relative_residual_limit": rtol,
+        "scipy_info": scipy_info,
     }
-    if not np.all(np.isfinite(q)):
-        residual = float("nan")
+    residual = float("nan")
+    if not np.all(np.isfinite(q)) or not np.isfinite(f_norm):
         disposition = "NONFINITE"
     else:
-        residual = float(np.linalg.norm(np.asarray(K_red @ q).reshape(-1) - F_red))
+        with np.errstate(all="ignore"):
+            residual = _scaled_norm2(np.asarray(K_red @ q).reshape(-1) - F_red)
         if not np.isfinite(residual):
             disposition = "NONFINITE"
-        elif scipy_info != 0:
-            disposition = "SOLVER_NOT_CONVERGED"
-        elif residual > limit_abs:
-            disposition = "RESIDUAL_LIMIT_EXCEEDED"
         else:
-            disposition = "RESIDUAL_VERIFIED"
-    info["relative_residual"] = (
-        residual / f_norm if f_norm > 0.0 and np.isfinite(residual) else residual
-    )
+            if f_norm > 0.0:
+                relative = residual / f_norm
+            else:
+                relative = 0.0 if residual == 0.0 else float("inf")
+            by_rtol = f_norm > 0.0 and relative <= rtol
+            by_atol = residual <= atol and (f_norm == 0.0 or atol < f_norm)
+            if scipy_info != 0:
+                disposition = "SOLVER_NOT_CONVERGED"
+            elif by_rtol or by_atol:
+                disposition = "RESIDUAL_VERIFIED"
+            else:
+                disposition = "RESIDUAL_LIMIT_EXCEEDED"
+            info["relative_residual_criterion"] = (
+                "rtol" if by_rtol else ("atol" if by_atol else None)
+            )
+    info["residual_norm"] = residual
+    info["rhs_norm"] = f_norm
+    if np.isfinite(residual) and f_norm > 0.0:
+        info["relative_residual"] = residual / f_norm
+    else:
+        info["relative_residual"] = residual
+    if info.get("relative_residual_criterion") == "atol":
+        info["residual_limit_abs"] = atol
+        info["relative_residual_limit"] = atol / f_norm if f_norm > 0.0 else None
+    else:
+        info["residual_limit_abs"] = rtol * f_norm
+        info["relative_residual_limit"] = rtol
     info["relative_residual_disposition"] = disposition
     if disposition == "RESIDUAL_VERIFIED":
         info["status"] = "converged"
@@ -695,7 +735,7 @@ def _verify_iterative_residual(
         info["status"] = "failed"
         info["error"] = (
             f"iterative solve not accepted ({disposition}): scipy info={scipy_info}, "
-            f"true |Kq-F|={residual:.3e}, limit={limit_abs:.3e}"
+            f"true |Kq-F|={residual:.3e}, |F|={f_norm:.3e}, rtol={rtol:g}, atol={atol:g}"
         )
     return q, info
 
