@@ -1132,7 +1132,14 @@ def same_step_size(dt: float, cached_dt: float, time_scale: float) -> bool:
     On long runs with tiny steps (for example t = 1000 s, dt = 1e-6) the reused
     factor's ``a0 = 1/(beta dt^2)`` can differ from the step's exact ``a0`` by up
     to about 1e-6 relative.  This equals the previous ``np.isclose`` behaviour
-    and the rounding of the grid's own ``dt``, so it is not new.
+    and the rounding of the grid's own ``dt``, so it is not new.  On reuse the
+    matrix keeps the cached ``dt`` while the right-hand side and state update use
+    the current one; at the 8-ulp threshold (dt = 2**-30, cantilever) the response
+    differs from an exact refactorization by 3.5e-15 (u) and 2.7e-14 (a) relative,
+    i.e. rounding level (tests/test_transient_factor_reuse.py,
+    test_reuse_at_the_threshold_changes_the_response_only_at_rounding_level).
+    With a large rigid displacement and a tiny dt the recovered acceleration
+    carries absolute noise of order eps*|u|*a0 either way.
     """
 
     tolerance = 8.0 * math.ulp(max(abs(float(time_scale)), abs(float(dt))))
