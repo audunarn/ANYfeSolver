@@ -259,7 +259,9 @@ def propose_linearized_kkt_seed(*, kqq, kqz, gap_q, control_reactions,
     diagnostics["constrained_operator_dofs"] = int(size + len(constraint))
     try:
         handle = factorize(operator, MatrixClass.GENERAL,
-                           signature=f"{signature}:constrained")
+                           signature=f"{signature}:constrained",
+                           options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
+                           )
     except Exception as exc:
         diagnostics["detail"] = f"{type(exc).__name__}: {exc}"[:200]
         return InitialContactSeedRefusal("constrained_factorization_failed",

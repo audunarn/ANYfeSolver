@@ -470,8 +470,14 @@ class AnalysisSession:
         self, *, constraint_mode: str = "auto", model: Optional["FEModel"] = None,
     ) -> StaticOperatorPlan:
         """Reuse preparation and factorization for unchanged static operators."""
-        from .assembly import _equilibrate_supported_stiffness, _SYMMETRIC_DIAGONAL_EQUILIBRATION_ID
+        from .assembly import (_equilibrate_supported_stiffness, _SYMMETRIC_DIAGONAL_EQUILIBRATION_ID,
+            nullspace_augmented_factorization_options)
         from .linalg import MatrixClass, factorize_cached
+
+        def factorization_options(is_augmented: bool, matrix: Any, rigid_modes: np.ndarray) -> Any:
+            # Rule A of an augmented operator measures the displacement block.
+            return (nullspace_augmented_factorization_options(matrix.shape[0] - rigid_modes.shape[1])
+                    if is_augmented else None)
 
         with self._lock:
             owned = self._require_model(model)
@@ -492,7 +498,8 @@ class AnalysisSession:
                 self._counters["static_operator_hits"] += 1
                 handle = None if old.handle is None else factorize_cached(old.matrix,
                     MatrixClass.SYMMETRIC_INDEFINITE, cache=self.factorization_cache,
-                    signature=old.handle.signature)
+                    signature=old.handle.signature,
+                    options=factorization_options(old.augmented, old.matrix, old.rigid_modes))
                 if old.constraint is constraint and handle is old.handle:
                     return old
                 refreshed = StaticOperatorPlan(constraint, old.matrix, old.scaling,
@@ -511,7 +518,8 @@ class AnalysisSession:
                 signature = self.factorization_signature("linear_static", constraint) + ":" + _SYMMETRIC_DIAGONAL_EQUILIBRATION_ID
             handle = None if matrix.shape[0] == 0 else factorize_cached(
                 matrix, MatrixClass.SYMMETRIC_INDEFINITE,
-                cache=self.factorization_cache, signature=signature)
+                cache=self.factorization_cache, signature=signature,
+                options=factorization_options(augmented, matrix, modes))
             plan = StaticOperatorPlan(constraint, matrix, scaling, modes, handle,
                 augmented, key, {"equilibration": equilibration, "nullspace_info": mode_info})
             plan = StaticOperatorPlan(constraint, _immutable_csr(matrix), _immutable_array(scaling),

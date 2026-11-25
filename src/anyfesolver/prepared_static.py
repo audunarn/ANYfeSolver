@@ -43,7 +43,9 @@ import numpy as np
 from scipy import sparse
 
 from .analysis_session import _immutable_array, _immutable_csr
-from .linalg import AutoSparseSolverBackend, FactorizationCache, MatrixClass, factorize_cached
+from .linalg import (AutoSparseSolverBackend, FactorizationCache, MatrixClass, factorize_cached,
+    FORWARD_ERROR_ESTIMATE_EXCEEDED, RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT,
+    relative_forward_error_estimates)
 from .prepared_static_loads import (
     PreparedStaticCapabilityError,
     PreparedStaticError,
@@ -355,6 +357,7 @@ class PreparedStaticEvaluator:
             _LINEAR_STATIC_BACKWARD_ERROR_LIMIT,
             _backward_error,
             _equilibrate_supported_stiffness,
+            nullspace_augmented_factorization_options,
         )
         from .threading_policy import solver_thread_scope
         from .control import SolveCancelled, cancellation_safe_point, emit_progress
@@ -481,6 +484,9 @@ class PreparedStaticEvaluator:
                     MatrixClass.SYMMETRIC_INDEFINITE,
                     cache=self._factorization_cache,
                     signature=signature,
+                    # Rule A of an augmented operator measures the displacement block.
+                    options=(nullspace_augmented_factorization_options(
+                        snapshot.reduced_stiffness.shape[0]) if augmented else None),
                 )
             cancellation_safe_point(cancellation_token, "prepared_static.after_factorization")
             if handle is not None and handle.status != "ok":
@@ -905,6 +911,14 @@ class PreparedStaticEvaluator:
                 certification_norm = _block_norm_data(
                     self._operator_matrix if self._operator_augmented else snapshot.reduced_stiffness,
                     self._backward_error)
+                # Rule B per case, in the factorized variables (the displacement
+                # block of an augmented operator).
+                forward_errors = (
+                    np.zeros(len(block)) if self._operator_handle is None
+                    else relative_forward_error_estimates(
+                        self._operator_matrix, solved, solve_rhs, handle=self._operator_handle,
+                        scaling=self._operator_scaling, rows=slice(0, rhs.shape[0]))
+                )
                 for j, (case_id, _case_time, _owned) in enumerate(block):
                     error = (
                         _certified_backward_error(self._operator_matrix, solved[:, j], solve_rhs[:, j],
@@ -929,6 +943,23 @@ class PreparedStaticEvaluator:
                                 ),
                             },
                         )
+                    forward_error = float(forward_errors[j])
+                    if not (np.isfinite(forward_error)
+                            and forward_error <= RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT):
+                        self._count_failure("forward_error_estimate_limit_exceeded")
+                        raise PreparedStaticError(
+                            "static case exceeded the relative forward-error estimate limit",
+                            diagnostics={
+                                "case_id": case_id,
+                                "input_index": indices[j],
+                                "relative_backward_error": error,
+                                "relative_backward_error_disposition": FORWARD_ERROR_ESTIMATE_EXCEEDED,
+                                "relative_forward_error_estimate": (
+                                    forward_error if np.isfinite(forward_error) else None),
+                                "relative_forward_error_estimate_limit":
+                                    RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT,
+                            },
+                        )
                     info = {
                         "status": "converged",
                         "case_id": case_id,
@@ -936,6 +967,8 @@ class PreparedStaticEvaluator:
                         "relative_backward_error": error,
                         "relative_backward_error_limit": self._backward_error_limit,
                         "relative_backward_error_disposition": "CERTIFIED",
+                        "relative_forward_error_estimate": forward_error,
+                        "relative_forward_error_estimate_limit": RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT,
                         "load": load_infos[j],
                         "backend": {} if self._operator_handle is None
                         else self._operator_handle.diagnostics(),

@@ -505,7 +505,9 @@ def _constrained_gap_response(manager, displacement, tangent, transform,
     right = np.vstack((-force_derivative,
                        np.zeros((len(rows), len(active)))))
     factor = factorize(matrix, MatrixClass.GENERAL,
-                       signature="contact:pressure_response")
+                       signature="contact:pressure_response",
+                       options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
+                       )
     if factor.status != "ok":
         if diagnostics is not None:
             diagnostics["schur_response_failure"] = (

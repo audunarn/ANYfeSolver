@@ -382,6 +382,7 @@ def _elastic_displacement_force_predictor(stiffness, transform, row,
         solve = factorize(
             saddle, MatrixClass.GENERAL,
             signature="contact_path:elastic_displacement_force_predictor",
+            options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
         ).solve
     except Exception as exc:
         raise ValueError("contact-free displacement force predictor is unavailable") from exc
@@ -1794,6 +1795,7 @@ def solve_static_contact_path(
                                 delta = np.asarray(factorize(
                                     matrix, MatrixClass.GENERAL,
                                     signature=f"contact_path:{step}:{augmentation}:{iteration}",
+                                    options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
                                 ).solve(rhs)).reshape(-1)
                             except Exception:
                                 failure_reason = "singular_contact_path_tangent"

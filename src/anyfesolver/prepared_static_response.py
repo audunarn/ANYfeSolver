@@ -11,6 +11,8 @@ from .prepared_static_numeric import (NumericCase, NumericField, prepare_numeric
                                      recover_numeric_cases)
 from .analysis_session import _immutable_array
 from .prepared_static import PreparedStaticEvaluator, _certified_backward_error, _block_norm_data
+from .linalg import (FORWARD_ERROR_ESTIMATE_EXCEEDED, RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT,
+    relative_forward_error_estimates)
 from .prepared_static_loads import (PreparedStaticError, PreparedStaticCapabilityError,
     ingest_static_case, evaluate_load_vector, load_packet_storage_bytes,
     require_native_source_authority)
@@ -312,6 +314,21 @@ class PreparedStaticResponseEvaluator(PreparedStaticEvaluator):
                 if not np.isfinite(error) or error > self._backward_error_limit:
                     raise PreparedStaticError('source response library equation failed certification',
                         diagnostics={'column':j, 'relative_backward_error':float(error)})
+            # Rule B for every library column (factorized variables; the
+            # displacement block of an augmented operator).
+            forward_errors = (np.zeros(m) if self._operator_handle is None else
+                relative_forward_error_estimates(self._operator_matrix, solved, rhs,
+                    handle=self._operator_handle, scaling=self._operator_scaling,
+                    rows=slice(0, snapshot.reduced_stiffness.shape[0])))
+            for j in range(m):
+                if not (np.isfinite(forward_errors[j])
+                        and forward_errors[j] <= RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT):
+                    raise PreparedStaticError('source response library equation failed certification',
+                        diagnostics={'column':j,
+                            'relative_backward_error_disposition':FORWARD_ERROR_ESTIMATE_EXCEEDED,
+                            'relative_forward_error_estimate':(float(forward_errors[j])
+                                if np.isfinite(forward_errors[j]) else None),
+                            'relative_forward_error_estimate_limit':RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT})
             self._response_counts['preparation_solves'] = m
             self._force_columns = _immutable_array(forces)
             self._solution_columns = _immutable_array(solved)

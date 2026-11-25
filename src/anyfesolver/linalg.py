@@ -172,6 +172,153 @@ class FactorizationHandle:
         }
 
 
+# Rule A: factorization-level known-solution check ("forward-error probe").
+# After every successful numerical factorization the backend solves A z for a
+# fixed deterministic z and measures kfe = max|x - z| / max|z| with
+# x = solve(A z).  A static backward error alone certifies huge wrong solutions
+# of (rounding-)singular systems (it is tiny exactly when |x| is huge); the
+# probe measures the factorization's own forward accuracy instead.  Measured
+# 2026-11-25: ordinary maximum 2.8e-6 (stiff_1600 of the 40-model set), singular
+# minimum 2.3e-2 (adversarial set of 573 singular solves, SuperLU and PARDISO
+# mtypes 2/-2/11); the limit 1e-3 leaves ~360x margin above the ordinary
+# maximum.  Cost: one matvec and one solve per factorization.
+FORWARD_ERROR_PROBE_EXCEEDED = "FORWARD_ERROR_PROBE_EXCEEDED"
+_FORWARD_ERROR_PROBE_LIMIT = 1.0e-3
+_FORWARD_ERROR_PROBE_SEED = 12345
+_FORWARD_ERROR_PROBE_MODES = ("refuse", "report")
+# Rule B: per-RHS refinement correction refine = max|solve(A y - b)| / max|y|
+# in the factorized variables.  Measured 2026-11-25: ordinary maximum 3.4e-5
+# (free-free nullspace route), 3.9e-6 elsewhere; singular inconsistent loads
+# >= 0.13.
+RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT = 1.0e-3
+FORWARD_ERROR_ESTIMATE_EXCEEDED = "FORWARD_ERROR_ESTIMATE_EXCEEDED"
+
+
+class ForwardErrorProbeError(RuntimeError):
+    """A new factorization failed the known-solution check (refuse mode)."""
+
+
+def _forward_error_probe_settings(
+    options: Mapping[str, Any], n: int
+) -> Tuple[str, Optional[np.ndarray]]:
+    """Validated (mode, measured index array or None) from factorization options."""
+
+    mode = options.get("forward_error_probe", "refuse")
+    if mode is None:
+        mode = "refuse"
+    if not isinstance(mode, str) or mode not in _FORWARD_ERROR_PROBE_MODES:
+        raise ValueError(
+            f"forward_error_probe must be one of {_FORWARD_ERROR_PROBE_MODES}, got {mode!r}"
+        )
+    mask = options.get("forward_error_probe_mask")
+    if mask is None:
+        return mode, None
+    index = _forward_error_probe_index(mask)
+    if index.dtype == bool:
+        if index.shape != (int(n),):
+            raise ValueError(
+                f"forward_error_probe_mask boolean mask has shape {index.shape}, expected ({int(n)},)"
+            )
+        index = np.flatnonzero(index)
+    elif index.size and (int(index.min()) < 0 or int(index.max()) >= int(n)):
+        raise ValueError("forward_error_probe_mask index outside the matrix dimension")
+    if int(n) > 0 and index.size == 0:
+        raise ValueError("forward_error_probe_mask selects no entries")
+    return mode, index
+
+
+def _forward_error_probe_index(mask: Any) -> np.ndarray:
+    try:
+        index = np.asarray(mask)
+    except Exception as exc:  # pragma: no cover - defensive
+        raise ValueError(f"forward_error_probe_mask is not array-like: {exc}") from exc
+    if index.ndim != 1:
+        raise ValueError("forward_error_probe_mask must be one-dimensional")
+    if index.dtype == bool:
+        return index
+    if index.size == 0:
+        return np.zeros(0, dtype=np.int64)
+    if not np.issubdtype(index.dtype, np.integer):
+        raise ValueError("forward_error_probe_mask must be a boolean mask or an integer index array")
+    return np.asarray(index, dtype=np.int64)
+
+
+def _forward_error_probe_value(n: int, matvec: Any, raw_solve: Any, index: Optional[np.ndarray]) -> Optional[float]:
+    """kfe = max|x - z| / max|z| over the measured entries; None if non-finite or failed."""
+
+    z = np.random.default_rng(_FORWARD_ERROR_PROBE_SEED).uniform(1.0, 2.0, int(n))
+    try:
+        with np.errstate(all="ignore"):
+            rhs = np.asarray(matvec(z), dtype=np.float64).reshape(-1)
+            x = np.asarray(raw_solve(rhs), dtype=np.float64).reshape(-1)
+            if x.shape != z.shape:
+                return None
+            if index is not None:
+                x, z = x[index], z[index]
+            value = float(np.max(np.abs(x - z)) / np.max(np.abs(z)))
+    except Exception:
+        return None
+    return value if np.isfinite(value) else None
+
+
+def _record_forward_error_probe(
+    metadata: Dict[str, Any], value: Optional[float], mode: str, *, measured: int, skipped: bool = False
+) -> bool:
+    """Record the probe metadata; return whether the factorization is refused."""
+
+    metadata["forward_error_probe"] = value
+    metadata["forward_error_probe_limit"] = _FORWARD_ERROR_PROBE_LIMIT
+    metadata["forward_error_probe_mode"] = mode
+    metadata["forward_error_probe_measured_entries"] = int(measured)
+    if skipped:
+        metadata["forward_error_probe_disposition"] = "SKIPPED_EMPTY"
+        return False
+    exceeded = value is None or not value <= _FORWARD_ERROR_PROBE_LIMIT
+    if not exceeded:
+        metadata["forward_error_probe_disposition"] = "PASSED"
+        return False
+    metadata["forward_error_probe_disposition"] = (
+        ("NONFINITE" if value is None else "EXCEEDED")
+        + ("_REPORTED" if mode == "report" else "")
+    )
+    return mode == "refuse"
+
+
+def _forward_error_probe_reason(value: Optional[float], backend: str, *, stage: str = "factorization") -> str:
+    shown = "non-finite or failed" if value is None else f"{value:.3e}"
+    return (
+        f"{FORWARD_ERROR_PROBE_EXCEEDED}: {backend} {stage} known-solution check "
+        f"max|x-z|/max|z| = {shown} exceeds {_FORWARD_ERROR_PROBE_LIMIT:.1e}; the "
+        "factorization is refused (rounding-singular or numerically unresolved matrix)"
+    )
+
+
+def _run_forward_error_probe(
+    metadata: Dict[str, Any], options: Mapping[str, Any], n: int, matvec: Any, raw_solve: Any
+) -> bool:
+    """Validate options, run and record the probe; return whether it refuses."""
+
+    mode, index = _forward_error_probe_settings(options, n)
+    if int(n) == 0:
+        return _record_forward_error_probe(metadata, None, mode, measured=0, skipped=True)
+    started = time.perf_counter()
+    value = _forward_error_probe_value(n, matvec, raw_solve, index)
+    metadata["forward_error_probe_seconds"] = time.perf_counter() - started
+    measured = int(n) if index is None else int(index.size)
+    return _record_forward_error_probe(metadata, value, mode, measured=measured)
+
+
+def _symmetric_upper_matvec(upper: sparse.csr_matrix) -> Any:
+    """A z for a symmetric matrix stored as its upper triangle."""
+
+    diagonal = upper.diagonal()
+
+    def matvec(z: np.ndarray) -> np.ndarray:
+        return upper @ z + upper.T @ z - diagonal * z
+
+    return matvec
+
+
 class SparseSolverBackend:
     """SciPy/SuperLU sparse backend with a stable FE-facing interface."""
 
@@ -187,6 +334,8 @@ class SparseSolverBackend:
     ) -> FactorizationHandle:
         options = dict(options or {})
         ordering = str(options.get("ordering", "COLAMD"))
+        # Invalid probe options are a caller error, raised before factorizing.
+        _forward_error_probe_settings(options, int(matrix.shape[0]))
         start = time.time()
         try:
             csc = sparse.csc_matrix(matrix)
@@ -203,14 +352,35 @@ class SparseSolverBackend:
                 status="failed",
                 failure_reason=str(exc),
             )
+        factorization_time = time.time() - start
+        probe: Dict[str, Any] = {}
+        refused = _run_forward_error_probe(
+            probe, options, int(csc.shape[0]), lambda z: csc @ z, solver.solve
+        )
+        if refused:
+            del solver
+            failed = FactorizationHandle(
+                matrix_shape=tuple(int(v) for v in matrix.shape),
+                matrix_class=matrix_class,
+                backend_name=self.name,
+                ordering=ordering,
+                signature=signature,
+                factorization_time=factorization_time,
+                status="failed",
+                failure_reason=_forward_error_probe_reason(probe["forward_error_probe"], self.name),
+                metadata=probe,
+            )
+            failed.metadata["failure_kind"] = FORWARD_ERROR_PROBE_EXCEEDED
+            return failed
         return FactorizationHandle(
             matrix_shape=tuple(int(v) for v in matrix.shape),
             matrix_class=matrix_class,
             backend_name=self.name,
             ordering=ordering,
             signature=signature,
-            factorization_time=time.time() - start,
+            factorization_time=factorization_time,
             metadata={
+                **probe,
                 "matrix_nnz": int(csc.nnz),
                 "factor_nnz": int(solver.L.nnz + solver.U.nnz),
                 "factor_fill_ratio": float(
@@ -519,6 +689,9 @@ class _PardisoFactorization:
         # stale-handle rebuild: (perturbed, count, phase, detail, reason).
         self._rejection: Optional[Tuple[bool, Optional[int], int, str, str]] = None
         self._handle_ref: Optional["weakref.ReferenceType[FactorizationHandle]"] = None
+        # Rule A options (mode, mask) for factorizations this wrapper performs
+        # itself (stale-handle private rebuilds).
+        self._probe_options: Dict[str, Any] = {}
 
     def _rejection_error(self) -> BaseException:
         """The typed error every solve of a rejected handle raises.
@@ -540,6 +713,7 @@ class _PardisoFactorization:
         """Fail the handle permanently after a failed stale rebuild (lock held)."""
 
         perturbed = isinstance(exc, PardisoPerturbedPivotError)
+        probe_refused = isinstance(exc, ForwardErrorProbeError)
         count = exc.count if perturbed else None
         phase = int(getattr(exc, "phase", 12))
         detail = str(getattr(exc, "detail", ""))
@@ -547,6 +721,8 @@ class _PardisoFactorization:
             reason = str(
                 PardisoPerturbedPivotError(count, phase=phase, detail=detail, mtype=self._mtype)
             )
+        elif probe_refused:
+            reason = str(exc)
         else:
             reason = (
                 f"pypardiso stale-handle rebuild failed ({type(exc).__name__}: {exc}); "
@@ -559,9 +735,13 @@ class _PardisoFactorization:
         handle.status = "failed"
         handle.failure_reason = reason
         handle.metadata["pardiso_failure_kind"] = (
-            PARDISO_PERTURBED_PIVOTS if perturbed else "pardiso_error"
+            PARDISO_PERTURBED_PIVOTS
+            if perturbed
+            else FORWARD_ERROR_PROBE_EXCEEDED if probe_refused else "pardiso_error"
         )
         handle.metadata["pardiso_failure_stage"] = "stale_rebuild"
+        if probe_refused:
+            handle.metadata["failure_kind"] = FORWARD_ERROR_PROBE_EXCEEDED
         if perturbed:
             key = str(self._mtype)
             handle.metadata["pardiso_perturbed_pivots"] = {
@@ -601,12 +781,41 @@ class _PardisoFactorization:
             else:
                 self._reject(RuntimeError(f"rebuild interrupted {interrupt}"))
             raise
+        self._probe_private_rebuild(solver)
         self._private_solver = solver
         weakref.finalize(self, _release_mkl_solver, solver)
         self._slot = None
         self.stale_rebuild_count += 1
         _count_numeric_operation("pardiso_stale_rebuilds")
         return solver
+
+    def _probe_private_rebuild(self, solver: Any) -> None:
+        """Rule A for a private rebuild; a refused rebuild is released (lock held)."""
+
+        matrix = self._matrix
+        matvec = (lambda z: matrix @ z) if self._mtype == 11 else _symmetric_upper_matvec(matrix)
+        probe: Dict[str, Any] = {}
+        try:
+            refused = _run_forward_error_probe(
+                probe,
+                self._probe_options,
+                int(matrix.shape[0]),
+                matvec,
+                lambda b: _pardiso_raw_solve(solver, matrix, b),
+            )
+        except BaseException:
+            _release_mkl_solver(solver)
+            raise
+        handle = self._handle_ref() if self._handle_ref is not None else None
+        if handle is not None:
+            handle.metadata["forward_error_probe_stale_rebuild"] = probe.get("forward_error_probe")
+        if refused:
+            _release_mkl_solver(solver)
+            raise ForwardErrorProbeError(
+                _forward_error_probe_reason(
+                    probe.get("forward_error_probe"), "pypardiso", stage="stale-handle rebuild"
+                )
+            )
 
     @_serialized_pypardiso_call
     def solve(self, rhs: np.ndarray) -> np.ndarray:
@@ -619,9 +828,14 @@ class _PardisoFactorization:
         except Exception as exc:
             self._reject(exc)
             raise self._rejection_error() from exc
-        b = solver._check_b(self._matrix, np.asarray(rhs, dtype=np.float64))
-        solver.set_phase(33)
-        return solver._call_pardiso(self._matrix, b)
+        return _pardiso_raw_solve(solver, self._matrix, rhs)
+
+
+@_serialized_pypardiso_call
+def _pardiso_raw_solve(solver: Any, matrix: sparse.csr_matrix, rhs: np.ndarray) -> np.ndarray:
+    b = solver._check_b(matrix, np.asarray(rhs, dtype=np.float64))
+    solver.set_phase(33)
+    return solver._call_pardiso(matrix, b)
 
 
 class PyPardisoSolverBackend:
@@ -763,6 +977,18 @@ class PyPardisoSolverBackend:
         return _PardisoFactorization(slot, prepared, mtype), False, count
 
     @_serialized_pypardiso_call
+    def _discard_wrapper_slot(self, wrapper: _PardisoFactorization) -> None:
+        """Drop and release the pattern slot holding a refused factorization."""
+
+        slot = wrapper._slot
+        wrapper._slot = None
+        if slot is None:
+            return
+        if slot in self._slots:
+            self._slots.remove(slot)
+        slot.release()
+
+    @_serialized_pypardiso_call
     def factorize(
         self,
         matrix: sparse.spmatrix,
@@ -771,6 +997,9 @@ class PyPardisoSolverBackend:
         signature: Optional[str] = None,
         options: Optional[Mapping[str, Any]] = None,
     ) -> FactorizationHandle:
+        options = dict(options or {})
+        # Invalid probe options are a caller error, raised before factorizing.
+        _forward_error_probe_settings(options, int(matrix.shape[0]))
         start = time.time()
         _ensure_mkl_rt_env()
         failure_reasons: List[str] = []
@@ -836,13 +1065,51 @@ class PyPardisoSolverBackend:
             if raw_iparm13:
                 failed.metadata["pardiso_iparm13_raw"] = dict(raw_iparm13)
             return failed
+        factorization_time = time.time() - start
+        probe: Dict[str, Any] = {}
+        try:
+            refused = _run_forward_error_probe(
+                probe, options, int(csr.shape[0]), lambda z: csr @ z, wrapper.solve
+            )
+        except BaseException:
+            self._discard_wrapper_slot(wrapper)
+            raise
+        if refused:
+            # Never retain or reuse the refused factorization: drop and release
+            # its pattern slot (the slot generation moves on, so no handle can
+            # bind to it).
+            self._discard_wrapper_slot(wrapper)
+            failed = FactorizationHandle(
+                matrix_shape=tuple(int(v) for v in matrix.shape),
+                matrix_class=matrix_class,
+                backend_name=self.name,
+                ordering="MKL PARDISO",
+                signature=signature,
+                factorization_time=factorization_time,
+                status="failed",
+                failure_reason=_forward_error_probe_reason(probe["forward_error_probe"], self.name),
+                metadata=probe,
+            )
+            failed.metadata["failure_kind"] = FORWARD_ERROR_PROBE_EXCEEDED
+            failed.metadata["pardiso_failure_kind"] = FORWARD_ERROR_PROBE_EXCEEDED
+            failed.metadata["pardiso_mtype"] = used_mtype
+            failed.metadata["pardiso_perturbed_pivots"] = dict(perturbed_pivots)
+            if failure_reasons:
+                failed.metadata["pardiso_fallback_attempts"] = list(failure_reasons)
+            return failed
+        wrapper._probe_options = {
+            key: options[key]
+            for key in ("forward_error_probe", "forward_error_probe_mask")
+            if key in options
+        }
         handle = FactorizationHandle(
             matrix_shape=tuple(int(v) for v in matrix.shape),
             matrix_class=matrix_class,
             backend_name=self.name,
             ordering="MKL PARDISO",
             signature=signature,
-            factorization_time=time.time() - start,
+            factorization_time=factorization_time,
+            metadata=probe,
             _solver=wrapper,
         )
         wrapper._handle_ref = weakref.ref(handle)
@@ -1002,7 +1269,10 @@ class AutoSparseSolverBackend:
             # permanently (no solve-time fallback; see _PardisoFactorization).
             return handle
         failure_kind = handle.metadata.get("pardiso_failure_kind")
-        if selection_policy == "pypardiso_forced" and failure_kind == PARDISO_PERTURBED_PIVOTS:
+        if selection_policy == "pypardiso_forced" and failure_kind in (
+            PARDISO_PERTURBED_PIVOTS,
+            FORWARD_ERROR_PROBE_EXCEEDED,
+        ):
             # An explicitly requested PARDISO factorization whose pivots were
             # perturbed fails closed with the typed PARDISO failure; it is not
             # silently replaced by another backend's answer.
@@ -1032,7 +1302,15 @@ DEFAULT_BACKEND = AutoSparseSolverBackend()
 
 
 def _options_signature(options: Optional[Mapping[str, Any]]) -> str:
-    return json.dumps(dict(options or {}), sort_keys=True, default=str, separators=(",", ":"))
+    made = dict(options or {})
+    if made.get("forward_error_probe_mask") is not None:
+        # str() of a large array is abbreviated ("..."): key the mask by a
+        # digest of its full normalized content instead.
+        index = _forward_error_probe_index(made["forward_error_probe_mask"])
+        digest = hashlib.sha256(f"{index.dtype}:{index.shape}".encode("ascii"))
+        digest.update(np.ascontiguousarray(index).tobytes())
+        made["forward_error_probe_mask"] = f"sha256:{digest.hexdigest()}"
+    return json.dumps(made, sort_keys=True, default=str, separators=(",", ":"))
 
 
 def sparse_matrix_signature(matrix: sparse.spmatrix) -> str:
@@ -1285,3 +1563,92 @@ def solve_many(handle: FactorizationHandle, rhs_matrix: np.ndarray) -> np.ndarra
     if rhs.ndim != 2:
         raise ValueError("rhs_matrix must be one- or two-dimensional")
     return solve(handle, rhs)
+
+
+def _uncounted_solve(handle: FactorizationHandle, rhs: np.ndarray) -> np.ndarray:
+    """A certification solve: same backend and thread policy, no solve counters."""
+
+    if isinstance(handle._solver, _PardisoFactorization) and handle._solver._rejection is not None:
+        raise handle._solver._rejection_error()
+    if handle.status != "ok" or handle._solver is None:
+        raise RuntimeError(f"Cannot solve with failed factorization: {handle.failure_reason}")
+    rhs = np.asarray(rhs, dtype=float)
+    policy = _inherited_native_thread_policy(handle.solver_threads, phase="linear_solve")
+    if policy is None:
+        with native_thread_scope(handle.solver_threads, phase="linear_solve"):
+            return np.asarray(handle._solver.solve(rhs), dtype=float)
+    return np.asarray(handle._solver.solve(rhs), dtype=float)
+
+
+def relative_forward_error_estimates(
+    matrix: Any,
+    solution: np.ndarray,
+    rhs: np.ndarray,
+    *,
+    handle: Optional[FactorizationHandle] = None,
+    solve: Any = None,
+    rows: Any = None,
+    scaling: Optional[np.ndarray] = None,
+) -> np.ndarray:
+    """Rule B per RHS column: max|solve(A y - b)| / max|y| (1-D array).
+
+    ``matrix`` is the factorized matrix (for example the equilibrated one) and
+    ``handle`` (or the callable ``solve``) its factorization.  ``solution`` and
+    ``rhs`` are in the factorized variables, or, with ``scaling`` s, in the
+    original variables of ``matrix = diag(s) K diag(s)`` (then y = x / s and
+    b = s * f).  ``rows`` restricts the measured entries of the correction and
+    of ``y`` (for example the displacement block of a nullspace-augmented
+    system).  A non-finite value or a failed correction solve gives ``inf``
+    (fail closed).  The solution is never modified.  Limit:
+    :data:`RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT`.
+    """
+
+    if (handle is None) == (solve is None):
+        raise ValueError("relative_forward_error_estimate needs exactly one of handle or solve")
+    y = np.asarray(solution, dtype=float)
+    b = np.asarray(rhs, dtype=float)
+    columns = 1 if y.ndim == 1 else int(y.shape[1])
+    if y.size == 0:
+        return np.zeros(columns)
+    failed = np.full(columns, np.inf)
+    try:
+        with np.errstate(all="ignore"):
+            if scaling is not None:
+                s = np.asarray(scaling, dtype=float)
+                s = s if y.ndim == 1 else s[:, None]
+                y = y / s
+                b = s * b
+            residual = np.asarray(matrix @ y - b, dtype=float).reshape(y.shape)
+            if np.any(~np.isfinite(residual)) or np.any(~np.isfinite(y)):
+                return failed
+            correction = (
+                _uncounted_solve(handle, residual) if handle is not None else solve(residual)
+            )
+            correction = np.asarray(correction, dtype=float).reshape(y.shape)
+            Y = y.reshape(y.shape[0], -1)
+            C = correction.reshape(correction.shape[0], -1)
+            if rows is not None:
+                Y, C = Y[rows], C[rows]
+            if Y.shape[0] == 0:
+                return np.zeros(columns)
+            y_norm = np.max(np.abs(Y), axis=0)
+            c_norm = np.max(np.abs(C), axis=0)
+            values = np.where(
+                y_norm > 0.0,
+                c_norm / np.where(y_norm > 0.0, y_norm, 1.0),
+                np.where(c_norm == 0.0, 0.0, np.inf),
+            )
+    except Exception:
+        return failed
+    return np.where(np.isfinite(values), values, np.inf).astype(float)
+
+
+def relative_forward_error_estimate(matrix: Any, solution: np.ndarray, rhs: np.ndarray, **kwargs: Any) -> float:
+    """Rule B over all RHS columns (maximum of :func:`relative_forward_error_estimates`)."""
+
+    values = relative_forward_error_estimates(matrix, solution, rhs, **kwargs)
+    return float(np.max(values)) if values.size else 0.0
+
+
+def forward_error_estimate_accepted(value: float) -> bool:
+    return bool(np.isfinite(value) and value <= RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT)

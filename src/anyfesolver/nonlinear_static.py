@@ -3621,6 +3621,7 @@ def _equilibrate_initial_fields_candidate(
                     K_red,
                     MatrixClass.GENERAL if general_tangent else MatrixClass.SYMMETRIC_INDEFINITE,
                     signature=f"nonlinear.initial_state:{iteration}",
+                    options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
                 )
                 dq = np.asarray(handle.solve(residual), dtype=float).reshape(-1)
         except Exception:
@@ -4231,6 +4232,7 @@ def _solve_static_displacement_control(
                             sparse.csr_matrix(matrix), MatrixClass.GENERAL,
                             signature=(f"nonlinear.displacement_seed:"
                                        f"{step_index}:{attempt_seed_solves}"),
+                            options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
                         )
                         if getattr(seed_handle, "status", "ok") != "ok":
                             return None
@@ -4424,6 +4426,7 @@ def _solve_static_displacement_control(
                                         f"nonlinear.displacement_control:{step_index}:"
                                         f"{augmentation}:{iteration}"
                                     ),
+                                    options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
                                 )
                                 delta = np.asarray(handle.solve(rhs), dtype=float).reshape(-1)
                         except Exception:
@@ -7672,6 +7675,7 @@ def _solve_static_nonlinear_under_lease(
                         f"nonlinear.static_newton:{lam:.16g}:{path_factor:.16g}:"
                         f"{augmentation}:{iteration}"
                     ),
+                    options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
                 )
             if handle.status != "ok":
                 detail = (

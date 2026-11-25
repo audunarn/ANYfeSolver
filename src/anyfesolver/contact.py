@@ -2438,6 +2438,7 @@ def _solve_transient_sphere_impact_nonlinear(
                     K_static_red,
                     MatrixClass.SYMMETRIC_INDEFINITE,
                     signature=f"sphere_impact.nl.base_equilibrium:{static_iteration}",
+                    options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
                 )
                 dq_static = np.asarray(static_handle.solve(residual_static), dtype=float).reshape(-1)
                 if not np.all(np.isfinite(dq_static)):
@@ -3176,6 +3177,7 @@ def _solve_transient_sphere_impact_nonlinear(
                             f"sphere_impact.nl.effective:{dt:.16g}:{iteration}:"
                             f"descriptor={descriptor_reduction is not None}"
                         ),
+                        options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
                     )
                 else:
                     handle = tangent_reuse.cached_handle
