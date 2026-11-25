@@ -58,3 +58,49 @@ def test_pardiso_handle_owns_its_matrix_values():
     # and must rebuild from its own snapshot, not from the caller's arrays.
     backend.factorize(A, linalg.MatrixClass.GENERAL)
     np.testing.assert_allclose(first.solve(np.ones(3)), _EXPECTED, rtol=1e-14)
+
+
+def _indefinite():
+    # Symmetric, genuinely indefinite, with off-diagonal coupling.
+    return sparse.csr_matrix(np.array([[2.0, 1.0, 0.0], [1.0, -3.0, 1.0], [0.0, 1.0, 4.0]]))
+
+
+@pytest.mark.parametrize("backend_type", _backends())
+@pytest.mark.parametrize("matrix_class", ["general", "symmetric_indefinite"])
+def test_live_handle_keeps_solving_its_own_values_after_edit_and_replacement(backend_type, matrix_class):
+    backend = backend_type()
+    A = _indefinite()
+    original = A.copy()
+    rhs = np.array([1.0, -2.0, 0.5])
+    expected = np.linalg.solve(original.toarray(), rhs)
+    first = linalg.factorize(A, matrix_class, backend=backend)
+    np.testing.assert_allclose(first.solve(rhs), expected, rtol=1e-13)
+    A.data *= -2.5
+    linalg.factorize(A, matrix_class, backend=backend)  # same pattern, new values
+    np.testing.assert_allclose(first.solve(rhs), expected, rtol=1e-13)
+
+
+@pytest.mark.parametrize("backend_type", _backends())
+def test_index_edit_after_factorize_does_not_reach_the_handle(backend_type):
+    A = sparse.csr_matrix(np.array([[4.0, 1.0, 0.0], [0.0, 3.0, 0.0], [0.0, 0.0, 2.0]]))
+    rhs = np.ones(3)
+    expected = np.linalg.solve(A.toarray(), rhs)
+    cache = linalg.FactorizationCache(backend=backend_type())
+    handle = cache.factorize(A, "general")
+    A.indices[1] = 2  # move the (0, 1) coupling to (0, 2): same nnz, different matrix
+    edited = cache.factorize(A, "general")
+    assert edited is not handle
+    np.testing.assert_allclose(edited.solve(rhs), np.linalg.solve(A.toarray(), rhs), rtol=1e-13)
+    np.testing.assert_allclose(handle.solve(rhs), expected, rtol=1e-13)
+
+
+def test_cached_inverse_operator_after_in_place_edit():
+    A = _indefinite()
+    rhs = np.array([1.0, -2.0, 0.5])
+    expected = np.linalg.solve(A.toarray(), rhs)
+    cache = linalg.FactorizationCache()
+    operator, _handle = linalg.cached_inverse_operator(A, "general", cache=cache)
+    A.data *= 3.0
+    edited_operator, _ = linalg.cached_inverse_operator(A, "general", cache=cache)
+    np.testing.assert_allclose(operator.matvec(rhs), expected, rtol=1e-13)
+    np.testing.assert_allclose(edited_operator.matvec(rhs), expected / 3.0, rtol=1e-13)
