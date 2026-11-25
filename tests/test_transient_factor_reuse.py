@@ -215,3 +215,45 @@ def test_reused_step_on_a_fine_grid_matches_exact_refactorization():
     a = np.asarray(result.accelerations)[:, node.dofs[0]]
     assert np.abs(u - 1.0).max() <= 1.0e-13
     assert np.abs(a).max() <= 64.0 * np.finfo(float).eps * (4.0 / dt**2)
+
+
+def _launch_step(t_start, dt, t_end):
+    """Index of the first saved time at which the far sphere is moving (None if never)."""
+    sphere = RigidSphereImpact(
+        "far", radius=0.1, mass=1.0, start_point=(0.5, 0.5, 50.0),
+        travel_direction=(0.0, 0.0, -1.0), speed=1.0e-3, t_start=t_start,
+    )
+    cfg = SphereContactConfig(penalty_stiffness=4000.0, contact_damping=0.0)
+    model, load = _panel()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        res = solve_transient_sphere_impact(
+            model, TransientConfig(dt=dt, t_end=t_end), sphere, cfg, base_load_case=load
+        )
+    moving = np.flatnonzero(np.linalg.norm(res.sphere_velocities, axis=1) > 0.0)
+    return res, (int(moving[0]) if moving.size else None)
+
+
+def test_sphere_launch_windows_tile_the_time_grid():
+    # t_start one ulp above times[2] lies in the gap between the nominal-dt window of step 2
+    # (ends at 0.2) and that of step 3 (exclusive lower bound 0.30000000000000004 - 0.1).
+    dt, t_end = 0.1, 0.5
+    t_start = float(np.nextafter(0.2, 1.0))
+    res, first = _launch_step(t_start, dt, t_end)
+    assert res.times[2] == 0.2
+    assert first == 3, "sphere with t_start inside the former window gap must launch at step 3"
+    # every t_start is launched exactly once, in the step whose grid interval contains it
+    for k in range(1, len(res.times)):
+        for ts in (float(res.times[k]), float(np.nextafter(res.times[k - 1], 1.0))):
+            _, idx = _launch_step(ts, dt, t_end)
+            assert idx == k, (ts, idx, k)
+
+
+def test_sphere_never_launches_after_t_end():
+    dt = 0.1
+    t_end = 0.30000000000000004
+    res, _ = _launch_step(0.0, dt, t_end)
+    # t_start beyond the last grid time is never launched
+    _, idx = _launch_step(float(np.nextafter(res.times[-1], 1.0)), dt, t_end)
+    assert idx is None
+    assert res.times[-1] <= t_end
