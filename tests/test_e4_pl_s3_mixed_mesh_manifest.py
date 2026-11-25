@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import importlib.machinery
 import importlib.util
+import os
 import json
 from pathlib import Path
 import re
@@ -652,9 +654,46 @@ def _leaves(value: object, path: tuple[str, ...] = ()) -> dict[str, object]:
     return {'/'.join(path): value}
 
 
+# Root whose files the import-form check inspects (tests redirect it to a copy).
+IMPORT_FORM_ROOT = ROOT
+
+
+def _require_sole_import_form(relative: str) -> None:
+    """Fail closed unless the bound ``.py`` file is the only importable form of
+    its module: no package or namespace directory of that name and no other
+    import suffix (bytecode, extension module) beside it, compared without
+    regard to case; for package modules, the path finder must resolve to
+    exactly the bound file.  The hashed bytes are then the bytes Python imports.
+    """
+
+    if not relative.endswith(".py"):
+        return
+    path = IMPORT_FORM_ROOT / relative
+    assert path.is_file(), relative
+    directory, stem = path.parent, path.name[:-3].casefold()
+    suffixes = {suffix.casefold() for suffix in importlib.machinery.all_suffixes()}
+    for entry in directory.iterdir():
+        name = entry.name.casefold()
+        if name == path.name.casefold():
+            continue
+        assert name != stem, f"{relative}: {entry.name} shadows the bound module"
+        assert not any(
+            name.endswith(suffix) and name[: -len(suffix)] == stem for suffix in suffixes
+        ), f"{relative}: {entry.name} is another importable form of the bound module"
+    if relative.startswith("src/"):
+        fullname = ".".join(Path(relative[len("src/"):-len(".py")]).parts)
+        importlib.invalidate_caches()
+        spec = importlib.machinery.PathFinder.find_spec(fullname, [str(directory)])
+        assert spec is not None and spec.origin is not None, relative
+        assert os.path.normcase(os.path.realpath(spec.origin)) == os.path.normcase(
+            os.path.realpath(path)
+        ), f"{relative}: Python imports {spec.origin}"
+
+
 def _require_physical(path: str, raw: bytes, row: dict[str, object]) -> None:
     """Canonical LF identity everywhere; raw exact unless explicitly auto-text."""
 
+    _require_sole_import_form(path)
     portable = path.rsplit('/', 1)[1] in PORTABLE_AUTO_TEXT
     assert row['portable_text'] is portable
     canonical = _lf(raw)
@@ -842,7 +881,7 @@ def _read_delta_bound(relative: str, read=None, record=None) -> bytes:
 
     files = (_delta2_record() if record is None else record)["files"]
     assert set(files) == {"src/anyfesolver/elements.py"}
-    raw = (read or _read_live)(relative)
+    raw = (_read_live if read is None else read)(relative)
     row = files.get(relative)
     if row is None:
         return raw
@@ -862,7 +901,7 @@ def _read_bound(relative: str, read=None) -> bytes:
     it is given.  Any mutation of the live bytes breaks the rebuild.
     """
 
-    raw = (read or _read_delta_bound)(relative)
+    raw = (_read_delta_bound if read is None else read)(relative)
     row = _delta_record()["files"].get(relative)
     if row is None:
         return raw
@@ -1893,8 +1932,10 @@ def _require_q4_source_binding_delta(record_raw: bytes, read, authority) -> dict
         assert symbols["predecessor_aggregate_sha256"] == _digest_upper(before)
         assert symbols["live_aggregate_sha256"] == _digest_upper(after)
         assert symbols["live_aggregate_sha256"] == _module_symbol_aggregate(_lf(live).decode("utf-8"))
-    # Every other predecessor-bound file is byte-for-byte unchanged.
+    # Every other predecessor-bound file is byte-for-byte unchanged, and every
+    # bound file is the only importable form of its module.
     for relative, identity in bound.items():
+        _require_sole_import_form(relative)
         if relative not in files:
             assert _identity(read(relative)) == identity
 
@@ -2095,8 +2136,10 @@ def _require_q4_source_binding_delta2(record_raw: bytes, read, authority) -> dic
         assert symbols["predecessor_aggregate_sha256"] == _digest_upper(before)
         assert symbols["live_aggregate_sha256"] == _digest_upper(after)
         assert symbols["live_aggregate_sha256"] == _module_symbol_aggregate(_lf(live).decode("utf-8"))
-    # Every other chain-bound file is byte-for-byte unchanged.
+    # Every other chain-bound file is byte-for-byte unchanged, and every bound
+    # file is the only importable form of its module.
     for relative, identity in bound.items():
+        _require_sole_import_form(relative)
         if relative not in files:
             assert _identity(read(relative)) == identity
 
@@ -2245,3 +2288,141 @@ def test_chained_reader_rebuilds_only_from_the_authenticated_record(
         _read_delta_bound(relative, read, tampered)
     with pytest.raises(AssertionError):
         _read_delta_bound(relative, read)
+
+
+# ---------------------------------------------------------------------------
+# Codex re-review of fa6d84176.  P2: a sibling importable form (package,
+# namespace directory, bytecode or extension module) beside a bound carrier
+# changes what Python imports while the readers hash the bound ``.py`` bytes.
+# P3: a falsey reader callback fell back to the working-tree reader.
+
+SHADOWED_CARRIER = "src/anyfesolver/_q4_assumed_strain_plasticity.py"
+
+
+@pytest.fixture(scope="module")
+def _import_form_copy(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """A copy of every file the import-form check inspects."""
+
+    import shutil
+
+    root = tmp_path_factory.mktemp("import_form_root")
+    shutil.copytree(
+        ROOT / "src" / "anyfesolver", root / "src" / "anyfesolver",
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
+    for relative in _chain_live_identities():
+        target = root / relative
+        if not target.exists():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / relative, target)
+    return root
+
+
+def _shadow(root: Path, form: str):
+    module = root / SHADOWED_CARRIER[: -len(".py")]
+    if form == "package":
+        module.mkdir()
+        (module / "__init__.py").write_bytes(b"")
+        return lambda: (os.remove(module / "__init__.py"), module.rmdir())
+    if form == "namespace":
+        module.mkdir()
+        return module.rmdir
+    suffix = {"sourceless": ".pyc", "extension": importlib.machinery.EXTENSION_SUFFIXES[0]}[form]
+    path = module.with_name(module.name + suffix)
+    path.write_bytes(b"\0")
+    return lambda: os.remove(path)
+
+
+def _run_reader(which: str, read=None) -> None:
+    authority = _strict_json(QUALIFICATION_CONTRACT.read_bytes())["candidate"][
+        "qualified_q4_mechanics_authority"
+    ]
+    if which == "20261111":
+        actual = _q4_mechanics_authority_payload(
+            _lf(_read_bound(LIVE_ENTRY)).decode("utf-8"), set(authority["roots"]),
+            schema=authority["schema"], path=authority["path"],
+            required_symbols=set(authority["symbols"]),
+        )
+        _require_q4_source_binding_successor(
+            Q4_SOURCE_BINDING_SUCCESSOR.read_bytes(),
+            _read_bound if read is None else (lambda path: _read_bound(path, lambda p: _read_delta_bound(p, read))),
+            actual, authority,
+        )
+    elif which == "20261124":
+        _require_q4_source_binding_delta(
+            Q4_SOURCE_BINDING_DELTA.read_bytes(),
+            _read_delta_bound if read is None else (lambda path: _read_delta_bound(path, read)),
+            authority,
+        )
+    else:
+        _require_q4_source_binding_delta2(
+            Q4_SOURCE_BINDING_DELTA2.read_bytes(), _read_live if read is None else read, authority,
+        )
+
+
+def _pin_delta2_in_memory(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The authentic on-disk bytes; the committed pin stays None until review.
+    monkeypatch.setattr(
+        sys.modules[__name__], "Q4_SOURCE_BINDING_DELTA2_SHA256",
+        hashlib.sha256(Q4_SOURCE_BINDING_DELTA2.read_bytes()).hexdigest().upper(),
+    )
+
+
+@pytest.mark.parametrize(
+    "which, form",
+    [
+        ("20261111", "package"),
+        ("20261111", "namespace"),
+        ("20261111", "sourceless"),
+        ("20261111", "extension"),
+        ("20261124", "package"),
+        ("20261125", "package"),
+    ],
+)
+def test_readers_refuse_another_importable_form_beside_a_bound_carrier(
+    monkeypatch: pytest.MonkeyPatch, _import_form_copy: Path, which: str, form: str,
+) -> None:
+    _require_pin()
+    _require_delta_pin()
+    _pin_delta2_in_memory(monkeypatch)
+    monkeypatch.setattr(sys.modules[__name__], "IMPORT_FORM_ROOT", _import_form_copy)
+    _run_reader(which)  # control: the unshadowed copy is accepted
+    undo = _shadow(_import_form_copy, form)
+    try:
+        with pytest.raises(AssertionError):
+            _run_reader(which)
+    finally:
+        undo()
+
+
+def test_sole_import_form_holds_for_every_live_bound_carrier() -> None:
+    _require_pin()
+    for relative in _chain_live_identities():
+        _require_sole_import_form(relative)
+    _require_sole_import_form(SHADOWED_CARRIER)
+
+
+class _FalseyDriftingReader:
+    """A callable whose truth value is False and which serves drifted bytes."""
+
+    def __bool__(self) -> bool:
+        return False
+
+    def __call__(self, path: str) -> bytes:
+        raw = _read_live(path)
+        return raw + b"# drift\n" if path == SHADOWED_CARRIER else raw
+
+
+@pytest.mark.parametrize("which", ["20261111", "20261124", "20261125"])
+def test_falsey_reader_callback_is_used_not_replaced(
+    monkeypatch: pytest.MonkeyPatch, which: str,
+) -> None:
+    _require_pin()
+    _require_delta_pin()
+    _pin_delta2_in_memory(monkeypatch)
+    read = _FalseyDriftingReader()
+    drifted = read(SHADOWED_CARRIER)
+    assert _read_delta_bound(SHADOWED_CARRIER, read) == drifted
+    assert _read_bound(SHADOWED_CARRIER, read) == drifted
+    with pytest.raises(AssertionError):
+        _run_reader(which, read)
