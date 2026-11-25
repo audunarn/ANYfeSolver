@@ -156,6 +156,7 @@ _QUALIFIED_PRESTRESS_OPERATOR_APIS = {
         "_bind_qualified_component_guard": QualifiedE4PLShellElement._bind_qualified_component_guard,
         "_adopt_qualified_components": QualifiedE4PLShellElement._adopt_qualified_components,
         "_warped_generalized_drilling_correction": QualifiedE4PLShellElement._warped_generalized_drilling_correction,
+        "_effective_drilling_stabilization": QualifiedE4PLShellElement._effective_drilling_stabilization,
         "_generalized_section_in_frame": QualifiedE4PLShellElement._generalized_section_in_frame,
         "_physical_director_context": QualifiedE4PLShellElement._physical_director_context,
         "_material_angle": ShellElement._material_angle,

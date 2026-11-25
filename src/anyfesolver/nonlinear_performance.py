@@ -396,6 +396,10 @@ class _ShellBatchPlan:
         items: Sequence[Tuple[int, Any, _ElementScatter]],
         num_layers: int,
     ) -> "_ShellBatchPlan":
+        from .elements import _kernel_drilling_stabilization
+
+        # The group key carries the kernel drilling coefficient, so every
+        # element of this batch applies the same value as its scalar kernel.
         first = items[0][1]
         first_cache = first._nonlinear_geometry(model.mesh)
         n_elem = len(items)
@@ -474,7 +478,7 @@ class _ShellBatchPlan:
             linear_corrections=linear_corrections,
             material=material,
             thickness=float(first.thickness),
-            drilling_stabilization=float(first.drilling_stabilization),
+            drilling_stabilization=_kernel_drilling_stabilization(first, model.mesh),
             n_gp=n_gp,
             n_dof=n_dof,
             num_layers=int(num_layers),
@@ -937,7 +941,11 @@ class NonlinearAssemblyPlan:
 
     @classmethod
     def build(cls, model: "FEModel", num_layers: int) -> "NonlinearAssemblyPlan":
-        from .elements import QuadraticBeamElement, ShellElement
+        from .elements import (
+            QuadraticBeamElement,
+            ShellElement,
+            _kernel_drilling_stabilization,
+        )
         from .materials import is_isotropic_material, is_orthotropic_material
         from .vectorized_nonlinear import shell_nonlinear_batch_eligible
 
@@ -1060,7 +1068,7 @@ class NonlinearAssemblyPlan:
                     shell_kind,
                     int(element.num_nodes),
                     float(element.thickness),
-                    float(element.drilling_stabilization),
+                    _kernel_drilling_stabilization(element, mesh),
                     str(element.material_name),
                     section_key,
                 )

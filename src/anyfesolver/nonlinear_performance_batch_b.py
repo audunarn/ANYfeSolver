@@ -584,7 +584,7 @@ def _batch_b_shell_build(
                 batch._batch_b_shear_matrix[index] = section.As
                 batch._batch_b_drilling_stiffness[index] = (
                     float(section.A[2, 2])
-                    * float(element.drilling_stabilization)
+                    * float(batch.drilling_stabilization)
                 )
                 continue
 
@@ -608,7 +608,7 @@ def _batch_b_shell_build(
             batch._batch_b_drilling_stiffness[index] = (
                 drilling_modulus
                 * thickness
-                * float(element.drilling_stabilization)
+                * float(batch.drilling_stabilization)
             )
     batch._batch_b_initial_membrane_resultants = np.zeros(
         (len(batch.elements), batch.n_gp, 3), dtype=float

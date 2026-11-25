@@ -2175,8 +2175,22 @@ class ShellElement(Element):
         K_hg = stiffness_scale * (hourglass_modes @ hourglass_modes.T)
         return 0.5 * (K_hg + K_hg.T)
 
+    def _effective_drilling_stabilization(self, coordinates: Any = None) -> float:
+        """Return the drilling coefficient applied by the element kernels.
+
+        An ordinary shell applies its stored ``drilling_stabilization``
+        unchanged and ignores ``coordinates``.  The qualified four-node shell
+        raises the coefficient on warped facets (see
+        :meth:`QualifiedE4PLShellElement._effective_drilling_stabilization`).
+        The stored attribute, serialization and cache keys always keep the
+        raw user value.
+        """
+
+        return getattr(self, "drilling_stabilization", 1.0e-3)
+
     def compute_stiffness_matrix(self, mesh: "FEMesh", material: "Material") -> np.ndarray:
         coords = self.get_node_coordinates(mesh)
+        drilling_alpha = self._effective_drilling_stabilization(coords)
         generalized_section = self.shell_section is not None
         h = self.thickness
         if generalized_section:
@@ -2205,7 +2219,7 @@ class ShellElement(Element):
                 ) * det_j * weight
                 drilling_stiffness = (
                     float(section_local.A[2, 2])
-                    * getattr(self, "drilling_stabilization", 1.0e-3)
+                    * drilling_alpha
                 )
             else:
                 Q_local, _G_local, _strain_transform, _stress_transform = (
@@ -2223,7 +2237,7 @@ class ShellElement(Element):
                 drilling_stiffness = (
                     float(drilling_modulus)
                     * h
-                    * getattr(self, "drilling_stabilization", 1.0e-3)
+                    * drilling_alpha
                 )
             K_local += (B_d.T @ (drilling_stiffness * np.eye(1)) @ B_d) * det_j * weight
             K += T.T @ K_local @ T
@@ -2798,7 +2812,9 @@ class ShellElement(Element):
         C2 = np.broadcast_to(section.D, (n_gp, 3, 3))
         drilling_stiffness = (
             float(section.A[2, 2])
-            * getattr(self, "drilling_stabilization", 1.0e-3)
+            * self._effective_drilling_stabilization(
+                self.get_node_coordinates(mesh)
+            )
         )
 
         F_loc, K_loc = _jit_integrate_nonlinear_response(
@@ -2957,7 +2973,9 @@ class ShellElement(Element):
         drilling_stiffness = (
             drilling_modulus
             * h
-            * getattr(self, "drilling_stabilization", 1.0e-3)
+            * self._effective_drilling_stabilization(
+                self.get_node_coordinates(mesh)
+            )
         )
         hill_yield = _guarded_observe_attribute(
             material,
@@ -5724,6 +5742,21 @@ LEGACY_Q4_AVAILABLE_THROUGH = "0.4.x"
 LEGACY_Q4_REMOVAL_TARGET = "0.5.0"
 
 
+def _kernel_drilling_stabilization(element: Any, mesh: Any) -> float:
+    """Drilling coefficient that ``element``'s scalar kernels apply.
+
+    Batch routes group and evaluate shells by this value so that they agree
+    with the scalar kernels.  For every element whose class does not override
+    :meth:`ShellElement._effective_drilling_stabilization` it is exactly
+    ``float(element.drilling_stabilization)``.
+    """
+
+    hook = getattr(type(element), "_effective_drilling_stabilization", None)
+    if hook is None or hook is ShellElement._effective_drilling_stabilization:
+        return float(element.drilling_stabilization)
+    return float(hook(element, element.get_node_coordinates(mesh)))
+
+
 class LegacyQ4DeprecationWarning(DeprecationWarning):
     """Warning emitted when the temporary legacy four-node rollback is used."""
 
@@ -5907,6 +5940,16 @@ def create_shell_element(
     :class:`LegacyShellElement`. Passing ``formulation="legacy-s3"`` is the
     documented three-node rollback; an explicit ``e4-pl`` request remains
     Q4-only.
+
+    ``drilling_stabilization`` (default ``1e-3``) scales the drilling-rotation
+    penalty.  On a warped qualified four-node facet (warpage above
+    ``planar_tolerance``) the kernels apply ``max(drilling_stabilization,
+    0.1)``: with the varying-frame warped kernel a smaller coefficient leaves
+    the element too flexible and non-convergent (MacNeal-Harder twisted beam
+    +31 %/+24 % at 24x4 with ``1e-3``; within 0.5 % at 48x8 with ``0.1``).
+    Explicit values below 0.1, including 0, are floored there; larger values
+    are honoured.  Planar facets and every other element apply the stored
+    value unchanged, and the stored attribute keeps the raw value.
     """
 
     resolved = _normalized_shell_formulation(len(node_ids), formulation)
