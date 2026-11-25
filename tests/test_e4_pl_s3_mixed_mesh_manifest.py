@@ -663,7 +663,15 @@ def _require_sole_import_form(relative: str) -> None:
     its module: no package or namespace directory of that name and no other
     import suffix (bytecode, extension module) beside it, compared without
     regard to case; for package modules, the path finder must resolve to
-    exactly the bound file.  The hashed bytes are then the bytes Python imports.
+    exactly the bound file.
+
+    Scope (owner decision 2026-11-25, whole chain 20261111 -> 20261124 -> 20261125):
+    the source binding covers the bytes of the tracked source files in this
+    checkout plus this same-directory import-form uniqueness.  Runtime import
+    identity is out of scope: ``sys.path`` order (another checkout's ``src`` or a
+    checkout-root package ahead of this ``src``), bytecode caches (including a
+    timestamp cache that survives an edit-and-restore within the same second) and
+    installed copies are not checked here.
     """
 
     if not relative.endswith(".py"):
@@ -1869,6 +1877,11 @@ def _predecessor_live_identities(predecessor: dict[str, object]) -> dict[str, ob
 
 
 def _require_q4_source_binding_delta(record_raw: bytes, read, authority) -> dict[str, object]:
+    """Chain reader.  Scope (owner decision 2026-11-25, chain 20261111 -> 20261124 ->
+    20261125): tracked-source bytes and same-directory import-form uniqueness only;
+    runtime import identity (sys.path order, bytecode caches, installed copies) is
+    out of scope.  See _require_sole_import_form.
+    """
     assert Q4_SOURCE_BINDING_DELTA_SHA256 is not None
     assert hashlib.sha256(record_raw).hexdigest().upper() == Q4_SOURCE_BINDING_DELTA_SHA256
     record = _strict_json(record_raw)
@@ -2073,6 +2086,11 @@ def _chain_live_identities() -> dict[str, object]:
 
 
 def _require_q4_source_binding_delta2(record_raw: bytes, read, authority) -> dict[str, object]:
+    """Chain reader.  Scope (owner decision 2026-11-25, chain 20261111 -> 20261124 ->
+    20261125): tracked-source bytes and same-directory import-form uniqueness only;
+    runtime import identity (sys.path order, bytecode caches, installed copies) is
+    out of scope.  See _require_sole_import_form.
+    """
     assert Q4_SOURCE_BINDING_DELTA2_SHA256 is not None
     assert hashlib.sha256(record_raw).hexdigest().upper() == Q4_SOURCE_BINDING_DELTA2_SHA256
     record = _strict_json(record_raw)

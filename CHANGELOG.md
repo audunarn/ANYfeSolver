@@ -7,6 +7,11 @@
   arm, evaluating exactly the same expressions; results are bit-identical.
   Source binding: `docs/reference_cases/e4_pl_source_binding_20261125.json`,
   chained from the 2026-11-24 record; no qualified-Q4 symbol changes.
+  Scope of the source binding, for the whole chain 2026-11-11 -> 2026-11-24 ->
+  2026-11-25 (owner decision 2026-11-25): it covers the bytes of the tracked
+  source files in this checkout and same-directory import-form uniqueness;
+  runtime import identity (`sys.path` order, bytecode caches, installed
+  copies) is out of scope. See `docs/Q4_R4_MERGE_PROCEDURE_20261023.md`.
 
 - Warped qualified Q4 facets (warpage above `planar_tolerance`, varying-frame
   kernels) apply a drilling coefficient of at least 0.1: the kernels use

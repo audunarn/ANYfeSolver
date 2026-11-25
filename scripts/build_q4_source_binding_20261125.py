@@ -27,6 +27,11 @@ spelling map) is replaced by this successor lineage: the live bytes bind
 through this record and the 2026-11-24 record to the bytes the 2026-11-11
 record bound.
 
+Scope of the source binding (owner decision 2026-11-25, whole chain): it covers
+the bytes of the tracked source files in this checkout and same-directory
+import-form uniqueness.  Runtime import identity (``sys.path`` order, bytecode
+caches, installed copies) is out of scope; see ``binding_scope`` in the record.
+
 The record grants no CI, scientific or physical acceptance, claims no
 reviewer approval and must be independently reviewed outside the generating
 invocation before its SHA-256 is pinned.
@@ -66,6 +71,23 @@ EXPECTED_MODULE_SYMBOLS = {
         "_beam_rotation_matrix",
     ],
     "removed": [],
+}
+BINDING_SCOPE = {
+    "covers": [
+        "the bytes of the tracked source files in this checkout, bound by exact live "
+        "identity along the chain 2026-11-11 -> 2026-11-24 -> 2026-11-25",
+        "same-directory import-form uniqueness: a bound .py file is the only "
+        "importable form of its module in its directory (_require_sole_import_form)",
+    ],
+    "decision": "Owner decision 2026-11-25 (A); applies to the whole chain.",
+    "out_of_scope": [
+        "runtime import identity: sys.path order, for example another checkout's src "
+        "or a checkout-root package of the same name ahead of this checkout's src",
+        "bytecode caches (__pycache__), including a timestamp cache that survives an "
+        "edit-and-restore of a source file within the same second",
+        "installed copies of the package",
+    ],
+    "runtime_check": "Possibly a separate runtime check later; not part of this record.",
 }
 CHANGE = {
     "id": "BEAM_FRAME_EXACT_HELPERS_S2_20261125",
@@ -215,6 +237,7 @@ def build() -> tuple[dict[str, Any], list[str]]:
             "status": "UNREVIEWED_CANDIDATE_RECORD",
         },
         "base_revision": BASE_REVISION,
+        "binding_scope": BINDING_SCOPE,
         "boundary_flags": {key: False for key in predecessor["boundary_flags"]},
         "change": CHANGE,
         "files": files,
