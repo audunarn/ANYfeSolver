@@ -235,3 +235,59 @@ def test_nonfinite_modal_pairs_are_not_published(monkeypatch):
                         (np.full(3, np.nan), np.ones((operator.shape[0], 3))))
     result = analysis.modes(stiffened_shell.B2ReferenceModesRequest())
     assert result.status == "failed" and result.physical_modes == ()
+
+# PARDISO slot lease (D2, Codex r1 #2): the shift-invert handle is pinned for
+# the whole Arnoldi iteration.  Lives in this (retired) module so that default
+# collection keeps the retired programme out; run with the opt-in.
+from scipy.sparse.linalg import LinearOperator
+from anyfesolver import linalg as _linalg
+from test_pardiso_leases import (
+    _counts, _delta, _disturb_default, _forced_one_slot_default, _leased, requires_pypardiso,
+)
+
+
+def _panel_modes(disturb: bool):
+    panel = owner
+
+    definition, _free = _definition()
+    analysis = stiffened_shell.create_analysis(definition=definition)
+    real_eigs = panel.eigs
+    calls = {"n": 0}
+
+    def disturbing_eigs(operator, *args, **kwargs):
+        def matvec(vector):
+            calls["n"] += 1
+            if disturb and calls["n"] == 2:  # between two Arnoldi actions
+                _disturb_default()
+            return operator.matvec(vector)
+
+        wrapped = LinearOperator(operator.shape, matvec=matvec, dtype=operator.dtype)
+        return real_eigs(wrapped, *args, **kwargs)
+
+    panel.eigs = disturbing_eigs
+    try:
+        return analysis.modes(stiffened_shell.B2ReferenceModesRequest(count=3)), calls["n"]
+    finally:
+        panel.eigs = real_eigs
+        analysis.close()
+
+
+@requires_pypardiso
+def test_panel_reference_modes_keep_their_operator_across_a_shared_factorization(monkeypatch) -> None:
+    """Codex r1 #2: on 024e8a4c4 the unleased modal handle went stale mid-ARPACK."""
+
+    backend = _forced_one_slot_default(monkeypatch)
+    try:
+        backend.release_pattern_slots()
+        expected, _ = _panel_modes(False)
+        backend.release_pattern_slots()
+        before = _counts()
+        observed, calls = _panel_modes(True)
+        assert calls >= 2
+        assert expected.status == "ok", expected.failure_reason
+        assert observed.status == "ok", observed.failure_reason
+        assert np.asarray(observed.frequencies_hz).tobytes() == np.asarray(expected.frequencies_hz).tobytes()
+        assert _delta(before, "pardiso_lease_detachments") >= 1  # the pin was exercised
+        assert _leased(backend.pardiso_backend) == 0
+    finally:
+        backend.release_pattern_slots()

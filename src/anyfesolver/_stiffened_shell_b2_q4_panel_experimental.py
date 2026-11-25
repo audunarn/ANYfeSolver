@@ -55,7 +55,7 @@ from .e4_pl_element import _retire_q4_private_mesh_caches
 from ._stiffened_shell_b2_assembly_diagnostics import active_capture, DiagnosticRefusal
 from .elements import create_shell_element
 from .fe_core import FEModel
-from .linalg import MatrixClass, factorize_cached, refactorize_if_stale
+from .linalg import MatrixClass, factorize_cached, lease_from, refactorize_if_stale
 
 B2_FIXED_END_LOADED_POINT_TRACE_V1_DEV = "B2_FIXED_END_LOADED_POINT_TRACE_V1_DEV"
 
@@ -1795,10 +1795,11 @@ class ExperimentalB2Q4PanelAnalysis:
                     return vector
                 return vector-rigid["scaled"]@(rigid["scaled"].T@(bs@vector))
 
-            handle = factorize_cached(shifted, MatrixClass.GENERAL)
-            safe_point("reference modes after factorization")
-            if handle.status != "ok":
-                raise _NumericalFailure("reference modal factorization failed: "+str(handle.failure_reason))
+            # Pinned for the Arnoldi iteration: other factorizations (callbacks,
+            # other threads, other work on the shared backend) may run between
+            # actions.  The lease ends with the eigensolve or on any exit.
+            lease = lease_from(factorize_cached, shifted, MatrixClass.GENERAL)
+            handle = lease.handle
 
             def action(vector):
                 safe_point("reference modal iteration")
@@ -1816,10 +1817,14 @@ class ExperimentalB2Q4PanelAnalysis:
                 safe_point("reference modal iteration completed")
                 return project(answer)
 
-            operator = LinearOperator(a.shape, matvec=action, dtype=float)
-            values, vectors = eigs(operator, k=request.count, which="LM",
-                                  v0=np.sin(np.arange(a.shape[0])+.23),
-                                  tol=1e-11, maxiter=request.max_iterations)
+            with lease:
+                safe_point("reference modes after factorization")
+                if handle.status != "ok":
+                    raise _NumericalFailure("reference modal factorization failed: "+str(handle.failure_reason))
+                operator = LinearOperator(a.shape, matvec=action, dtype=float)
+                values, vectors = eigs(operator, k=request.count, which="LM",
+                                      v0=np.sin(np.arange(a.shape[0])+.23),
+                                      tol=1e-11, maxiter=request.max_iterations)
             safe_point("reference modes after eigensolve")
             abs_a, abs_b, abs_c = abs(a), abs(b), abs(c)
             recovered = []

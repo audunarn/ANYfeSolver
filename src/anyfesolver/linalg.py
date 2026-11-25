@@ -408,20 +408,31 @@ def _add_note(exc: BaseException, note: str) -> None:
         pass
 
 
-def _raise_interrupt(error: Optional[BaseException], context: str) -> None:
-    """Re-raise a non-``Exception`` cleanup error, or attach it to the active exception.
+def _raise_interrupt(
+    error: Optional[BaseException],
+    context: str,
+    primary: Optional[BaseException] = None,
+) -> None:
+    """Re-raise a non-``Exception`` cleanup error (an interrupt); never swallow it.
 
     ``Exception`` failures of ``free_memory`` are tolerated as before (the
-    instance is never used again); an interrupt is not swallowed, but never
-    replaces an exception that is already propagating.
+    instance is never used again).  ``primary`` is the exception the caller
+    is propagating, passed explicitly; it is never inferred from
+    ``sys.exc_info()``, which inside an unrelated ``except`` block names an
+    exception that is already handled.  An interrupt never replaces a
+    propagating interrupt (it is attached to it as a note), but it does
+    replace an ordinary ``Exception``, which a caller may catch and recover
+    from (the interrupt is chained to it as ``__context__``).
     """
 
     if error is None or isinstance(error, Exception):
         return
-    active = sys.exc_info()[1]
-    if active is not None and active is not error:
-        _add_note(active, f"{context} raised {type(error).__name__}: {error}")
-        return
+    if primary is not None and primary is not error:
+        if not isinstance(primary, Exception):
+            _add_note(primary, f"{context} raised {type(error).__name__}: {error}")
+            return
+        if error.__context__ is None:
+            error.__context__ = primary
     raise error
 
 
@@ -764,11 +775,7 @@ class FactorizationLease:
             if not finalizer.alive:
                 return
             error = finalizer()
-        if active is not None and error is not None and not isinstance(error, Exception):
-            _add_note(active, "releasing a detached PARDISO slot at lease end raised "
-                      f"{type(error).__name__}: {error}")
-            return
-        _raise_interrupt(error, "releasing a detached PARDISO slot at lease end")
+        _raise_interrupt(error, "releasing a detached PARDISO slot at lease end", active)
 
     def __enter__(self) -> "FactorizationLease":
         return self
@@ -1032,12 +1039,13 @@ class PyPardisoSolverBackend:
                             solver, prepared, mtype=mtype, retire=retire, owner=owner
                         )
                         symbolic_reused = False
-                except Exception:
+                except Exception as failure:
                     if slot in self._slots:
                         self._slots.remove(slot)
                     _raise_interrupt(
                         slot.release("released after a failed factorization"),
                         "releasing a failed PARDISO slot",
+                        failure,
                     )
                     raise
                 except BaseException as exc:
@@ -1058,8 +1066,8 @@ class PyPardisoSolverBackend:
         try:
             count = _pardiso_full_factorize(owner.solver, prepared, mtype=mtype, owner=owner)
             slot = _PardisoPatternSlot(owner, mtype, prepared)
-        except Exception:
-            _raise_interrupt(owner.release()[1], "releasing a failed PARDISO instance")
+        except Exception as failure:
+            _raise_interrupt(owner.release()[1], "releasing a failed PARDISO instance", failure)
             raise
         except BaseException as exc:
             ran, error = owner.release()
@@ -1091,10 +1099,11 @@ class PyPardisoSolverBackend:
         _ensure_mkl_rt_env()
         failure_reasons: List[str] = []
         try:
-            # Snapshot the caller's arrays: the handle may refactorize its own
-            # matrix later (stale-handle rebuild), and ``csr_matrix(csr)`` shares
-            # ``data``/``indices``/``indptr`` with the input, so an in-place edit
-            # by the caller would otherwise be factorized silently.
+            # Snapshot the caller's arrays: ``csr_matrix(csr)`` shares
+            # ``data``/``indices``/``indptr`` with the input, so the handle
+            # (which solves against its own matrix, possibly for a long time
+            # under a lease) would otherwise see the caller's in-place edits,
+            # and ``sort_indices`` would reorder the caller's arrays.
             csr = sparse.csr_matrix(matrix, copy=True)
             csr.sort_indices()
         except Exception as exc:
@@ -1319,9 +1328,13 @@ class AutoSparseSolverBackend:
         for key, value in selection_metadata.items():
             handle.metadata.setdefault(key, value)
         handle.metadata.setdefault("pypardiso_initialized", bool(self.pardiso_backend.initialized))
-        if handle.status == "ok":
-            # A handle that later becomes stale raises PardisoStaleHandleError
-            # (no rebuild, no solve-time fallback; see _PardisoFactorization).
+        if _handle_state(handle) != "failed":
+            # "ok", or "stale": the factorization succeeded and another thread
+            # invalidated it before this read.  Stale is an ownership event,
+            # not a numerical failure, so it never selects another backend:
+            # the PARDISO handle is returned and raises PardisoStaleHandleError
+            # on solve (lease_from refactorizes once; FactorizationCache treats
+            # it as a miss).  No rebuild, no solve-time fallback.
             return handle
         failure_kind = handle.metadata.get("pardiso_failure_kind")
         if selection_policy == "pypardiso_forced" and failure_kind == PARDISO_PERTURBED_PIVOTS:
@@ -1460,7 +1473,9 @@ class FactorizationCache:
                     self._handles.pop(oldest, None)
                 if self.max_entries != 0:
                     self._handles[cache_key] = handle
-            else:
+            elif handle.metadata.get("pardiso_failure_kind") != PARDISO_STALE_HANDLE:
+                # A fresh handle invalidated by another thread before this
+                # read is stale, not failed: not cached, not a failure.
                 self.factorization_failures += 1
             return handle
 
