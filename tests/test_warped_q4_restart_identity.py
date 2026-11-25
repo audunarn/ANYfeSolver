@@ -149,6 +149,17 @@ def test_shell_subclass_overriding_the_drilling_hook_fails_closed():
         model_configuration_fingerprint(model)
 
 
+_SHIPPED_SHELL_CLASSES = (
+    "ShellElement",
+    "QualifiedE4PLShellElement",
+    "QualifiedE4PLS3ShellElement",
+    "StrictFlatLinearE4PLS3V2ShellElement",
+    "StrictFlatLinearE4PLS3V2BShellElement",
+    "StrictFlatLinearE4PLS3V2CShellElement",
+    "NativeParityE4PLS3V2DShellElement",
+)
+
+
 def _all_shell_classes():
     import importlib
     import pathlib
@@ -162,10 +173,7 @@ def _all_shell_classes():
             name = ".".join(("anyfesolver",) + path.relative_to(root).with_suffix("").parts)
             if name.endswith(".__init__"):
                 name = name[: -len(".__init__")]
-            try:
-                importlib.import_module(name)
-            except Exception:  # dev or optional modules that need extras
-                continue
+            importlib.import_module(name)  # an import failure fails the inventory
     seen, stack = [], [ShellElement]
     while stack:
         cls = stack.pop()
@@ -177,7 +185,44 @@ def _all_shell_classes():
 
 def test_every_shell_class_in_the_package_is_admitted():
     classes = _all_shell_classes()
-    assert len(classes) >= 3
+    assert sorted(c.__name__ for c in classes) == sorted(_SHIPPED_SHELL_CLASSES)
     for cls in classes:
         element = object.__new__(cls)
         _require_admitted_drilling_hook(element)  # must not raise
+
+
+def _plain_shell_model():
+    from anyfesolver.elements import ShellElement
+
+    model = FEModel("plain")
+    model.add_material("mat", 29.0e6, 0.22)
+    for k, (x, y) in enumerate([(0, 0), (1, 0), (1, 1), (0, 1)], start=1):
+        model.add_node(k, float(x), float(y), 0.0)
+    model.add_element(1, ShellElement(1, [1, 2, 3, 4], "mat", thickness=0.1))
+    return model
+
+
+def test_plain_shell_is_admitted():
+    model_configuration_fingerprint(_plain_shell_model())  # must not raise
+
+
+def test_instance_level_drilling_hook_fails_closed():
+    # Review round 10 P2: the kernels call the hook on the instance.
+    model = _plain_shell_model()
+    element = model.mesh.elements[1]
+    element._effective_drilling_stabilization = lambda coordinates=None: 0.25
+    assert element._effective_drilling_stabilization() == 0.25
+    with pytest.raises(NonlinearCheckpointError, match="overrides the drilling coefficient hook"):
+        model_configuration_fingerprint(model)
+
+
+def test_runtime_patched_class_hook_fails_closed(monkeypatch):
+    # Review round 10 P2: a hook patched onto a class after import is refused.
+    from anyfesolver.elements import ShellElement
+
+    model = _plain_shell_model()
+    monkeypatch.setattr(
+        ShellElement, "_effective_drilling_stabilization", lambda self, coordinates=None: 0.25
+    )
+    with pytest.raises(NonlinearCheckpointError, match="overrides the drilling coefficient hook"):
+        model_configuration_fingerprint(model)

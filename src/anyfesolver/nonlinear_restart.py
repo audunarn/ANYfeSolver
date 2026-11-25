@@ -29,6 +29,14 @@ from .current_state_tangent import (
 from .element_capabilities import ElementCapabilityError
 from ._wire_types import wire_class_name
 from .fe_core import Node as _CHECKPOINT_NODE_TYPE
+from .e4_pl_element import QualifiedE4PLShellElement as _QUALIFIED_Q4_CLASS
+from .elements import ShellElement as _SHELL_ELEMENT_CLASS
+
+# Drilling hook implementations captured at import: restart identity admits
+# only these, so a hook replaced later on a class or an instance is refused.
+_DRILLING_HOOK_NAME = "_effective_drilling_stabilization"
+_BASE_DRILLING_HOOK = _SHELL_ELEMENT_CLASS.__dict__[_DRILLING_HOOK_NAME]
+_QUALIFIED_Q4_DRILLING_HOOK = _QUALIFIED_Q4_CLASS.__dict__[_DRILLING_HOOK_NAME]
 
 
 NONLINEAR_CHECKPOINT_SCHEMA = "ANYSOLVER_NONLINEAR_CHECKPOINT_V1"
@@ -774,30 +782,39 @@ def model_configuration_descriptor(
 def _require_admitted_drilling_hook(element: Any) -> None:
     """Fail closed on drilling hooks that restart identity cannot describe.
 
-    Only ``ShellElement`` itself (stored value) and the final qualified Q4
-    (warped-facet floor, described by :func:`_applied_drilling_if_changed`)
-    define the applied drilling coefficient.  Any other shell class that
-    overrides ``_effective_drilling_stabilization`` is refused.
+    Only the implementations captured at import are admitted: the base
+    ``ShellElement`` hook (stored value) on any shell class that does not
+    override it, and the final qualified Q4 hook (warped-facet floor,
+    described by :func:`_applied_drilling_if_changed`) on that class.  A hook
+    defined on another class, patched onto a class later, or set on the
+    instance is refused.
     """
 
-    from .e4_pl_element import QualifiedE4PLShellElement
-    from .elements import ShellElement
-
-    if not isinstance(element, ShellElement):
+    if not isinstance(element, _SHELL_ELEMENT_CLASS):
         return
-    hook = getattr(type(element), "_effective_drilling_stabilization", None)
-    if hook is ShellElement._effective_drilling_stabilization:
-        return
-    if (
-        type(element) is QualifiedE4PLShellElement
-        and hook is QualifiedE4PLShellElement._effective_drilling_stabilization
-    ):
-        return
-    raise NonlinearCheckpointError(
-        f"element {getattr(element, 'element_id', '?')} of class "
-        f"{_class_id(element)} overrides the drilling coefficient hook; its "
-        "applied drilling mechanics cannot be bound into a checkpoint"
+    try:
+        instance_namespace = object.__getattribute__(element, "__dict__")
+    except AttributeError:
+        instance_namespace = {}
+    shadowed = _DRILLING_HOOK_NAME in instance_namespace
+    resolved = None
+    for klass in type(element).__mro__:
+        if _DRILLING_HOOK_NAME in klass.__dict__:
+            resolved = klass.__dict__[_DRILLING_HOOK_NAME]
+            break
+    admitted = not shadowed and (
+        resolved is _BASE_DRILLING_HOOK
+        or (
+            type(element) is _QUALIFIED_Q4_CLASS
+            and resolved is _QUALIFIED_Q4_DRILLING_HOOK
+        )
     )
+    if not admitted:
+        raise NonlinearCheckpointError(
+            f"element {getattr(element, 'element_id', '?')} of class "
+            f"{_class_id(element)} overrides the drilling coefficient hook; its "
+            "applied drilling mechanics cannot be bound into a checkpoint"
+        )
 
 
 def _applied_drilling_if_changed(
@@ -813,12 +830,9 @@ def _applied_drilling_if_changed(
     is tested).
     """
 
-    from .e4_pl_element import (
-        _WARPED_Q4_DRILLING_FLOOR,
-        QualifiedE4PLShellElement,
-        equation7_frame,
-    )
-    if descriptor.get("class") != wire_class_name(QualifiedE4PLShellElement):
+    from .e4_pl_element import _WARPED_Q4_DRILLING_FLOOR, equation7_frame
+
+    if descriptor.get("class") != wire_class_name(_QUALIFIED_Q4_CLASS):
         return None
     configuration = descriptor.get("configuration")
     try:
