@@ -9,6 +9,7 @@ contact, profile-resolved beam contact, or crack propagation.
 
 from __future__ import annotations
 
+import math
 import threading
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
@@ -4053,6 +4054,19 @@ def solve_transient_sphere_impact(
         dt_total = float(times[step_index] - times[step_index - 1])
         if dt_total <= 0.0:
             continue
+        # Consistent step size (same rule as solve_transient_newmark): nominal dt on interior steps
+        # and on a nominally uniform end (within 8 ulp); only a genuinely shortened last step uses
+        # its true remainder, and then the factor is rebuilt because dt differs bitwise.
+        final_index = len(times) - 1
+        nominal_end = float(final_index) * float(transient_config.dt)
+        roundoff = 8.0 * max(
+            math.ulp(float(transient_config.t_end)), math.ulp(nominal_end),
+            float(final_index) * math.ulp(float(transient_config.dt)),
+        )
+        if step_index < final_index or abs(float(transient_config.t_end) - nominal_end) <= roundoff:
+            dt_total = float(transient_config.dt)
+        else:
+            dt_total = float(transient_config.t_end) - float(final_index - 1) * float(transient_config.dt)
         travel_scale = max(float(sphere.radius) * float(config.max_sphere_travel_fraction), 1.0e-12)
         predicted_travel = max(float(np.linalg.norm(sphere_velocity)) * dt_total, float(sphere.speed) * dt_total)
         n_travel = max(int(np.ceil(predicted_travel / travel_scale)), 1)
@@ -4070,9 +4084,14 @@ def solve_transient_sphere_impact(
                 cancellation_token,
                 f"sphere_impact.linear.step:{step_index}.substep:{substep + 1}",
             )
-            sub_time = float(times[step_index - 1]) + (substep + 1) * dt_total / n_substeps
+            # Clock (launch window, saved/record times, durations) comes from the ``times`` grid so
+            # adjacent windows tile it and never pass t_end; nominal dt only drives integration.
+            clock_total = float(times[step_index]) - float(times[step_index - 1])
+            sub_start = float(times[step_index - 1]) + substep * clock_total / n_substeps
+            sub_time = float(times[step_index]) if substep == n_substeps - 1 else float(times[step_index - 1]) + (substep + 1) * clock_total / n_substeps
+            clock_dt = sub_time - sub_start
             dt = dt_total / n_substeps
-            if sub_time - dt < sphere.t_start <= sub_time and np.linalg.norm(sphere_velocity) == 0.0:
+            if sub_start < sphere.t_start <= sub_time and np.linalg.norm(sphere_velocity) == 0.0:
                 sphere_velocity = sphere.travel_velocity.copy()
             a0 = 1.0 / (beta * dt**2)
             a1 = gamma / (beta * dt)
@@ -4080,7 +4099,9 @@ def solve_transient_sphere_impact(
             a3 = 1.0 / (2.0 * beta) - 1.0
             a4 = gamma / beta - 1.0
             a5 = dt * (gamma / (2.0 * beta) - 1.0)
-            if cached_solver is None or cached_dt is None or not np.isclose(dt, cached_dt):
+            # reuse the factor only for a bitwise-equal dt (matrix, RHS and update share one dt)
+            refactor = cached_solver is None or cached_dt is None or dt != cached_dt
+            if refactor:
                 K_eff = (one_plus_alpha * K_red + a0 * M_red + one_plus_alpha * a1 * C_red).tocsr()
                 cached_solver = factorize(K_eff, MatrixClass.SYMMETRIC_INDEFINITE, signature=f"sphere_impact.effective:{dt:.16g}")
                 cached_solver_diagnostics = cached_solver.diagnostics()
@@ -4179,17 +4200,17 @@ def solve_transient_sphere_impact(
             contact_norm = float(np.linalg.norm(sphere_force))
             if contact_norm > 0.0:
                 contact_step_count += 1
-                active_contact_duration += dt
+                active_contact_duration += clock_dt
                 separation_elapsed = 0.0
                 contact_active_this_step = True
             elif contact_step_count > 0 and separation_stop_time > 0.0:
-                separation_elapsed += dt
+                separation_elapsed += clock_dt
             if records:
                 max_penetration = max(max_penetration, max(float(record.penetration) for record in records))
                 peak_contact_force = max(peak_contact_force, max(float(record.normal_force) for record in records))
             load_next = base_load + contact_load
-            impulse += 0.5 * (load_prev + load_next) * dt
-            sphere_impulse += 0.5 * (sphere_force_prev + sphere_force) * dt
+            impulse += 0.5 * (load_prev + load_next) * clock_dt
+            sphere_impulse += 0.5 * (sphere_force_prev + sphere_force) * clock_dt
             load_prev = load_next
             F_red_prev = F_red
             sphere_force_prev = sphere_force.copy()
@@ -4277,7 +4298,7 @@ def solve_transient_sphere_impact(
                     tuple(deleted_element_ids),
                     step_index=int(step_index),
                     time_value=float(sub_time),
-                    dt=float(dt),
+                    dt=float(clock_dt),
                 )
                 max_damage_utilization = max(max_damage_utilization, substep_damage_utilization)
                 if damage_diags:

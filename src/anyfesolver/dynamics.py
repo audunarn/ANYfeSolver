@@ -2191,24 +2191,25 @@ def _solve_transient_newmark_under_lease(
         )
         reference_authority_guard(model)
         dt = float(times[step_index] - times[step_index - 1])
-        if descriptor_guarded:
-            final_step_index = len(times) - 1
-            nominal_end = float(final_step_index) * float(config.dt)
-            end_time = float(config.t_end)
-            nominal_roundoff = 8.0 * max(
-                math.ulp(end_time),
-                math.ulp(nominal_end),
-                float(final_step_index) * math.ulp(float(config.dt)),
-            )
-            nominal_uniform_end = (
-                abs(end_time - nominal_end) <= nominal_roundoff
-            )
-            if step_index < final_step_index or nominal_uniform_end:
-                dt = float(config.dt)
-            else:
-                dt = end_time - float(
-                    final_step_index - 1
-                ) * float(config.dt)
+        # Consistent step size: interior steps (and a nominally uniform end, within 8 ulp) integrate
+        # with the nominal config.dt; only a genuinely shortened last step uses its true remainder.
+        # A last step shortened by less than 8 ulp(t) integrates with the nominal dt, so the final
+        # time advance is off by at most 8 ulp(t).  The effective-matrix factorization is reused only
+        # when dt is bitwise equal to the cached dt, so matrix, right-hand side and state update
+        # always share one dt.
+        final_step_index = len(times) - 1
+        nominal_end = float(final_step_index) * float(config.dt)
+        end_time = float(config.t_end)
+        nominal_roundoff = 8.0 * max(
+            math.ulp(end_time),
+            math.ulp(nominal_end),
+            float(final_step_index) * math.ulp(float(config.dt)),
+        )
+        nominal_uniform_end = abs(end_time - nominal_end) <= nominal_roundoff
+        if step_index < final_step_index or nominal_uniform_end:
+            dt = float(config.dt)
+        else:
+            dt = end_time - float(final_step_index - 1) * float(config.dt)
         if dt <= 0.0:
             continue
         a0 = 1.0 / (beta * dt**2)
@@ -2217,21 +2218,10 @@ def _solve_transient_newmark_under_lease(
         a3 = 1.0 / (2.0 * beta) - 1.0
         a4 = gamma / beta - 1.0
         a5 = dt * (gamma / (2.0 * beta) - 1.0)
-        descriptor_dt_changed = (
-            descriptor_guarded
-            and cached_dt is not None
-            and dt != cached_dt
-        )
-        ordinary_dt_changed = (
-            not descriptor_guarded
-            and cached_dt is not None
-            and not np.isclose(dt, cached_dt)
-        )
         if (
             cached_solver is None
             or cached_dt is None
-            or descriptor_dt_changed
-            or ordinary_dt_changed
+            or dt != cached_dt
         ):
             if descriptor_reduction is not None:
                 stiffness_coefficient = one_plus_alpha * (
