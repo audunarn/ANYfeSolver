@@ -1329,7 +1329,7 @@ def _assemble_nonlinear_system_unchecked(
         from .matrix_assembly import _get_cached_sparsity_pattern
         rows_concat, cols_concat = _get_cached_sparsity_pattern(mesh, "tangent_stiffness")
 
-    from .elements import ShellElement
+    from .elements import ShellElement, _kernel_drilling_stabilization
     from .materials import is_isotropic_material
     from .nonlinear_element_evaluation import evaluate_nonlinear_element
     from .vectorized_nonlinear import (
@@ -1353,7 +1353,7 @@ def _assemble_nonlinear_system_unchecked(
             key = (
                 element.num_nodes,
                 element.thickness,
-                element.drilling_stabilization,
+                _kernel_drilling_stabilization(element, mesh),
                 element.reduced_integration,
                 element.hourglass_stabilization,
                 element.material_name,
