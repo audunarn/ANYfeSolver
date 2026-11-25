@@ -67,18 +67,12 @@ def _twisted_beam_tip(n, nw, dof, **shell_kw):
 _TWISTED_REFERENCE = {2: 0.005424, 1: 0.001754}  # MacNeal & Harder 1985, Table 3
 
 
-# Characterisation of the open finding: with the default drilling_stabilization=1e-3
-# warped Q4 is +31.4 % (in-plane) / +23.7 % (out-of-plane) too flexible at 24x4 and
-# the error does not vanish under refinement.  The contract change is the owner's
-# decision; when it lands, replace these bands by the reference tolerance.
-_DEFAULT_DRILLING_BAND = {2: (0.28, 0.35), 1: (0.20, 0.28)}
-
-
+# Before the owner's option C (warped Q4 drilling floor 0.1) the default
+# drilling_stabilization=1e-3 gave +31.4 % / +23.7 % at 24x4; now -0.12 % / -2.26 %.
 @pytest.mark.parametrize("dof", [2, 1], ids=["in_plane", "out_of_plane"])
-def test_twisted_beam_default_drilling_known_discrepancy(dof):
+def test_twisted_beam_default_drilling_matches_reference(dof):
     got = _twisted_beam_tip(24, 4, dof)
-    low, high = _DEFAULT_DRILLING_BAND[dof]
-    assert low < got / _TWISTED_REFERENCE[dof] - 1.0 < high
+    assert got == pytest.approx(_TWISTED_REFERENCE[dof], rel=0.03)
 
 
 @pytest.mark.parametrize("dof", [2, 1], ids=["in_plane", "out_of_plane"])

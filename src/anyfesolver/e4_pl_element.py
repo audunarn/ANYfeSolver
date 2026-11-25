@@ -6,7 +6,12 @@ contact and serialization behavior.  Planar facets use the qualified 35+3
 stationary E4-PL formulation for both tangent and physical recovery.  Genuinely
 warped facets use the established varying-frame Q4 surface kernel explicitly,
 because a single projected plane does not retain the six physical rigid modes
-on a warped bilinear surface.
+on a warped bilinear surface.  On those warped facets the kernels apply a
+drilling coefficient of at least ``_WARPED_Q4_DRILLING_FLOOR`` (0.1): with the
+default ``drilling_stabilization=1e-3`` the varying-frame kernel is too
+flexible and does not converge (MacNeal-Harder twisted beam +31 %/+24 % at
+24x4).  Explicit values below the floor are floored there; the stored value
+is kept unchanged and planar facets apply it unchanged.
 
 The physical condensed tangent, centre-PL term and retained drilling
 hourglass term are exposed separately so numerical fields cannot silently
@@ -133,6 +138,8 @@ _V6_CURRENT_STATE_TANGENT_DECOMPOSITION_POLICY_ID = (
 )
 _PLANAR_FORMULATION_ID = "E4_PL_QUALIFIED_PLANAR_LINEAR_V1"
 _WARPED_FORMULATIONS = frozenset({"varying_frame", "reject"})
+# Minimum drilling coefficient applied on warped (varying-frame) facets.
+_WARPED_Q4_DRILLING_FLOOR = 0.1
 _STATIONARY_RUIZ_ITERATIONS = 8
 _STATIONARY_RUIZ_ROW_NORM_RATIO_LIMIT = 2.0
 _STATIONARY_BACKWARD_ERROR_LIMIT = 1.0e-10
@@ -747,6 +754,7 @@ _Q4_FAST_FORBIDDEN_INSTANCE_SHADOWS = (
     "_constitutive_and_drill_stiffness",
     "_physical_director_context",
     "_warped_generalized_drilling_correction",
+    "_effective_drilling_stabilization",
     "_inverse_planar_jacobian",
 )
 _Q4_FAST_FORBIDDEN_MESH_SHADOWS = (
@@ -5697,6 +5705,30 @@ class QualifiedE4PLShellElement(
             self._bind_qualified_component_guard(mesh, material)
         return self._stiffness_matrix
 
+    def _effective_drilling_stabilization(self, coordinates: Any = None) -> float:
+        """Return the drilling coefficient applied on these reference coordinates.
+
+        Planar facets apply the stored ``drilling_stabilization`` unchanged.
+        Warped facets (``equation7_frame`` warpage above ``planar_tolerance``),
+        which use the varying-frame kernels, apply
+        ``max(drilling_stabilization, _WARPED_Q4_DRILLING_FLOOR)``: smaller
+        values, including explicit ones and 0, are floored and larger values
+        are honoured.  The stored attribute, ``to_dict`` and cache keys keep
+        the raw value.
+        """
+
+        alpha = getattr(self, "drilling_stabilization", 1.0e-3)
+        if not alpha < _WARPED_Q4_DRILLING_FLOOR:
+            return alpha
+        if coordinates is None:
+            raise ValueError(
+                "qualified Q4 effective drilling stabilization requires coordinates"
+            )
+        _frame, _local, warpage = equation7_frame(coordinates)
+        if warpage > self.planar_tolerance:
+            return _WARPED_Q4_DRILLING_FLOOR
+        return alpha
+
     def _warped_generalized_drilling_correction(
         self,
         mesh: Any,
@@ -5705,10 +5737,11 @@ class QualifiedE4PLShellElement(
         """Replace numbered ``A66`` drilling by its physical invariant."""
 
         correction = np.zeros((self.total_dofs, self.total_dofs), dtype=float)
+        drilling_alpha = float(self._effective_drilling_stabilization(coordinates))
         if (
             self.shell_section is None
             or self.reference_normal is None
-            or float(self.drilling_stabilization) == 0.0
+            or drilling_alpha == 0.0
         ):
             return correction
         coords = np.asarray(coordinates, dtype=float)
@@ -5727,7 +5760,7 @@ class QualifiedE4PLShellElement(
             assert section is not None
             numbered_scale = float(section.A[2, 2])
             invariant_scale = _invariant_generalized_drilling_scale(section.A)
-            delta = float(self.drilling_stabilization) * (
+            delta = drilling_alpha * (
                 invariant_scale - numbered_scale
             )
             if delta == 0.0:
