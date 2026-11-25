@@ -168,3 +168,32 @@ def test_transient_route_reuse_boundary_end_to_end():
     count, last_dt = _two_step_factorizations(t_above)
     assert 0.5 - last_dt > 2.0**-50
     assert count == 2
+
+
+def test_reuse_at_the_threshold_changes_the_response_only_at_rounding_level(monkeypatch):
+    # Review (Codex, dt round 1): at exactly 8 ulp the reused matrix was built with the
+    # previous dt while the right-hand side uses the current one.  Bound the effect: the
+    # response must agree with an exact refactorization to rounding level.
+    import anyfesolver.dynamics as dynamics_module
+
+    t_end = 2.0**-29 - 2.0**-79  # dt = 2**-30, last step exactly on the reuse threshold
+
+    def run(strict):
+        if strict:
+            monkeypatch.setattr(dynamics_module, "same_step_size", lambda dt, cached, scale: dt == cached)
+        else:
+            monkeypatch.setattr(dynamics_module, "same_step_size", same_step_size)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            model, load = _cantilever()
+            result = solve_transient_newmark(
+                model, TransientConfig(dt=2.0**-30, t_end=t_end), base_load_case=load
+            )
+        return (result.diagnostics["factorization_count"], np.asarray(result.displacements)[-1],
+                np.asarray(result.accelerations)[-1])
+
+    reused, u_reused, a_reused = run(strict=False)
+    exact, u_exact, a_exact = run(strict=True)
+    assert (reused, exact) == (1, 2)
+    assert np.abs(u_reused - u_exact).max() <= 1.0e-12 * np.abs(u_exact).max()
+    assert np.abs(a_reused - a_exact).max() <= 1.0e-12 * np.abs(a_exact).max()
