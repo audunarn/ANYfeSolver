@@ -421,7 +421,9 @@ def test_rule_b_estimate_handles_columns_rows_scaling_and_nonfinite() -> None:
     assert linalg.relative_forward_error_estimates(
         matrix, wrong, rhs, handle=handle, rows=slice(0, 2))[0] == 0.0
     wrong[0, 1] = np.nan
-    assert np.isinf(linalg.relative_forward_error_estimates(matrix, wrong, rhs, handle=handle)).all()
+    # A non-finite column fails alone; the finite column is still measured.
+    values = linalg.relative_forward_error_estimates(matrix, wrong, rhs, handle=handle)
+    assert np.isinf(values[1]) and values[0] == pytest.approx(0.5)
     # Scaling: matrix = diag(s) K diag(s), solution/rhs in K's variables.
     s = np.array([1.0, 0.5, 0.25])
     K = sparse.diags([2.0, 16.0, 128.0], format="csr")

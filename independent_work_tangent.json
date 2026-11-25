@@ -1,0 +1,14 @@
+{
+  "complete24_force_normalized_L1": 2.941952076223571e-11,
+  "steps": [
+    {
+      "h": 1e-05,
+      "tangent_error": 5.762072808558108e-11
+    },
+    {
+      "h": 3e-06,
+      "tangent_error": 7.65062629475054e-11
+    }
+  ],
+  "scope": "disposable active candidate; unchanged spatial-spin B/additive A"
+}

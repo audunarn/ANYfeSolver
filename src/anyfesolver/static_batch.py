@@ -551,13 +551,6 @@ def iter_linear_batches(
             cancellation_safe_point(cancellation_token, "static_batch.after_solve")
             phases["solve"] = _time.perf_counter() - phase_start
             phase_start = _time.perf_counter()
-            # Rule B per case, in the factorized variables (the displacement
-            # block of an augmented operator), before any gauge cleanup.
-            forward_errors = np.zeros(len(block)) if operator.handle is None else (
-                relative_forward_error_estimates(operator.matrix, solved, solve_rhs,
-                    handle=operator.handle, scaling=operator.scaling, rows=slice(0, rhs.shape[0])))
-            forward_error_seconds = _time.perf_counter() - phase_start
-            phase_start = _time.perf_counter()
             q = solved[:rhs.shape[0]]
             backend_quality = None
             if inertia_relief:
@@ -566,6 +559,16 @@ def iter_linear_batches(
                 # Only fix roundoff in the displacement gauge. Never project
                 # any physical component out of the effective load.
                 q -= operator.rigid_modes @ (operator.rigid_modes.T @ q)
+            # Rule B per case, in the factorized variables (the displacement
+            # block of an augmented operator), after the permitted inertia-relief
+            # gauge cleanup (q is a view of solved): a raw gauge drift is reported
+            # by backend_gauge_error, not refused.
+            certification_start = _time.perf_counter()
+            forward_errors = np.zeros(len(block)) if operator.handle is None else (
+                relative_forward_error_estimates(operator.matrix, solved, solve_rhs,
+                    handle=operator.handle, scaling=operator.scaling, rows=slice(0, rhs.shape[0])))
+            forward_error_seconds = _time.perf_counter() - certification_start
+            phase_start += forward_error_seconds  # reported under certification
             values = output.reconstruct(q)
             need_full = recovery.include_stresses or recovery.include_reactions or recovery.include_displacements
             full = np.asarray(constraint.T @ q + constraint.u0[:, None]) if need_full else None

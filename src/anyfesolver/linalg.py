@@ -1619,10 +1619,16 @@ def relative_forward_error_estimates(
                 y = y / s
                 b = s * b
             residual = np.asarray(matrix @ y - b, dtype=float).reshape(y.shape)
-            if np.any(~np.isfinite(residual)) or np.any(~np.isfinite(y)):
+            R = residual.reshape(residual.shape[0], -1)
+            # A non-finite column fails alone; the others are still measured.
+            finite = np.all(np.isfinite(R), axis=0) & np.all(
+                np.isfinite(y.reshape(y.shape[0], -1)), axis=0)
+            if not np.any(finite):
                 return failed
+            R = np.where(finite[None, :], R, 0.0)
             correction = (
-                _uncounted_solve(handle, residual) if handle is not None else solve(residual)
+                _uncounted_solve(handle, R.reshape(residual.shape))
+                if handle is not None else solve(R.reshape(residual.shape))
             )
             correction = np.asarray(correction, dtype=float).reshape(y.shape)
             Y = y.reshape(y.shape[0], -1)
@@ -1630,7 +1636,7 @@ def relative_forward_error_estimates(
             if rows is not None:
                 Y, C = Y[rows], C[rows]
             if Y.shape[0] == 0:
-                return np.zeros(columns)
+                return np.where(finite, 0.0, np.inf)
             y_norm = np.max(np.abs(Y), axis=0)
             c_norm = np.max(np.abs(C), axis=0)
             values = np.where(
@@ -1638,6 +1644,7 @@ def relative_forward_error_estimates(
                 c_norm / np.where(y_norm > 0.0, y_norm, 1.0),
                 np.where(c_norm == 0.0, 0.0, np.inf),
             )
+            values = np.where(finite, values, np.inf)
     except Exception:
         return failed
     return np.where(np.isfinite(values), values, np.inf).astype(float)
