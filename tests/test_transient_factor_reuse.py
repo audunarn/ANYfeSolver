@@ -2,6 +2,7 @@
 import warnings
 
 import numpy as np
+import pytest
 
 from anyfesolver import (
     BoundaryCondition,
@@ -197,3 +198,66 @@ def test_reuse_at_the_threshold_changes_the_response_only_at_rounding_level(monk
     assert (reused, exact) == (1, 2)
     assert np.abs(u_reused - u_exact).max() <= 1.0e-12 * np.abs(u_exact).max()
     assert np.abs(a_reused - a_exact).max() <= 1.0e-12 * np.abs(a_exact).max()
+
+
+def _unit_oscillator():
+    """One free axial DOF with K = EA/L = 1 and M = rho*A*L/3 = 1 (consistent bar mass)."""
+    model = FEModel("m_k_1")
+    model.add_material("unit", 1.0, 0.3, density=3.0)
+    model.add_node(1, 0.0, 0.0, 0.0)
+    model.add_node(2, 1.0, 0.0, 0.0)
+    model.add_element(1, BeamElement(1, [1, 2], "unit", {"area": 1.0, "Iy": 1.0, "Iz": 1.0, "J": 1.0}))
+    model.add_boundary_condition(BoundaryCondition("fix1", [1], {d: 0.0 for d in DOFS}))
+    model.add_boundary_condition(
+        BoundaryCondition("axial", [2], {d: 0.0 for d in DOFS if d != "ux"})
+    )
+    load = LoadCase("tip")
+    load.add_nodal_load(2, [1.0, 0, 0, 0, 0, 0])
+    return model, load
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "pre-existing known limit: on reuse the effective matrix keeps the cached dt while the "
+        "right-hand side and state update use the current grid dt, and the reuse tolerance scales "
+        "with |t| (dynamics.py same_step_size ~L1119, reuse site ~L2258; contact.py ~L4085 alike). "
+        "Owner decision pending (option b: consistent-dt integration)."
+    ),
+)
+def test_reused_step_on_a_fine_grid_matches_exact_refactorization(monkeypatch):
+    # Codex P2 (dt round 2), M = K = 1 at static equilibrium (u = 1, v = a = 0, F = 1): the
+    # exact response is u = 1, a = 0 for every step.  With dt = 2**-20 and the last step
+    # shortened by exactly 8 ulp(t), the last step is reused with the cached matrix but the
+    # current dt, giving a relative a0 mismatch 2**-40 and a spurious acceleration ~4 m/s^2
+    # (Codex's 2**-4 end time gives 2**-34 and ~512 m/s^2; shortened here to keep the run fast).
+    import anyfesolver.dynamics as dynamics_module
+
+    dt = 2.0**-20
+    t_end = 2.0**-10 - 2.0**-60
+
+    def run(strict):
+        if strict:
+            monkeypatch.setattr(dynamics_module, "same_step_size", lambda d, c, s: d == c)
+        else:
+            monkeypatch.setattr(dynamics_module, "same_step_size", same_step_size)
+        model, load = _unit_oscillator()
+        node = model.mesh.get_node(2)
+        u_start = np.zeros(12)
+        u_start[node.dofs[0]] = 1.0
+        result = solve_transient_newmark(
+            model,
+            TransientConfig(dt=dt, t_end=t_end, initial_displacement=u_start),
+            base_load_case=load,
+        )
+        return (result.diagnostics["factorization_count"],
+                np.asarray(result.displacements)[-1, node.dofs[0]],
+                np.asarray(result.accelerations)[-1, node.dofs[0]])
+
+    reused, u_reused, a_reused = run(strict=False)
+    exact, u_exact, a_exact = run(strict=True)
+    assert (reused, exact) == (1, 2)
+    a0 = 4.0 / dt**2
+    assert abs(u_reused - u_exact) <= 1.0e-13 * abs(u_exact)
+    assert abs(a_reused - a_exact) <= 64.0 * np.finfo(float).eps * abs(u_exact) * a0

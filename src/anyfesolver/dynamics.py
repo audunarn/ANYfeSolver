@@ -1140,6 +1140,19 @@ def same_step_size(dt: float, cached_dt: float, time_scale: float) -> bool:
     test_reuse_at_the_threshold_changes_the_response_only_at_rounding_level).
     With a large rigid displacement and a tiny dt the recovered acceleration
     carries absolute noise of order eps*|u|*a0 either way.
+
+    The matrix/right-hand-side dt mismatch is the same class of effect on every
+    reused step of an ordinary grid: its relative size is |dt_i - cached_dt|/dt,
+    at most 8 ulp(t)/dt at the threshold and about 16 ulp(t)/dt between two
+    grid steps, which is the relative error of ``a0`` (twice that).  It is
+    1e-12 (dt=1e-3, 1e4 steps), 1.5e-11 (dt=1e-4, 1e5 steps) and 1.1e-9
+    (dt=1e-5, 1e7 steps) measured on ordinary grids.  Where the system is
+    well conditioned (M = K = 1, dt = 2**-20, last step shortened by 8
+    ulp(t)) it is not rounding level: the final acceleration of a body at
+    static equilibrium is wrong by ~4 m/s^2 instead of ~0
+    (test_reused_step_on_a_fine_grid_matches_exact_refactorization, strict
+    xfail).  Owner decision pending: consistent-dt integration (reuse the
+    cached dt in the right-hand side and update, or refactorize on any change).
     """
 
     tolerance = 8.0 * math.ulp(max(abs(float(time_scale)), abs(float(dt))))
