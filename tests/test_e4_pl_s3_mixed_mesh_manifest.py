@@ -110,7 +110,7 @@ Q4_SOURCE_BINDING_DELTA_SHA256: str | None = (
 Q4_SOURCE_BINDING_DELTA2 = (
     ROOT / 'docs' / 'reference_cases' / 'e4_pl_source_binding_20261125.json'
 )
-Q4_SOURCE_BINDING_DELTA2_SHA256: str | None = "CFBA512F71CF589FC8C2E31E7EE12FA7A58E90F6ADDBAA28EA7E52FD7B3B3032"
+Q4_SOURCE_BINDING_DELTA2_SHA256: str | None = None
 SIX_CARRIERS = (
     'e4_pl_element.py',
     'e4_pl_s3_element.py',
