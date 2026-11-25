@@ -681,13 +681,17 @@ def _iterative_inputs_in_safe_range(K_red: Any, f: np.ndarray, q: np.ndarray) ->
     """
     lo, hi = _ITERATIVE_SAFE_RANGE
     data = getattr(K_red, "data", K_red)
-    for values in (np.asarray(data), np.asarray(f), np.asarray(q)):
-        if values.size == 0:
+    with np.errstate(all="ignore"):
+        magnitudes = [np.abs(np.asarray(v, dtype=float)).reshape(-1) for v in (data, f, q)]
+    if any(m.size and not np.all(np.isfinite(m)) for m in magnitudes):
+        return True  # non-finite input is reported as NONFINITE by the main check, whatever the order
+    # Known fail-closed limits (review round 5, accepted): a CSR row whose partial sums
+    # overflow although every entry is in range (~1e8 entries cancelling at 1e300) is
+    # refused as NONFINITE; a subnormal RHS entry next to |F| ~ atol can switch the atol
+    # criterion off (false rejection only).  Neither can accept a wrong solve.
+    for magnitude in magnitudes:
+        if magnitude.size == 0:
             continue
-        with np.errstate(all="ignore"):
-            magnitude = np.abs(np.asarray(values, dtype=float))
-        if not np.all(np.isfinite(magnitude)):
-            return True  # non-finite input is reported as NONFINITE by the main check
         nonzero = magnitude[magnitude > 0.0]
         if nonzero.size and (float(nonzero.max()) > hi or float(nonzero.max()) < lo):
             return False

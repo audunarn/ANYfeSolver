@@ -465,3 +465,8 @@ def test_si_unit_models_sit_inside_the_safe_range():
         assert _iterative_inputs_in_safe_range(K, F, q)
         seen.append(max(float(abs(K).max()), float(np.abs(F).max()), float(np.abs(q).max())))
     assert lo < min(seen) and max(seen) < hi
+
+
+def test_nonfinite_input_is_labelled_nonfinite_regardless_of_order():
+    out = _verify(np.array([[1.0e151]]), np.array([np.nan]), np.array([1.0]), range_guard=True)
+    assert out["relative_residual_disposition"] == "NONFINITE"
