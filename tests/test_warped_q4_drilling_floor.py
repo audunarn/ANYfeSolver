@@ -269,7 +269,7 @@ def test_nonlinear_routes_apply_the_floored_coefficient(route: str) -> None:
     assert_close(default_tangent, tangent_of(warped_explicit))
     assert_close(_element_tangent_sum(warped_default), _element_tangent_sum(warped_explicit))
     honoured, _ = _twisted_beam(4, 1, alpha=1.0)
-    assert not np.allclose(tangent_of(honoured), default_tangent, rtol=1.0e-10, atol=0.0)
+    assert not np.allclose(tangent_of(honoured), default_tangent, rtol=1.0e-9, atol=0.0)
 
 
 @pytest.mark.parametrize("dof", ["uz", "uy"])

@@ -12,7 +12,7 @@ from anyfesolver.beam_axes_check import (
     section_is_orientation_sensitive,
 )
 from anyfesolver.boundary import FixedSupport
-from anyfesolver.elements import BeamElement, _beam_rotation_matrix
+from anyfesolver.elements import BeamElement, QuadraticBeamElement, _beam_rotation_matrix
 
 _W, _T = 0.2, 0.1
 _STRIP = {"area": _W * _T, "Iy": _W * _T**3 / 12, "Iz": _T * _W**3 / 12, "J": 0.229 * _W * _T**3}
@@ -180,3 +180,16 @@ def test_unregistered_material_name_uses_the_solver_default_material():
     report = check_default_beam_axes(model)
     assert not report.has_findings
     assert all(not r.orientation_sensitive for r in report.records)
+
+
+def test_joint_at_a_quadratic_midside_node_is_reported():
+    model = FEModel("midside")
+    model.add_material("mat", 1.0e7, 0.25)
+    axis = np.array([-np.sin(0.1), np.cos(0.1), 0.0])  # |e1.Y| = 0.995: Z trial
+    for k in range(3):
+        model.add_node(k + 1, *(0.5 * k * axis))
+    model.add_node(4, *(0.5 * axis + np.array([-np.sin(0.6), np.cos(0.6), 0.0])))  # 0.825: Y trial
+    model.add_element(1, QuadraticBeamElement(1, [1, 2, 3], "mat", dict(_STRIP)))
+    model.add_element(2, BeamElement(2, [2, 4], "mat", dict(_STRIP)))
+    report = check_default_beam_axes(model)
+    assert dict(report.switch_nodes) == {2: (1, 2)}

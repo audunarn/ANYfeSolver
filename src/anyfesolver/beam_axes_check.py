@@ -205,7 +205,7 @@ def check_default_beam_axes(model: Any) -> DefaultBeamAxesReport:
     by_node: Dict[int, List[BeamAxisRecord]] = {}
     for record in records:
         if record.orientation_sensitive:
-            for node_id in (record.node_ids[0], record.node_ids[-1]):
+            for node_id in record.node_ids:  # includes quadratic midside nodes
                 by_node.setdefault(node_id, []).append(record)
     switch_nodes = {
         node_id: tuple(sorted(r.element_id for r in members))

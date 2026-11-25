@@ -681,6 +681,13 @@ def model_configuration_descriptor(
             _guard_model=model,
         )
         descriptor["id"] = int(element_id)
+        applied = _applied_drilling_if_changed(element, mesh)
+        if applied is not None:
+            # Kernels apply a different coefficient than the stored one (the
+            # 2026-11-24 warped qualified-Q4 floor): bind it, so checkpoints
+            # written under other drilling mechanics are rejected.  Absent for
+            # every other element, which keeps their fingerprints unchanged.
+            descriptor["applied_drilling_stabilization"] = applied
         element_records.append(descriptor)
 
     material_items = tuple(materials.items())
@@ -756,6 +763,21 @@ def model_configuration_descriptor(
             )
         ],
     }
+
+
+def _applied_drilling_if_changed(element: Any, mesh: Any) -> Any:
+    """Applied drilling coefficient when it differs from the stored value, else None."""
+
+    if not hasattr(element, "drilling_stabilization") or mesh is None:
+        return None
+    from .elements import ShellElement, _kernel_drilling_stabilization
+
+    if not isinstance(element, ShellElement):
+        return None
+    applied = _kernel_drilling_stabilization(element, mesh)
+    if applied == float(element.drilling_stabilization):
+        return None
+    return float(applied)
 
 
 def model_configuration_fingerprint(
