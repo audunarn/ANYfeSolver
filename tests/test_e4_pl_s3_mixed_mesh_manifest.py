@@ -700,7 +700,9 @@ def _require_sole_import_form(relative: str) -> None:
         assert name != path.name.casefold(), (
             f"{relative}: {entry_name} is another spelling of the bound module"
         )
-        assert not any(
+        # Only a regular file with an importable suffix is another module form; a
+        # directory merely named like one (e.g. ``elements.pyc/``) is not.
+        assert entry_is_dir or not any(
             name.endswith(suffix) and name[: -len(suffix)] == stem for suffix in suffixes
         ), f"{relative}: {entry_name} is another importable form of the bound module"
     if relative.startswith("src/"):
@@ -2550,5 +2552,17 @@ def test_import_form_check_ignores_an_extensionless_regular_file_but_not_a_direc
     (tmp_path / "pkg" / "elements" / "__init__.py").unlink()
     (tmp_path / "pkg" / "elements").rmdir()
     (tmp_path / "pkg" / "elements.pyc").write_bytes(b"\0")  # importable suffix
+    with pytest.raises(AssertionError, match="importable form"):
+        _require_sole_import_form("pkg/elements.py")
+
+
+def test_import_form_check_ignores_a_directory_named_like_a_suffix_form(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    # Codex Astra P3: a directory ``elements.pyc/`` is no module form of ``elements``.
+    _listing(tmp_path, monkeypatch, "elements.py", "elements.pyc/")
+    _require_sole_import_form("pkg/elements.py")
+    (tmp_path / "pkg" / "elements.pyc").rmdir()
+    (tmp_path / "pkg" / "elements.pyc").write_bytes(b" ")  # the regular file still shadows
     with pytest.raises(AssertionError, match="importable form"):
         _require_sole_import_form("pkg/elements.py")
