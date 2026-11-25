@@ -131,3 +131,40 @@ def test_grid_rounding_in_step_size_still_reuses_the_factorization():
     assert result.diagnostics["factorization_count"] == 2  # uniform steps + final short step
     assert same_step_size(0.0013, 0.0013 + 2.0e-19, 0.07)
     assert not same_step_size(1.0e-8, 5.0e-9, 1.5e-8)
+
+
+def test_same_step_size_boundary_is_eight_ulp():
+    for cached, scale in ((1.0, 1.0), (0.5, 1024.0)):
+        tol = 8.0 * float(np.spacing(max(abs(scale), abs(cached))))
+        at = cached + tol
+        assert at - cached == tol  # exactly representable
+        assert same_step_size(at, cached, scale)
+        assert same_step_size(cached + 0.5 * tol, cached, scale)
+        above = float(np.nextafter(at, np.inf))
+        assert above - cached > tol
+        assert not same_step_size(above, cached, scale)
+        assert same_step_size(cached - tol, cached, scale)
+        assert not same_step_size(float(np.nextafter(cached - tol, -np.inf)), cached, scale)
+
+
+def _two_step_factorizations(t_end):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        model, load = _cantilever()
+        result = solve_transient_newmark(
+            model, TransientConfig(dt=0.5, t_end=t_end), base_load_case=load
+        )
+    assert len(result.times) == 3
+    return result.diagnostics["factorization_count"], result.times[2] - result.times[1]
+
+
+def test_transient_route_reuse_boundary_end_to_end():
+    # times [0, 0.5, t_end] with t_end in [0.5, 1): tolerance = 8 * 2**-53 = 2**-50
+    t_at = 1.0 - 2.0**-50  # last dt = 0.5 - 2**-50: difference exactly at tolerance
+    count, last_dt = _two_step_factorizations(t_at)
+    assert 0.5 - last_dt == 2.0**-50
+    assert count == 1
+    t_above = float(np.nextafter(t_at, 0.0))  # one representable value further
+    count, last_dt = _two_step_factorizations(t_above)
+    assert 0.5 - last_dt > 2.0**-50
+    assert count == 2

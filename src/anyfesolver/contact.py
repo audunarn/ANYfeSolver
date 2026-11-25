@@ -4081,6 +4081,7 @@ def solve_transient_sphere_impact(
             a3 = 1.0 / (2.0 * beta) - 1.0
             a4 = gamma / beta - 1.0
             a5 = dt * (gamma / (2.0 * beta) - 1.0)
+            # reuse only within grid rounding (see same_step_size, incl. its known limit)
             if cached_solver is None or cached_dt is None or not same_step_size(dt, cached_dt, target_time):
                 K_eff = (one_plus_alpha * K_red + a0 * M_red + one_plus_alpha * a1 * C_red).tocsr()
                 cached_solver = factorize(K_eff, MatrixClass.SYMMETRIC_INDEFINITE, signature=f"sphere_impact.effective:{dt:.16g}")

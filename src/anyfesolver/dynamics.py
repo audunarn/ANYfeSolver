@@ -1127,6 +1127,12 @@ def same_step_size(dt: float, cached_dt: float, time_scale: float) -> bool:
     requires a new factorization; a fixed absolute tolerance such as
     ``np.isclose`` atol=1e-8 does not scale with ``dt`` and wrongly treats
     ``1e-8`` and ``5e-9`` as equal.
+
+    Known limit: the tolerance scales with ``|time_scale|``, not with ``dt``.
+    On long runs with tiny steps (for example t = 1000 s, dt = 1e-6) the reused
+    factor's ``a0 = 1/(beta dt^2)`` can differ from the step's exact ``a0`` by up
+    to about 1e-6 relative.  This equals the previous ``np.isclose`` behaviour
+    and the rounding of the grid's own ``dt``, so it is not new.
     """
 
     tolerance = 8.0 * math.ulp(max(abs(float(time_scale)), abs(float(dt))))
@@ -2242,6 +2248,7 @@ def _solve_transient_newmark_under_lease(
         ordinary_dt_changed = (
             not descriptor_guarded
             and cached_dt is not None
+            # reuse only within grid rounding (see same_step_size, incl. its known limit)
             and not same_step_size(dt, cached_dt, float(times[step_index]))
         )
         if (
