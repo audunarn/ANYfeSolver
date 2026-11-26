@@ -79,4 +79,33 @@ cadence successor.
 
 ## Measurements
 
-Pending the final A/B CPU run on the G2 base (d4cf5011f).
+Five pairs of separate processes, alternating between the G2 base (d4cf5011f) and L4. The
+figures are the median CPU time (`process_time`) for `solve_linear` plus `compute_stresses`,
+in seconds. Python 3.14 with native contractions, Windows. The machine was loaded (about 50% CPU),
+so wall-clock time is not used.
+
+| case | base solve | base recover | base total | L4 solve | L4 recover | L4 total | total | L4 faster |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| irregular plate 64x64 | 13.97 | 8.75 | 22.67 | 11.03 | 4.48 | 15.45 | 1.47x | 5/5 |
+| plate 64x64 | 5.28 | 8.19 | 13.47 | 5.34 | 4.23 | 9.58 | 1.41x | 4/5 |
+| pinched cylinder 32x32 | 1.25 | 2.06 | 3.30 | 1.27 | 1.14 | 2.41 | 1.37x | 5/5 |
+| Scordelis-Lo 32x32 | 1.86 | 2.06 | 3.92 | 1.91 | 1.12 | 3.02 | 1.30x | 5/5 |
+| stiffened plate 32x32 | 1.30 | 2.16 | 3.45 | 1.30 | 1.23 | 2.48 | 1.39x | 4/5 |
+| mixed Q4/S3 plate 32x32 | 1.66 | 2.58 | 4.22 | 1.64 | 2.08 | 3.72 | 1.13x | 4/5 |
+| mixed Q4/S3 Scordelis-Lo 32x32 | 2.83 | 2.55 | 5.38 | 2.83 | 2.05 | 4.88 | 1.10x | 4/5 |
+
+- **Recovery** is 1.75-1.95x faster on pure Q4 meshes and 1.24x on mixed meshes, where only
+  the Q4 half is batched.
+- **Solve** is unchanged (0.98-1.01x) wherever the shared-geometry cache already forms only one
+  element per geometry. It is 1.27x faster on the irregular plate, where every element has a
+  distinct geometry.
+- **16x16 meshes:** the total CPU time of six repetitions is 1.12-1.50x lower on every case.
+- **8x8 meshes:** below both minimum batch sizes, so no batch runs. The only added work is the
+  formation predictor and the recovery prepass's element count. Measured directly, that is about
+  5 µs per solve, about 0.002% of a 280-445 ms solve. The A/B spread of up to ±2% on these cases
+  is timing noise on the loaded machine.
+- **Nonlinear runs:** the eight guard-cadence hash cases are bit-identical. The speed effect on
+  nonlinear runs was not measured; earlier profiling put the batched numerics at about 6% of a
+  nonlinear Q4 run.
+- **Plate 64 solve:** the earlier unexplained gain does not reproduce on the G2 base (0.99x) and is
+  not claimed.
