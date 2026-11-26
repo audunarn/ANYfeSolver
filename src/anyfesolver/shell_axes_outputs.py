@@ -1,8 +1,11 @@
-"""Opt-in shell result-axes outputs, derived outside the pinned elements (D2-1, B2).
+"""Opt-in shell result-axes outputs, derived outside the pinned elements (D2-1, B2/B3).
 
-``derive_shell_axes_outputs`` takes the dict that
-``element.compute_stresses(mesh, displacements, material, return_global=True)``
-already returned and derives, per recovery station,
+``recover_shell_axes(element, mesh, displacements, material)`` (route B3,
+owner 2026-11-26) runs the recovery itself through the trusted class method
+``type(element).compute_stresses(element, mesh, displacements, material,
+return_global=True)`` and returns that recovery (the dict, exactly as the
+element produced it) together with the axes outputs derived from it, per
+recovery station:
 
 * the physical station positions (shape-function interpolation of the nodes at
   exactly the stations the element used, in the element's own order),
@@ -18,9 +21,23 @@ already returned and derives, per recovery station,
 
 The frames are RECOMPUTED here through the existing read-only helpers (that is
 what is validated) and every call cross-checks them against quantities the
-solver itself emitted (design D2 section 1, rules (1)-(5), revision 4).  A
-cross-check failure never raises: the family is refused with
-``AXES_FRAME_RULE_MISMATCH`` and its derived array is omitted.
+solver itself emitted (design D2 section 1, rules (1)-(5), revision 4).  Rule
+(6) (B3) certifies every basis normal geometrically, independently of the
+tensors (which cannot fix the sign of a normal): legacy and e4-pl normals
+against the normalized cross product of the shape-function tangents at the
+station (the element centre for planar e4-pl and the warped centre frame),
+oriented by the physical reference director where the element has one; S3
+and V2D normals against the normalized owner ``reference_normal``; the V2D
+frame also against the frame the recovery emitted.  A cross-check failure
+never raises: the family is refused with ``AXES_FRAME_RULE_MISMATCH`` and its
+derived array is omitted; a frame that a refused family shows wrong feeds no
+returned value.
+
+Before anything else the element is admitted by exact type, instance
+attributes shadowing element methods are refused, and the scalar attributes
+both the recovery and this module read must be exact built-in types
+(``float``/``int``/``numpy.float64``; polarity ``int`` +-1; reference normal a
+float64 ndarray of shape (3,) or None).
 
 Frames per branch (``station`` = per recovery point, ``centre`` = element
 centre; families m = membrane, b = bending, q = shear):
@@ -57,6 +74,7 @@ own global family tensors are the reference.
 from __future__ import annotations
 
 import inspect
+import math
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 
@@ -68,22 +86,28 @@ __all__ = [
     "Refusal",
     "ShellAxesFrameRuleMismatch",
     "ShellAxesOutputs",
+    "ShellAxesRecovery",
     "ShellAxesRefusal",
-    "derive_shell_axes_outputs",
+    "recover_shell_axes",
 ]
 
 AXES_FRAME_RULE_MISMATCH = "AXES_FRAME_RULE_MISMATCH"
 FAMILIES: Tuple[str, str, str] = ("membrane", "bending", "shear")
 REFUSAL_REASONS = frozenset(
-    {"residual", "nonfinite", "no_reference", "unresolvable_family", "out_of_plane"}
+    {"residual", "nonfinite", "no_reference", "unresolvable_family", "out_of_plane", "normal_geometry"}
 )
+# reasons that are evidence against the frame a family uses
+_FRAME_EVIDENCE = ("residual", "out_of_plane", "nonfinite", "normal_geometry")
 
 EPS = 2.0**-52
 RELATIVE_BOUND = 1.0e-13  # rule (1) relative allowance and the tangency bound
 ROUNDOFF = 64.0 * EPS  # rule (1) allowance of the emitted m +- b surfaces
 RESOLUTION = 1.0e-9  # rule (3): a_f <= 1e-9 s_f
 LEGACY_RECOVERY_FLOOR = 1.0e-12  # elements._SMALL in 6 M / max(h^2, _SMALL)
-ORTHONORMAL_BOUND = 1.0e-13  # |G^T G - I| of every frame used (and det G > 0)
+ORTHONORMAL_BOUND = 1.0e-13  # |G^T G - I| of every frame used (and det G > 0); V2D: see _v2d_frame
+GEOMETRY_BOUND = 1.0e-13  # rule (6): |n - n_geometry| (measured <= 2.3e-16 on every fixture)
+_FLOAT_TYPES = (float, int, np.float64)
+_INT_TYPES = (int, np.int64)
 
 FAMILY_KEYS = {
     "membrane": "global_membrane_resultant_tensors",
@@ -163,6 +187,16 @@ class ShellAxesOutputs:
         return self
 
 
+@dataclass(frozen=True)
+class ShellAxesRecovery:
+    """``recovery``: the dict the element's own ``compute_stresses(...,
+    return_global=True)`` returned (not copied, not modified); ``axes``: the
+    outputs derived from exactly that recovery."""
+
+    recovery: Dict[str, Any]
+    axes: ShellAxesOutputs
+
+
 # ----------------------------------------------------------------- helpers
 def _frozen(values: Any, dtype=float) -> np.ndarray:
     array = np.array(values, dtype=dtype, copy=True)
@@ -209,6 +243,8 @@ def _finite(*arrays: Any) -> bool:
 def _numeric(value: Any, what: str) -> np.ndarray:
     """Float array of a recovery value, or a typed refusal (never a bare error)."""
 
+    if np.iscomplexobj(value):
+        raise ShellAxesRefusal("AXES_RECOVERY_MALFORMED", f"{what} is complex")
     try:
         return np.array(value, dtype=float, copy=True)
     except (TypeError, ValueError, OverflowError) as exc:
@@ -226,14 +262,14 @@ def _column_stack(recovered: Mapping[str, Any], keys: Tuple[str, ...], n: int) -
     return np.column_stack(columns)
 
 
-def _frame_problem(frames: np.ndarray) -> str:
-    """'' when every frame is finite, orthonormal and right-handed."""
+def _frame_problem(frames: np.ndarray, bound: float = ORTHONORMAL_BOUND) -> str:
+    """'' when every frame is finite, orthonormal (to ``bound``) and right-handed."""
 
     frames = np.asarray(frames, dtype=float)
     if not _finite(frames):
         return "frame is not finite"
     gram = np.einsum("nki,nkj->nij", frames, frames) - np.eye(3)[None]
-    if not float(np.max(np.abs(gram))) <= ORTHONORMAL_BOUND:
+    if not float(np.max(np.abs(gram))) <= bound:
         return "frame is not orthonormal"
     if not bool(np.all(np.linalg.det(frames) > 0.0)):
         return "frame is not right-handed (reversed basis normal)"
@@ -254,6 +290,61 @@ def _refuse_method_shadows(element: Any) -> None:
                 "AXES_INSTANCE_SHADOW",
                 f"instance attribute {name!r} shadows the {type(element).__name__} method",
             )
+
+
+def _check_attribute_types(element: Any, names: Tuple[str, ...]) -> None:
+    """Exact built-in scalar types for the attributes the recovery and B2 both read.
+
+    A float subclass (say with its own ``**`` or ``==``) would let the recovery
+    and this module give the same attribute different meanings (Codex r4).
+    """
+
+    for name in names:
+        value = getattr(element, name)
+        if name == "director_polarity":
+            ok = type(value) in _INT_TYPES and value in (1, -1)
+        elif name == "reference_normal":
+            ok = value is None or (
+                type(value) is np.ndarray and value.dtype == np.float64 and value.shape == (3,)
+            )
+        else:
+            ok = type(value) in _FLOAT_TYPES
+        if not ok:
+            raise ShellAxesRefusal(
+                "AXES_ATTRIBUTE_TYPE",
+                f"{name} is {type(value).__name__}; an exact built-in type is required",
+            )
+
+
+def _tangent_normals(element: Any, coords: np.ndarray, points: np.ndarray) -> np.ndarray:
+    """Rule (6) geometry: normalized cross product of the shape-function tangents."""
+
+    out = np.zeros((len(points), 3), dtype=float)
+    for index, (xi, eta) in enumerate(points):
+        _n, d_xi, d_eta = element.compute_shape_functions(float(xi), float(eta))
+        cross = np.cross(np.asarray(d_xi, dtype=float) @ coords, np.asarray(d_eta, dtype=float) @ coords)
+        length = float(np.linalg.norm(cross))
+        if not (math.isfinite(length) and length > 0.0):
+            raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "zero or nonfinite surface tangent cross product")
+        out[index] = cross / length
+    return out
+
+
+def _oriented(normals: np.ndarray, director: np.ndarray) -> np.ndarray:
+    """Orient each geometric normal to the physical reference director."""
+
+    alignment = normals @ np.asarray(director, dtype=float)
+    if not (_finite(alignment) and bool(np.all(alignment != 0.0))):
+        raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "geometric normal is orthogonal to the director")
+    return normals * np.sign(alignment)[:, None]
+
+
+def _unit_rows(vector: Any, n: int) -> np.ndarray:
+    vector = np.asarray(vector, dtype=float)
+    length = float(np.linalg.norm(vector))
+    if not (math.isfinite(length) and length > 0.0):
+        raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "reference normal is zero or not finite")
+    return np.repeat((vector / length)[None], n, axis=0)
 
 
 def _requested_points(natural_points: Any) -> Optional[np.ndarray]:
@@ -297,6 +388,10 @@ class _Branch:
     conventions: Dict[str, str]
     metadata: Dict[str, Any]
     consistency_problem: str = ""
+    expected_station_normals: Optional[np.ndarray] = None  # rule (6), (n,3)
+    expected_shear_normals: Optional[np.ndarray] = None  # rule (6), (n,3)
+    orthonormal_bound: float = ORTHONORMAL_BOUND
+    emitted_frame: Optional[np.ndarray] = None  # V2D recovery "frame"
 
 
 def _apply_override(
@@ -358,20 +453,39 @@ def _numbered_conventions() -> Dict[str, str]:
     return {"membrane": "polarity_even", "bending": "numbered_normal", "shear": "numbered_normal"}
 
 
-def _resolve_branch(element, mesh, material, recovered, override, requested) -> _Branch:
-    from .e4_pl_element import _GAUSS, QualifiedE4PLShellElement, equation7_frame
-    from .e4_pl_s3_element import TRIANGLE_QUADRATURE, QualifiedE4PLS3ShellElement, triangle_frame
-    from .e4_pl_s3_v2d_element import HAMMER_POINTS, NativeParityE4PLS3V2DShellElement
+def _admit(element: Any) -> type:
+    """Exact-type admission, shadow refusal and attribute types, before any other access."""
+
+    from .e4_pl_element import QualifiedE4PLShellElement
+    from .e4_pl_s3_element import QualifiedE4PLS3ShellElement
+    from .e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
     from .elements import ShellElement
 
-    # exact type first: no attribute of an unsupported class (or subclass) is read
+    # type() never runs element code; no attribute of an unsupported class is read
     kind = type(element)
-    if kind not in (ShellElement, QualifiedE4PLShellElement, QualifiedE4PLS3ShellElement, NativeParityE4PLS3V2DShellElement):
+    names = {
+        ShellElement: ("thickness",),
+        QualifiedE4PLShellElement: ("thickness", "planar_tolerance", "reference_normal", "director_polarity"),
+        QualifiedE4PLS3ShellElement: ("thickness", "reference_normal", "director_polarity", "reference_surface_offset"),
+        NativeParityE4PLS3V2DShellElement: ("thickness", "reference_normal", "director_polarity", "reference_surface_offset"),
+    }
+    if not any(kind is admitted for admitted in names):
         raise ShellAxesRefusal(
             "AXES_FORMULATION_NOT_QUALIFIED",
             f"no axes adapter for element type {kind.__name__}",
         )
     _refuse_method_shadows(element)
+    _check_attribute_types(element, names[kind])
+    return kind
+
+
+def _resolve_branch(element, mesh, material, recovered, override, requested) -> _Branch:
+    from .e4_pl_element import _GAUSS, QualifiedE4PLShellElement, equation7_frame
+    from .e4_pl_s3_element import TRIANGLE_QUADRATURE, QualifiedE4PLS3ShellElement, triangle_frame
+    from .e4_pl_s3_v2d_element import _NORMAL_TOLERANCE, HAMMER_POINTS, NativeParityE4PLS3V2DShellElement
+    from .elements import ShellElement
+
+    kind = _admit(element)
     generalized = getattr(element, "shell_section", None) is not None
     try:
         # V2D recovers on ``_coordinates`` (exact FEMesh); the others on get_node_coordinates
@@ -397,6 +511,7 @@ def _resolve_branch(element, mesh, material, recovered, override, requested) -> 
         stations = _apply_override(
             override, "station", _legacy_station_frames(element, coords, points, material, not generalized)
         )
+        geometry = _tangent_normals(element, coords, points)  # numbered convention
         return _Branch(
             name=name,
             surface_only=not generalized,
@@ -407,6 +522,8 @@ def _resolve_branch(element, mesh, material, recovered, override, requested) -> 
             moment_shear_sign=1.0,
             conventions=_numbered_conventions(),
             metadata={},
+            expected_station_normals=geometry,
+            expected_shear_normals=geometry,
         )
 
     if kind is ShellElement:
@@ -439,6 +556,8 @@ def _resolve_branch(element, mesh, material, recovered, override, requested) -> 
             centre = np.asarray(element._physical_director_context(element._center_frame(coords))[0], dtype=float)
             stations = _apply_override(override, "station", stations)
             centre = _apply_override(override, "centre", centre)
+            physical = np.asarray(element.physical_reference_director, dtype=float)
+            centre_geometry = _oriented(_tangent_normals(element, coords, np.zeros((1, 2))), physical)
             branch = _Branch(
                 name="e4pl-warped",
                 surface_only=not generalized,
@@ -449,6 +568,8 @@ def _resolve_branch(element, mesh, material, recovered, override, requested) -> 
                 moment_shear_sign=1.0,
                 conventions=conventions,
                 metadata=director,
+                expected_station_normals=_oriented(_tangent_normals(element, coords, points), physical),
+                expected_shear_normals=np.repeat(centre_geometry, n, axis=0),
             )
             if recovered.get("warped_direct") is not True:
                 branch.consistency_problem = "recovery is not the warped direct path the module recomputed"
@@ -462,8 +583,16 @@ def _resolve_branch(element, mesh, material, recovered, override, requested) -> 
             raise ShellAxesRefusal("AXES_STATIONS_NOT_QUALIFIED", "planar e4-pl station table mismatch")
         frame = np.asarray(element._physical_director_context(equation7_frame(coords)[0])[0], dtype=float)
         stations = _apply_override(override, "station", np.repeat(frame[None], n, axis=0))
+        # bilinear Q4: the centre tangent cross product is the diagonal cross
+        # product, exact for any admitted (near-)planar facet
+        centre_geometry = _tangent_normals(element, coords, np.zeros((1, 2)))
+        if element.reference_normal is not None:
+            centre_geometry = _oriented(centre_geometry, np.asarray(element.physical_reference_director, dtype=float))
+        geometry = np.repeat(centre_geometry, n, axis=0)
         return _Branch(
             name="e4pl-planar",
+            expected_station_normals=geometry,
+            expected_shear_normals=geometry,
             surface_only=False,
             positions=_shape_positions(element, coords, points),
             station_frames=stations,
@@ -476,14 +605,19 @@ def _resolve_branch(element, mesh, material, recovered, override, requested) -> 
 
     if kind is QualifiedE4PLS3ShellElement:
         no_custom_stations("qualified S3")
+        if element.reference_normal is None:
+            raise ShellAxesRefusal("AXES_FORMULATION_NOT_QUALIFIED", "qualified S3 without reference_normal")
         if n != len(TRIANGLE_QUADRATURE):
             raise ShellAxesRefusal("AXES_STATIONS_NOT_QUALIFIED", "qualified S3 station count mismatch")
         barycentric = np.asarray([(1.0 - r - s, r, s) for r, s, _w in TRIANGLE_QUADRATURE], dtype=float)
         frame = np.asarray(triangle_frame(coords, element.reference_normal)[0], dtype=float)
         stations = _apply_override(override, "station", np.repeat(frame[None], n, axis=0))
         polarity = int(element.director_polarity)
+        geometry = _unit_rows(element.reference_normal, n)  # owner normal, not times polarity
         return _Branch(
             name="s3",
+            expected_station_normals=geometry,
+            expected_shear_normals=geometry,
             surface_only=False,
             positions=barycentric @ coords,
             station_frames=stations,
@@ -509,15 +643,29 @@ def _resolve_branch(element, mesh, material, recovered, override, requested) -> 
         if "physical_station_coordinates" not in recovered:
             raise ShellAxesRefusal("AXES_STATIONS_NOT_QUALIFIED", "V2D recovery without physical_station_coordinates")
         emitted = _numeric(recovered["physical_station_coordinates"], "physical_station_coordinates")
-        if emitted.shape != positions.shape or not float(np.max(np.abs(emitted - positions))) <= RELATIVE_BOUND * _max_abs(positions):
+        # the same expression on the same coordinates: exact (Codex r4: a
+        # relative bound weakens far from the origin)
+        if emitted.shape != positions.shape or not np.array_equal(emitted, positions):
             raise ShellAxesRefusal(
                 "AXES_STATIONS_NOT_QUALIFIED",
                 "V2D emitted physical_station_coordinates differ from the recomputed stations",
             )
-        frame = _v2d_frame(coords, np.asarray(element.reference_normal, dtype=float))
+        if element.reference_normal is None:
+            raise ShellAxesRefusal("AXES_FORMULATION_NOT_QUALIFIED", "S3 V2D without reference_normal")
+        frame, orthonormal_bound = _v2d_frame(coords, np.asarray(element.reference_normal, dtype=float), _NORMAL_TOLERANCE)
+        if "frame" not in recovered:
+            raise ShellAxesRefusal("AXES_RETURN_GLOBAL_REQUIRED", "V2D recovery without its frame")
+        emitted_frame = _numeric(recovered["frame"], "frame")
+        if emitted_frame.shape != (3, 3):
+            raise ShellAxesRefusal("AXES_RECOVERY_MALFORMED", "V2D emitted frame is not 3x3")
         stations = _apply_override(override, "station", np.repeat(frame[None], n, axis=0))
+        geometry = _unit_rows(element.reference_normal, n)
         return _Branch(
             name="v2d",
+            expected_station_normals=geometry,
+            expected_shear_normals=geometry,
+            orthonormal_bound=orthonormal_bound,
+            emitted_frame=emitted_frame,
             surface_only=False,
             positions=positions,
             station_frames=stations,
@@ -544,17 +692,33 @@ def _offsets(element: Any) -> Dict[str, float]:
     }
 
 
-def _v2d_frame(external: np.ndarray, normal: np.ndarray) -> np.ndarray:
-    """V2D/V2C facet frame, recomputed here (x along the first internal edge)."""
+def _v2d_frame(external: np.ndarray, normal: np.ndarray, normal_tolerance: float) -> Tuple[np.ndarray, float]:
+    """V2D/V2C facet frame, recomputed here (x along the first internal edge).
+
+    Returns the frame and its orthonormality bound.  The frame normal is the
+    owner reference normal, which V2D admits when ``|e . n| <=
+    _NORMAL_TOLERANCE sqrt(edge_scale)`` for the two edges at node 0
+    (``edge_scale`` = largest squared edge), so ``|x . n|`` may reach
+    ``_NORMAL_TOLERANCE sqrt(edge_scale) / |x edge|``; the bound is that plus
+    the ordinary ``ORTHONORMAL_BOUND`` (y = n x x is exactly orthogonal to n
+    and x up to roundoff).
+    """
 
     cross = np.cross(external[1] - external[0], external[2] - external[0])
     order = (0, 1, 2) if float(cross @ normal) > 0.0 else (0, 2, 1)
     ordered = external[np.asarray(order, dtype=np.intp)]
-    x_axis = ordered[1] - ordered[0]
-    x_axis = x_axis / float(np.linalg.norm(x_axis))
+    x_edge = ordered[1] - ordered[0]
+    x_length = float(np.linalg.norm(x_edge))
+    x_axis = x_edge / x_length
     y_axis = np.cross(normal, x_axis)
     y_axis = y_axis / float(np.linalg.norm(y_axis))
-    return np.column_stack((x_axis, y_axis, normal))
+    edge_scale = max(
+        float((external[1] - external[0]) @ (external[1] - external[0])),
+        float((external[2] - external[0]) @ (external[2] - external[0])),
+        float((external[2] - external[1]) @ (external[2] - external[1])),
+    )
+    admitted = float(normal_tolerance) * math.sqrt(edge_scale) / x_length
+    return np.column_stack((x_axis, y_axis, normal)), ORTHONORMAL_BOUND + admitted
 
 
 # --------------------------------------------------------------- the check
@@ -582,13 +746,62 @@ def _certify(
     return None, diag, ""
 
 
-def _tangency(normals: np.ndarray, tensors: np.ndarray) -> Tuple[bool, float]:
+def _tangency(normals: np.ndarray, tensors: np.ndarray, nonorthogonality: float = 0.0) -> Tuple[bool, float]:
+    """|nu . T| <= (1e-13 + 2 |x . nu|) s_T: a tensor built in a frame whose x
+    axis is not exactly orthogonal to nu (admitted V2D) has that normal part."""
+
     scale = _max_abs(tensors)
     value = float(np.max(np.abs(np.einsum("ni,nij->nj", normals, tensors)))) if tensors.size else 0.0
-    return value <= RELATIVE_BOUND * scale, value
+    return value <= (RELATIVE_BOUND + 2.0 * nonorthogonality) * scale, value
 
 
-def derive_shell_axes_outputs(
+def recover_shell_axes(
+    element: Any,
+    mesh: Any,
+    displacements: Any,
+    material: Any,
+    *,
+    natural_points: Any = None,
+    _frame_override: Optional[Callable[[str, np.ndarray], np.ndarray]] = None,
+) -> ShellAxesRecovery:
+    """Recover one shell element and derive its cross-checked axes outputs (B3).
+
+    The recovery is ``type(element).compute_stresses(element, mesh,
+    displacements, material, return_global=True[, natural_points=...])``,
+    called through the trusted class method after admission; use
+    ``result.recovery`` in place of a separate ``compute_stresses`` call (it
+    is that dict, bit-identical to a direct call).  Solver errors of the
+    recovery propagate unchanged.  ``natural_points`` (legacy and planar
+    e4-pl homogeneous only) is passed to the recovery and binds the stations.
+    """
+
+    from .e4_pl_element import QualifiedE4PLShellElement
+    from .elements import ShellElement
+
+    kind = _admit(element)
+    requested = _requested_points(natural_points)
+    if requested is not None and (
+        not (kind is ShellElement or kind is QualifiedE4PLShellElement) or element.shell_section is not None
+    ):
+        raise ShellAxesRefusal(
+            "AXES_STATIONS_NOT_QUALIFIED",
+            "natural_points apply to homogeneous legacy and planar e4-pl recovery only",
+        )
+    keywords: Dict[str, Any] = {} if requested is None else {"natural_points": np.array(requested, copy=True)}
+    recovery = kind.compute_stresses(element, mesh, displacements, material, return_global=True, **keywords)
+    axes = _derive_shell_axes_from_recovery(
+        element,
+        mesh,
+        displacements,
+        material,
+        recovery,
+        natural_points=requested,
+        _frame_override=_frame_override,
+    )
+    return ShellAxesRecovery(recovery=recovery, axes=axes)
+
+
+def _derive_shell_axes_from_recovery(
     element: Any,
     mesh: Any,
     displacements: Any,
@@ -598,7 +811,10 @@ def derive_shell_axes_outputs(
     natural_points: Any = None,
     _frame_override: Optional[Callable[[str, np.ndarray], np.ndarray]] = None,
 ) -> ShellAxesOutputs:
-    """Derive and cross-check the axes outputs of one shell element.
+    """Derive and cross-check the axes outputs of one shell element (private;
+    the public route is :func:`recover_shell_axes`, which supplies the
+    recovery itself).  The checks below stay defensive against a recovery
+    dict that is not the element's own.
 
     ``recovered`` must be the dict ``element.compute_stresses(mesh,
     displacements, material, return_global=True)`` returned; it is read only.
@@ -617,9 +833,9 @@ def derive_shell_axes_outputs(
     """
 
     del displacements  # frames depend on the reference geometry only
+    _admit(element)  # before any attribute access (Codex r4: no early lookups)
     if not isinstance(recovered, Mapping):
         raise ShellAxesRefusal("AXES_RETURN_GLOBAL_REQUIRED", "recovery output is not a mapping")
-    generalized = getattr(element, "shell_section", None) is not None
     surface_keys = [f"global_{label}_{surface}" for surface in _SURFACES for label, _i, _j in _SURFACE_COMPONENTS]
     has_families = any(key in recovered for key in FAMILY_KEYS.values())
     has_surfaces = any(key in recovered for key in surface_keys)
@@ -648,13 +864,18 @@ def derive_shell_axes_outputs(
     # Every frame used must be finite, orthonormal and right-handed: the
     # in-plane tensor comparisons cannot see a reversed basis normal (Codex r3).
     station_families = ("membrane", "bending", "shear") if branch.shear_role == "station" else ("membrane", "bending")
-    station_problem = _frame_problem(stations)
+    station_problem = _frame_problem(stations, branch.orthonormal_bound)
     if station_problem:
         for family in station_families:
             refuse(family, "residual", f"station {station_problem}")
-    shear_problem = _frame_problem(shear_frames)
+    shear_problem = _frame_problem(shear_frames, branch.orthonormal_bound)
     if shear_problem:
         refuse("shear", "residual", f"shear {shear_problem}")
+
+    with np.errstate(invalid="ignore"):
+        nonorthogonality = float(np.max(np.abs(np.einsum("ni,ni->n", stations[:, :, 0], stations[:, :, 2]))))
+    if not math.isfinite(nonorthogonality):
+        nonorthogonality = 0.0  # nonfinite frames are refused above
 
     station_normals = stations[:, :, 2]
     shear_normals = shear_frames[:, :, 2]
@@ -784,7 +1005,8 @@ def derive_shell_axes_outputs(
             if reference.shape != expected_shape or values.shape != ((n, 2) if family == "shear" else (n, 3)):
                 refuse(family, "no_reference", f"{key} has an unexpected shape")
                 continue
-            if not _finite(reference, values, stations, shear_frames):
+            # each family against its own frame only (Codex r4)
+            if not _finite(reference, values, shear_frames if family == "shear" else stations):
                 refuse(family, "nonfinite", f"{key}, native values or frames are not finite")
                 continue
             if family == "membrane":
@@ -804,7 +1026,7 @@ def derive_shell_axes_outputs(
         tensors = family_arrays.get(family)
         if tensors is None or not _finite(tensors, station_normals):
             continue
-        ok, value = _tangency(station_normals, tensors)
+        ok, value = _tangency(station_normals, tensors, nonorthogonality)
         diagnostics.setdefault(family, {})["normal_component"] = value
         if not ok:
             refuse(family, "out_of_plane", f"|nu.T|={value:.3e} > 1e-13 s_T")
@@ -820,6 +1042,30 @@ def derive_shell_axes_outputs(
         arrays["recovery_station_positions"] = _frozen(branch.positions)
     else:
         refuse("positions", "nonfinite", "station positions are not finite")
+    # Rule (6): every basis normal against independent geometry (after rules
+    # (1)-(5), so their refusal reasons stay the first recorded ones).
+    def normal_mismatch(frames: np.ndarray, expected: Optional[np.ndarray]) -> str:
+        if expected is None or expected.shape != frames[:, :, 2].shape:
+            return "no geometric normal for this branch"
+        with np.errstate(invalid="ignore"):
+            difference = float(np.max(np.abs(frames[:, :, 2] - expected)))
+        if not difference <= GEOMETRY_BOUND:
+            return f"rule (6) basis normal differs from the geometry by {difference:.3e}"
+        return ""
+
+    station_geometry = normal_mismatch(stations, branch.expected_station_normals)
+    if station_geometry:
+        for family in station_families:
+            refuse(family, "normal_geometry", station_geometry)
+    shear_geometry = normal_mismatch(shear_frames, branch.expected_shear_normals)
+    if shear_geometry:
+        refuse("shear", "normal_geometry", shear_geometry)
+    if branch.emitted_frame is not None:
+        with np.errstate(invalid="ignore"):
+            frame_difference = float(np.max(np.abs(stations - branch.emitted_frame[None])))
+        if not frame_difference <= GEOMETRY_BOUND:
+            for family in FAMILIES:
+                refuse(family, "normal_geometry", f"frame differs from the emitted V2D frame by {frame_difference:.3e}")
     for family, normals in (("membrane", station_normals), ("bending", station_normals), ("shear", shear_normals)):
         ok = _finite(normals) and float(np.max(np.abs(np.linalg.norm(normals, axis=1) - 1.0))) <= ROUNDOFF
         if not ok:
@@ -833,7 +1079,7 @@ def derive_shell_axes_outputs(
         if not any(family not in refusals for family in families):
             return False
         return not any(
-            refusals[family].reason in ("residual", "out_of_plane", "nonfinite")
+            refusals[family].reason in _FRAME_EVIDENCE
             for family in families
             if family in refusals
         )

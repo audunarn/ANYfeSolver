@@ -42,8 +42,10 @@ from anyfesolver.shell_axes_outputs import (
     FAMILIES,
     ShellAxesFrameRuleMismatch,
     ShellAxesOutputs,
+    ShellAxesRecovery,
     ShellAxesRefusal,
-    derive_shell_axes_outputs,
+    _derive_shell_axes_from_recovery,
+    recover_shell_axes,
 )
 from anyfesolver.shell_sections import GeneralizedShellSection
 
@@ -196,7 +198,9 @@ def recover(el, mesh, loc, flag=True, *, field=None, **scales):
 
 
 def derive(el, mesh, u, res, **kw) -> ShellAxesOutputs:
-    return derive_shell_axes_outputs(el, mesh, u, MATERIAL, res, **kw)
+    # the private core on a given recovery (the public B3 route supplies its
+    # own; test_b3_public_route_* shows the two agree bit for bit)
+    return _derive_shell_axes_from_recovery(el, mesh, u, MATERIAL, res, **kw)
 
 
 # --------------------------------------------------------------------- cases
@@ -864,7 +868,7 @@ def test_legacy_q8_batched_recovery_frames_path_is_certified(topo):
     assert native_recovery_frames(el, el.get_node_coordinates(mesh), el.gauss_points, material) is not None
     u = displacement(loc)
     res = el.compute_stresses(mesh, u, material, return_global=True)
-    out = derive_shell_axes_outputs(el, mesh, u, material, res)
+    out = recover_shell_axes(el, mesh, u, material).axes
     assert out.refusals == {}, out.refusals
 
 
@@ -1098,3 +1102,261 @@ def test_r3_bending_sign_matches_the_physically_tensioned_side(kind, topo, sec, 
     value = np.einsum("i,nij,j->n", e_x, out.arrays[FAMILY_KEYS["bending"]], e_x)
     expected = 1.0 if out.conventions["bending"] == "owner_normal" else float(polarity)
     assert np.all(np.sign(value) == expected), (out.conventions["bending"], value)
+
+
+# ------------------------------------------- B3 (owner 2026-11-26) + Codex r4
+def _identical(a, b) -> bool:
+    """Bit-identical deep comparison of recovery values."""
+
+    if isinstance(a, dict) or isinstance(b, dict):
+        return type(a) is type(b) and a.keys() == b.keys() and all(_identical(a[k], b[k]) for k in a)
+    if isinstance(a, (list, tuple)) or isinstance(b, (list, tuple)):
+        return type(a) is type(b) and len(a) == len(b) and all(_identical(x, y) for x, y in zip(a, b))
+    if isinstance(a, np.ndarray) or isinstance(b, np.ndarray):
+        return (
+            type(a) is type(b)
+            and a.dtype == b.dtype
+            and a.shape == b.shape
+            and (a.tobytes() == b.tobytes() if a.dtype != object else _identical(a.tolist(), b.tolist()))
+        )
+    if isinstance(a, float) and isinstance(b, float):
+        return type(a) is type(b) and np.float64(a).tobytes() == np.float64(b).tobytes()
+    return type(a) is type(b) and a == b
+
+
+@pytest.mark.parametrize("polarity", (1, -1))
+@pytest.mark.parametrize("case", ORDER_CASES, ids=ORDER_IDS)
+def test_b3_public_route_recovery_and_axes_are_bit_identical(case, polarity):
+    """B3: result.recovery == a direct compute_stresses call, result.axes ==
+    the core on that direct recovery (arrays, refusals, diagnostics)."""
+
+    if polarity == -1 and case[1] == "legacy":
+        pytest.skip("legacy has no director")
+    el, mesh, loc = _build_case(case, polarity=polarity) if case[1] != "legacy" else _build_case(case)
+    u = displacement(loc)
+    direct = el.compute_stresses(mesh, u, MATERIAL, return_global=True)
+    result = recover_shell_axes(el, mesh, u, MATERIAL)
+    assert isinstance(result, ShellAxesRecovery)
+    assert _identical(result.recovery, direct)
+    core = derive(el, mesh, u, direct)
+    assert result.axes.refusals == core.refusals == {}
+    assert result.axes.arrays.keys() == core.arrays.keys()
+    for key in core.arrays:
+        assert _identical(result.axes.arrays[key], core.arrays[key]), key
+    assert result.axes.diagnostics == core.diagnostics
+
+
+def test_b3_public_route_binds_custom_stations_and_refuses_them_elsewhere():
+    el, mesh, loc = build("legacy", "q4", "h")
+    u = displacement(loc)
+    points = np.asarray(el.gauss_points, dtype=float)[::-1].copy()
+    result = recover_shell_axes(el, mesh, u, MATERIAL, natural_points=points)
+    direct = el.compute_stresses(mesh, u, MATERIAL, return_global=True, natural_points=points)
+    assert _identical(result.recovery, direct)
+    coords = el.get_node_coordinates(mesh)
+    expected = np.asarray([el.compute_shape_functions(float(x), float(y))[0] @ coords for x, y in points])
+    assert np.array_equal(result.axes.arrays["recovery_station_positions"], expected)
+    el, mesh, loc = build("v2d", "t3", "h")
+    with pytest.raises(ShellAxesRefusal) as info:
+        recover_shell_axes(el, mesh, displacement(loc), MATERIAL, natural_points=points[:3])
+    assert info.value.code == "AXES_STATIONS_NOT_QUALIFIED"
+
+
+def _flip_y_and_normal(role, frames):
+    """Right-handed: diag(1, -1, -1) keeps det = +1 and reverses the normal."""
+
+    return np.asarray(frames) @ np.diag((1.0, -1.0, -1.0))
+
+
+@pytest.mark.parametrize("field", ("zero", "axial_bending"))
+@pytest.mark.parametrize(
+    "branch", ["legacy-Q4-h", "legacy-Q4-g", "e4pl-Q4flat-g", "e4pl-Q4flat-h", "e4pl-Q4warp-g", "s3-g", "v2d-g", "v2d-h"]
+)
+def test_r4_right_handed_reversed_normal_is_refused_by_rule_6(branch, field):
+    """r4 P1: zero (or xy-free) tensors cannot see diag(1,-1,-1); geometry can."""
+
+    _bid, kind, topo, sec, _n_p, ref = dict((x[0], x) for x in BRANCHES)[branch]
+    el, mesh, loc = build(kind, topo, sec, ref=ref)
+    u = np.zeros(6 * len(loc)) if field == "zero" else plate_field(loc, kx=K)
+    honest = recover_shell_axes(el, mesh, u, MATERIAL).axes
+    # surface-only branches honestly refuse the families the bending field
+    # leaves at zero (rule (3)); nothing else
+    assert {r.reason for r in honest.refusals.values()} <= {"unresolvable_family"}, honest.refusals
+    out = recover_shell_axes(el, mesh, u, MATERIAL, _frame_override=_flip_y_and_normal).axes
+    assert set(out.refusals) >= set(FAMILIES), out.refusals
+    if field == "zero":  # only geometry can see it; with tensors rules (1)-(5) may refuse first
+        assert {r.reason for r in out.refusals.values()} == {"normal_geometry"}, out.refusals
+    assert set(NORMAL_KEYS.values()).isdisjoint(out.arrays)
+    with pytest.raises(ShellAxesFrameRuleMismatch):
+        out.require_all()
+
+
+class _SquaresBig(float):
+    def __pow__(self, power):
+        return 4.0 * float(self) ** power
+
+
+class _EqualsZero(float):
+    def __eq__(self, other):
+        return other == 0.0 or float.__eq__(self, other)
+
+    __hash__ = float.__hash__
+
+
+def test_r4_hostile_scalar_attribute_types_are_refused():
+    """r4 P1: a float subclass gives the recovery and B2 different meanings."""
+
+    el, mesh, loc = build("legacy", "q4", "h")
+    el.thickness = _SquaresBig(H)
+    with pytest.raises(ShellAxesRefusal) as info:
+        recover_shell_axes(el, mesh, displacement(loc), MATERIAL)
+    assert info.value.code == "AXES_ATTRIBUTE_TYPE"
+    el, mesh, loc = build("v2d", "t3", "g")
+    el.reference_surface_offset = _EqualsZero(0.125)
+    with pytest.raises(ShellAxesRefusal) as info:
+        recover_shell_axes(el, mesh, displacement(loc), MATERIAL)
+    assert info.value.code == "AXES_ATTRIBUTE_TYPE"
+    for name, value in (("director_polarity", True), ("director_polarity", 2), ("reference_normal", [0.0, 0.0, 1.0])):
+        el, mesh, loc = build("e4pl", "q4", "h")
+        object.__setattr__(el, name, value)
+        with pytest.raises(ShellAxesRefusal) as info:
+            recover_shell_axes(el, mesh, displacement(loc), MATERIAL)
+        assert info.value.code == "AXES_ATTRIBUTE_TYPE", name
+
+
+def test_r4_v2d_station_check_is_exact_far_from_the_origin():
+    """r4 P1: at x = 1e13 a relative bound let a reversed table and a second mesh pass."""
+
+    mesh = FEMesh()
+    for i, p in enumerate([(1.0e13, 0.0, 0.0), (1.0e13 + 1.0, 0.0, 0.0), (1.0e13, 1.0, 0.0)], start=1):
+        mesh.add_node(i, *p)
+    el = create_shell_element(
+        1, [1, 2, 3], "steel", formulation="e4-pl-s3-v2d", thickness=H, reference_normal=[0.0, 0.0, 1.0], director_polarity=1
+    )
+    u = np.zeros(18)
+    res = el.compute_stresses(mesh, u, MATERIAL, return_global=True)
+    assert recover_shell_axes(el, mesh, u, MATERIAL).axes.refusals == {}
+    broken = dict(res)
+    broken["physical_station_coordinates"] = np.asarray(res["physical_station_coordinates"])[::-1].copy()
+    with pytest.raises(ShellAxesRefusal) as info:
+        derive(el, mesh, u, broken)
+    assert info.value.code == "AXES_STATIONS_NOT_QUALIFIED"
+    moved = FEMesh()
+    for i, p in enumerate([(1.0e13, 0.25, 0.0), (1.0e13 + 1.0, 0.25, 0.0), (1.0e13, 1.25, 0.0)], start=1):
+        moved.add_node(i, *p)
+    with pytest.raises(ShellAxesRefusal) as info:
+        derive(el, moved, u, res)
+    assert info.value.code == "AXES_STATIONS_NOT_QUALIFIED"
+
+
+def test_r4_complex_recovery_values_are_refused():
+    """r4 P1: float() conversion silently dropped an infinite imaginary part."""
+
+    el, mesh, loc = build("e4pl", "q4", "g")
+    res, u = recover(el, mesh, loc)
+    broken = dict(res)
+    broken[FAMILY_KEYS["membrane"]] = np.asarray(res[FAMILY_KEYS["membrane"]]) + 1j * np.inf
+    with pytest.raises(ShellAxesRefusal) as info:
+        derive(el, mesh, u, broken)
+    assert info.value.code == "AXES_RECOVERY_MALFORMED"
+
+
+def test_r4_subclass_getattribute_runs_no_code_before_refusal():
+    """r4 P2: admission by exact type only; no element attribute is read first."""
+
+    class Hostile(ShellElement):
+        def __getattribute__(self, name):
+            if name in ("shell_section", "thickness", "__dict__", "get_node_coordinates"):
+                raise RuntimeError(f"subclass code ran for {name}")
+            return object.__getattribute__(self, name)
+
+    el, mesh, loc = build("legacy", "q4", "h")
+    res, u = recover(el, mesh, loc)
+    sub = Hostile(1, [1, 2, 3, 4], "steel", thickness=H)
+    for call in (lambda: recover_shell_axes(sub, mesh, u, MATERIAL), lambda: derive(sub, mesh, u, res)):
+        with pytest.raises(ShellAxesRefusal) as info:
+            call()
+        assert info.value.code == "AXES_FORMULATION_NOT_QUALIFIED"
+
+
+@pytest.mark.parametrize("field", ("zero", "mixed"))
+@pytest.mark.parametrize("sec", ("h", "g"))
+def test_r4_solver_admitted_tilted_v2d_normal_is_not_refused(sec, field):
+    """r4 P2: V2D admits |e . n| <= 1e-10 sqrt(edge_scale); the module's
+    orthonormality and tangency bounds follow that admission."""
+
+    first_edge = R0 @ np.array([1.2, 0.0, 0.0])
+    normal = N0 + 5.0e-11 * first_edge / np.linalg.norm(first_edge)
+    normal /= np.linalg.norm(normal)
+    el, mesh, loc = build("v2d", "t3", sec, normal=normal)
+    u = np.zeros(18) if field == "zero" else displacement(loc)
+    out = recover_shell_axes(el, mesh, u, MATERIAL).axes
+    assert out.refusals == {}, out.refusals
+    # beyond the admission the solver itself refuses (no module decision needed)
+    far = N0 + 1.0e-8 * first_edge / np.linalg.norm(first_edge)
+    far /= np.linalg.norm(far)
+    with pytest.raises(Exception):
+        bad, bmesh, bloc = build("v2d", "t3", sec, normal=far)
+        bad.compute_stresses(bmesh, np.zeros(18), MATERIAL, return_global=True)
+
+
+def _nan_in(role_to_poison):
+    def hook(role, frames):
+        out = np.array(frames, copy=True)
+        if role == role_to_poison:
+            out[..., 0, 0] = np.nan
+        return out
+
+    return hook
+
+
+def test_r4_nonfinite_frame_refuses_only_the_families_using_it():
+    """r4 P2: generalized warped Q4, station vs centre frames are separate."""
+
+    el, mesh, loc = build("e4pl", "q4w", "g")
+    u = displacement(loc)
+    station = recover_shell_axes(el, mesh, u, MATERIAL, _frame_override=_nan_in("station")).axes
+    assert {"membrane", "bending"} <= set(station.refusals)
+    assert station.certified["shear"], station.refusals
+    assert "shear_normal_components" not in station.arrays
+    centre = recover_shell_axes(el, mesh, u, MATERIAL, _frame_override=_nan_in("centre")).axes
+    assert centre.certified["membrane"] and centre.certified["bending"], centre.refusals
+    assert "shear" in centre.refusals
+    assert "shear_normal_components" not in centre.arrays
+
+
+@pytest.mark.parametrize("polarity", (1, -1))
+@pytest.mark.parametrize("kind,topo", (("s3", "t3"), ("v2d", "t3"), ("e4pl", "q4")))
+def test_r4_surface_stresses_are_tension_on_the_physically_tensioned_fibre(kind, topo, polarity):
+    """r4 P2: oracle on the surfaces themselves, independent of top/bot labels.
+
+    w = -K x^2 / 2 strains the fibre at signed distance z along N0 by z K.
+    The 'top' surface lies at physical_top_offset_from_reference along the
+    physical reference director, so its distance along N0 is that offset
+    times (director . N0); its e_x stress must have that sign, 'bot' the
+    opposite one.
+    """
+
+    el, mesh, loc = build(kind, topo, "h", polarity=polarity)
+    u = plate_field(loc, kx=K)
+    result = recover_shell_axes(el, mesh, u, MATERIAL)
+    res = result.recovery
+    keys = ("global_xx_top", "global_yy_top", "global_xy_top", "global_xx_bot")
+    if not all(k in res for k in keys):
+        pytest.skip(f"{kind} homogeneous emits no global surfaces")
+    director = np.asarray(el.physical_reference_director, dtype=float)
+    if kind == "e4pl":
+        top_offset, bot_offset = 0.5 * H, -0.5 * H
+    else:
+        top_offset = el.material_surface_offset_from_reference(1.0)
+        bot_offset = el.material_surface_offset_from_reference(-1.0)
+    e_x = R0[:, 0]
+    for surface, offset in (("top", top_offset), ("bot", bot_offset)):
+        tensor = np.zeros((len(res[f"global_xx_{surface}"]), 3, 3))
+        for label, i, j in (("xx", 0, 0), ("yy", 1, 1), ("zz", 2, 2), ("xy", 0, 1), ("yz", 1, 2), ("xz", 0, 2)):
+            values = np.asarray(res[f"global_{label}_{surface}"], dtype=float)
+            tensor[:, i, j] = values
+            tensor[:, j, i] = values
+        stress = np.einsum("i,nij,j->n", e_x, tensor, e_x)
+        expected = np.sign(offset * float(director @ N0))
+        assert np.all(np.sign(stress) == expected), (surface, offset, stress)
