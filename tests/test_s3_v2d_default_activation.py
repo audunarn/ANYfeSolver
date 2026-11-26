@@ -206,11 +206,14 @@ def _identity(data: bytes) -> dict[str, object]:
 
 
 def _bound_source_bytes(path: Path) -> bytes:
-    """Live bytes, or for a carrier changed by the guard cadence successor
-    (G2/L1/G1, owner 2026-11-24) the exactly reproduced prior bytes.
+    """Bytes the 2026-11-24 delta binds as live: the live bytes, or for a
+    carrier changed by the guard cadence successor (G2/L1/G1, owner
+    2026-11-24) the exactly reproduced prior bytes.
 
-    The live bytes must equal the successor's recorded current identity and
-    its reverse line patch must reproduce the recorded prior identity.
+    The successor chains from the pinned 2026-11-25 delta, which must not
+    change the file (otherwise this reader fails closed).  The live bytes must
+    equal the successor's recorded current identity and its reverse line
+    patch must reproduce the recorded prior identity.
     """
 
     live = path.read_bytes()
@@ -223,7 +226,17 @@ def _bound_source_bytes(path: Path) -> bytes:
         "anysolver.qualified-shell-nonlinear-guard-cadence-successor-v1"
     )
     assert all(value is False for value in record["qualification_boundary"].values())
+    delta2_raw = Q4_SOURCE_BINDING_DELTA2.read_bytes()
+    assert hashlib.sha256(delta2_raw).hexdigest().upper() == _adopted_successor_pin(
+        "Q4_SOURCE_BINDING_DELTA2_SHA256"
+    )
+    assert record["predecessor"] == {
+        "path": Q4_SOURCE_BINDING_DELTA2.relative_to(ROOT).as_posix(),
+        **_identity(delta2_raw),
+    }
     relative = path.relative_to(ROOT).as_posix()
+    delta2 = json.loads(delta2_raw, object_pairs_hook=_strict_object)
+    assert relative not in delta2["files"]
     for row in record["change"]["sealed_carriers"].values():
         if row["live_path"] != relative:
             continue
@@ -253,6 +266,9 @@ Q4_SOURCE_BINDING_SUCCESSOR = (
 )
 Q4_SOURCE_BINDING_DELTA = (
     ROOT / "docs" / "reference_cases" / "e4_pl_source_binding_20261124.json"
+)
+Q4_SOURCE_BINDING_DELTA2 = (
+    ROOT / "docs" / "reference_cases" / "e4_pl_source_binding_20261125.json"
 )
 MANIFEST_TEST = ROOT / "tests" / "test_e4_pl_s3_mixed_mesh_manifest.py"
 

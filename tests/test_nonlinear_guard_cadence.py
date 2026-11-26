@@ -30,6 +30,7 @@ from __future__ import annotations
 import contextlib
 import copy
 import hashlib
+import importlib.util
 import json
 import subprocess
 import sys
@@ -1209,6 +1210,11 @@ OTHER_CHANGED_SOURCES = (
 )
 CHANGE_COMMIT_TOUCHES = "src/anyfesolver/e4_pl_element.py"
 GIT_ROOT = ROOT
+# Predecessor: the newest link of the Q4 source-binding chain
+# 2026-11-11 -> 2026-11-24 -> 2026-11-25 (pin from
+# tests/test_e4_pl_s3_mixed_mesh_manifest.py, Q4_SOURCE_BINDING_DELTA2_SHA256).
+PREDECESSOR = "docs/reference_cases/e4_pl_source_binding_20261125.json"
+PREDECESSOR_SHA256 = "CFBA512F71CF589FC8C2E31E7EE12FA7A58E90F6ADDBAA28EA7E52FD7B3B3032"
 
 
 def _read_checkout(relative: str) -> bytes:
@@ -1249,6 +1255,33 @@ def _strict_object(pairs):
     return made
 
 
+def _chain_bound_identities(delta2_raw: bytes) -> dict:
+    """path -> (portable, identity) for every file the chain bound by the
+    2026-11-25 record binds; each earlier link authenticated by exact bytes."""
+
+    delta2 = json.loads(delta2_raw, object_pairs_hook=_strict_object)
+    delta_path = delta2["predecessor"]["path"]
+    delta_raw = (ROOT / delta_path).read_bytes()
+    assert delta2["predecessor"] == {"path": delta_path, **_identity(delta_raw)}
+    delta = json.loads(delta_raw, object_pairs_hook=_strict_object)
+    origin_path = delta["predecessor"]["path"]
+    origin_raw = (ROOT / origin_path).read_bytes()
+    assert delta["predecessor"] == {"path": origin_path, **_identity(origin_raw)}
+    origin = json.loads(origin_raw, object_pairs_hook=_strict_object)
+    bound = {}
+    rows = list(origin["carriers"].values()) + list(origin["sibling_imports_of_entry_module"])
+    rows += list(origin["historical_gaps_of_current_historical_record"])
+    for row in rows:
+        entry = (False, row["live_raw"]) if "live_raw" in row else (True, row["live_lf"])
+        assert entry[0] is False or row["portable_text"] is True
+        assert bound.setdefault(row["live_path"], entry) == entry
+    for record in (delta, delta2):
+        for path, row in record["files"].items():
+            assert bound.get(path, (False, None))[0] is False
+            bound[path] = (False, row["live_raw"])
+    return bound
+
+
 def _load_successor() -> dict:
     raw = GUARD_CADENCE_SUCCESSOR.read_bytes()
     payload = json.loads(raw, object_pairs_hook=_strict_object)
@@ -1260,8 +1293,8 @@ def _assert_successor_bindings(payload: dict) -> None:
     assert payload["schema"] == "anysolver.qualified-shell-nonlinear-guard-cadence-successor-v1"
     assert set(payload["base"]) == {"commit", "tree"}
     assert all(len(value) == 40 for value in payload["base"].values())
-    # Base: origin/main before the V1 canonical-JSON and G2/L1/G1 changes.
-    assert payload["base"]["commit"].startswith("071910d60")
+    # Base: origin/main after S2 (#90), holding the 2026-11-25-bound bytes.
+    assert payload["base"]["commit"].startswith("72faf02b1")
     assert payload["owner_decisions"]["date"] == "2026-11-24"
     assert payload["owner_decisions"]["approved"] == ["G2", "L1", "G1"]
     assert payload["qualification_boundary"] == {
@@ -1300,19 +1333,21 @@ def _assert_successor_bindings(payload: dict) -> None:
         live = _read_checkout(row["live_path"]).replace(b"\r\n", b"\n")
         assert _identity(live)["git_blob"] == row["current_lf_git_blob"]
         assert row["prior_lf_git_blob"] != row["current_lf_git_blob"]
-    preserved = payload["preserved_evidence"]
-    assert preserved["path"] == "docs/reference_cases/e4_pl_source_binding_20261111.json"
-    data = _read_checkout(preserved["path"])
-    assert {k: preserved[k] for k in ("bytes", "git_blob", "sha256")} == _identity(data)
-    binding = json.loads(data)
-    bound_rows = list(binding["carriers"].values()) + list(
-        binding["sibling_imports_of_entry_module"]
-    )
+    assert "preserved_evidence" not in payload
+    predecessor = payload["predecessor"]
+    assert set(predecessor) == {"path", "bytes", "git_blob", "sha256"}
+    assert predecessor["path"] == PREDECESSOR
+    data = _read_checkout(predecessor["path"])
+    assert {k: predecessor[k] for k in ("bytes", "git_blob", "sha256")} == _identity(data)
+    assert predecessor["sha256"] == PREDECESSOR_SHA256
+    chain = _chain_bound_identities(data)
     for name, row in change["sealed_carriers"].items():
-        # The source-binding record keeps describing the prior bytes exactly.
-        matches = [r for r in bound_rows if r.get("live_path") == row["live_path"]]
-        assert matches
-        assert all(r["live_lf"] == row["prior_lf"] for r in matches)
+        # The chain keeps describing the prior (base) bytes exactly.
+        portable, bound = chain[row["live_path"]]
+        assert portable is row["portable_text"]
+        assert (row["prior_lf"] if portable else row["prior_raw"]) == bound
+    for name, row in change["other_changed_sources"].items():
+        assert row["live_path"] not in chain
     note = payload["validation"]["performance_note"]
     # Auto-text note: identified by its LF form on every checkout.
     assert note["text_identity"] == "lf"
@@ -1356,14 +1391,14 @@ def test_guard_cadence_successor_is_checkout_independent(monkeypatch, ending) ->
     payload = _load_successor()
     _assert_successor_bindings(payload)
     hashed = [row["live_path"] for row in payload["change"]["sealed_carriers"].values()]
-    hashed += [payload["preserved_evidence"]["path"], payload["validation"]["performance_note"]["path"]]
+    hashed += [payload["predecessor"]["path"], payload["validation"]["performance_note"]["path"]]
     for relative in hashed:
         attributes = _checkout_attributes(relative)
         raw_bound = relative in {
             row["live_path"]
             for row in payload["change"]["sealed_carriers"].values()
             if not row["portable_text"]
-        } or relative == payload["preserved_evidence"]["path"]
+        } or relative == payload["predecessor"]["path"]
         if raw_bound:
             # Raw bytes are hashed: the checkout must not convert them.
             assert attributes.get("text") == "unset" or attributes.get("eol") == "lf", relative
@@ -1378,6 +1413,42 @@ def test_guard_cadence_change_commit_is_validated() -> None:
     for bogus in ("0" * 40, "071910d60031beb455ef0fa2328a027d8ba77c3d"):
         with pytest.raises(AssertionError):
             _assert_change_commit(bogus)
+
+
+def _load_builder():
+    spec = importlib.util.spec_from_file_location(
+        "_guard_cadence_builder", ROOT / "scripts" / "build_guard_cadence_successor.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_guard_cadence_builder_validates_every_change_commit() -> None:
+    builder = _load_builder()
+    recorded = _load_successor()["change"]["commits"]
+    assert builder.validated_change_commits(list(recorded)) == recorded
+    first, subject = recorded[0].split(" ", 1)
+    for bogus in (
+        recorded[:1] + ["0" * 9 + " " + subject],
+        ["071910d60 " + subject] + recorded[1:],  # ancestor, touches no sealed carrier
+        [first + " another subject"] + recorded[1:],
+        [r for r in recorded if not r.startswith(builder.CHANGE_COMMIT[:9])],
+        [],
+    ):
+        with pytest.raises(SystemExit):
+            builder.validated_change_commits(bogus)
+
+
+def test_guard_cadence_builder_refuses_a_patch_that_does_not_rebuild_the_base(monkeypatch) -> None:
+    """The round-trip check is explicit (it must survive ``python -O``)."""
+
+    builder = _load_builder()
+    monkeypatch.setattr(builder, "apply_patch", lambda current, hunks: current + b"#")
+    with pytest.raises(SystemExit, match="reverse line patch does not rebuild the base bytes"):
+        builder.build({"hashes": {}})
+    source = (ROOT / "scripts" / "build_guard_cadence_successor.py").read_text(encoding="utf-8")
+    assert "assert apply_patch(" not in source
 
 
 def test_guard_cadence_builder_check_is_fresh() -> None:
@@ -1416,7 +1487,9 @@ def test_original_q4_source_binding_builder_check_still_passes() -> None:
         (("change", "sealed_carriers", "e4_pl_s3_state.py", "reverse_line_patch"), []),
         (("change", "sealed_carriers", "e4_pl_element.py", "reverse_line_patch"), []),
         (("change", "other_changed_sources", "nonlinear_static.py", "current_lf_git_blob"), "0"),
-        (("preserved_evidence", "sha256"), "0"),
+        (("predecessor", "sha256"), "0"),
+        (("predecessor", "path"), "docs/reference_cases/e4_pl_source_binding_20261124.json"),
+        (("base", "commit"), "071910d60031beb455ef0fa2328a027d8ba77c3d"),
         (("owner_decisions", "approved"), ["G2", "L1", "G1", "S2"]),
         (("change", "commit"), "0" * 40),
         (("change", "commit"), "071910d60031beb455ef0fa2328a027d8ba77c3d"),
