@@ -329,6 +329,7 @@ def _probe_vector(result: Any, n: int, stage: str) -> np.ndarray:
 
     if (
         not isinstance(result, np.ndarray)
+        or isinstance(result, np.ma.MaskedArray)  # masked entries would escape np.max
         or result.dtype.kind != "f"
         or result.shape != (n,)
     ):
@@ -395,7 +396,18 @@ def _run_forward_error_probe(
     ``EXECUTION_FAILED`` disposition) when the probe could not execute.
     """
 
-    mode, index = _forward_error_probe_settings(options, n)
+    # The settings were validated before the factorization; preparing them
+    # again here can only fail by resource exhaustion (or a concurrently
+    # mutated mapping), which is an execution failure, never a raw error.
+    try:
+        mode, index = _forward_error_probe_settings(options, n)
+    except Exception as exc:
+        metadata["forward_error_probe"] = None
+        metadata["forward_error_probe_limit"] = _FORWARD_ERROR_PROBE_LIMIT
+        metadata["forward_error_probe_disposition"] = "EXECUTION_FAILED"
+        raise _ForwardErrorProbeExecutionError(
+            f"forward-error probe settings could not be prepared ({type(exc).__name__}: {exc})"
+        ) from exc
     if int(n) == 0:
         return _record_forward_error_probe(metadata, None, mode, measured=0, skipped=True)
     started = time.perf_counter()
@@ -1921,13 +1933,18 @@ def _normalized_probe_options(options: Optional[Mapping[str, Any]], n: int) -> O
 
     if options is None:
         return None
-    mode, _index = _forward_error_probe_settings(options, n)
-    if options.get("forward_error_probe") is None:
-        return options
+    # An owned snapshot: the key and the factorization see the same probe
+    # settings even if the caller changes its mapping (or mask array) while
+    # a cache miss waits for the lock.
     made = dict(options)
-    # The built-in literal from validation: the same value keys the cache
-    # and drives execution (never ``str(mode)`` of a subclass).
-    made["forward_error_probe"] = mode
+    mask = made.get("forward_error_probe_mask")
+    if mask is not None:
+        made["forward_error_probe_mask"] = np.array(mask, copy=True)
+    mode, _index = _forward_error_probe_settings(made, n)
+    if made.get("forward_error_probe") is not None:
+        # The built-in literal from validation: the same value keys the cache
+        # and drives execution (never ``str(mode)`` of a subclass).
+        made["forward_error_probe"] = mode
     return made
 
 

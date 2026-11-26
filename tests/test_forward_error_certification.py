@@ -927,6 +927,10 @@ _MALFORMED_RESULTS = {
     "complex": lambda x: x.astype(complex),
     "object": lambda x: x.astype(object),
     "temporary_memory_error": lambda x: x.view(_MalformedSubtraction),
+    # R3: a wrong entry hidden by a mask would escape np.max.
+    "masked": lambda x: np.ma.masked_array(
+        x + np.r_[1.0e3, np.zeros(x.size - 1)], mask=np.r_[True, np.zeros(x.size - 1, dtype=bool)]
+    ),
 }
 
 
@@ -1054,3 +1058,47 @@ def test_descriptor_target_shift_invert_uses_report_mode(monkeypatch) -> None:
     seen.clear()
     algebraic.solve_descriptor_spectrum(stiffness, mass, **kwargs)
     assert seen == [(MatrixClass.SPD, {})]
+
+
+@pytest.mark.parametrize("mode", ["report", "refuse"])
+def test_probe_settings_failure_after_factorization_is_an_execution_failure(monkeypatch, mode) -> None:
+    """R3: re-preparing validated settings after the factorization (e.g. a
+    MemoryError in the mask's index allocation) is a typed execution failure."""
+
+    real = linalg._forward_error_probe_settings
+
+    def settings(options, n):
+        import sys
+
+        if sys._getframe(1).f_code.co_name == "_run_forward_error_probe":
+            raise MemoryError("injected mask index allocation failure")
+        return real(options, n)
+
+    monkeypatch.setattr(linalg, "_forward_error_probe_settings", settings)
+    mask = np.ones(50, dtype=bool)
+    handle = SparseSolverBackend().factorize(
+        _ordinary_spd(50), MatrixClass.SPD,
+        options={"forward_error_probe": mode, "forward_error_probe_mask": mask},
+    )
+    assert handle.status == "failed" and handle._solver is None
+    assert handle.metadata["failure_kind"] == linalg.FORWARD_ERROR_PROBE_FAILED
+    assert handle.metadata["forward_error_probe_disposition"] == "EXECUTION_FAILED"
+
+
+def test_cache_miss_executes_the_settings_it_keyed(monkeypatch) -> None:
+    """R3: a caller mutating its options mapping while a miss is in flight
+    can never store a report-mode handle under the default (refuse) key."""
+
+    options: dict = {}
+    real_factorize = linalg.factorize
+
+    def mutating_factorize(*args, **kwargs):
+        options["forward_error_probe"] = "report"  # the caller's mapping changes mid-miss
+        return real_factorize(*args, **kwargs)
+
+    monkeypatch.setattr(linalg, "factorize", mutating_factorize)
+    cache = FactorizationCache(name="r3_snapshot", backend=SparseSolverBackend())
+    handle = cache.factorize(_ordinary_spd(50), MatrixClass.SPD, options=options)
+    assert handle.status == "ok"
+    assert handle.metadata["forward_error_probe_mode"] == "refuse"
+
