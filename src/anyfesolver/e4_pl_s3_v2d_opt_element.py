@@ -15,6 +15,7 @@ is refused with ``NativeParityCapabilityError``.
 """
 from __future__ import annotations
 
+import inspect
 import math
 import weakref
 from typing import Any, Dict, Mapping, Optional, Sequence
@@ -30,6 +31,7 @@ from .e4_pl_opt_membrane import (
 )
 from .e4_pl_s3_v2c_element import (
     HAMMER_POINTS,
+    HAMMER_REFERENCE_WEIGHTS,
     RESULTANT_POLICY_ID,
     StrictFlatLinearE4PLS3V2CShellElement as _V2C,
 )
@@ -80,7 +82,11 @@ def _require_opt_only_shell_scope(elements: Any) -> None:
                 ref, token0, epoch0, length0 = _SCOPE_CACHE[0]
                 if ref() is elements and token0 is key[0] and epoch0 == key[1] and length0 == key[2]:
                     return
-    for kind in set(map(type, dict.values(elements))):
+    kinds = {}
+    for element in dict.values(elements):
+        kind = type(element)
+        kinds[id(kind)] = kind  # identity census: never hashes/compares the classes
+    for kind in kinds.values():
         if kind is not NativeParityE4PLS3V2DOptShellElement and issubclass(kind, ShellElement):
             raise NativeParityCapabilityError("S3 V2D-OPT mixed shell scope admits only V2D-OPT shells")
     if key is not None:
@@ -112,7 +118,6 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
     # Reviewed V2D/V2C functions used unchanged (unbound functions bind to this class).
     _membrane_operator = staticmethod(_V2C._membrane_operator)
     _pl_constraint = staticmethod(_V2C._pl_constraint)
-    _geometry = _V2D._geometry
     _coordinates = _V2D._coordinates
     _elastic_baseline_constitutive = _V2D._elastic_baseline_constitutive
     _is_v2d_elastic_overlap = staticmethod(_V2D._is_v2c_elastic_overlap)
@@ -127,6 +132,31 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
     native_reference_directors = _V2D.native_reference_directors
     material_mid_surface_offset_from_reference = _V2D.material_mid_surface_offset_from_reference
     material_surface_offset_from_reference = _V2D.material_surface_offset_from_reference
+
+    @property
+    def gauss_points(self) -> np.ndarray:
+        return HAMMER_POINTS
+
+    @property
+    def gauss_weights(self) -> np.ndarray:
+        return HAMMER_REFERENCE_WEIGHTS
+
+    @property
+    def shear_gauss_points(self) -> np.ndarray:
+        return HAMMER_POINTS
+
+    @property
+    def shear_gauss_weights(self) -> np.ndarray:
+        return HAMMER_REFERENCE_WEIGHTS
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name in _PROTECTED_NAMES:
+            raise NativeParityCapabilityError(f"S3 V2D-OPT forbids assigning the protected name {name!r}")
+        super().__setattr__(name, value)
+
+    def _geometry(self, mesh: FEMesh) -> Dict[str, Any]:
+        _require_no_shadow(self)
+        return _V2D._geometry(self, mesh)
 
     def __init__(
         self,
@@ -210,7 +240,8 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
         shear blocks use the reviewed V2C operators with the operation order of the V2D native
         path; the membrane block is the OPT kernel.
         """
-        raw = self._elastic_baseline_constitutive(material)
+        _require_no_shadow(self)
+        raw = _V2D._elastic_baseline_constitutive(self, material)
         local = np.asarray(geometry["local_coordinates"], dtype=np.float64)
         key = (local.tobytes(), float(self.thickness), float(raw["E"]), float(raw["nu"]))
         hit = _LOCAL_CACHE.get(key)
@@ -259,9 +290,11 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
             "B_s": np.asarray(shear_op, dtype=np.float64), "section": raw,
             "beta0": beta0,
         }
-        for value in entry.values():
+        for value in (*entry.values(), *raw.values()):
             if isinstance(value, np.ndarray):
                 value.flags.writeable = False
+        if not all(np.all(np.isfinite(entry[name])) for name in ("membrane", "bending", "shear", "B_m", "B_b", "B_s")):
+            raise ValueError("S3 V2D-OPT local stiffness is not finite")
         if len(_LOCAL_CACHE) >= _LOCAL_CACHE_LIMIT:
             _LOCAL_CACHE.clear()
         _LOCAL_CACHE[key] = entry
@@ -312,6 +345,8 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
         data = self._local_data(geometry, material)
         section = data["section"]
         vector = self._get_element_displacements(mesh, displacements)
+        if vector.shape != (18,) or not np.all(np.isfinite(vector)):
+            raise ValueError("S3 V2D-OPT displacement must resolve to a finite 18-vector")
         local_vector = np.asarray(geometry["local_from_external"], dtype=np.float64) @ vector
         epsilon = np.einsum("gij,j->gi", data["B_m"], local_vector)
         kappa = np.einsum("gij,j->gi", data["B_b"], local_vector)
@@ -425,3 +460,27 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
         restored.reference_normal = normal
         restored._validate_configuration()
         return restored
+
+
+def _protected_names() -> frozenset:
+    names = {"__class__", "__dict__", "director_polarity", "reference_surface_offset", "formulation_id", "selector", "implementation_id",
+             "_legacy_shell_dispatch_forbidden", "node_ids", "reference_normal"}
+    cls = NativeParityE4PLS3V2DOptShellElement
+    for name in dir(cls):
+        static = inspect.getattr_static(cls, name)
+        if callable(static) or isinstance(static, (staticmethod, classmethod, property)):
+            names.add(name)
+    # data fields set by the constructor stay assignable by the constructor only
+    names.discard("node_ids")
+    names.discard("reference_normal")
+    return frozenset(names)
+
+
+_PROTECTED_NAMES = _protected_names()
+
+
+def _require_no_shadow(element: Any) -> None:
+    """Refuse an instance whose own namespace shadows any class method/policy constant."""
+    namespace = object.__getattribute__(element, "__dict__")
+    if not _PROTECTED_NAMES.isdisjoint(namespace):
+        raise NativeParityCapabilityError("S3 V2D-OPT instance attribute shadows a route or policy name")

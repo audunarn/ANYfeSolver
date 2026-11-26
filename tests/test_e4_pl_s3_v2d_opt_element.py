@@ -269,3 +269,101 @@ def test_local_cache_is_bit_identical_and_keyed_by_exact_geometry():
     # returned matrices are caller-owned copies: mutating them cannot poison the cache
     cold[0, 0] = 1e30
     assert np.array_equal(el.compute_stiffness_matrix(m.mesh, mat), warm)
+
+
+# ---- Codex round 1 regressions -------------------------------------------------------------------
+def test_instance_shadows_of_routes_and_policy_names_are_refused_and_cannot_poison_the_cache():
+    import anyfesolver.e4_pl_s3_v2d_opt_element as mod
+    xyz = [[0.1, 0.05, 0], [1.3, 0.4, 0], [0.5, 1.1, 0]]
+    m, el = _single(OPT_KIND, xyz)
+    mat = m.materials["mat"]
+    for name in ("_elastic_baseline_constitutive", "_validate_configuration", "reference_surface_offset",
+                 "director_polarity", "_geometry", "compute_stiffness_matrix", "__class__"):
+        with pytest.raises(ElementCapabilityError):
+            setattr(el, name, lambda *a, **k: None)
+    # direct namespace injection (outside the setattr barrier) is caught at first use and never reaches the cache
+    mod._LOCAL_CACHE.clear()
+    el.__dict__["_elastic_baseline_constitutive"] = lambda material: None
+    with pytest.raises(ElementCapabilityError):
+        el.compute_stiffness_matrix(m.mesh, mat)
+    with pytest.raises(ElementCapabilityError):
+        el.compute_dead_transverse_pressure_load(m.mesh, 1.0)
+    assert len(mod._LOCAL_CACHE) == 0
+    clean_m, clean = _single(OPT_KIND, xyz)
+    ref = clean.compute_stiffness_matrix(clean_m.mesh, clean_m.materials["mat"])
+    assert np.isfinite(ref).all()
+
+
+def test_foreign_shell_with_colliding_metaclass_equality_is_refused_by_the_scope_census():
+    from abc import ABCMeta
+    from anyfesolver.elements import ShellElement
+
+    class Meta(ABCMeta):
+        def __eq__(cls, other):
+            return True
+
+        def __hash__(cls):
+            return hash(OPT)
+
+    class Foreign(ShellElement, metaclass=Meta):
+        pass
+
+    m, el = _single(OPT_KIND, [[0, 0, 0], [1, 0, 0], [0, 1, 0]])
+    m.add_node(4, 1.0, 1.0, 0.0)
+    m.add_element(2, Foreign(2, [2, 4, 3], "mat", thickness=0.1))
+    with pytest.raises(ElementCapabilityError):
+        el.compute_stiffness_matrix(m.mesh, m.materials["mat"])
+
+
+def test_nonfinite_inputs_are_refused_not_returned():
+    m, el = _single(OPT_KIND, [[0.1, 0.05, 0], [1.3, 0.4, 0], [0.5, 1.1, 0]])
+    huge = FEModel("huge")
+    huge.add_material("mat", 1e110, NU)
+    for i, p in enumerate([[0.1, 0.05, 0], [1.3, 0.4, 0], [0.5, 1.1, 0]], 1):
+        huge.add_node(i, *map(float, p))
+    big = OPT(1, [1, 2, 3], "mat", thickness=0.1, reference_normal=NORMAL)
+    huge.add_element(1, big)
+    try:
+        k = big.compute_stiffness_matrix(huge.mesh, huge.materials["mat"])
+    except (ValueError, FloatingPointError):
+        pass
+    else:
+        assert np.isfinite(k).all()                       # either refused or genuinely finite, never NaN data
+    u = np.zeros(18)
+    u[5] = np.nan
+    with pytest.raises(ValueError):
+        el.compute_variational_resultants(m.mesh, u, m.materials["mat"])
+
+
+def test_advertised_quadrature_matches_the_three_station_recovery():
+    from anyfesolver.e4_pl_s3_v2c_element import HAMMER_POINTS, HAMMER_REFERENCE_WEIGHTS
+    el = OPT(3, [1, 2, 3], "mat", thickness=0.1, reference_normal=NORMAL)
+    assert np.array_equal(el.shear_gauss_points, HAMMER_POINTS) and np.array_equal(el.shear_gauss_weights, HAMMER_REFERENCE_WEIGHTS)
+    assert np.array_equal(el.gauss_points, HAMMER_POINTS)
+
+
+def test_recovery_is_invariant_to_connectivity_order_for_a_nonuniform_field():
+    """Station strains/stresses evaluated at the same physical points agree for every node ordering."""
+    xyz = np.array([[0.1, 0.05, 0.0], [1.3, 0.4, 0.0], [0.5, 1.1, 0.0]])
+    rng = np.random.default_rng(3)
+    field = rng.normal(size=(3, 6)) * 1e-3          # nonuniform (u, v, w, rx, ry, rz) per physical node
+    seen = []
+    for order in ((0, 1, 2), (0, 2, 1), (1, 2, 0), (2, 1, 0)):
+        m = FEModel("o")
+        m.add_material("mat", E, NU)
+        for i, p in enumerate(xyz, 1):
+            m.add_node(i, *map(float, p))
+        m.add_element(1, OPT(1, [o + 1 for o in order], "mat", thickness=0.1, reference_normal=NORMAL))
+        for i in range(3):
+            m.add_boundary_condition(BoundaryCondition(f"b{i}", [i + 1], {k: float(v) for k, v in zip(("ux", "uy", "uz", "rx", "ry", "rz"), field[i])}))
+        u = np.zeros(18)
+        for i in range(3):
+            u[m.mesh.nodes[i + 1].dofs] = field[i]
+        res = compute_stresses(m, u, return_global=True)[1]
+        pts = np.asarray(res["physical_station_coordinates"])
+        tensors = np.asarray(res["global_membrane_resultant_tensors"])
+        seen.append({tuple(np.round(p, 9)): t for p, t in zip(pts, tensors)})
+    for other in seen[1:]:
+        assert other.keys() == seen[0].keys()
+        for key, tensor in seen[0].items():
+            assert np.allclose(tensor, other[key], rtol=1e-9, atol=1e-9 * np.abs(tensor).max())

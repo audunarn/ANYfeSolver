@@ -77,3 +77,20 @@ def test_strain_recovery_exact_for_constant_strain_and_rigid_rotation():
     u = np.concatenate([[exx * x + 0.5 * gxy * y - w * y, eyy * y + 0.5 * gxy * x + w * x, w] for x, y in xy])
     for op in ops:
         assert op @ u == pytest.approx([exx, eyy, gxy], abs=1e-14)
+
+
+def test_recovery_operator_is_energy_consistent_with_the_higher_order_stiffness():
+    """K_h = (3/4) (beta0/e0^2) V sum_k Bh(mid_k)^T E Bh(mid_k): ties recovery to the stiffness (catches a dropped
+    higher-order term, wrong e0 handling or swapped midpoint stations)."""
+    from anyfesolver.e4_pl_opt_membrane import opt_membrane_strain_operator
+    xy = np.array([[0.1, 0.05], [1.3, 0.4], [0.5, 1.1]])
+    h, em = 0.1, isotropic_plane_stress(1e7, 0.3)
+    e0 = 1.5
+    kb, kh = opt_membrane_stiffness_parts(xy, em, h)
+    mids = np.array([[0.5, 0.5, 0.0], [0.0, 0.5, 0.5], [0.5, 0.0, 0.5]])
+    basic = opt_membrane_strain_operator(xy, np.array([[1 / 3, 1 / 3, 1 / 3]]), h, 0.0)[0]
+    area = 0.5 * ((xy[1, 0] - xy[0, 0]) * (xy[2, 1] - xy[0, 1]) - (xy[2, 0] - xy[0, 0]) * (xy[1, 1] - xy[0, 1]))
+    ops = opt_membrane_strain_operator(xy, mids, h, e0) - basic
+    beta0 = optimal_beta0(em)
+    expected = 0.75 * (beta0 / e0**2) * h * area * sum(op.T @ em @ op for op in ops)
+    assert expected == pytest.approx(kh, rel=1e-12, abs=1e-12 * np.abs(kh).max())

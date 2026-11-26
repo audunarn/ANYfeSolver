@@ -41,6 +41,7 @@ def _checked_material(emat) -> np.ndarray:
 def optimal_beta0(emat) -> float:
     """Overall higher-order scaling beta_0 of Figure 12 (orientation-averaged optimum)."""
     d = _checked_material(emat)
+    d = d / np.max(np.abs(d))  # beta0 is scale invariant; avoids cubic overflow at extreme E
     e11, e12, e13 = d[0]
     e22, e23, e33 = d[1, 1], d[1, 2], d[2, 2]
     edet = float(np.linalg.det(d))
