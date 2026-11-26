@@ -67,6 +67,7 @@ CHANGE_COMMITS = (
     "1b7492669 Nonlinear guard cadence: Q4 class authority per evaluation (G2), lifecycle per step (L1), exact sweeps (G1)",
     "5c4c8f8ba Guard cadence: validate every window close, no publication before validation",
     "2a5ddf5a3 Guard window: re-check swallowed nested refusals and hand nested elements to the parent",
+    "631f77eba Guard window: refused nested windows hand every owed guard to enclosing windows",
 )
 
 
