@@ -15,6 +15,8 @@ from typing import Any, Iterable, Mapping, Optional, Sequence, Tuple
 
 import numpy as np
 
+from .linalg import CleanupScope, lease_from
+
 
 def _plastic_state_measure(states: Mapping[int, Any]) -> Tuple[float, float, int]:
     """Return inexpensive scalar measures of the current plastic state.
@@ -76,6 +78,8 @@ class ImpactTangentReuseController:
     residual_stall_ratio: float = 0.90
     plastic_relative_threshold: float = 5.0e-3
     cached_handle: Optional[Any] = field(default=None, init=False, repr=False)
+    # Lease pinning ``cached_handle`` while it may be reused (see ``factorize``).
+    _leases: CleanupScope = field(default_factory=CleanupScope, init=False, repr=False, compare=False)
     _reuse_since_refresh: int = field(default=0, init=False, repr=False)
     _pending_refresh_reasons: set[str] = field(default_factory=set, init=False, repr=False)
     _last_dt: Optional[float] = field(default=None, init=False, repr=False)
@@ -117,6 +121,7 @@ class ImpactTangentReuseController:
     ) -> None:
         """Start a new substep and invalidate any prior effective tangent."""
 
+        self.release_lease()
         if not self.enabled:
             self.cached_handle = None
             self._reuse_since_refresh = 0
@@ -144,6 +149,35 @@ class ImpactTangentReuseController:
         self._pending_refresh_reasons.update(reasons)
         self._last_residual_norm = None
         self._last_plastic_measure = None
+
+    def factorize(self, factorize_function: Any, *args: Any, **kwargs: Any) -> Any:
+        """Factorize a refreshed effective tangent; pin it while it may be reused.
+
+        With reuse enabled the handle is solved again in later iterations of
+        the substep, across status callbacks and other factorizations, so it
+        is pinned with a :class:`~anyfesolver.linalg.FactorizationLease`.  The
+        previous tangent's lease ends first, so an unconflicted refresh takes
+        exactly the unleased slot path.  Without reuse (full Newton) a handle
+        is never solved again and is not leased.
+        """
+
+        self.release_lease()
+        if not self.enabled:
+            return factorize_function(*args, **kwargs)
+        return self._leases.hold(lease_from(factorize_function, *args, **kwargs)).handle
+
+    def release_lease(self) -> None:
+        """End the lease of the cached tangent on the normal path (idempotent)."""
+
+        self._leases.release()
+
+    def __enter__(self) -> "ImpactTangentReuseController":
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
+        """End the lease with the exception actually propagating as primary."""
+
+        self._leases.__exit__(exc_type, exc, traceback)
 
     def request_refresh(self, reason: str) -> None:
         if self.enabled:

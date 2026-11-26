@@ -195,7 +195,12 @@ def test_warped_direct_kernel_retains_established_shell_response(nodes: np.ndarr
     mesh = _mesh(nodes)
     material = _material()
     candidate = _element()
-    established = ShellElement(2, [1, 2, 3, 4], "warped", thickness=0.025)
+    # Warped qualified facets apply max(drilling_stabilization, 0.1) (owner
+    # decision 2026-11-24); the established kernel at 0.1 is the reference.
+    assert candidate.drilling_stabilization < 0.1
+    established = ShellElement(
+        2, [1, 2, 3, 4], "warped", thickness=0.025, drilling_stabilization=0.1
+    )
     candidate_stiffness = candidate.compute_stiffness_matrix(mesh, material)
     established_stiffness = established.compute_stiffness_matrix(mesh, material)
     assert np.array_equal(candidate_stiffness, established_stiffness)
@@ -260,6 +265,7 @@ def test_warped_direct_kernel_covers_orthotropic_and_generalized_sections() -> N
         "orthotropic",
         thickness=0.018,
         material_direction=direction,
+        drilling_stabilization=0.1,
     )
     np.testing.assert_array_equal(
         candidate.compute_stiffness_matrix(mesh, orthotropic),
@@ -290,10 +296,35 @@ def test_warped_direct_kernel_covers_orthotropic_and_generalized_sections() -> N
         drilling_stabilization=0.0,
     )
     material = _material()
-    np.testing.assert_array_equal(
-        candidate_section.compute_stiffness_matrix(mesh, material),
-        established_section.compute_stiffness_matrix(mesh, material),
+    # An explicit 0.0 is floored to 0.1 on this warped facet, so the
+    # physical-director drilling correction is now active: the qualified
+    # stiffness is the established kernel at 0.1 plus that correction, and
+    # equals an explicit 0.1 element exactly.
+    floored_section = QualifiedE4PLShellElement(
+        5,
+        [1, 2, 3, 4],
+        "warped",
+        shell_section=section,
+        reference_normal=np.asarray((0.0, 0.0, 1.0)),
+        drilling_stabilization=0.1,
     )
+    established_floor = ShellElement(
+        6,
+        [1, 2, 3, 4],
+        "warped",
+        shell_section=section,
+        drilling_stabilization=0.1,
+    )
+    qualified_section = candidate_section.compute_stiffness_matrix(mesh, material)
+    np.testing.assert_array_equal(
+        qualified_section, floored_section.compute_stiffness_matrix(mesh, material)
+    )
+    correction = candidate_section.compute_stiffness_components(mesh, material)[
+        "director_drilling_correction"
+    ]
+    assert np.any(correction != 0.0)
+    expected = established_floor.compute_stiffness_matrix(mesh, material) + correction
+    np.testing.assert_array_equal(qualified_section, 0.5 * (expected + expected.T))
     np.testing.assert_array_equal(
         candidate_section.compute_mass_matrix(mesh, material),
         established_section.compute_mass_matrix(mesh, material),

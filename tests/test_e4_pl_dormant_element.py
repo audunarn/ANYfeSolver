@@ -148,7 +148,10 @@ def test_inherited_mass_geometric_state_and_direct_warped_parity() -> None:
     mesh = _mesh(nodes)
     material = _material()
     candidate = QualifiedE4PLShellElement(1, [1, 2, 3, 4], "q1", thickness=0.02)
-    legacy = ShellElement(2, [1, 2, 3, 4], "q1", thickness=0.02)
+    # Warped qualified facets apply the drilling floor max(alpha, 0.1)
+    # (owner decision 2026-11-24); the established kernel at 0.1 is the parity
+    # reference.  The geometric and mass operators carry no drilling term.
+    legacy = ShellElement(2, [1, 2, 3, 4], "q1", thickness=0.02, drilling_stabilization=0.1)
     components = candidate.compute_stiffness_components(mesh, material)
     assert components["legacy_fallback"] is False
     assert components["warped_direct"] is True
@@ -242,7 +245,10 @@ def test_generalized_section_and_warped_nonlinear_paths_retain_parity() -> None:
     warped_nodes[2, 2] = -0.02
     warped_mesh = _mesh(warped_nodes.tolist())
     candidate = QualifiedE4PLShellElement(2, [1, 2, 3, 4], "q1", thickness=0.025)
-    legacy = ShellElement(3, [1, 2, 3, 4], "q1", thickness=0.025)
+    # Warped facet: the qualified kernels apply the floored drilling coefficient.
+    legacy = ShellElement(
+        3, [1, 2, 3, 4], "q1", thickness=0.025, drilling_stabilization=0.1
+    )
     displacement = np.linspace(-1.0e-4, 2.0e-4, 24)
     candidate_response = candidate.compute_nonlinear_response(
         warped_mesh, material, displacement, tangent=True

@@ -405,6 +405,13 @@ def test_runtime_static_only_cylinder_never_enters_eigenvalue_buckling(
 
     monkeypatch.setattr(runtime, "_backend_solve_buckling", forbidden_buckling)
 
+    # Clamped ends (owner decision 1a, 2026-11-25): the "auto" cylinder anchors
+    # restrain only five translations and leave one rigid-body mode (reduced K
+    # has one zero eigenvalue, 1.3e-16 vs next 4e-5).  The base code certified
+    # that mechanism's solution (eta 2.9e-17); the factorization-level
+    # known-solution check (rule A) now refuses it (kfe 2.1 > 1e-3).  This test
+    # is about the static-only route never entering buckling, so it uses a
+    # well-posed support.
     result = runtime.run_production_fem(
         geometry,
         runtime.LightweightFEMConfig(
@@ -415,6 +422,7 @@ def test_runtime_static_only_cylinder_never_enters_eigenvalue_buckling(
             include_stiffeners=False,
             include_girders=False,
             num_buckling_modes=3,
+            boundary_condition="clamped",
         ),
     )
 
@@ -817,3 +825,93 @@ def test_runtime_bridges_generated_loads_and_corotational_arc_length(
         result.prestress_summary["nonlinear_static_kinematics"]
         == "corotational"
     )
+
+
+def test_owned_session_is_closed_when_prestress_recovery_raises(monkeypatch) -> None:
+    """D2: an owned AnalysisSession (and its PARDISO lease) must not leak when a
+    phase between its creation and buckling raises; the original exception
+    propagates and the session is closed."""
+
+    sessions: list = []
+    real_session = runtime._backend_AnalysisSession
+
+    def tracking_session(model):
+        session = real_session(model)
+        sessions.append(session)
+        return session
+
+    class SyntheticRecoveryFailure(RuntimeError):
+        pass
+
+    def failing_recovery(*_args, **_kwargs):
+        raise SyntheticRecoveryFailure("synthetic prestress recovery failure")
+
+    monkeypatch.setattr(runtime, "_backend_AnalysisSession", tracking_session)
+    monkeypatch.setattr(
+        runtime._full_backend, "recover_prestress_from_static_result", failing_recovery
+    )
+    with pytest.raises(SyntheticRecoveryFailure):
+        runtime.run_production_fem(
+            _flat_geometry(),
+            runtime.LightweightFEMConfig(mesh_fidelity="coarse", pressure_pa=10_000.0),
+        )
+
+    assert len(sessions) == 1
+    assert sessions[0].closed
+
+
+def test_context_invalidation_interrupt_detaches_closed_session() -> None:
+    """D2: when closing the cached session raises KeyboardInterrupt, the context
+    must already be detached; a later acquire() with the same key returns a
+    fresh, open session rather than the closed one."""
+
+    context = runtime.RuntimeAnalysisContext()
+
+    first_model = SimpleNamespace(revision_signature=lambda: {})
+    real_session = runtime._backend_AnalysisSession
+    try:
+        runtime._backend_AnalysisSession = lambda _model: SimpleNamespace(
+            closed=False, close=lambda: None
+        )
+        _, first, _ = context.acquire("key", lambda: first_model)
+
+        def interrupted_close() -> None:
+            first.closed = True
+            raise KeyboardInterrupt
+
+        first.close = interrupted_close
+        with pytest.raises(KeyboardInterrupt):
+            context.invalidate()
+        _, second, hit = context.acquire("key", lambda: first_model)
+    finally:
+        runtime._backend_AnalysisSession = real_session
+
+    assert second is not first
+    assert not second.closed
+    assert hit is False
+
+
+def test_interrupted_context_close_is_terminal() -> None:
+    """D2 closing check: close() must mark the context closed before native
+    cleanup, so an interrupt in the session close cannot leave it reusable."""
+
+    context = runtime.RuntimeAnalysisContext()
+    model = SimpleNamespace(revision_signature=lambda: {})
+    real_session = runtime._backend_AnalysisSession
+    try:
+        runtime._backend_AnalysisSession = lambda _model: SimpleNamespace(
+            closed=False, close=lambda: None
+        )
+        _, session, _ = context.acquire("key", lambda: model)
+
+        def interrupted_close() -> None:
+            session.closed = True
+            raise KeyboardInterrupt
+
+        session.close = interrupted_close
+        with pytest.raises(KeyboardInterrupt):
+            context.close()
+        with pytest.raises(RuntimeError, match="closed"):
+            context.acquire("key", lambda: model)
+    finally:
+        runtime._backend_AnalysisSession = real_session

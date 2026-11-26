@@ -15,7 +15,7 @@ from scipy import sparse
 from scipy.sparse.linalg import LinearOperator, eigs, ArpackError
 
 from .control import CancellationToken, SolveCancelled, cancellation_safe_point
-from .linalg import MatrixClass, factorize_cached
+from .linalg import MatrixClass, factorize_cached, lease_from
 from ._native_reference_modal import _owned
 from ._ge_beam3_pose_joint import _exp_terms
 from ._ge_beam3_p5.algebra import skew
@@ -632,7 +632,9 @@ def solve(owner, request, *, cancellation_token=None):
             raise ValueError('buckling count must leave sparse Arnoldi room')
         a, g, scale = _scaled_pencil(owner, packet)
         guard('before_factorization')
-        handle = factorize_cached((a+request.shift*g).tocsc(), MatrixClass.GENERAL)
+        # Pinned for the Arnoldi iteration (other factorizations may run between actions).
+        lease = lease_from(factorize_cached, (a+request.shift*g).tocsc(), MatrixClass.GENERAL)
+        handle = lease.handle
         if handle.status != 'ok':
             raise _Failure('buckling shift factorization failed: '+str(handle.failure_reason))
         def action(vector):
@@ -646,8 +648,9 @@ def solve(owner, request, *, cancellation_token=None):
             if not np.isfinite(answer).all():
                 raise _Failure('nonfinite buckling inverse action')
             return answer
-        values, vectors = eigs(LinearOperator(a.shape, matvec=action, dtype=float), k=request.count,
-            which='LM', tol=1e-10, maxiter=request.max_iterations, v0=np.linspace(1., 2., a.shape[0]))
+        with lease:
+            values, vectors = eigs(LinearOperator(a.shape, matvec=action, dtype=float), k=request.count,
+                which='LM', tol=1e-10, maxiter=request.max_iterations, v0=np.linspace(1., 2., a.shape[0]))
         raw = tuple(map(complex, values)); pairs = []
         for inverse, vector in zip(values, vectors.T, strict=True):
             guard('pair', full=False)

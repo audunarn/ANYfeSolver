@@ -213,10 +213,19 @@ def test_pypardiso_backend_symmetric_mtypes_pattern_reuse_and_stale_handles() ->
     assert second.metadata["pardiso_symbolic_reused"] is True
     np.testing.assert_allclose(A_scaled @ second.solve(b), b, atol=1.0e-8)
 
-    # The first handle's slot was refactorized for A_scaled; solving through
-    # the stale handle must transparently rebuild and stay correct for A.
-    np.testing.assert_allclose(A @ first.solve(b), b, atol=1.0e-8)
-    assert first._solver.stale_rebuild_count == 1
+    # The first handle's slot was refactorized for A_scaled, so the handle is
+    # stale.  Contract change (option B, owner decision 2026-11-25): this
+    # test used to require a transparent private rebuild; Codex review round
+    # 4 showed that rebuild could return a solution after a perturbed or
+    # interrupted rebuild, so a stale handle now raises a typed error without
+    # any native call and the caller factorizes again.
+    with pytest.raises(linalg.PardisoStaleHandleError):
+        first.solve(b)
+    assert first.status == "failed"
+    assert first.metadata["pardiso_stale_cause"] == "refactorized"
+    again = backend.factorize(A, MatrixClass.SPD, signature="pattern:v1")
+    assert again.metadata["pardiso_symbolic_reused"] is True
+    np.testing.assert_allclose(A @ again.solve(b), b, atol=1.0e-8)
 
     indefinite = sparse.csr_matrix([[0.0, 1.0], [1.0, 0.0]])
     handle_indef = backend.factorize(indefinite, MatrixClass.SYMMETRIC_INDEFINITE)
@@ -225,8 +234,11 @@ def test_pypardiso_backend_symmetric_mtypes_pattern_reuse_and_stale_handles() ->
 
     backend.release_pattern_slots()
     assert backend._slots == []
-    # Handles remain usable after slot release via private rebuild.
-    np.testing.assert_allclose(A_scaled @ second.solve(b), b, atol=1.0e-8)
+    # Released slots make their handles stale (previously: private rebuild).
+    for handle in (again, handle_indef):
+        with pytest.raises(linalg.PardisoStaleHandleError):
+            handle.solve(np.ones(handle.matrix_shape[0]))
+        assert handle.metadata["pardiso_stale_cause"] == "released"
 
 
 class _BlockingPardisoCalls:

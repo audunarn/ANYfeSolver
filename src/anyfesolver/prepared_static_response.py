@@ -10,6 +10,7 @@ import numpy as np
 from .prepared_static_numeric import (NumericCase, NumericField, prepare_numeric_plan,
                                      recover_numeric_cases)
 from .analysis_session import _immutable_array
+from .linalg import close_propagating
 from .prepared_static import PreparedStaticEvaluator, _certified_backward_error, _block_norm_data
 from .linalg import (FORWARD_ERROR_ESTIMATE_EXCEEDED, RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT,
     relative_forward_error_estimates)
@@ -363,9 +364,10 @@ class PreparedStaticResponseEvaluator(PreparedStaticEvaluator):
             self._preparation_timings['accounting_ready_seconds'] = (_preparation_clock_ns()-stage_started)/1e9
             self._preparation_timings['total_seconds'] = (_preparation_clock_ns()-preparation_started)/1e9
             self._preparation_active = False
-        except BaseException:
+        except BaseException as primary:
             self._preparation_active = False
-            self.close()
+            # Released with the exception actually propagating as primary.
+            close_propagating(self.close, primary, "closing a failed prepared response evaluator")
             raise
 
     def _library_elements(self, snapshot):

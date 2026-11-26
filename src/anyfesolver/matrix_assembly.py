@@ -13,7 +13,8 @@ import sys
 import time
 from contextlib import ExitStack
 from dataclasses import dataclass
-from operator import itemgetter
+from itertools import repeat
+from operator import is_, itemgetter
 from types import FunctionType, MappingProxyType
 from typing import TYPE_CHECKING, Any, Callable, Dict, Mapping, Optional, Sequence, Tuple
 from weakref import WeakKeyDictionary, ref
@@ -72,6 +73,10 @@ from .s3_reference_batch import (
 )
 from .element_capabilities import ElementCapabilityError
 from .elements import BeamElement as _BeamElement, Element as _Element
+from .exact_beam_batch import (
+    exact_beam_stiffness_batch as _EXACT_BEAM_STIFFNESS_BATCH,
+    exact_beam_stiffness_candidate as _EXACT_BEAM_STIFFNESS_CANDIDATE,
+)
 if TYPE_CHECKING:
     from .boundary import LoadCase
     from .fe_core import FEModel
@@ -228,6 +233,9 @@ _EXACT_FE_MESH_REVISION_SIGNATURE = type.__getattribute__(
     "__dict__",
 )["revision_signature"]
 _EXACT_FE_MESH_GET_NODE = type.__getattribute__(_FEMesh, "__dict__")["get_node"]
+_EXACT_FE_MESH_GET_ELEMENT = type.__getattribute__(_FEMesh, "__dict__")[
+    "get_element"
+]
 _EXACT_FE_MESH_NUM_NODES = type.__getattribute__(_FEMesh, "__dict__")[
     "num_nodes"
 ]
@@ -3641,6 +3649,7 @@ def _run_with_qualified_assembly_runtime_lease(
                 with ExitStack() as stack:
                     stack.enter_context(_Q4_TRUSTED_OPERATION_SCOPE(q4_elements))
                     stack.enter_context(_S3_TRUSTED_OPERATION_SCOPE(s3_elements))
+                    stack.enter_context(_v2d_scope_census_memo())
                     try:
                         result = operation(lease)
                     except BaseException as exc:
@@ -3999,6 +4008,69 @@ def _shell_quadrature_batch_identity(
             _exact_quadrature_array_identity(element.shear_gauss_weights),
         )
     return identity
+
+
+def _standard_element_stiffness(element: Any, mesh: Any, material: Any) -> np.ndarray:
+    """The element's own linear stiffness; the getter of every internal caller.
+
+    Passing exactly this function (not an equivalent lambda) is what admits
+    an all-exact-beam model to the batched beam stiffness below.
+    """
+
+    return element.compute_stiffness_matrix(mesh, material)
+
+
+_EXACT_STANDARD_STIFFNESS_GETTER = _standard_element_stiffness
+
+# The element-matrix check kernels for which the exact-beam batch's own
+# finiteness and symmetry tests reach the same accept/reject decision: the
+# module functions (direct calls of the implementation with its defaults)
+# here, and their private clones in the operation's private globals (see
+# ``_make_exact_assembly_operation``).  Each kernel must be one of a listed
+# pair and keep its bound defaults and its ``np`` global; any other kernel
+# takes the scalar loop, which calls it per element.
+_EXACT_BEAM_MATRIX_KERNEL_PAIRS = (
+    (_check_element_matrix_shape, _relative_symmetry_error),
+)
+_EXACT_BEAM_MATRIX_KERNEL_DEFAULTS = (
+    _check_element_matrix_shape.__defaults__,
+    _check_element_matrix_shape.__kwdefaults__,
+    _relative_symmetry_error.__defaults__,
+    _relative_symmetry_error.__kwdefaults__,
+)
+_EXACT_BEAM_NUMPY = np
+
+
+def _exact_beam_matrix_kernels_admitted(
+    check_kernel: Any,
+    symmetry_kernel: Any,
+    pairs: Any,
+    defaults: Any,
+    numpy_module: Any,
+) -> bool:
+    """Pure reads: ``(check_kernel, symmetry_kernel)`` is a listed exact pair."""
+
+    for check, symmetry in pairs:
+        if check_kernel is check and symmetry_kernel is symmetry:
+            break
+    else:
+        return False
+    for kernel in (check_kernel, symmetry_kernel):
+        if type(kernel) is not FunctionType:
+            return False
+        namespace = kernel.__globals__
+        if type(namespace) is not dict or not all(
+            type(key) is str for key in dict.keys(namespace)
+        ):
+            return False
+        if dict.get(namespace, "np") is not numpy_module:
+            return False
+    return (
+        check_kernel.__defaults__ is defaults[0]
+        and check_kernel.__kwdefaults__ is defaults[1]
+        and symmetry_kernel.__defaults__ is defaults[2]
+        and symmetry_kernel.__kwdefaults__ is defaults[3]
+    )
 
 
 def _assemble_element_matrix_under_lease_impl(
@@ -4520,6 +4592,119 @@ def _assemble_element_matrix_under_lease_impl(
             v2d_batch_eligibility,
             v2d_fast_candidate,
         )
+
+        # All-exact-beam linear stiffness (owner decisions D1/D2, 2026-11-24).
+        # One complete guard before the batch reads anything and one after
+        # its last output replace the two per-element material-observation
+        # guards of the scalar loops below.  Changing the model during a
+        # request (including from another thread) is outside the supported
+        # contract.  The batch runs after the imports above (so a missing
+        # name fails identically) and receives the classification objects
+        # the scalar loop would use; it verifies every dispatch of the scalar
+        # path before reading, calls the sparsity kernel of the scalar
+        # pre-loop phase before any element side effect, and returns ``None``
+        # before any side effect whenever anything is irregular, so that the
+        # unchanged scalar loops below run instead.
+        if (
+            _exact_type(matrix_type) is str
+            and matrix_type == "stiffness"
+            and element_matrix_getter is _EXACT_STANDARD_STIFFNESS_GETTER
+            and activity_info is None
+            and _exact_type(activity_scales) is _exact_dict
+            and not activity_scales
+            and owned_mesh is None
+            and raw_mesh is None
+            and owned_items_provider is None
+            and owned_material_provider is None
+            and owned_material_name_provider is None
+            and fast_items_provider is None
+            and raw_items_provider is None
+            and raw_material_provider is None
+            and raw_total_provider is None
+            and raw_s3_material_provider is None
+            and raw_s3_total_provider is None
+            and raw_s3_reference_plan is None
+            and not raw_q4_only
+            and not raw_exact_cached_only
+            and _EXACT_BEAM_STIFFNESS_CANDIDATE(model, mesh, element_items)
+            and _exact_beam_matrix_kernels_admitted(
+                _check_matrix_kernel,
+                _relative_symmetry_kernel,
+                _EXACT_BEAM_MATRIX_KERNEL_PAIRS,
+                _EXACT_BEAM_MATRIX_KERNEL_DEFAULTS,
+                _EXACT_BEAM_NUMPY,
+            )
+        ):
+            qualified_runtime_guard(
+                model,
+                context=f"{matrix_type} assembly material observation",
+            )
+            beam_batch = _EXACT_BEAM_STIFFNESS_BATCH(
+                model,
+                mesh,
+                element_items,
+                total_dofs,
+                (
+                    QualifiedE4PLShellElement,
+                    QUALIFIED_Q4_FORMULATION_ID,
+                    ShellElement,
+                    v2c_fast_candidate,
+                    v2d_fast_candidate,
+                    reference_s3_candidate,
+                ),
+                lambda: _sparsity_kernel(
+                    mesh,
+                    matrix_type,
+                    element_items=element_items,
+                ),
+            )
+            if beam_batch is not None:
+                (
+                    beam_matrices,
+                    beam_element_ids,
+                    beam_seconds,
+                    (rows_concat, cols_concat),
+                ) = beam_batch
+                beam_count = _exact_len(beam_element_ids)
+                beam_element_seconds = beam_seconds / beam_count
+                element_times = info["element_times"]
+                for beam_element_id in beam_element_ids:
+                    element_times[_exact_int(beam_element_id)] = beam_element_seconds
+                info["num_elements"] += beam_count
+                qualified_runtime_guard(
+                    model,
+                    context=f"{matrix_type} assembly completed elements",
+                )
+                # The scalar loop appends ``(1.0 * matrix).ravel()`` per
+                # element; multiplying finite values by 1.0 is exact, so the
+                # element-order concatenation is the C-order buffer of the
+                # stacked matrices.  The constructor receives an owned
+                # C-order float64 copy, as ``np.concatenate`` gives the
+                # scalar loop, not a view of the batch's array.
+                coo = _coo_constructor(
+                    (
+                        beam_matrices.reshape(-1).copy(order="C"),
+                        (rows_concat, cols_concat),
+                    ),
+                    shape=(total_dofs, total_dofs),
+                    dtype=float,
+                )
+                matrix = _coo_to_csr(coo)
+                info["diagnostics"]["assembled_symmetry_error"] = (
+                    _relative_symmetry_kernel(matrix)
+                )
+                info["diagnostics"]["vectorized_shell_groups"] = []
+                info["diagnostics"]["vectorized_shell_element_count"] = 0
+                info["diagnostics"]["scalar_shell_element_count"] = int(
+                    info["num_elements"]
+                )
+                info["sparsity_signature"] = _topology_signature_kernel(
+                    mesh,
+                    matrix_type,
+                    element_items=element_items,
+                )
+                info["assembly_time"] = time.time() - start_time
+                return matrix, info
 
         groups = {}
         reference_s3_items = []
@@ -5367,6 +5552,12 @@ def _make_exact_assembly_operation(implementation: Any) -> tuple[Any, Any]:
     exact_relative_symmetry = private_function(
         expected_kwdefaults["_relative_symmetry_kernel"]
     )
+    # The operation always passes these private clones; only they admit the
+    # exact-beam batch inside it (private globals: no module attribute
+    # replacement reaches this entry).
+    exact_globals["_EXACT_BEAM_MATRIX_KERNEL_PAIRS"] = (
+        (exact_check_matrix, exact_relative_symmetry),
+    )
     exact_sparsity = private_function(expected_kwdefaults["_sparsity_kernel"])
     exact_topology_signature = private_function(
         expected_kwdefaults["_topology_signature_kernel"]
@@ -5413,6 +5604,60 @@ def _make_exact_assembly_operation(implementation: Any) -> tuple[Any, Any]:
         "_reference_s3_formulation_id"
     ]
 
+    # The identity check below runs for every guard of every element, so it
+    # is evaluated with C-level iteration.  ``kw_items_changed`` returns the
+    # same answer as the original generator,
+    #   any(name not in d or d[name] is not expected for name, expected in items)
+    # for the exact ``dict`` objects it is given.  When every key of ``d`` is
+    # an exact ``str`` no caller code can run during the lookups, so one
+    # ``dict.get`` probe per name is equivalent to the ``in``/``[]`` pair.  A
+    # dictionary holding any other key type (whose ``__eq__`` could run, and
+    # could answer differently per probe) keeps the original generator
+    # unchanged.  The helpers are bound here, not looked up in module
+    # globals at call time.
+    exact_kw_map = map
+    exact_kw_all = all
+    exact_kw_any = any
+    exact_kw_type = type
+    exact_kw_is = is_
+    exact_kw_repeat = repeat
+    exact_kw_str = str
+    exact_kw_missing = object()
+
+    def kw_items_changed(
+        current: dict[str, Any],
+        items: tuple[tuple[str, Any], ...],
+        names: tuple[str, ...],
+        values: tuple[Any, ...],
+    ) -> bool:
+        # ``type(key) is str`` for every key; neither ``type`` nor ``is``
+        # dispatches to caller code (no hashing or comparison of key types).
+        if exact_kw_all(
+            exact_kw_map(
+                exact_kw_is,
+                exact_kw_map(exact_kw_type, current),
+                exact_kw_repeat(exact_kw_str),
+            )
+        ):
+            return not exact_kw_all(
+                exact_kw_map(
+                    exact_kw_is,
+                    exact_kw_map(
+                        current.get,
+                        names,
+                        exact_kw_repeat(exact_kw_missing),
+                    ),
+                    values,
+                )
+            )
+        return exact_kw_any(
+            name not in current or current[name] is not expected
+            for name, expected in items
+        )
+
+    expected_kw_names = tuple(name for name, _value in expected_kw_items)
+    expected_kw_values = tuple(value for _name, value in expected_kw_items)
+
     def require() -> None:
         current_kwdefaults = implementation.__kwdefaults__
         if len(published) != 1:
@@ -5423,6 +5668,8 @@ def _make_exact_assembly_operation(implementation: Any) -> tuple[Any, Any]:
             published_defaults,
             published_kwdefaults,
             published_kw_items,
+            published_kw_names,
+            published_kw_values,
         ) = published[0]
         current_published_kwdefaults = published_call.__kwdefaults__
         if (
@@ -5430,20 +5677,22 @@ def _make_exact_assembly_operation(implementation: Any) -> tuple[Any, Any]:
             or implementation.__defaults__ is not expected_defaults
             or current_kwdefaults is not expected_kwdefaults
             or len(current_kwdefaults) != len(expected_kw_items)
-            or any(
-                name not in current_kwdefaults
-                or current_kwdefaults[name] is not expected
-                for name, expected in expected_kw_items
+            or kw_items_changed(
+                current_kwdefaults,
+                expected_kw_items,
+                expected_kw_names,
+                expected_kw_values,
             )
             or published_call.__code__ is not published_code
             or published_call.__defaults__ is not published_defaults
             or current_published_kwdefaults is not published_kwdefaults
             or type(current_published_kwdefaults) is not dict
             or len(current_published_kwdefaults) != len(published_kw_items)
-            or any(
-                name not in current_published_kwdefaults
-                or current_published_kwdefaults[name] is not expected
-                for name, expected in published_kw_items
+            or kw_items_changed(
+                current_published_kwdefaults,
+                published_kw_items,
+                published_kw_names,
+                published_kw_values,
             )
             or vars(runtime_module).get("_assemble_element_matrix_under_lease")
             is not published_call
@@ -5520,13 +5769,16 @@ def _make_exact_assembly_operation(implementation: Any) -> tuple[Any, Any]:
     call_kwdefaults = call.__kwdefaults__
     if type(call_kwdefaults) is not dict:
         raise TypeError("qualified assembly dispatcher defaults are absent")
+    call_kw_items = tuple(call_kwdefaults.items())
     published.append(
         (
             call,
             call.__code__,
             call.__defaults__,
             call_kwdefaults,
-            tuple(call_kwdefaults.items()),
+            call_kw_items,
+            tuple(name for name, _value in call_kw_items),
+            tuple(value for _name, value in call_kw_items),
         )
     )
     return call, require
@@ -5573,7 +5825,7 @@ def assemble_stiffness_matrix(model: "FEModel") -> Tuple[sparse.csr_matrix, Dict
     return _assemble_element_matrix(
         model,
         "stiffness",
-        lambda element, mesh, material: element.compute_stiffness_matrix(mesh, material),
+        _standard_element_stiffness,
     )
 
 
@@ -6554,8 +6806,42 @@ def _qualified_s3_pressure_surface_records(
         exact_qualified_guard(
             context="qualified S3 pressure-surface mapping observation",
         )
+    # Without the lease's constant-time input guard (pure S3 V2D and mixed
+    # V2D models) the complete guard after every record made this walk
+    # O(records x elements).  Exact S3 V2D records are instead read without
+    # executing any code outside this package, so nothing can change between
+    # them: the opening guard above still covers their state and the caller's
+    # closing guard follows as before.  Every other record keeps the original
+    # read-then-guard route.
+    v2d_elements = (
+        _foreign_code_free_v2d_element_mapping(model)
+        if trusted_input_guard is None
+        else None
+    )
     records: list[Dict[str, Any]] = []
     for raw_element_id in pressure_ids:
+        if v2d_elements is not None and type(raw_element_id) is int:
+            element = dict.get(v2d_elements, raw_element_id)
+            if element is None:
+                # ``get_element`` (verified to be FEMesh's own) returns None
+                # for it too, and the guarded route skips it without a guard.
+                continue
+            fields = _foreign_code_free_v2d_pressure_fields(element)
+            if fields is not None:
+                formulation, pressure_policy, offset = fields
+                if (
+                    formulation != "E4_PL_QUALIFIED_S3_COMPANION_V1"
+                    and pressure_policy != "ELEMENT_NODAL_REFERENCE_SURFACE_V1"
+                ):
+                    continue
+                records.append(
+                    _qualified_s3_pressure_surface_record(raw_element_id, offset)
+                )
+                continue
+        # The guarded route below may run caller code (``__int__``, a
+        # provider, a descriptor) that changes what the mapping read above
+        # would mean; the remaining records keep the guarded route.
+        v2d_elements = None
         element_id = int(raw_element_id)
         element = model.mesh.get_element(element_id)
         if element is None:
@@ -6580,19 +6866,103 @@ def _qualified_s3_pressure_surface_records(
             raise AssemblyError(
                 f"Qualified S3 element {element_id} has a non-finite reference-surface offset."
             )
-        records.append(
-            {
-                "element_id": element_id,
-                "pressure_surface_id": "ELEMENT_NODAL_REFERENCE_SURFACE_V1",
-                "reference_surface_offset": offset,
-                "resultant_and_reaction_reference": (
-                    "GLOBAL_NODAL_REFERENCE_COORDINATES"
-                ),
-                "section_origin_offset_from_reference": -offset,
-                "virtual_work": "TRANSLATIONAL_NODAL_REFERENCE_SURFACE_ONLY",
-            }
-        )
+        records.append(_qualified_s3_pressure_surface_record(element_id, offset))
     return records
+
+
+def _v2d_scope_census_memo() -> Any:
+    """One-operation S3 V2D scope-census memo (imported lazily)."""
+
+    from .e4_pl_s3_v2d_element import v2d_scope_census_memo
+
+    return v2d_scope_census_memo()
+
+
+def _qualified_s3_pressure_surface_record(
+    element_id: int,
+    offset: float,
+) -> Dict[str, Any]:
+    return {
+        "element_id": element_id,
+        "pressure_surface_id": "ELEMENT_NODAL_REFERENCE_SURFACE_V1",
+        "reference_surface_offset": offset,
+        "resultant_and_reaction_reference": (
+            "GLOBAL_NODAL_REFERENCE_COORDINATES"
+        ),
+        "section_origin_offset_from_reference": -offset,
+        "virtual_work": "TRANSLATIONAL_NODAL_REFERENCE_SURFACE_ONLY",
+    }
+
+
+def _foreign_code_free_v2d_element_mapping(model: "FEModel") -> Any:
+    """Return the mesh element mapping when reading it runs no foreign code.
+
+    ``None`` unless the model, mesh and DOF reads are the package's own
+    builtin routes and the element mapping is a plain ``dict`` or the
+    package's state mapping whose ``get`` is ``dict.get``.  Nothing here
+    executes code outside this package.
+    """
+
+    from .boundary import _load_model_access_is_builtin, _mapping_reads_are_builtin
+
+    if not _load_model_access_is_builtin(model):
+        return None
+    mesh = dict.get(object.__getattribute__(model, "__dict__"), "mesh")
+    mesh_namespace = object.__getattribute__(mesh, "__dict__")
+    # The guarded route calls ``model.mesh.get_element``; reading the mapping
+    # directly is equivalent only while that is the class's own method.
+    if (
+        "get_element" in mesh_namespace
+        or type.__getattribute__(_FEMesh, "__dict__").get("get_element")
+        is not _EXACT_FE_MESH_GET_ELEMENT
+    ):
+        return None
+    elements = dict.get(mesh_namespace, "elements")
+    if not _mapping_reads_are_builtin(elements):
+        return None
+    return elements
+
+
+def _foreign_code_free_v2d_pressure_fields(
+    element: Any,
+) -> Optional[Tuple[str, str, float]]:
+    """Read an exact S3 V2D element's pressure-surface fields, or ``None``.
+
+    Returns ``(formulation_id, pressure_surface_policy_id, offset)`` exactly as
+    ``getattr`` would, reading only the class namespaces along the MRO and the
+    plain instance dictionary, so no descriptor or other foreign code runs.
+    ``None`` (keep the guarded ``getattr`` route) for anything else: another
+    class, a replaced ``__getattribute__``, a class-level data descriptor or
+    instance shadow for one of the fields, or a non-float or non-finite offset.
+    """
+
+    import math
+
+    from .current_state_tangent import _static_mro_attribute
+    from .e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
+
+    owner = type(element)
+    if owner is not NativeParityE4PLS3V2DShellElement:
+        return None
+    if _static_mro_attribute(owner, "__getattribute__") is not object.__getattribute__:
+        return None
+    namespace = object.__getattribute__(element, "__dict__")
+    if type(namespace) is not dict:
+        return None
+    formulation = _static_mro_attribute(owner, "formulation_id")
+    pressure_policy = _static_mro_attribute(owner, "pressure_surface_policy_id")
+    offset = dict.get(namespace, "reference_surface_offset")
+    if (
+        type(formulation) is not str
+        or type(pressure_policy) is not str
+        or "formulation_id" in namespace
+        or "pressure_surface_policy_id" in namespace
+        or _static_mro_attribute(owner, "reference_surface_offset") is not None
+        or type(offset) is not float
+        or not math.isfinite(offset)
+    ):
+        return None
+    return formulation, pressure_policy, offset
 
 
 def _qualified_trusted_state_guard(qualified_runtime_guard: Any) -> Any:
@@ -7262,9 +7632,7 @@ def _assemble_damping_matrix_under_lease(
         K, stiffness_info = _assemble_element_matrix_under_lease(
             model,
             "stiffness",
-            lambda element, mesh, material: element.compute_stiffness_matrix(
-                mesh, material
-            ),
+            _standard_element_stiffness,
             qualified_runtime_guard,
         )
     else:
@@ -7281,9 +7649,7 @@ def _assemble_damping_matrix_under_lease(
         K, stiffness_info = _assemble_element_matrix_under_lease(
             model,
             "stiffness",
-            lambda element, mesh, material: element.compute_stiffness_matrix(
-                mesh, material
-            ),
+            _standard_element_stiffness,
             qualified_runtime_guard,
             activity_quantity="damping",
         )
@@ -7335,9 +7701,7 @@ def _assemble_system_under_lease(
     K, stiffness_info = _assemble_element_matrix_under_lease(
         model,
         "stiffness",
-        lambda element, mesh, material: element.compute_stiffness_matrix(
-            mesh, material
-        ),
+        _standard_element_stiffness,
         qualified_runtime_guard,
     )
     F, load_info = _assemble_load_vector_under_lease(

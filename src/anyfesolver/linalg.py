@@ -5,6 +5,13 @@ PyPardiso for sufficiently large systems, with matrix-class-aware mtypes,
 pattern-slot symbolic reuse, bounded cache size, and general-matrix fallback.
 All paths report backend, ordering, timings, reuse, and failure diagnostics
 through the same factorization-handle API.
+
+PARDISO notes (leases, D2): Interrupts (KeyboardInterrupt/SystemExit) during native cleanup and
+concurrent cross-thread invalidation fail closed with typed errors; there is no
+promise beyond the tested precedence
+(tests/test_pardiso_lease_cleanup_precedence.py).  Known P3: when two cleanups
+fail during GeneratorExit, a later cleanup interrupt can drop the earlier
+cleanup failure from the exception chain.
 """
 
 from __future__ import annotations
@@ -24,7 +31,7 @@ import json
 import os
 from pathlib import Path
 import threading
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 import numpy as np
 from scipy import sparse
@@ -42,16 +49,29 @@ _NUMERIC_OPERATIONS = {
     "scipy_factorization_attempts": 0,
     "pardiso_factorization_attempts": 0,
     "pardiso_stale_rebuilds": 0,
+    "pardiso_lease_conflicts": 0,
+    "pardiso_lease_detachments": 0,
 }
 
 
 def backend_operation_counts() -> Dict[str, int]:
     """Process-wide monotonic counts of actual numerical backend operations.
 
-    Differences across an isolated run include failed attempts, PARDISO phase
-    22 refreshes and hidden stale-handle refactorizations. These are operations,
-    not cache misses; concurrent analyses are intentionally not attributed to
-    an individual session.
+    Differences across an isolated run include failed attempts and PARDISO
+    phase 22 refreshes. These are operations, not cache misses; concurrent
+    analyses are intentionally not attributed to an individual session.
+    ``pardiso_stale_rebuilds`` is retained for comparability with earlier
+    releases and stays 0: a stale PARDISO handle is never rebuilt (it raises
+    :class:`PardisoStaleHandleError`).
+
+    ``pardiso_lease_conflicts`` counts factorizations whose pattern slot was
+    pinned by a :class:`FactorizationLease`: the newcomer took a fresh
+    analysis (phase 12) in a new slot where an unleased run would have reused
+    the pinned slot's analysis (phase 22).  While it stays 0, every
+    factorization takes the same phase 12/22 path as without leases.
+    ``pardiso_lease_detachments`` counts pinned slots that were evicted,
+    released or refactorized while leased; they stay valid for their leases
+    and are freed when the last lease ends.
     """
     with _NUMERIC_OPERATION_LOCK:
         return dict(_NUMERIC_OPERATIONS)
@@ -163,9 +183,7 @@ class FactorizationHandle:
             "status": self.status,
             "failure_reason": self.failure_reason,
             "factorization_time": self.factorization_time,
-            "factorization_count": self.factorization_count + int(
-                getattr(self._solver, "stale_rebuild_count", 0)
-            ),
+            "factorization_count": self.factorization_count,
             "solve_count": self.solve_count,
             "solve_time": self.solve_time,
             **self.metadata,
@@ -192,10 +210,6 @@ _FORWARD_ERROR_PROBE_MODES = ("refuse", "report")
 # >= 0.13.
 RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT = 1.0e-3
 FORWARD_ERROR_ESTIMATE_EXCEEDED = "FORWARD_ERROR_ESTIMATE_EXCEEDED"
-
-
-class ForwardErrorProbeError(RuntimeError):
-    """A new factorization failed the known-solution check (refuse mode)."""
 
 
 def _forward_error_probe_settings(
@@ -497,13 +511,224 @@ def _pardiso_prepared_matrix(csr: sparse.csr_matrix, mtype: int) -> sparse.csr_m
     return upper
 
 
+def _free_mkl_solver(solver: Any) -> Optional[BaseException]:
+    """Run PARDISO phase -1 once; return the raised exception, or ``None`` if freed."""
+
+    with _PYPARDISO_PROCESS_LOCK:
+        try:
+            solver.free_memory(everything=True)
+        except BaseException as exc:  # reported to the caller, never swallowed silently
+            return exc
+    return None
+
+
 @_serialized_pypardiso_call
 def _release_mkl_solver(solver: Any) -> None:
     """Release MKL's internal factorization memory (PARDISO phase -1)."""
+    _free_mkl_solver(solver)
+
+
+class _MklSolverOwner:
+    """Sole owner of one MKL PARDISO instance's native memory.
+
+    Created right after the instance, before any numerical phase.  Its
+    finalizer runs phase -1 exactly once: on the first explicit
+    :meth:`release` or, for an owner dropped without release, at garbage
+    collection, so native memory can be delayed but never leaked.  The
+    release is reported as done only if ``free_memory`` returned normally.
+    """
+
+    __slots__ = ("solver", "_finalizer", "__weakref__")
+
+    def __init__(self, solver: Any) -> None:
+        self.solver = solver
+        finalizer = weakref.finalize(self, _free_mkl_solver, solver)
+        finalizer.atexit = False
+        self._finalizer = finalizer
+
+    @property
+    def alive(self) -> bool:
+        return self._finalizer.alive
+
+    def release(self) -> Tuple[bool, Optional[BaseException]]:
+        """Free the instance once; return ``(ran_now, error_from_free_memory)``."""
+
+        with _PYPARDISO_PROCESS_LOCK:
+            if not self._finalizer.alive:
+                return False, None
+            return True, self._finalizer()
+
+
+def _new_mkl_owner(mtype: int) -> _MklSolverOwner:
+    solver = _new_pypardiso_solver(mtype=int(mtype))
     try:
-        solver.free_memory(everything=True)
+        return _MklSolverOwner(solver)
+    except BaseException:
+        _free_mkl_solver(solver)
+        raise
+
+
+def _release_note(error: Optional[BaseException], ran: bool = True) -> str:
+    if error is None:
+        return "its native memory was released (phase -1)" if ran else "its native memory was already released"
+    return f"releasing its native memory failed ({type(error).__name__}: {error})"
+
+
+def _add_note(exc: BaseException, note: str) -> None:
+    try:
+        exc.add_note(note)
     except Exception:
         pass
+
+
+def _raise_interrupt(
+    error: Optional[BaseException],
+    context: str,
+    primary: Optional[BaseException] = None,
+) -> None:
+    """Re-raise a non-``Exception`` cleanup error (an interrupt); never swallow it.
+
+    ``Exception`` failures of ``free_memory`` are tolerated as before (the
+    instance is never used again).  ``primary`` is the exception the caller
+    is propagating, passed explicitly; it is never inferred from
+    ``sys.exc_info()``, which inside an unrelated ``except`` block names an
+    exception that is already handled.  An interrupt never replaces a
+    propagating interrupt (it is attached to it as a note), but it does
+    replace an ordinary ``Exception``, which a caller may catch and recover
+    from (the interrupt is chained to it as ``__context__``).
+    """
+
+    if error is None or isinstance(error, Exception):
+        return
+    if _cleanup_outcome(primary, error, context) is error:
+        raise error
+
+
+def _cleanup_outcome(
+    primary: Optional[BaseException],
+    error: Optional[BaseException],
+    context: str,
+) -> Optional[BaseException]:
+    """The one cleanup precedence rule: which exception propagates.
+
+    ``primary`` is the exception actually propagating (``None`` on a normal
+    exit) and ``error`` the one a cleanup raised.  A cleanup interrupt (a
+    non-``Exception``) never replaces a propagating interrupt (it is noted
+    on it) but replaces a propagating ordinary ``Exception`` (chained as
+    ``__context__``), which a caller could otherwise catch and recover from.
+    A cleanup ``Exception`` never replaces a propagating exception (it is
+    noted on it).  With nothing propagating, the cleanup error propagates;
+    ``GeneratorExit`` (an ordinary ``close()`` request, not a failure) counts
+    as nothing propagating, so the cleanup error replaces it (chained).
+    """
+
+    if error is None or error is primary:
+        return primary
+    if primary is None or isinstance(primary, GeneratorExit):
+        if primary is not None and error.__context__ is None:
+            error.__context__ = primary
+        return error
+    if isinstance(error, Exception) or not isinstance(primary, Exception):
+        _add_note(primary, f"{context} raised {type(error).__name__}: {error}")
+        return primary
+    if error.__context__ is None:
+        error.__context__ = primary
+    return error
+
+
+def close_propagating(
+    close: Callable[[], Any],
+    primary: Optional[BaseException],
+    context: str = "cleanup",
+) -> None:
+    """Run ``close()`` while ``primary`` propagates (``None``: normal exit).
+
+    Applies :func:`_cleanup_outcome`: raises the cleanup error only when it
+    must replace ``primary`` (or nothing propagates); otherwise it is noted
+    on ``primary`` and the caller's propagation continues.
+    """
+
+    try:
+        close()
+    except BaseException as error:
+        if _cleanup_outcome(primary, error, context) is error:
+            raise
+
+
+class CleanupScope:
+    """``with`` scope that ends leases and closes holders at its exit.
+
+    Every cleanup registered with :meth:`push` (an object with ``__exit__``),
+    :meth:`callback` or held with :meth:`hold` runs at the scope's exit,
+    last registered first, and receives as its primary the exception
+    actually propagating - the body's, or one a previous cleanup raised -
+    and ``None`` on a normal exit, independent of any surrounding ``except``
+    block.  Errors are combined by :func:`_cleanup_outcome`, the rule of
+    :meth:`FactorizationLease.__exit__`.  :meth:`hold` keeps at most one
+    replaceable lease (a cached factorization); :meth:`release` ends it on
+    the normal path, where nothing propagates.  Exit return values are
+    ignored: a scope never suppresses an exception.
+
+    Interrupts (KeyboardInterrupt/SystemExit) during native cleanup and
+    concurrent cross-thread invalidation fail closed with typed errors; there is no
+    promise beyond the tested precedence
+    (tests/test_pardiso_lease_cleanup_precedence.py).  Known P3: when two cleanups
+    fail during GeneratorExit, a later cleanup interrupt can drop the earlier
+    cleanup failure from the exception chain.
+    """
+
+    __slots__ = ("_exits", "_held")
+
+    def __init__(self) -> None:
+        self._exits: List[Tuple[Callable[..., Any], str]] = []
+        self._held: Optional["FactorizationLease"] = None
+
+    @property
+    def held(self) -> Optional["FactorizationLease"]:
+        return self._held
+
+    def hold(self, lease: "FactorizationLease") -> "FactorizationLease":
+        """Hold ``lease`` in place of the previous one (which ends first)."""
+
+        self.release()
+        self._held = lease
+        return lease
+
+    def release(self) -> None:
+        """End the held lease on the normal path (idempotent)."""
+
+        lease, self._held = self._held, None
+        if lease is not None:
+            lease.close()
+
+    def push(self, resource: Any, context: str = "closing a resource") -> Any:
+        self._exits.append((resource.__exit__, context))
+        return resource
+
+    def callback(self, function: Callable[[], Any], context: str = "cleanup") -> None:
+        self._exits.append((lambda _t, _e, _tb: function(), context))
+
+    def __enter__(self) -> "CleanupScope":
+        return self
+
+    def __exit__(self, _exc_type, exc, _traceback) -> None:
+        exits = self._exits[::-1]
+        self._exits = []
+        held, self._held = self._held, None
+        if held is not None:
+            exits.insert(0, (held.__exit__, "ending a factorization lease"))
+        current = exc
+        for exit_function, context in exits:
+            try:
+                exit_function(
+                    None if current is None else type(current),
+                    current,
+                    None if current is None else current.__traceback__,
+                )
+            except BaseException as error:
+                current = _cleanup_outcome(current, error, context)
+        if current is not exc:
+            raise current
 
 
 PARDISO_PERTURBED_PIVOTS = "perturbed_pivots"
@@ -569,6 +794,38 @@ class PardisoPerturbedPivotError(RuntimeError):
         return error
 
 
+PARDISO_STALE_HANDLE = "pardiso_stale_handle"
+
+
+class PardisoStaleHandleError(RuntimeError):
+    """A PARDISO handle whose factorization no longer exists was solved.
+
+    PARDISO handles are bound to a retained pattern slot of their backend.
+    The slot holds the factorization of the *most recent* matrix with that
+    sparsity pattern: once it is refactorized by another matrix, evicted from
+    the backend's LRU, released (``release_pattern_slots``) or retired after
+    an interrupted factorization, every handle created earlier is stale.  A
+    stale handle is never rebuilt: each solve (sequential or concurrent)
+    raises this error with the same message, without any native call and
+    without returning a solution.  Factorize again to continue;
+    :class:`FactorizationCache` treats a stale cached handle as a miss.
+    Holders that solve one factorization across other work pin it with a
+    :class:`FactorizationLease` (:func:`leased_factorization`,
+    :func:`lease_handle`), which keeps it from ever becoming stale.
+    """
+
+    MESSAGE = (
+        f"{PARDISO_STALE_HANDLE}: the PARDISO factorization behind this handle no "
+        "longer exists (its pattern slot was refactorized by another matrix, evicted, "
+        "released or retired after an interrupted factorization); stale handles are "
+        "never rebuilt - factorize the matrix again (FactorizationCache treats a "
+        "stale handle as a miss)"
+    )
+
+    def __init__(self) -> None:
+        super().__init__(self.MESSAGE)
+
+
 def _pardiso_perturbed_pivot_count(solver: Any) -> Tuple[Optional[int], str]:
     try:
         iparm = np.asarray(solver.iparm)
@@ -583,57 +840,143 @@ def _pardiso_perturbed_pivot_count(solver: Any) -> Tuple[Optional[int], str]:
 
 
 @_serialized_pypardiso_call
-def _pardiso_numeric_factorize(solver: Any, prepared: sparse.csr_matrix, phase: int) -> int:
-    """Run one PARDISO factorization phase and refuse perturbed pivots.
+def _pardiso_numeric_factorize(
+    solver: Any,
+    prepared: sparse.csr_matrix,
+    phase: int,
+    *,
+    mtype: Optional[int] = None,
+    retire: Optional[Callable[[], None]] = None,
+    owner: Optional["_MklSolverOwner"] = None,
+) -> int:
+    """Run one PARDISO numerical factorization phase; the only such native call.
 
-    Every PARDISO numerical factorization (cold phase 12, reused-pattern
-    phase 22, stale-handle private rebuilds) goes through this function, so
-    ``iparm[13]`` is read for the factorization just performed.  Callers must
-    never retry a raised :class:`PardisoPerturbedPivotError` into an accepted
-    factorization.
+    Every PARDISO numerical factorization (fresh phase 12, reused-pattern
+    phase 22 and the phase 12 re-analysis retry) goes through this function,
+    so ``iparm[13]`` is read for the factorization just performed and a
+    perturbed or unreadable report raises :class:`PardisoPerturbedPivotError`
+    worded for ``mtype``.  Callers must never retry that error into an
+    accepted factorization.
+
+    Interrupt safety: on a ``BaseException`` that is not an ``Exception``
+    (``KeyboardInterrupt``, ``SystemExit``, ...) raised by the native call,
+    ``retire`` (the owning slot's retirement, if any) runs first so that the
+    slot can never be reused, then the pivot report is read, the solver's
+    native memory is released (phase -1) and the original exception is
+    re-raised unchanged (with a note recording the report).  A fresh
+    factorization passes no ``retire``: its solver is released here, so no
+    native memory leaks.  ``owner`` (the instance's :class:`_MklSolverOwner`)
+    makes that release the single phase -1 of the instance.  Each cleanup
+    step runs even if an earlier one raises; nested cleanup errors and a
+    failed ``free_memory`` are attached as notes and never replace the
+    original exception (the note says "released" only when phase -1
+    returned normally).  The same cleanup covers an interrupt raised while
+    the report is read after a completed native call.
     """
 
     solver.set_phase(int(phase))
     _count_numeric_operation("pardiso_factorization_attempts")
     try:
-        solver._call_pardiso(prepared, np.zeros((prepared.shape[0], 1)))
-    except Exception as exc:
-        # A native error does not hide a perturbation report: a positive or
-        # unreadable count after a raised call is a perturbation failure (no
-        # retry, no mtype advance).  Only a verified zero count lets the
-        # original error propagate, so that a caller may retry or advance.
+        try:
+            solver._call_pardiso(prepared, np.zeros((prepared.shape[0], 1)))
+        except Exception as exc:
+            # A native error does not hide a perturbation report: a positive or
+            # unreadable count after a raised call is a perturbation failure (no
+            # retry, no mtype advance).  Only a verified zero count lets the
+            # original error propagate, so that a caller may retry or advance.
+            count, detail = _pardiso_perturbed_pivot_count(solver)
+            if count is None or count > 0:
+                raise PardisoPerturbedPivotError(
+                    count,
+                    phase=int(phase),
+                    detail=f"{detail}; after native error {type(exc).__name__}: {exc}",
+                    mtype=mtype,
+                ) from exc
+            raise
         count, detail = _pardiso_perturbed_pivot_count(solver)
-        if count is None or count > 0:
-            raise PardisoPerturbedPivotError(
-                count,
-                phase=int(phase),
-                detail=f"{detail}; after native error {type(exc).__name__}: {exc}",
-            ) from exc
+    except Exception:
         raise
-    count, detail = _pardiso_perturbed_pivot_count(solver)
+    except BaseException as exc:
+        notes: List[str] = []
+        if retire is not None:
+            try:
+                retire()
+            except BaseException as nested:
+                notes.append(f"retiring the slot raised {type(nested).__name__}: {nested}")
+        try:
+            count, detail = _pardiso_perturbed_pivot_count(solver)
+        except BaseException as nested:
+            count, detail = None, f"reading it raised {type(nested).__name__}: {nested}"
+        if owner is not None:
+            ran, error = owner.release()
+        else:
+            ran, error = True, _free_mkl_solver(solver)
+        report = f"iparm[13]={count}" if count is not None else f"iparm[13] unreadable ({detail})"
+        _add_note(
+            exc,
+            f"PARDISO phase {int(phase)} interrupted by {type(exc).__name__}: "
+            f"{report}; {_release_note(error, ran)} and its pattern slot retired",
+        )
+        for note in notes:
+            _add_note(exc, note)
+        raise
     if count is None or count > 0:
-        raise PardisoPerturbedPivotError(count, phase=int(phase), detail=detail)
+        raise PardisoPerturbedPivotError(count, phase=int(phase), detail=detail, mtype=mtype)
     return count
 
 
 @_serialized_pypardiso_call
-def _pardiso_full_factorize(solver: Any, prepared: sparse.csr_matrix) -> int:
+def _pardiso_full_factorize(
+    solver: Any,
+    prepared: sparse.csr_matrix,
+    *,
+    mtype: Optional[int] = None,
+    retire: Optional[Callable[[], None]] = None,
+    owner: Optional["_MklSolverOwner"] = None,
+) -> int:
     solver._check_A(prepared)
-    return _pardiso_numeric_factorize(solver, prepared, 12)
+    return _pardiso_numeric_factorize(solver, prepared, 12, mtype=mtype, retire=retire, owner=owner)
 
 
 class _PardisoPatternSlot:
-    """One retained PARDISO instance per sparsity pattern for analysis reuse."""
+    """One retained PARDISO instance per sparsity pattern for analysis reuse.
 
-    __slots__ = ("solver", "mtype", "shape", "indptr", "indices", "generation")
+    ``generation`` changes whenever the slot's factorization is replaced or
+    dropped; handles bound to an older generation are stale.  ``bound``
+    holds the live handle wrappers of the current generation so that an
+    invalidation reports their stale status immediately.
+
+    ``leases`` counts the live :class:`FactorizationLease` objects pinning the
+    slot's factorization.  A pinned slot is never refactorized; where an
+    unpinned slot would be refactorized, evicted or released, a pinned slot
+    is ``detached`` instead (removed from its backend's LRU, never matched
+    again) and released when its last lease ends.  The native instance is
+    owned by ``owner`` (:class:`_MklSolverOwner`).
+    """
+
+    __slots__ = (
+        "owner", "mtype", "shape", "indptr", "indices", "generation", "bound",
+        "leases", "detached", "detach_cause", "__weakref__",
+    )
 
     def __init__(self, solver: Any, mtype: int, prepared: sparse.csr_matrix):
-        self.solver = solver
+        self.owner: Optional[_MklSolverOwner] = (
+            solver if isinstance(solver, _MklSolverOwner) else _MklSolverOwner(solver)
+        )
         self.mtype = int(mtype)
         self.shape = tuple(int(v) for v in prepared.shape)
         self.indptr = prepared.indptr.copy()
         self.indices = prepared.indices.copy()
         self.generation = 0
+        self.bound: "weakref.WeakSet[_PardisoFactorization]" = weakref.WeakSet()
+        self.leases = 0
+        self.detached = False
+        self.detach_cause: Optional[str] = None
+
+    @property
+    def solver(self) -> Any:
+        owner = self.owner
+        return None if owner is None else owner.solver
 
     @_serialized_pypardiso_call
     def matches(self, prepared: sparse.csr_matrix, mtype: int) -> bool:
@@ -648,194 +991,153 @@ class _PardisoPatternSlot:
         )
 
     @_serialized_pypardiso_call
-    def release(self) -> None:
+    def invalidate(self, cause: str) -> None:
+        """Make every handle bound to the current factorization stale."""
+
         self.generation += 1
-        solver, self.solver = self.solver, None
-        if solver is not None:
-            _release_mkl_solver(solver)
+        bound, self.bound = list(self.bound), weakref.WeakSet()
+        for wrapper in bound:
+            wrapper._mark_stale(cause)
+
+    @_serialized_pypardiso_call
+    def retire(self, cause: str) -> None:
+        """Invalidate and drop the solver without a native call (its owner releases it)."""
+
+        self.owner = None
+        self.invalidate(cause)
+
+    @_serialized_pypardiso_call
+    def release(self, cause: str = "released") -> Optional[BaseException]:
+        """Invalidate and free the instance once; return a ``free_memory`` error."""
+
+        owner, self.owner = self.owner, None
+        self.invalidate(cause)
+        if owner is None:
+            return None
+        return owner.release()[1]
+
+
+def _end_slot_lease(slot: _PardisoPatternSlot) -> Optional[BaseException]:
+    """One lease of ``slot`` ended (explicit close or finalizer); never raises."""
+
+    with _PYPARDISO_PROCESS_LOCK:
+        slot.leases = max(int(slot.leases) - 1, 0)
+        if slot.leases == 0 and slot.detached and slot.owner is not None:
+            return slot.release(slot.detach_cause or "released")
+    return None
+
+
+class FactorizationLease:
+    """Explicit, program-ordered pin of one factorization (context manager).
+
+    While a lease is open, the PARDISO pattern slot behind ``handle`` is
+    never refactorized, evicted or released: its handle stays valid and
+    solves exactly as before.  A newcomer with the same pattern gets a new
+    slot (counted in ``pardiso_lease_conflicts``); eviction and
+    ``release_pattern_slots`` detach the pinned slot, which is freed when its
+    last lease ends.  Closing is explicit (``close`` / ``with``); a lease
+    dropped without closing is ended by its finalizer.  SuperLU handles and
+    failed or refused handles are never pinned (``pinned`` is False): the
+    lease then only carries the handle, whose status the caller checks as
+    before.  ``operator`` is set by :func:`leased_inverse_operator`.
+
+    Interrupts (KeyboardInterrupt/SystemExit) during native cleanup and
+    concurrent cross-thread invalidation fail closed with typed errors; there is no
+    promise beyond the tested precedence
+    (tests/test_pardiso_lease_cleanup_precedence.py).  Known P3: when two cleanups
+    fail during GeneratorExit, a later cleanup interrupt can drop the earlier
+    cleanup failure from the exception chain.
+    """
+
+    __slots__ = ("handle", "operator", "_finalizer", "__weakref__")
+
+    def __init__(self, handle: Any, slot: Optional[_PardisoPatternSlot] = None) -> None:
+        self.handle = handle
+        self.operator: Optional[LinearOperator] = None
+        self._finalizer: Optional[weakref.finalize] = None
+        if slot is not None:
+            finalizer = weakref.finalize(self, _end_slot_lease, slot)
+            finalizer.atexit = False
+            self._finalizer = finalizer
+
+    @property
+    def pinned(self) -> bool:
+        return self._finalizer is not None and self._finalizer.alive
+
+    def close(self) -> None:
+        """End the lease (idempotent).  A detached slot is released here."""
+
+        self._close(None)
+
+    def _close(self, active: Optional[BaseException]) -> None:
+        finalizer = self._finalizer
+        if finalizer is None:
+            return
+        with _PYPARDISO_PROCESS_LOCK:
+            if not finalizer.alive:
+                return
+            error = finalizer()
+        _raise_interrupt(error, "releasing a detached PARDISO slot at lease end", active)
+
+    def __enter__(self) -> "FactorizationLease":
+        return self
+
+    def __exit__(self, _exc_type, exc, _traceback) -> None:
+        self._close(exc)
 
 
 class _PardisoFactorization:
-    """Solve interface bound to a pattern slot.
+    """Solve interface bound to the current factorization of a pattern slot.
 
     The slot's PARDISO instance holds the factorization of the *most recent*
-    matrix with that sparsity pattern.  A handle created earlier therefore
-    checks a generation token before solving; if the slot has moved on (or was
-    evicted), the handle transparently refactorizes its own matrix into a
-    private solver whose MKL memory is released by a finalizer when the handle
-    is garbage collected.
-
-    A failed private rebuild (perturbed pivots, an unreadable pivot report or
-    any other PARDISO error) fails the handle permanently, for the auto and
-    the forced policy alike: there is no solve-time fallback to another
-    backend.  The rejection is recorded inside the process lock before it is
-    released; every later or concurrent solve checks it inside the lock before
-    any rebuild and raises the same typed error, so no second rebuild runs
-    and no PARDISO result is returned after a rejection.  The owning handle
-    reports ``status "failed"`` with ``pardiso_failure_stage
-    "stale_rebuild"``.  The rejection keeps no reference to the triggering
-    right-hand side.  Fresh factorizations keep their factorization-time
-    policy (auto: SuperLU fallback; forced: typed failure).
+    matrix with that sparsity pattern.  A handle created earlier checks the
+    slot's generation token inside the process lock before solving; if the
+    slot has moved on (refactorized, evicted, released or retired), the
+    handle is stale and every solve raises :class:`PardisoStaleHandleError`
+    - one type and message for sequential and concurrent callers, with no
+    native call, no rebuild and no solution.  The owning handle reports
+    ``status "failed"`` with ``pardiso_failure_kind "pardiso_stale_handle"``
+    as soon as the slot is invalidated.
     """
 
     def __init__(self, slot: _PardisoPatternSlot, prepared: sparse.csr_matrix, mtype: int):
-        self._slot: Optional[_PardisoPatternSlot] = slot
+        self._slot = slot
         self._generation = slot.generation
         self._matrix = prepared
         self._mtype = int(mtype)
-        self._private_solver: Any = None
-        self.stale_rebuild_count = 0
-        # Data (not the exception: no traceback, no RHS) of a rejected
-        # stale-handle rebuild: (perturbed, count, phase, detail, reason).
-        self._rejection: Optional[Tuple[bool, Optional[int], int, str, str]] = None
         self._handle_ref: Optional["weakref.ReferenceType[FactorizationHandle]"] = None
-        # Rule A options (mode, mask) for factorizations this wrapper performs
-        # itself (stale-handle private rebuilds).
-        self._probe_options: Dict[str, Any] = {}
+        # True when this factorization took a new slot because a leased slot
+        # with the same pattern could not be refactorized.
+        self.lease_conflict = False
+        slot.bound.add(self)
 
-    def _rejection_error(self) -> BaseException:
-        """The typed error every solve of a rejected handle raises.
+    def is_stale(self) -> bool:
+        slot = self._slot
+        return slot.solver is None or slot.generation != self._generation
 
-        The first rejection and every later or concurrent solve raise the same
-        type with the same message: :class:`PardisoPerturbedPivotError` for a
-        perturbation (or an unreadable report), ``RuntimeError`` for any other
-        failed or interrupted rebuild.
-        """
+    def _mark_stale(self, cause: str) -> None:
+        """Report the stale status on the owning handle (process lock held)."""
 
-        perturbed, count, phase, detail, reason = self._rejection  # type: ignore[misc]
-        if perturbed:
-            return PardisoPerturbedPivotError(
-                count, phase=phase, detail=detail, mtype=self._mtype
-            )
-        return RuntimeError(reason)
-
-    def _reject(self, exc: BaseException) -> None:
-        """Fail the handle permanently after a failed stale rebuild (lock held)."""
-
-        perturbed = isinstance(exc, PardisoPerturbedPivotError)
-        probe_refused = isinstance(exc, ForwardErrorProbeError)
-        count = exc.count if perturbed else None
-        phase = int(getattr(exc, "phase", 12))
-        detail = str(getattr(exc, "detail", ""))
-        if perturbed:
-            reason = str(
-                PardisoPerturbedPivotError(count, phase=phase, detail=detail, mtype=self._mtype)
-            )
-        elif probe_refused:
-            reason = str(exc)
-        else:
-            reason = (
-                f"pypardiso stale-handle rebuild failed ({type(exc).__name__}: {exc}); "
-                "the handle is rejected permanently"
-            )
-        self._rejection = (perturbed, count, phase, detail, reason)
         handle = self._handle_ref() if self._handle_ref is not None else None
-        if handle is None:
+        if handle is None or handle.metadata.get("pardiso_failure_kind") == PARDISO_STALE_HANDLE:
             return
         handle.status = "failed"
-        handle.failure_reason = reason
-        handle.metadata["pardiso_failure_kind"] = (
-            PARDISO_PERTURBED_PIVOTS
-            if perturbed
-            else FORWARD_ERROR_PROBE_EXCEEDED if probe_refused else "pardiso_error"
-        )
-        handle.metadata["pardiso_failure_stage"] = "stale_rebuild"
-        if probe_refused:
-            handle.metadata["failure_kind"] = FORWARD_ERROR_PROBE_EXCEEDED
-        if perturbed:
-            key = str(self._mtype)
-            handle.metadata["pardiso_perturbed_pivots"] = {
-                key: _reported_pivot_count(self._mtype, count)
-            }
-            if self._mtype not in _PARDISO_PIVOT_COUNT_DOCUMENTED_MTYPES and count is not None:
-                handle.metadata["pardiso_iparm13_raw"] = {key: count}
-
-    @_serialized_pypardiso_call
-    def _active_solver(self) -> Any:
-        if self._private_solver is not None:
-            return self._private_solver
-        slot = self._slot
-        if slot is not None and slot.solver is not None and slot.generation == self._generation:
-            return slot.solver
-        solver = _new_pypardiso_solver(mtype=self._mtype)
-        try:
-            _pardiso_full_factorize(solver, self._matrix)
-        except Exception:
-            _release_mkl_solver(solver)
-            raise
-        except BaseException as exc:
-            # An interrupt (KeyboardInterrupt, SystemExit, ...) at the native
-            # call: read the pivot report the call may have written, release
-            # the private solver (phase -1) and reject the handle permanently
-            # (lock still held), then re-raise the original exception.
-            count, detail = _pardiso_perturbed_pivot_count(solver)
-            _release_mkl_solver(solver)
-            interrupt = f"after {type(exc).__name__} at the native call"
-            if count is None or count > 0:
-                self._reject(
-                    PardisoPerturbedPivotError(
-                        count, phase=12, detail=f"{detail}; {interrupt}".lstrip("; "),
-                        mtype=self._mtype,
-                    )
-                )
-            else:
-                self._reject(RuntimeError(f"rebuild interrupted {interrupt}"))
-            raise
-        self._probe_private_rebuild(solver)
-        self._private_solver = solver
-        weakref.finalize(self, _release_mkl_solver, solver)
-        self._slot = None
-        self.stale_rebuild_count += 1
-        _count_numeric_operation("pardiso_stale_rebuilds")
-        return solver
-
-    def _probe_private_rebuild(self, solver: Any) -> None:
-        """Rule A for a private rebuild; a refused rebuild is released (lock held)."""
-
-        matrix = self._matrix
-        matvec = (lambda z: matrix @ z) if self._mtype == 11 else _symmetric_upper_matvec(matrix)
-        probe: Dict[str, Any] = {}
-        try:
-            refused = _run_forward_error_probe(
-                probe,
-                self._probe_options,
-                int(matrix.shape[0]),
-                matvec,
-                lambda b: _pardiso_raw_solve(solver, matrix, b),
-            )
-        except BaseException:
-            _release_mkl_solver(solver)
-            raise
-        handle = self._handle_ref() if self._handle_ref is not None else None
-        if handle is not None:
-            handle.metadata["forward_error_probe_stale_rebuild"] = probe.get("forward_error_probe")
-        if refused:
-            _release_mkl_solver(solver)
-            raise ForwardErrorProbeError(
-                _forward_error_probe_reason(
-                    probe.get("forward_error_probe"), "pypardiso", stage="stale-handle rebuild"
-                )
-            )
+        handle.failure_reason = PardisoStaleHandleError.MESSAGE
+        handle.metadata["pardiso_failure_kind"] = PARDISO_STALE_HANDLE
+        handle.metadata["pardiso_failure_stage"] = "stale_handle"
+        handle.metadata["pardiso_stale_cause"] = str(cause)
 
     @_serialized_pypardiso_call
     def solve(self, rhs: np.ndarray) -> np.ndarray:
         # Inside the process lock: a solve admitted before a concurrent
-        # rejection sees it here and never rebuilds again.
-        if self._rejection is not None:
-            raise self._rejection_error()
-        try:
-            solver = self._active_solver()
-        except Exception as exc:
-            self._reject(exc)
-            raise self._rejection_error() from exc
-        return _pardiso_raw_solve(solver, self._matrix, rhs)
-
-
-@_serialized_pypardiso_call
-def _pardiso_raw_solve(solver: Any, matrix: sparse.csr_matrix, rhs: np.ndarray) -> np.ndarray:
-    b = solver._check_b(matrix, np.asarray(rhs, dtype=np.float64))
-    solver.set_phase(33)
-    return solver._call_pardiso(matrix, b)
+        # invalidation sees it here and raises the same typed error.
+        if self.is_stale():
+            self._mark_stale("stale")
+            raise PardisoStaleHandleError()
+        solver = self._slot.solver
+        b = solver._check_b(self._matrix, np.asarray(rhs, dtype=np.float64))
+        solver.set_phase(33)
+        return solver._call_pardiso(self._matrix, b)
 
 
 class PyPardisoSolverBackend:
@@ -849,8 +1151,16 @@ class PyPardisoSolverBackend:
       mtypes (2 / -2), falling back to the general path on numerical failure;
     - refactorizations with an unchanged sparsity pattern reuse the symbolic
       analysis (PARDISO phase 22) through a small LRU of pattern slots;
-    - MKL internal memory is bounded and released: evicted slots and privately
-      rebuilt factorizations free their memory (phase -1) via finalizers.
+    - MKL internal memory is bounded and released: evicted, released, failed
+      and interrupted factorizations free their memory (phase -1).
+
+    A handle is valid only while its slot holds its factorization.  After the
+    slot is refactorized by another matrix, evicted, released or retired, the
+    handle is stale and raises :class:`PardisoStaleHandleError`; it is never
+    rebuilt.  A slot pinned by a :class:`FactorizationLease` is never
+    refactorized, evicted or released while leased (see
+    :meth:`_factorize_prepared`); ``pardiso_lease_conflicts`` counts the
+    factorizations whose slot choice this changed.
 
     PyPardiso/MKL solver state is serialized process-wide.  This includes
     independent backend instances and handles owned by separate analysis
@@ -862,12 +1172,57 @@ class PyPardisoSolverBackend:
     def __init__(self, *, max_pattern_slots: int = 4):
         self.max_pattern_slots = _env_int("FE_SOLVER_PYPARDISO_MAX_PATTERN_SLOTS", int(max_pattern_slots))
         self._slots: List[_PardisoPatternSlot] = []
+        self._detached: "weakref.WeakSet[_PardisoPatternSlot]" = weakref.WeakSet()
+
+    def _detach_slot(self, slot: _PardisoPatternSlot, cause: str) -> None:
+        """Take a leased slot out of the LRU; it is released at its last lease end."""
+
+        if slot in self._slots:
+            self._slots.remove(slot)
+        slot.detached = True
+        slot.detach_cause = str(cause)
+        self._detached.add(slot)
+        _count_numeric_operation("pardiso_lease_detachments")
+
+    def _discard_slot(self, slot: _PardisoPatternSlot, cause: str) -> Optional[BaseException]:
+        """Evict or release an LRU slot: leased slots are detached, others freed."""
+
+        if slot.leases > 0:
+            self._detach_slot(slot, cause)
+            return None
+        if slot in self._slots:
+            self._slots.remove(slot)
+        return slot.release(cause)
 
     @_serialized_pypardiso_call
     def release_pattern_slots(self) -> None:
-        """Release all retained MKL factorization memory."""
+        """Release all retained MKL factorization memory.
+
+        Every handle bound to a released slot becomes stale
+        (:class:`PardisoStaleHandleError` on solve).  A slot pinned by a
+        :class:`FactorizationLease` is detached instead: its handle keeps
+        solving and the slot is released when its last lease ends.
+        """
+        interrupt: Optional[BaseException] = None
         while self._slots:
-            self._slots.pop().release()
+            error = self._discard_slot(self._slots[-1], "released")
+            if interrupt is None and error is not None and not isinstance(error, Exception):
+                interrupt = error
+        _raise_interrupt(interrupt, "releasing PARDISO pattern slots")
+
+    @property
+    @_serialized_pypardiso_call
+    def leased_pattern_slots(self) -> int:
+        """Number of live slots (in the LRU or detached) pinned by leases."""
+
+        return sum(1 for slot in self._slots if slot.leases > 0) + self.detached_pattern_slots
+
+    @property
+    @_serialized_pypardiso_call
+    def detached_pattern_slots(self) -> int:
+        """Number of detached slots still alive for their leases."""
+
+        return sum(1 for slot in list(self._detached) if slot.owner is not None)
 
     @property
     @_serialized_pypardiso_call
@@ -938,43 +1293,100 @@ class PyPardisoSolverBackend:
 
         A perturbed-pivot rejection is final: it is never retried (neither by
         a phase 12 re-analysis nor by another mtype), and a slot whose
-        numerical factorization failed is released and dropped.
+        numerical factorization failed is released and dropped.  An
+        interrupted numerical phase (``BaseException``) retires the slot (it
+        can never be reused) and releases its native memory; an interrupted
+        fresh factorization releases its new solver.  The original exception
+        is re-raised.
+
+        Leases: a matching slot pinned by a lease is never refactorized.  It
+        is detached (an unleased run would have refactorized it in place) and
+        the newcomer takes a fresh analysis in a new slot at the front of the
+        LRU, counted in ``pardiso_lease_conflicts``.  Eviction detaches a
+        pinned victim instead of freeing it.  The LRU list therefore holds
+        the same patterns in the same order as without leases.
         """
 
+        lease_conflict = False
         for slot in self._slots:
             if slot.matches(prepared, mtype):
+                if slot.leases > 0:
+                    self._detach_slot(slot, "refactorized")
+                    _count_numeric_operation("pardiso_lease_conflicts")
+                    lease_conflict = True
+                    break
                 # Invalidate handles bound to the slot's previous values before
                 # any numerical phase overwrites the slot's factorization.
-                slot.generation += 1
+                slot.invalidate("refactorized")
+
+                def retire(slot: _PardisoPatternSlot = slot) -> None:
+                    if slot in self._slots:
+                        self._slots.remove(slot)
+                    slot.retire("retired after an interrupted factorization")
+
                 symbolic_reused = True
+                owner = slot.owner
+                solver = slot.solver
                 try:
                     try:
-                        count = _pardiso_numeric_factorize(slot.solver, prepared, 22)
+                        count = _pardiso_numeric_factorize(
+                            solver, prepared, 22, mtype=mtype, retire=retire, owner=owner
+                        )
                     except PardisoPerturbedPivotError:
                         raise
                     except Exception:
                         # A PARDISO error other than a perturbation: re-analyse
                         # the current values (phase 12, checked again).
-                        count = _pardiso_full_factorize(slot.solver, prepared)
+                        count = _pardiso_full_factorize(
+                            solver, prepared, mtype=mtype, retire=retire, owner=owner
+                        )
                         symbolic_reused = False
-                except Exception:
-                    self._slots.remove(slot)
-                    slot.release()
+                except Exception as failure:
+                    if slot in self._slots:
+                        self._slots.remove(slot)
+                    _raise_interrupt(
+                        slot.release("released after a failed factorization"),
+                        "releasing a failed PARDISO slot",
+                        failure,
+                    )
+                    raise
+                except BaseException as exc:
+                    # Interrupted outside the native call (e.g. the analysis
+                    # check of the retry): retire and release exactly once.
+                    if slot in self._slots:
+                        self._slots.remove(slot)
+                    ran, error = (False, None) if owner is None else owner.release()
+                    slot.retire("retired after an interrupted factorization")
+                    if ran:
+                        _add_note(exc, f"PARDISO slot retired after {type(exc).__name__}; "
+                                  f"{_release_note(error, ran)}")
                     raise
                 self._slots.remove(slot)
                 self._slots.insert(0, slot)
                 return _PardisoFactorization(slot, prepared, mtype), symbolic_reused, count
-        solver = _new_pypardiso_solver(mtype=int(mtype))
+        owner = _new_mkl_owner(int(mtype))
         try:
-            count = _pardiso_full_factorize(solver, prepared)
-        except Exception:
-            _release_mkl_solver(solver)
+            count = _pardiso_full_factorize(owner.solver, prepared, mtype=mtype, owner=owner)
+            slot = _PardisoPatternSlot(owner, mtype, prepared)
+        except Exception as failure:
+            _raise_interrupt(owner.release()[1], "releasing a failed PARDISO instance", failure)
             raise
-        slot = _PardisoPatternSlot(solver, mtype, prepared)
+        except BaseException as exc:
+            ran, error = owner.release()
+            if ran:
+                _add_note(exc, f"PARDISO instance released after {type(exc).__name__}: "
+                          f"{_release_note(error, ran)}")
+            raise
         self._slots.insert(0, slot)
+        wrapper = _PardisoFactorization(slot, prepared, mtype)
+        wrapper.lease_conflict = lease_conflict
+        interrupt: Optional[BaseException] = None
         while len(self._slots) > max(int(self.max_pattern_slots), 1):
-            self._slots.pop().release()
-        return _PardisoFactorization(slot, prepared, mtype), False, count
+            error = self._discard_slot(self._slots[-1], "evicted")
+            if interrupt is None and error is not None and not isinstance(error, Exception):
+                interrupt = error
+        _raise_interrupt(interrupt, "evicting a PARDISO pattern slot")
+        return wrapper, False, count
 
     @_serialized_pypardiso_call
     def _discard_wrapper_slot(self, wrapper: _PardisoFactorization) -> None:
@@ -1004,9 +1416,12 @@ class PyPardisoSolverBackend:
         _ensure_mkl_rt_env()
         failure_reasons: List[str] = []
         try:
-            csr = sparse.csr_matrix(matrix)
-            if csr is matrix:
-                csr = csr.copy()
+            # Snapshot the caller's arrays: ``csr_matrix(csr)`` shares
+            # ``data``/``indices``/``indptr`` with the input, so the handle
+            # (which solves against its own matrix, possibly for a long time
+            # under a lease) would otherwise see the caller's in-place edits,
+            # and ``sort_indices`` would reorder the caller's arrays.
+            csr = sparse.csr_matrix(matrix, copy=True)
             csr.sort_indices()
         except Exception as exc:
             failure_reasons.append(str(exc))
@@ -1038,7 +1453,9 @@ class PyPardisoSolverBackend:
                     ):
                         # Refused fail closed, but not a documented count.
                         raw_iparm13[str(int(mtype))] = exc.count
-                    failure_reasons.append(f"mtype={mtype}: {exc.for_mtype(mtype)}")
+                    # ``exc`` is already worded for ``mtype`` (no chained
+                    # cause makes a count claim for mtype 2).
+                    failure_reasons.append(f"mtype={mtype}: {exc}")
                     break
                 except Exception as exc:
                     failure_reasons.append(f"mtype={mtype}: {exc}")
@@ -1097,11 +1514,6 @@ class PyPardisoSolverBackend:
             if failure_reasons:
                 failed.metadata["pardiso_fallback_attempts"] = list(failure_reasons)
             return failed
-        wrapper._probe_options = {
-            key: options[key]
-            for key in ("forward_error_probe", "forward_error_probe_mask")
-            if key in options
-        }
         handle = FactorizationHandle(
             matrix_shape=tuple(int(v) for v in matrix.shape),
             matrix_class=matrix_class,
@@ -1117,6 +1529,8 @@ class PyPardisoSolverBackend:
         handle.metadata["pardiso_symbolic_reused"] = bool(symbolic_reused)
         handle.metadata["pardiso_pattern_slots"] = len(self._slots)
         handle.metadata["pardiso_perturbed_pivots"] = dict(perturbed_pivots)
+        if wrapper.lease_conflict:
+            handle.metadata["pardiso_lease_conflict"] = True
         if failure_reasons:
             handle.metadata["pardiso_fallback_attempts"] = list(failure_reasons)
         return handle
@@ -1264,9 +1678,13 @@ class AutoSparseSolverBackend:
         for key, value in selection_metadata.items():
             handle.metadata.setdefault(key, value)
         handle.metadata.setdefault("pypardiso_initialized", bool(self.pardiso_backend.initialized))
-        if handle.status == "ok":
-            # A stale handle whose solve-time rebuild fails is failed
-            # permanently (no solve-time fallback; see _PardisoFactorization).
+        if _handle_state(handle) != "failed":
+            # "ok", or "stale": the factorization succeeded and another thread
+            # invalidated it before this read.  Stale is an ownership event,
+            # not a numerical failure, so it never selects another backend:
+            # the PARDISO handle is returned and raises PardisoStaleHandleError
+            # on solve (lease_from refactorizes once; FactorizationCache treats
+            # it as a miss).  No rebuild, no solve-time fallback.
             return handle
         failure_kind = handle.metadata.get("pardiso_failure_kind")
         if selection_policy == "pypardiso_forced" and failure_kind in (
@@ -1332,6 +1750,12 @@ class FactorizationCache:
 
     The cache is intentionally not global.  Analyses that can safely reuse a
     matrix factorization own the cache and therefore own its lifetime.
+    Without an explicit ``signature`` the key is a content digest of the
+    matrix, and every backend factorizes a private snapshot of its values, so
+    a caller that edits a matrix in place after factorizing gets a fresh
+    factorization for the edited values and the original one for the
+    original values.  An explicit ``signature`` is a caller-owned revision
+    stamp and is trusted: the caller must change it whenever the values change.
     Cache lookup, insertion, eviction and counters are protected for concurrent
     callers.  Returned handles retain the concurrency semantics of their
     numerical backend; the cache does not serialize subsequent ``solve`` calls.
@@ -1373,9 +1797,17 @@ class FactorizationCache:
         cache_key = self.key(matrix, matrix_class, signature=signature, options=options)
         with self._lock:
             cached = self._handles.get(cache_key)
-            if cached is not None and (cached.status != "ok" or cached._solver is None):
-                # Failed after insertion (e.g. a rejected stale rebuild):
-                # evict it, count the failure and factorize afresh (a miss).
+            state = None if cached is None else _handle_state(cached)
+            if state == "stale":
+                # A stale PARDISO handle (its slot was refactorized, evicted
+                # or released) is never rebuilt: evict it and factorize afresh
+                # (a miss, not a failure).  Stale and failed are decided in
+                # one process-lock section, so a concurrent invalidation is
+                # never counted as a failure.
+                self._handles.pop(cache_key, None)
+            elif state == "failed":
+                # Failed after insertion: evict it, count the failure and
+                # factorize afresh (a miss).
                 self._handles.pop(cache_key, None)
                 self.factorization_failures += 1
             if cache_key in self._handles:
@@ -1396,13 +1828,18 @@ class FactorizationCache:
             )
             handle.metadata["cache_name"] = self.name
             handle.metadata["cache_hit"] = False
-            if handle.status == "ok":
+            # One snapshot (as on the hit path): status and stale kind are
+            # never read across a concurrent invalidation's two writes.  A
+            # fresh handle invalidated by another thread before this read is
+            # stale, not failed: not cached, not a failure.
+            fresh_state = _handle_state(handle)
+            if fresh_state == "ok":
                 if self.max_entries > 0 and len(self._handles) >= self.max_entries:
                     oldest = next(iter(self._handles))
                     self._handles.pop(oldest, None)
                 if self.max_entries != 0:
                     self._handles[cache_key] = handle
-            else:
+            elif fresh_state == "failed":
                 self.factorization_failures += 1
             return handle
 
@@ -1494,6 +1931,153 @@ def factorize(
     return handle
 
 
+def factorization_is_stale(handle: Any) -> bool:
+    """Whether ``handle`` is a PARDISO handle whose factorization no longer exists.
+
+    True after its pattern slot was refactorized by another matrix, evicted,
+    released or retired; solving it raises :class:`PardisoStaleHandleError`.
+    SuperLU and failed handles are never stale.
+    """
+
+    solver = getattr(handle, "_solver", None)
+    return isinstance(solver, _PardisoFactorization) and solver.is_stale()
+
+
+def _handle_state(handle: Any) -> str:
+    """``"ok"``, ``"stale"`` or ``"failed"``, decided once under the process lock.
+
+    The PARDISO wrapper's slot generation is the only stale authority; a
+    PARDISO handle with a wrapper is failed only because it is stale.
+    """
+
+    solver = getattr(handle, "_solver", None)
+    if isinstance(solver, _PardisoFactorization):
+        with _PYPARDISO_PROCESS_LOCK:
+            if solver.is_stale() or handle.metadata.get("pardiso_failure_kind") == PARDISO_STALE_HANDLE:
+                solver._mark_stale("stale")
+                return "stale"
+            return "ok" if handle.status == "ok" else "failed"
+    return "ok" if handle.status == "ok" and solver is not None else "failed"
+
+
+def lease_handle(handle: Any) -> FactorizationLease:
+    """Pin the factorization behind an existing handle (see :class:`FactorizationLease`).
+
+    A current PARDISO handle is pinned in one process-lock section; a stale
+    one raises :class:`PardisoStaleHandleError`.  SuperLU, failed and refused
+    handles return an unpinned lease that only carries the handle.
+    """
+
+    solver = getattr(handle, "_solver", None)
+    if not isinstance(solver, _PardisoFactorization):
+        return FactorizationLease(handle)
+    with _PYPARDISO_PROCESS_LOCK:
+        state = _handle_state(handle)
+        if state == "stale":
+            raise PardisoStaleHandleError()
+        if state != "ok":
+            return FactorizationLease(handle)
+        slot = solver._slot
+        slot.leases += 1
+        try:
+            return FactorizationLease(handle, slot)
+        except BaseException:
+            slot.leases -= 1
+            raise
+
+
+def leased_factorization(
+    matrix: sparse.spmatrix,
+    matrix_class: MatrixClass | str,
+    *,
+    cache: Optional[FactorizationCache] = None,
+    signature: Optional[str] = None,
+    options: Optional[Mapping[str, Any]] = None,
+    backend: Optional[SparseSolverBackend] = None,
+) -> FactorizationLease:
+    """Factorize like :func:`factorize_cached` and pin the result for a holder.
+
+    For holders that solve one factorization across other work (callbacks,
+    iterations, other factorizations): the returned lease keeps ``handle``
+    valid until ``close`` (or the end of a ``with`` block).  If another
+    thread invalidates the new handle before it is pinned, it is factorized
+    once more through the same route (a stale cache entry is a miss); a
+    second stale result raises :class:`PardisoStaleHandleError`.  A failed
+    factorization is returned unpinned with its failed handle.
+    """
+
+    return lease_from(
+        factorize_cached,
+        matrix, matrix_class, cache=cache, signature=signature, options=options, backend=backend,
+    )
+
+
+def lease_from(factorize_function: Callable[..., Any], *args: Any, **kwargs: Any) -> FactorizationLease:
+    """Call ``factorize_function(*args, **kwargs)`` and pin its handle.
+
+    The holder's own factorization route (and any seam around it) is kept;
+    a handle that went stale before it could be pinned is factorized once
+    more through the same call, then a second stale result raises
+    :class:`PardisoStaleHandleError`.
+    """
+
+    try:
+        return lease_handle(factorize_function(*args, **kwargs))
+    except PardisoStaleHandleError:
+        pass
+    return lease_handle(factorize_function(*args, **kwargs))
+
+
+def leased_inverse_operator(
+    matrix: sparse.spmatrix,
+    matrix_class: MatrixClass | str,
+    *,
+    cache: Optional[FactorizationCache] = None,
+    signature: Optional[str] = None,
+    options: Optional[Mapping[str, Any]] = None,
+) -> FactorizationLease:
+    """:func:`cached_inverse_operator` under a lease (``lease.operator``, ``lease.handle``)."""
+
+    local_cache = cache or FactorizationCache(name="single_inverse_operator", max_entries=1)
+    lease = leased_factorization(
+        matrix, matrix_class, cache=local_cache, signature=signature, options=options
+    )
+    handle = lease.handle
+    if handle.status != "ok":
+        lease.close()
+        raise RuntimeError(f"Cannot create inverse operator from failed factorization: {handle.failure_reason}")
+
+    def matvec(rhs: np.ndarray) -> np.ndarray:
+        return handle.solve(rhs)
+
+    lease.operator = LinearOperator(matrix.shape, matvec=matvec, dtype=float)
+    return lease
+
+
+def refactorize_if_stale(
+    handle: Any,
+    matrix: sparse.spmatrix,
+    matrix_class: MatrixClass | str,
+    *,
+    cache: Optional[FactorizationCache] = None,
+    signature: Optional[str] = None,
+    options: Optional[Mapping[str, Any]] = None,
+    backend: Optional[SparseSolverBackend] = None,
+) -> Any:
+    """Return ``handle``, or a fresh factorization of ``matrix`` if it is stale.
+
+    For holders that keep a handle across other factorizations: the fresh
+    factorization goes through ``cache`` (where a stale entry is a miss) or
+    the backend, exactly like the original ``factorize_cached`` call.
+    """
+
+    if handle is None or not factorization_is_stale(handle):
+        return handle
+    return factorize_cached(
+        matrix, matrix_class, cache=cache, signature=signature, options=options, backend=backend
+    )
+
+
 def factorize_cached(
     matrix: sparse.spmatrix,
     matrix_class: MatrixClass | str,
@@ -1526,14 +2110,24 @@ def cached_inverse_operator(
     return local_cache.linear_operator(matrix, matrix_class, signature=signature, options=options)
 
 
+def _require_solvable(handle: FactorizationHandle) -> None:
+    """Raise the typed stale error first, then the failed-factorization error.
+
+    Both are decided in one process-lock section (:func:`_handle_state`); a
+    later concurrent invalidation is caught by the wrapper's own check inside
+    the lock, with the same stale type.
+    """
+
+    state = _handle_state(handle)
+    if state == "stale":
+        raise PardisoStaleHandleError()
+    if state != "ok":
+        raise RuntimeError(f"Cannot solve with failed factorization: {handle.failure_reason}")
+
+
 def solve(handle: FactorizationHandle, rhs: np.ndarray) -> np.ndarray:
     """Solve one right-hand side using an existing factorization."""
-    if isinstance(handle._solver, _PardisoFactorization) and handle._solver._rejection is not None:
-        # A PARDISO handle rejected by a failed stale rebuild raises the same
-        # typed error as its first rejection, on every later solve.
-        raise handle._solver._rejection_error()
-    if handle.status != "ok" or handle._solver is None:
-        raise RuntimeError(f"Cannot solve with failed factorization: {handle.failure_reason}")
+    _require_solvable(handle)
     rhs = np.asarray(rhs, dtype=float)
     start = time.time()
     policy = _inherited_native_thread_policy(
@@ -1557,6 +2151,7 @@ def solve(handle: FactorizationHandle, rhs: np.ndarray) -> np.ndarray:
 
 def solve_many(handle: FactorizationHandle, rhs_matrix: np.ndarray) -> np.ndarray:
     """Solve one or more right-hand sides with one numerical factorization."""
+    _require_solvable(handle)
     rhs = np.asarray(rhs_matrix, dtype=float)
     if rhs.ndim == 1:
         return solve(handle, rhs)
@@ -1568,8 +2163,7 @@ def solve_many(handle: FactorizationHandle, rhs_matrix: np.ndarray) -> np.ndarra
 def _uncounted_solve(handle: FactorizationHandle, rhs: np.ndarray) -> np.ndarray:
     """A certification solve: same backend and thread policy, no solve counters."""
 
-    if isinstance(handle._solver, _PardisoFactorization) and handle._solver._rejection is not None:
-        raise handle._solver._rejection_error()
+    _require_solvable(handle)  # typed stale error first, as in solve()
     if handle.status != "ok" or handle._solver is None:
         raise RuntimeError(f"Cannot solve with failed factorization: {handle.failure_reason}")
     rhs = np.asarray(rhs, dtype=float)

@@ -8,7 +8,7 @@ from fractions import Fraction
 from hashlib import sha256
 import numpy as np
 from scipy import sparse
-from .linalg import MatrixClass, factorize_cached
+from .linalg import MatrixClass, factorize_cached, refactorize_if_stale
 
 MAX_PATCH_NODES = 16
 MAX_LOCAL_SUPPORT = 6*MAX_PATCH_NODES
@@ -113,6 +113,9 @@ class EliminatedHandle:
         return getattr(self.handle, name)
 
     def solve(self, rhs):
+        # A stale PARDISO handle is never rebuilt: refactorize the reduced
+        # operator through the same route as ``factorize``.
+        self.handle = refactorize_if_stale(self.handle, self.maps.reduced, MatrixClass.GENERAL)
         return self.maps.solve(self.handle, rhs)
 
     def solve_many(self, rhs):

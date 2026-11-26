@@ -5,6 +5,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 
@@ -76,6 +77,24 @@ Q4_SOURCE_BINDING_SUCCESSOR = (
     ROOT / 'docs' / 'reference_cases' / 'e4_pl_source_binding_20261111.json'
 )
 Q4_SOURCE_BINDING_SUCCESSOR_SHA256: str | None = '2716B80F2792574F4720CC282C4368E3E936E5C1353FFF8B63439E72B30F42B1'
+# Source-binding delta (2026-11-24, warped-Q4 drilling floor).  SOURCE BINDING
+# ONLY.  The 2026-11-11 record keeps binding the bytes it was generated for:
+# its reader runs on predecessor bytes rebuilt from live bytes by this record's
+# reverse hunks, authenticated by the 2026-11-11 pinned identities.  This record
+# binds the live bytes and the delta.  The pin stays None until (1) the
+# collector scripts/build_q4_source_binding_20261124.py has been run with the
+# base revision present and (2) an independent reviewer outside the generating
+# invocation has reviewed the record, this reader and the collector.  Do not
+# fill it from the generating invocation.
+Q4_SOURCE_BINDING_DELTA = (
+    ROOT / 'docs' / 'reference_cases' / 'e4_pl_source_binding_20261124.json'
+)
+# Pinned 2026-11-24 after the collector --check ran with the historical objects
+# present and an independent Codex (gpt-6.2-sol, high) review of the record,
+# reader and collector returned PIN APPROVED for these bytes.
+Q4_SOURCE_BINDING_DELTA_SHA256: str | None = (
+    '340CF7EB6B15B01799FA5838CC558BE74C1D6033C267120C5A142F6C257E50A7'
+)
 SIX_CARRIERS = (
     'e4_pl_element.py',
     'e4_pl_s3_element.py',
@@ -746,9 +765,57 @@ def _read_live(relative: str) -> bytes:
     return (ROOT / relative).read_bytes()
 
 
+_DELTA_LINE = re.compile(rb"[^\n]*\n|[^\n]+\Z")
+
+
+def _rebuild_predecessor(live: bytes, hunks: list[dict[str, object]]) -> bytes:
+    """Apply recorded reverse line hunks (bottom-up, non-overlapping)."""
+
+    lines = _DELTA_LINE.findall(live)
+    assert b"".join(lines) == live
+    limit = len(lines)
+    for hunk in sorted(hunks, key=lambda h: h["live_line_start"], reverse=True):
+        start, end = hunk["live_line_start"], hunk["live_line_end"]
+        assert type(start) is int and type(end) is int and 0 <= start <= end <= limit
+        assert hashlib.sha256(b"".join(lines[start:end])).hexdigest().upper() == (
+            hunk["live_lines_sha256"]
+        )
+        lines[start:end] = [hunk["predecessor_text"].encode("utf-8")]
+        limit = start
+    return b"".join(lines)
+
+
+def _delta_record() -> dict[str, object]:
+    record = _strict_json(Q4_SOURCE_BINDING_DELTA.read_bytes())
+    predecessor = Q4_SOURCE_BINDING_SUCCESSOR.read_bytes()
+    assert record["predecessor"] == {
+        "path": Q4_SOURCE_BINDING_SUCCESSOR.relative_to(ROOT).as_posix(),
+        **_identity(predecessor),
+    }
+    return record
+
+
+def _read_bound(relative: str, read=None) -> bytes:
+    """Bytes the 2026-11-11 record binds: live bytes, or for a file changed by
+    the 2026-11-24 delta, the predecessor bytes rebuilt from the live bytes.
+
+    The rebuild is authenticated twice: by the delta's predecessor identity and,
+    independently, by the 2026-11-11 reader's own pinned identities of the bytes
+    it is given.  Any mutation of the live bytes breaks the rebuild.
+    """
+
+    raw = (read or _read_live)(relative)
+    row = _delta_record()["files"].get(relative)
+    if row is None:
+        return raw
+    rebuilt = _rebuild_predecessor(raw, row["reverse_hunks"])
+    assert _identity(rebuilt) == row["predecessor_raw"]
+    return rebuilt
+
+
 def _read_with(replacements: dict[str, bytes]):
     def read(relative: str) -> bytes:
-        return replacements[relative] if relative in replacements else _read_live(relative)
+        return replacements[relative] if relative in replacements else _read_bound(relative)
 
     return read
 
@@ -1045,12 +1112,12 @@ def test_successor_record_binds_live_source_without_new_acceptance() -> None:
         "qualified_q4_mechanics_authority"
     ]
     actual = _q4_mechanics_authority_payload(
-        _lf(_read_live(LIVE_ENTRY)).decode("utf-8"), set(authority["roots"]),
+        _lf(_read_bound(LIVE_ENTRY)).decode("utf-8"), set(authority["roots"]),
         schema=authority["schema"], path=authority["path"],
         required_symbols=set(authority["symbols"]),
     )
     record = _require_q4_source_binding_successor(
-        Q4_SOURCE_BINDING_SUCCESSOR.read_bytes(), _read_live, actual, authority
+        Q4_SOURCE_BINDING_SUCCESSOR.read_bytes(), _read_bound, actual, authority
     )
     assert record["boundary_flags"]["CI_credit"] is False
 
@@ -1070,7 +1137,7 @@ def _successor_context():
         "qualified_q4_mechanics_authority"
     ]
     actual = _q4_mechanics_authority_payload(
-        _lf(_read_live(LIVE_ENTRY)).decode("utf-8"), set(authority["roots"]),
+        _lf(_read_bound(LIVE_ENTRY)).decode("utf-8"), set(authority["roots"]),
         schema=authority["schema"], path=authority["path"],
         required_symbols=set(authority["symbols"]),
     )
@@ -1082,7 +1149,7 @@ def test_successor_rejects_content_and_eol_only_mutation_of_protected_carriers(
     relative: str,
 ) -> None:
     authority, actual, record = _successor_context()
-    raw = _read_live(relative)
+    raw = _read_bound(relative)
     assert relative.rsplit("/", 1)[1] not in PORTABLE_AUTO_TEXT
     eol_only = _lf(raw) if b"\r\n" in raw else _lf(raw).replace(b"\n", b"\r\n")
     assert eol_only != raw and _lf(eol_only) == _lf(raw)
@@ -1097,7 +1164,7 @@ def test_successor_rejects_content_and_eol_only_mutation_of_protected_carriers(
 def test_portable_auto_text_accepts_only_uniform_lf_or_crlf(name: str) -> None:
     authority, actual, record = _successor_context()
     relative = f"src/anyfesolver/{name}"
-    canonical = _lf(_read_live(relative))
+    canonical = _lf(_read_bound(relative))
     assert b"\r" not in canonical
     crlf = canonical.replace(b"\n", b"\r\n")
     for good in (canonical, crlf):
@@ -1161,13 +1228,13 @@ def test_successor_rejects_any_unrecorded_carrier_file_mutation(name: str) -> No
         "qualified_q4_mechanics_authority"
     ]
     actual = _q4_mechanics_authority_payload(
-        _lf(_read_live(LIVE_ENTRY)).decode("utf-8"), set(authority["roots"]),
+        _lf(_read_bound(LIVE_ENTRY)).decode("utf-8"), set(authority["roots"]),
         schema=authority["schema"], path=authority["path"],
         required_symbols=set(authority["symbols"]),
     )
     record = Q4_SOURCE_BINDING_SUCCESSOR.read_bytes()
     relative = RECORDED_TO_LIVE_PATH[f"src/anysolver/{name}"]
-    read = _read_with({relative: _read_live(relative) + b"\n# unrecorded mutation\n"})
+    read = _read_with({relative: _read_bound(relative) + b"\n# unrecorded mutation\n"})
     with pytest.raises(AssertionError):
         _require_q4_source_binding_successor(record, read, actual, authority)
 
@@ -1178,13 +1245,13 @@ def test_successor_mechanics_and_import_checks_reject_unrecorded_changes() -> No
         "qualified_q4_mechanics_authority"
     ]
     record = _strict_json(Q4_SOURCE_BINDING_SUCCESSOR.read_bytes())
-    source = _lf(_read_live(LIVE_ENTRY)).decode("utf-8")
+    source = _lf(_read_bound(LIVE_ENTRY)).decode("utf-8")
     actual = _q4_mechanics_authority_payload(
         source, set(authority["roots"]), schema=authority["schema"],
         path=authority["path"], required_symbols=set(authority["symbols"]),
     )
     _require_successor_mechanics(record, actual, authority)
-    _require_successor_imports(record, source, actual["symbols"], _read_live)
+    _require_successor_imports(record, source, actual["symbols"], _read_bound)
 
     # Symbol mutation inside the closure is visible.
     sign = "        sign = 1 if alignment > 0.0 else -1"
@@ -1201,12 +1268,12 @@ def test_successor_mechanics_and_import_checks_reject_unrecorded_changes() -> No
     with pytest.raises(AssertionError):
         _require_successor_imports(
             record, source + "\nfrom . import fe_core as _unrecorded_dependency\n",
-            actual["symbols"], _read_live,
+            actual["symbols"], _read_bound,
         )
 
     # Mutating any recorded sibling dependency file is visible.
     for row in record["sibling_imports_of_entry_module"]:
-        read = _read_with({row["live_path"]: _read_live(row["live_path"]) + b"\n#x\n"})
+        read = _read_with({row["live_path"]: _read_bound(row["live_path"]) + b"\n#x\n"})
         with pytest.raises(AssertionError):
             _require_successor_imports(record, source, actual["symbols"], read)
 
@@ -1258,7 +1325,7 @@ def test_qualification_contract_and_replay_hotfix_bind_q4_mechanics_symbols() ->
         for name, digest in expected.items()
     )
     actual = _q4_mechanics_authority_payload(
-        QUALIFIED_Q4_MECHANICS.read_text(encoding="utf-8"),
+        _read_bound(LIVE_ENTRY).decode("utf-8"),
         set(roots),
         schema=authority["schema"],
         path=authority["path"],
@@ -1296,7 +1363,7 @@ def test_qualification_contract_and_replay_hotfix_bind_q4_mechanics_symbols() ->
     ]
     _require_pin()
     binding = _require_q4_source_binding_successor(
-        Q4_SOURCE_BINDING_SUCCESSOR.read_bytes(), _read_live, actual, authority
+        Q4_SOURCE_BINDING_SUCCESSOR.read_bytes(), _read_bound, actual, authority
     )
     # Original qualification contract (129 expected symbols) -> candidate live
     # closure.  This is NOT the October 19 -> qualified-R4 link (links.L1).  The
@@ -1327,7 +1394,7 @@ def test_prospective_q4_source_binding_rejects_unknown_record_and_outside_closur
     authority = _strict_json(QUALIFICATION_CONTRACT.read_bytes())["candidate"][
         "qualified_q4_mechanics_authority"
     ]
-    raw = QUALIFIED_Q4_MECHANICS.read_bytes()
+    raw = _read_bound(LIVE_ENTRY)
     source = raw.decode("utf-8")
     actual = _q4_mechanics_authority_payload(
         source, set(authority["roots"]), schema=authority["schema"],
@@ -1335,7 +1402,7 @@ def test_prospective_q4_source_binding_rejects_unknown_record_and_outside_closur
     )
     record = Q4_SOURCE_BINDING_SUCCESSOR.read_bytes()
     with pytest.raises(AssertionError):
-        _require_q4_source_binding_successor(record + b" ", _read_live, actual, authority)
+        _require_q4_source_binding_successor(record + b" ", _read_bound, actual, authority)
     for field in ("roots", "symbols"):
         refused = _strict_json(json.dumps(actual).encode("utf-8"))
         if field == "roots":
@@ -1343,7 +1410,7 @@ def test_prospective_q4_source_binding_rejects_unknown_record_and_outside_closur
         else:
             refused[field].pop(next(iter(authority["symbols"])))
         with pytest.raises(AssertionError):
-            _require_q4_source_binding_successor(record, _read_live, refused, authority)
+            _require_q4_source_binding_successor(record, _read_bound, refused, authority)
     outside = "QualifiedE4PLShellElement._compute_prepared_nonlinear_response"
     assert outside not in actual["symbols"]
     definition = "    def _compute_prepared_nonlinear_response("
@@ -1366,7 +1433,7 @@ def test_prospective_q4_source_binding_rejects_external_dependency_drift(monkeyp
     authority = _strict_json(QUALIFICATION_CONTRACT.read_bytes())["candidate"][
         "qualified_q4_mechanics_authority"
     ]
-    raw = QUALIFIED_Q4_MECHANICS.read_bytes()
+    raw = _read_bound(LIVE_ENTRY)
     actual = _q4_mechanics_authority_payload(
         raw.decode("utf-8"), set(authority["roots"]), schema=authority["schema"],
         path=authority["path"], required_symbols=set(authority["symbols"]),
@@ -1379,7 +1446,7 @@ def test_prospective_q4_source_binding_rejects_external_dependency_drift(monkeyp
         return value + b"\n# injected source drift\n" if path == dependency else value
     monkeypatch.setattr(Path, "read_bytes", changed_bytes)
     with pytest.raises(AssertionError):
-        _require_q4_source_binding_successor(record, _read_live, actual, authority)
+        _require_q4_source_binding_successor(record, _read_bound, actual, authority)
 
 def test_q4_mechanics_symbol_authority_rejects_missing_duplicate_and_change() -> None:
     contract = _strict_json(QUALIFICATION_CONTRACT.read_bytes())
@@ -1650,3 +1717,216 @@ def test_cli_check_accepts_canonical_and_rejects_mutation(tmp_path: Path) -> Non
     )
     assert rejected.returncode != 0
     assert "not canonical or is stale" in rejected.stderr
+
+
+# ---------------------------------------------------------------------------
+# 2026-11-24 source-binding delta (warped-Q4 drilling floor).  SOURCE BINDING
+# ONLY: the live bytes of the files the 2026-11-11 record binds, the exact
+# reverse hunks to those predecessor bytes, the per-module symbol deltas and
+# the live qualified-Q4 mechanics closure.  No acceptance is granted.
+
+DELTA_FILE_KEYS = {
+    "live_lf", "live_raw", "module_symbols", "predecessor_raw", "reverse_hunks",
+}
+
+
+def _require_delta_pin() -> None:
+    if Q4_SOURCE_BINDING_DELTA_SHA256 is None:
+        pytest.fail(
+            "source-binding delta is not adopted: run "
+            "scripts/build_q4_source_binding_20261124.py --write, have the record, "
+            "this reader and the collector independently reviewed outside the "
+            "generating invocation, then pin Q4_SOURCE_BINDING_DELTA_SHA256",
+            pytrace=False,
+        )
+
+
+def _module_symbol_digests(source: str) -> dict[str, str]:
+    return {
+        name: _digest_upper([_canonical_mechanics_ast(node) for node in nodes])
+        for name, nodes in sorted(_mechanics_nodes(source).items())
+    }
+
+
+def _symbol_delta(before: dict[str, str], after: dict[str, str]) -> dict[str, list[str]]:
+    return {
+        "added": sorted(set(after) - set(before)),
+        "changed": sorted(n for n in set(before) & set(after) if before[n] != after[n]),
+        "removed": sorted(set(before) - set(after)),
+    }
+
+
+def _predecessor_live_identities(predecessor: dict[str, object]) -> dict[str, object]:
+    """Every live path the 2026-11-11 record binds by exact raw identity."""
+
+    bound: dict[str, object] = {}
+    for row in predecessor["carriers"].values():
+        if "live_raw" in row:
+            bound[row["live_path"]] = row["live_raw"]
+    for row in predecessor["sibling_imports_of_entry_module"]:
+        if "live_raw" in row:
+            bound.setdefault(row["live_path"], row["live_raw"])
+    for row in predecessor["historical_gaps_of_current_historical_record"]:
+        bound.setdefault(row["live_path"], row["live_raw"])
+    return bound
+
+
+def _require_q4_source_binding_delta(record_raw: bytes, read, authority) -> dict[str, object]:
+    assert Q4_SOURCE_BINDING_DELTA_SHA256 is not None
+    assert hashlib.sha256(record_raw).hexdigest().upper() == Q4_SOURCE_BINDING_DELTA_SHA256
+    record = _strict_json(record_raw)
+    assert record_raw == _canonical_bytes(record)
+    assert record["schema"] == "anyfesolver.q4-source-binding-delta-v1"
+    assert record["qualification_boundary"] == "SOURCE_BINDING_ONLY_NOT_SCIENTIFIC_QUALIFICATION"
+    assert record["adoption"] == {
+        "independent_review_required_outside_generating_invocation": True,
+        "owner_adoption_recorded": False,
+        "reviewer_approval_claimed": False,
+        "status": "UNREVIEWED_CANDIDATE_RECORD",
+    }
+    assert set(record["boundary_flags"]) == SUCCESSOR_FLAG_KEYS
+    assert all(value is False for value in record["boundary_flags"].values())
+    change = record["change"]
+    assert change["mechanics_changed"] is True
+    assert change["warped_qualified_q4_results_changed"] is True
+    assert change["planar_and_other_element_results_changed"] is False
+    assert (ROOT / change["regression_test"]).is_file()
+    base = record["base_revision"]
+    assert len(base) == 40 and set(base) <= set("0123456789abcdef")
+
+    # Predecessor: exactly the pinned 2026-11-11 record, read on its own terms
+    # against the predecessor bytes rebuilt from the bytes ``read`` serves.
+    predecessor_raw = Q4_SOURCE_BINDING_SUCCESSOR.read_bytes()
+    assert Q4_SOURCE_BINDING_SUCCESSOR_SHA256 is not None
+    assert hashlib.sha256(predecessor_raw).hexdigest().upper() == Q4_SOURCE_BINDING_SUCCESSOR_SHA256
+    assert record["predecessor"] == {
+        "path": Q4_SOURCE_BINDING_SUCCESSOR.relative_to(ROOT).as_posix(),
+        **_identity(predecessor_raw),
+    }
+    predecessor = _strict_json(predecessor_raw)
+    bound = _predecessor_live_identities(predecessor)
+    files = record["files"]
+    assert files and set(files) <= set(bound)
+
+    def bound_read(relative: str) -> bytes:
+        return _read_bound(relative, read)
+
+    predecessor_actual = _q4_mechanics_authority_payload(
+        _lf(bound_read(LIVE_ENTRY)).decode("utf-8"), set(authority["roots"]),
+        schema=authority["schema"], path=authority["path"],
+        required_symbols=set(authority["symbols"]),
+    )
+    _require_q4_source_binding_successor(predecessor_raw, bound_read, predecessor_actual, authority)
+
+    # Changed files: live identity, exact rebuild, per-module symbol deltas.
+    for relative, row in files.items():
+        assert set(row) == DELTA_FILE_KEYS
+        live = read(relative)
+        assert row["live_raw"] == _identity(live)
+        assert row["live_lf"] == _identity(_lf(live))
+        assert row["predecessor_raw"] == bound[relative]
+        previous = _rebuild_predecessor(live, row["reverse_hunks"])
+        assert _identity(previous) == bound[relative]
+        assert previous != live
+        before = _module_symbol_digests(_lf(previous).decode("utf-8"))
+        after = _module_symbol_digests(_lf(live).decode("utf-8"))
+        symbols = row["module_symbols"]
+        assert {k: symbols[k] for k in ("added", "changed", "removed")} == _symbol_delta(before, after)
+        assert symbols["predecessor_aggregate_sha256"] == _digest_upper(before)
+        assert symbols["live_aggregate_sha256"] == _digest_upper(after)
+        assert symbols["live_aggregate_sha256"] == _module_symbol_aggregate(_lf(live).decode("utf-8"))
+    # Every other predecessor-bound file is byte-for-byte unchanged.
+    for relative, identity in bound.items():
+        if relative not in files:
+            assert _identity(read(relative)) == identity
+
+    # Live qualified-Q4 mechanics closure and its delta from the predecessor.
+    source = _lf(read(LIVE_ENTRY)).decode("utf-8")
+    actual = _q4_mechanics_authority_payload(
+        source, set(authority["roots"]), schema=authority["schema"],
+        path=authority["path"], required_symbols=set(authority["symbols"]),
+    )
+    mech = record["mechanics"]
+    assert actual["roots"] == authority["roots"] == mech["roots"]
+    assert set(authority["symbols"]) <= set(actual["symbols"])
+    assert actual["symbols"] == mech["symbols"]
+    assert mech["symbol_count"] == len(actual["symbols"])
+    assert actual["path"] == mech["logical_path"] == authority["path"]
+    assert actual["schema"] == mech["schema"] == authority["schema"]
+    assert _q4_mechanics_aggregate(actual) == mech["aggregate_sha256"]
+    assert mech["predecessor_aggregate_sha256"] == predecessor["mechanics"]["aggregate_sha256"]
+    assert mech["delta_from_predecessor"] == _symbol_delta(
+        predecessor["mechanics"]["symbols"], actual["symbols"]
+    )
+    # No new sibling import of the entry module.
+    live_keys = {
+        "live_path", "recorded_path", "live_raw", "live_lf", "portable_text", "permitted_raw",
+    }
+    assert record["sibling_imports_of_entry_module_unchanged"] is True
+    assert _internal_imports(source, sorted(actual["symbols"])) == [
+        {k: v for k, v in row.items() if k not in live_keys}
+        for row in predecessor["sibling_imports_of_entry_module"]
+    ]
+    return record
+
+
+def test_predecessor_bytes_rebuild_exactly_and_refuse_tampering() -> None:
+    """Runs without the delta pin: the rebuild is authenticated by 2026-11-11."""
+
+    _require_pin()
+    delta = _delta_record()
+    bound = _predecessor_live_identities(_strict_json(Q4_SOURCE_BINDING_SUCCESSOR.read_bytes()))
+    assert delta["files"] and set(delta["files"]) <= set(bound)
+    for relative, row in delta["files"].items():
+        live = _read_live(relative)
+        assert _identity(_read_bound(relative)) == bound[relative]
+        hunks = row["reverse_hunks"]
+        assert hunks
+        tampered = json.loads(json.dumps(hunks))
+        tampered[0]["predecessor_text"] += "#"
+        with pytest.raises(AssertionError):
+            assert _identity(_rebuild_predecessor(live, tampered)) == bound[relative]
+        shifted = json.loads(json.dumps(hunks))
+        shifted[0]["live_line_start"] += 1
+        shifted[0]["live_line_end"] += 1
+        with pytest.raises(AssertionError):
+            assert _identity(_rebuild_predecessor(live, shifted)) == bound[relative]
+
+        def drifted(path: str, _relative=relative, _live=live) -> bytes:
+            return _live + b"\n# drift\n" if path == _relative else _read_live(path)
+
+        with pytest.raises(AssertionError):
+            _read_bound(relative, drifted)
+
+
+def test_source_binding_delta_binds_live_source_without_new_acceptance() -> None:
+    _require_pin()
+    _require_delta_pin()
+    authority = _strict_json(QUALIFICATION_CONTRACT.read_bytes())["candidate"][
+        "qualified_q4_mechanics_authority"
+    ]
+    record = _require_q4_source_binding_delta(
+        Q4_SOURCE_BINDING_DELTA.read_bytes(), _read_live, authority
+    )
+    assert set(record["files"]) == {
+        "src/anyfesolver/e4_pl_element.py", "src/anyfesolver/elements.py",
+    }
+
+
+@pytest.mark.parametrize("relative", GAP_PATHS)
+def test_source_binding_delta_rejects_content_and_eol_mutation(relative: str) -> None:
+    _require_pin()
+    _require_delta_pin()
+    authority = _strict_json(QUALIFICATION_CONTRACT.read_bytes())["candidate"][
+        "qualified_q4_mechanics_authority"
+    ]
+    record = Q4_SOURCE_BINDING_DELTA.read_bytes()
+    raw = _read_live(relative)
+    eol_only = _lf(raw) if b"\r\n" in raw else _lf(raw).replace(b"\n", b"\r\n")
+    for mutated in (raw + b"\n# content mutation\n", eol_only):
+        def read(path: str, _mutated=mutated) -> bytes:
+            return _mutated if path == relative else _read_live(path)
+        with pytest.raises(AssertionError):
+            _require_q4_source_binding_delta(record, read, authority)
+    with pytest.raises(AssertionError):
+        _require_q4_source_binding_delta(record + b" ", _read_live, authority)

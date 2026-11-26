@@ -55,7 +55,7 @@ from .e4_pl_s3_v2d_element import (
     NativeParityE4PLS3V2DShellElement,
 )
 from .elements import ShellElement
-from .linalg import FactorizationCache, MatrixClass, cached_inverse_operator
+from .linalg import FactorizationCache, MatrixClass, leased_inverse_operator
 from .matrix_assembly import (
     _run_with_qualified_assembly_runtime_lease,
     _assemble_geometric_stiffness_matrix_under_lease,
@@ -156,6 +156,7 @@ _QUALIFIED_PRESTRESS_OPERATOR_APIS = {
         "_bind_qualified_component_guard": QualifiedE4PLShellElement._bind_qualified_component_guard,
         "_adopt_qualified_components": QualifiedE4PLShellElement._adopt_qualified_components,
         "_warped_generalized_drilling_correction": QualifiedE4PLShellElement._warped_generalized_drilling_correction,
+        "_effective_drilling_stabilization": QualifiedE4PLShellElement._effective_drilling_stabilization,
         "_generalized_section_in_frame": QualifiedE4PLShellElement._generalized_section_in_frame,
         "_physical_director_context": QualifiedE4PLShellElement._physical_director_context,
         "_material_angle": ShellElement._material_angle,
@@ -1362,7 +1363,9 @@ def _sparse_eigensolve(
     cache = factorization_cache or FactorizationCache(name="modal_shift_invert", max_entries=2)
     factorization_started = time.perf_counter()
     try:
-        operator, handle = cached_inverse_operator(
+        # Pinned for the eigensolve: ARPACK keeps calling the operator across
+        # callbacks, guards and other factorizations.
+        lease = leased_inverse_operator(
             shift_matrix,
             (
                 MatrixClass.SPD
@@ -1401,16 +1404,18 @@ def _sparse_eigensolve(
     factorization_lookup_seconds = float(
         time.perf_counter() - factorization_started
     )
-    if _post_factorization_guard is not None:
-        _post_factorization_guard()
-    values, vectors = sparse_linalg.eigsh(
-        K.tocsc(),
-        k=k,
-        M=M.tocsc(),
-        sigma=effective_shift,
-        which="LM",
-        OPinv=operator,
-    )
+    operator, handle = lease.operator, lease.handle
+    with lease:
+        if _post_factorization_guard is not None:
+            _post_factorization_guard()
+        values, vectors = sparse_linalg.eigsh(
+            K.tocsc(),
+            k=k,
+            M=M.tocsc(),
+            sigma=effective_shift,
+            which="LM",
+            OPinv=operator,
+        )
     return values, vectors, {
         "shift_invert": True,
         "zero_shift_inverse": bool(shift is None and use_zero_shift_inverse),

@@ -233,6 +233,12 @@ def _model_state(model: Any) -> Any:
             None if activity is None else _plain_state(activity))
 
 
+def _close_source(iterator: Any) -> None:
+    close = getattr(iterator, "close", None) if iterator is not None else None
+    if callable(close):
+        close()
+
+
 def iter_linear_batches(
     model: Any, cases: Iterable[StaticCase], *, batch_size: int = 32,
     output_dofs: Optional[Any] = None, recovery_config: Optional[RecoveryConfig] = None,
@@ -262,7 +268,7 @@ def iter_linear_batches(
         _qualified_recovery_runtime_lease_scope)
     from .threading_policy import solver_thread_scope
     from .jit_compiler import numba_thread_scope
-    from .linalg import backend_operation_counts
+    from .linalg import CleanupScope, backend_operation_counts, lease_handle
 
     if type(batch_size) is not int or batch_size <= 0:
         raise ValueError("batch_size must be a positive integer")
@@ -283,8 +289,17 @@ def iter_linear_batches(
     owned_session = session is None
     active = AnalysisSession(model) if owned_session else session
     iterator = None
-    primary_failure = None
-    try:
+    operator_lease = None
+    # One cleanup scope (linalg.CleanupScope): at exit the source iterator,
+    # the operator lease and an owned session are closed in that order, each
+    # with the exception actually propagating as primary (the precedence of
+    # FactorizationLease.__exit__); a cleanup interrupt is never swallowed.
+    with CleanupScope() as cleanup:
+        cleanup.callback(lambda: active.close() if owned_session else None,
+                         "analysis session cleanup")
+        cleanup.callback(lambda: None if operator_lease is None else operator_lease.close(),
+                         "operator lease cleanup")
+        cleanup.callback(lambda: _close_source(iterator), "source iterator cleanup")
         active._require_model(model)
         recovery = RecoveryConfig(include_displacements=False, include_stresses=False,
                                   include_reactions=False) if recovery_config is None else recovery_config
@@ -396,6 +411,11 @@ def iter_linear_batches(
         output = active.output_selection_plan(dofs, constraint)
         if operator.handle is not None and operator.handle.status != "ok":
             raise StaticBatchError("static factorization failed", diagnostics=operator.handle.diagnostics())
+        if operator.handle is not None:
+            # Pin the operator's factorization for the stream lifetime: work
+            # between blocks (consumer code, other factorizations, released
+            # pattern slots) can never make it stale or change its backend.
+            operator_lease = lease_handle(operator.handle)
         prepare_seconds = _time.perf_counter() - prepare_start
         pending_first = True
         next_index = 0
@@ -724,26 +744,3 @@ def iter_linear_batches(
             del F, effective_loads, inertial, relief_summaries, rhs, solve_rhs, solved, q, values, full, results, certified, block
             unchanged("consumer return")
             before = after
-    except BaseException as error:
-        primary_failure = error
-        raise
-    finally:
-        try:
-            if iterator is not None:
-                try:
-                    close = getattr(iterator, "close", None)
-                    if callable(close):
-                        close()
-                except BaseException as cleanup_error:
-                    if primary_failure is None:
-                        primary_failure = cleanup_error
-                        raise
-                    BaseException.add_note(primary_failure, "source iterator cleanup failed: " + repr(cleanup_error))
-        finally:
-            if owned_session:
-                try:
-                    active.close()
-                except BaseException as cleanup_error:
-                    if primary_failure is None:
-                        raise
-                    BaseException.add_note(primary_failure, "analysis session cleanup failed: " + repr(cleanup_error))

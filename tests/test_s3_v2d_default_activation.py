@@ -197,20 +197,53 @@ def _git_blob(path: Path) -> str:
 Q4_SOURCE_BINDING_SUCCESSOR = (
     ROOT / "docs" / "reference_cases" / "e4_pl_source_binding_20261111.json"
 )
+Q4_SOURCE_BINDING_DELTA = (
+    ROOT / "docs" / "reference_cases" / "e4_pl_source_binding_20261124.json"
+)
 MANIFEST_TEST = ROOT / "tests" / "test_e4_pl_s3_mixed_mesh_manifest.py"
 
 
-def _adopted_successor_pin() -> str | None:
+def _adopted_successor_pin(name: str = "Q4_SOURCE_BINDING_SUCCESSOR_SHA256") -> str | None:
     """Single source of truth: the pin assigned in the mixed-mesh manifest test."""
 
     for node in ast.parse(MANIFEST_TEST.read_text(encoding="utf-8")).body:
         if (
             isinstance(node, ast.AnnAssign)
             and isinstance(node.target, ast.Name)
-            and node.target.id == "Q4_SOURCE_BINDING_SUCCESSOR_SHA256"
+            and node.target.id == name
         ):
             return ast.literal_eval(node.value)
     raise AssertionError("successor pin assignment not found")
+
+
+def _q4_source_binding_delta(successor_raw: bytes) -> dict[str, object]:
+    """2026-11-24 delta on the successor (warped-Q4 drilling floor).
+
+    Its full reader (live identity, exact reverse rebuild, symbol and mechanics
+    deltas) is in tests/test_e4_pl_s3_mixed_mesh_manifest.py; here only the
+    pinned identity and the blob chain are used.
+    """
+
+    pin = _adopted_successor_pin("Q4_SOURCE_BINDING_DELTA_SHA256")
+    if pin is None:
+        pytest.fail(
+            "source-binding delta is not adopted: run "
+            "scripts/build_q4_source_binding_20261124.py --write, obtain independent "
+            "review outside the generating invocation, then pin it in "
+            "tests/test_e4_pl_s3_mixed_mesh_manifest.py",
+            pytrace=False,
+        )
+    raw = Q4_SOURCE_BINDING_DELTA.read_bytes()
+    assert hashlib.sha256(raw).hexdigest().upper() == pin
+    payload = json.loads(raw, object_pairs_hook=_strict_object)
+    assert payload["qualification_boundary"] == (
+        "SOURCE_BINDING_ONLY_NOT_SCIENTIFIC_QUALIFICATION"
+    )
+    assert all(value is False for value in payload["boundary_flags"].values())
+    assert payload["predecessor"]["sha256"] == (
+        hashlib.sha256(successor_raw).hexdigest().upper()
+    )
+    return payload
 
 
 def _q4_source_binding_successor() -> dict[str, object]:
@@ -244,6 +277,7 @@ def _assert_live_sources_bound_through_successor(
     """
 
     record = _q4_source_binding_successor()
+    delta = _q4_source_binding_delta(Q4_SOURCE_BINDING_SUCCESSOR.read_bytes())
     change = runtime_successor["change"]
     for name, live_blob, key in (
         ("e4_pl_element.py", q4_blob, "e4_pl_element"),
@@ -251,10 +285,19 @@ def _assert_live_sources_bound_through_successor(
     ):
         row = record["carriers"][name]
         assert row["live_path"] == f"src/anyfesolver/{name}"
-        assert row["live_lf"]["git_blob"] == live_blob
+        changed = delta["files"].get(row["live_path"])
+        if changed is None:
+            bound_blob = live_blob
+        else:
+            # Live bytes bind through the delta to the successor-bound bytes.
+            assert changed["live_lf"]["git_blob"] == live_blob
+            assert changed["predecessor_raw"] == row["live_raw"]
+            bound_blob = row["live_lf"]["git_blob"]
+            assert bound_blob != live_blob
+        assert row["live_lf"]["git_blob"] == bound_blob
         assert row["v6_terminal_git_blob"] == change[key]["current_git_blob"]
         assert row["live_lf_equals_v6_terminal"] is (
-            live_blob == change[key]["current_git_blob"]
+            bound_blob == change[key]["current_git_blob"]
         )
     link = record["links"]["L1_OCT19_AND_V6_TERMINAL_TO_QUALIFIED_Q4_R4"]
     assert link["mechanics_changed"] is True

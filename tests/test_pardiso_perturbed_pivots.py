@@ -9,7 +9,10 @@ converged/CERTIFIED.  These tests pin the fail-closed behaviour:
 - the auto backend treats perturbed pivots as a PARDISO failure and falls
   back to SuperLU, which solves a nonsingular matrix or refuses a singular one;
 - an explicitly forced PARDISO backend returns a typed failure instead;
-- reused pattern slots (phase 22) and stale-handle rebuilds are checked too;
+- reused pattern slots (phase 22) are checked too;
+- a stale handle (its slot was refactorized, evicted, released or retired) is
+  never rebuilt: it raises ``PardisoStaleHandleError`` without a native call;
+- every native numerical PARDISO call is interrupt-safe (release, retire);
 - nonsingular, well-conditioned PARDISO-sized matrices are unaffected.
 """
 
@@ -22,6 +25,10 @@ from scipy import sparse
 import anyfesolver.assembly as assembly
 import anyfesolver.linalg as linalg
 from anyfesolver.linalg import AutoSparseSolverBackend, MatrixClass, PyPardisoSolverBackend
+
+# The fake solver solves exactly when its factor is ok (rule A's known-solution
+# check needs a true solve): diag(1, 2, 3) x = ones.
+_DIAG123_SOLUTION = np.ones(3) / np.array([1.0, 2.0, 3.0])
 
 _N = 10_000
 
@@ -219,31 +226,6 @@ def test_fake_reused_slot_refactorization_is_checked(monkeypatch) -> None:
     assert again.metadata["pardiso_perturbed_pivots"] == {"2": "unsupported"}
 
 
-def test_fake_stale_handle_rebuild_is_checked(monkeypatch) -> None:
-    state = {"perturb": 0}
-
-    def controlled(matrix) -> int:
-        del matrix
-        return state["perturb"]
-
-    _install_fake(monkeypatch, controlled)
-    backend = PyPardisoSolverBackend(max_pattern_slots=1)
-    A = sparse.csr_matrix(np.diag([1.0, 2.0, 3.0]))
-    first = backend.factorize(A, MatrixClass.SPD)
-    assert first.status == "ok"
-    second = backend.factorize(A * 2.0, MatrixClass.SPD)
-    assert second.status == "ok"
-    state["perturb"] = 1  # the private rebuild of ``first`` now perturbs
-    with pytest.raises(RuntimeError, match="perturbed_pivots"):
-        first.solve(np.ones(3))
-    # The handle reports the failure truthfully and stays refused.
-    assert first.status == "failed"
-    assert first.metadata["pardiso_failure_kind"] == "perturbed_pivots"
-    assert first.metadata["pardiso_failure_stage"] == "stale_rebuild"
-    with pytest.raises(RuntimeError, match="perturbed_pivots"):
-        first.solve(np.ones(3))
-
-
 def _garbage_when(state):
     """Unperturbed reports (count 0) whose solve is wrong while ``state["garbage"]``."""
 
@@ -295,31 +277,34 @@ def test_fake_report_mode_keeps_the_factorization(monkeypatch) -> None:
     assert backend.retained_pattern_slots == 1
 
 
-def test_fake_stale_rebuild_failing_the_probe_is_rejected_and_released(monkeypatch) -> None:
-    state = {"garbage": False}
+def test_fake_probe_refused_factorization_is_never_served_as_ok_from_the_cache(monkeypatch) -> None:
+    """Rule A with D4/D2: a refused factorization is never reachable as ok, and a
+    stale cached handle is refactorized through the probe (never rebuilt)."""
+
+    state = {"garbage": True}
     solvers = _install_fake(monkeypatch, _garbage_when(state))
     backend = PyPardisoSolverBackend(max_pattern_slots=1)
     A = sparse.csr_matrix(np.diag([1.0, 2.0, 3.0]))
-    cache = linalg.FactorizationCache(name="stale", max_entries=4, backend=backend)
-    first = cache.factorize(A, MatrixClass.SPD)
-    assert first.status == "ok"
-    second = backend.factorize((A * 2.0).tocsr(), MatrixClass.SPD)
-    assert second.status == "ok"
-    state["garbage"] = True  # the private rebuild of ``first`` now solves wrongly
-    with pytest.raises(RuntimeError, match=linalg.FORWARD_ERROR_PROBE_EXCEEDED):
-        first.solve(np.ones(3))
-    assert first.status == "failed"
-    assert first.metadata["pardiso_failure_kind"] == linalg.FORWARD_ERROR_PROBE_EXCEEDED
-    assert first.metadata["pardiso_failure_stage"] == "stale_rebuild"
-    assert first.metadata["failure_kind"] == linalg.FORWARD_ERROR_PROBE_EXCEEDED
-    assert solvers[-1].freed and first._solver._private_solver is None
-    with pytest.raises(RuntimeError, match=linalg.FORWARD_ERROR_PROBE_EXCEEDED):
-        first.solve(np.ones(3))
-    # The cache never serves the rejected handle again.
+    cache = linalg.FactorizationCache(name="probe", max_entries=4, backend=backend)
+    refused = cache.factorize(A, MatrixClass.SPD)
+    assert refused.status == "failed" and refused._solver is None
+    assert refused.metadata["pardiso_failure_kind"] == linalg.FORWARD_ERROR_PROBE_EXCEEDED
+    assert backend.retained_pattern_slots == 0 and solvers[-1].freed
     state["garbage"] = False
     again = cache.factorize(A, MatrixClass.SPD)
-    assert again is not first and again.status == "ok"
-    assert cache.factorization_failures == 1
+    assert again.status == "ok" or again is refused
+    assert refused.status == "failed"
+    fresh = backend.factorize(A, MatrixClass.SPD)
+    assert fresh.status == "ok"
+    assert fresh.metadata["forward_error_probe_disposition"] == "PASSED"
+    # Same pattern, other values: ``fresh`` goes stale and raises the typed error.
+    other = backend.factorize((A * 2.0).tocsr(), MatrixClass.SPD)
+    assert other.status == "ok"
+    with pytest.raises(linalg.PardisoStaleHandleError):
+        fresh.solve(np.ones(3))
+    # A stale ok handle refactorizes through the probe: a now-wrong solve is refused.
+    state["garbage"] = True
+    assert backend.factorize(A, MatrixClass.SPD).status == "failed"
 
 
 def test_fake_auto_falls_back_but_forced_fails_closed_on_probe_refusal(monkeypatch) -> None:
@@ -374,10 +359,13 @@ def test_fake_perturbed_phase22_is_not_retried_into_acceptance(monkeypatch, matr
     # P3: the failed warm solver's native factors are released.
     assert solvers[0].freed is True
     assert backend.retained_pattern_slots == 0
-    # The handle bound to the released slot rebuilds its own matrix privately.
+    # Option B: the handle bound to the released slot is stale and is never
+    # rebuilt (previously it rebuilt its own matrix privately).
     state["armed"] = False
-    first.solve(np.ones(3))
-    assert first.status == "ok"
+    with pytest.raises(linalg.PardisoStaleHandleError):
+        first.solve(np.ones(3))
+    assert first.status == "failed"
+    assert solvers[0].phases == [12, 33, 22] and len(solvers) == 1  # no rebuild after the probe solve
 
     auto = _warm_auto_backend()
     assert auto.factorize(A, matrix_class).backend_name == "pypardiso"
@@ -432,45 +420,6 @@ def test_fake_phase22_error_retry_is_reported_and_failed_retry_is_released(monke
     assert backend.retained_pattern_slots == 0
 
 
-def test_fake_auto_stale_handle_rebuild_with_perturbed_pivots_fails_closed(monkeypatch) -> None:
-    """Review R3 (design): a perturbed stale rebuild permanently fails the handle.
-
-    There is no solve-time SuperLU fallback (auto or forced): the handle is
-    marked failed with a truthful typed reason and every later solve raises.
-    """
-
-    state = {"perturb": 0}
-
-    def controlled(matrix) -> int:
-        del matrix
-        return state["perturb"]
-
-    _install_fake(monkeypatch, controlled)
-    A = sparse.csr_matrix(np.diag([1.0, 2.0, 3.0]))
-    rhs = np.ones(3)
-
-    for options in ({}, {"backend": "pypardiso"}):
-        state["perturb"] = 0
-        auto = _warm_auto_backend(max_pattern_slots=1)
-        first = auto.factorize(A, MatrixClass.SYMMETRIC_INDEFINITE, options=options)
-        assert first.backend_name == "pypardiso" and first.status == "ok"
-        assert auto.factorize(
-            (A * 2.0).tocsr(), MatrixClass.SYMMETRIC_INDEFINITE, options=options
-        ).status == "ok"
-        state["perturb"] = 1  # the private rebuild of ``first`` now perturbs
-        with pytest.raises(linalg.PardisoPerturbedPivotError, match="perturbed_pivots"):
-            first.solve(rhs)
-        assert first.backend_name == "pypardiso"
-        assert first.status == "failed"
-        assert first.metadata["pardiso_failure_kind"] == "perturbed_pivots"
-        assert first.metadata["pardiso_failure_stage"] == "stale_rebuild"
-        assert first.metadata["pardiso_perturbed_pivots"] == {"-2": 1}
-        assert "fallback_from_backend" not in first.metadata
-        state["perturb"] = 0  # a clean rebuild would now succeed: it is never tried
-        with pytest.raises(RuntimeError, match="perturbed_pivots"):
-            first.solve(rhs)
-
-
 # --------------------------------------------------------------------------
 # Codex review round 2 findings, fixed in round 3 (fault injection).
 # --------------------------------------------------------------------------
@@ -490,53 +439,6 @@ def _stale_forced_handle(monkeypatch, state, *, matrix_class=MatrixClass.SYMMETR
     assert first.status == "ok"
     assert backend.factorize((A * 2.0).tocsr(), matrix_class).status == "ok"
     return backend, first, solvers
-
-
-def test_r2_admitted_concurrent_solve_cannot_retry_a_rejected_rebuild(monkeypatch) -> None:
-    """Codex r2 P1 #1: a solve admitted before the rejection must not rebuild again.
-
-    ``handle._solver.solve`` is the call a concurrent solve makes after it
-    passed the handle's status check but before it obtained the process lock.
-    """
-
-    state = {"report": 0}
-    _backend, first, solvers = _stale_forced_handle(monkeypatch, state)
-    state["report"] = 1
-    with pytest.raises(linalg.PardisoPerturbedPivotError):
-        first.solve(np.ones(3))
-    built = len(solvers)
-    state["report"] = 0  # a second private rebuild would report clean
-    with pytest.raises(linalg.PardisoPerturbedPivotError):
-        first._solver.solve(np.ones(3))
-    assert len(solvers) == built  # no second rebuild was attempted
-    assert first.status == "failed"
-
-
-def test_r2_concurrent_threads_never_return_pardiso_after_rejection(monkeypatch) -> None:
-    import threading
-
-    state = {"report": 0}
-    _backend, first, _solvers = _stale_forced_handle(monkeypatch, state)
-    state["report"] = 1
-    barrier = threading.Barrier(2)
-    outcomes: list[str] = []
-
-    def worker() -> None:
-        barrier.wait()
-        try:
-            first._solver.solve(np.ones(3))
-            outcomes.append("result")
-        except linalg.PardisoPerturbedPivotError:
-            outcomes.append("refused")
-        finally:
-            state["report"] = 0  # whichever thread rebuilt first, the next would be clean
-
-    threads = [threading.Thread(target=worker) for _ in range(2)]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
-    assert outcomes == ["refused", "refused"]
 
 
 @pytest.mark.parametrize("phase", [12, 22])
@@ -582,16 +484,6 @@ def test_r2_native_error_with_perturbation_stops_the_mtype_chain(monkeypatch) ->
     assert len(solvers) == 1  # mtype 11 was never tried
 
 
-def test_r2_native_error_in_stale_rebuild_is_a_perturbation(monkeypatch) -> None:
-    state = {"report": 0}
-    _backend, first, _solvers = _stale_forced_handle(monkeypatch, state)
-    state["report"] = (1, RuntimeError("simulated native PARDISO error"))
-    with pytest.raises(linalg.PardisoPerturbedPivotError):
-        first.solve(np.ones(3))
-    assert first.status == "failed"
-    assert first.metadata["pardiso_failure_kind"] == "perturbed_pivots"
-
-
 def test_r2_non_perturbation_native_error_retry_is_checked(monkeypatch) -> None:
     """Retry only after a verified zero count; the retry's own report is checked."""
 
@@ -617,80 +509,6 @@ def test_r2_non_perturbation_native_error_retry_is_checked(monkeypatch) -> None:
     assert handle.metadata["pardiso_failure_kind"] == "perturbed_pivots"
 
 
-def test_r2_stale_rejection_never_solves_mutated_caller_data(monkeypatch) -> None:
-    """Codex r2 P1 #3: no solve-time fallback may factorize edited caller data."""
-
-    state = {"report": 0}
-
-    def controlled(matrix):
-        del matrix
-        return state["report"]
-
-    _install_fake(monkeypatch, controlled)
-    A = sparse.csr_matrix(np.diag([1.0, 2.0, 3.0]))
-    auto = _warm_auto_backend(max_pattern_slots=1)
-    first = auto.factorize(A, MatrixClass.SYMMETRIC_INDEFINITE)
-    assert first.backend_name == "pypardiso"
-    assert auto.factorize((A * 2.0).tocsr(), MatrixClass.SYMMETRIC_INDEFINITE).status == "ok"
-    A.data *= 4.0
-    state["report"] = 1
-    with pytest.raises(RuntimeError, match="perturbed_pivots"):
-        first.solve(np.ones(3))
-    assert first.status == "failed"
-    assert first.backend_name == "pypardiso"
-
-
-def test_r2_cache_does_not_return_a_handle_that_failed_after_insertion(monkeypatch) -> None:
-    """Codex r2 P2: a cached handle that failed later is evicted and refactorized."""
-
-    state = {"report": 0}
-
-    def controlled(matrix):
-        del matrix
-        return state["report"]
-
-    _install_fake(monkeypatch, controlled)
-    backend = PyPardisoSolverBackend(max_pattern_slots=1)
-    cache = linalg.FactorizationCache(name="r2_cache", backend=backend)
-    A = sparse.csr_matrix(np.diag([1.0, 2.0, 3.0]))
-    first = cache.factorize(A, MatrixClass.SYMMETRIC_INDEFINITE)
-    assert first.status == "ok"
-    assert backend.factorize((A * 2.0).tocsr(), MatrixClass.SYMMETRIC_INDEFINITE).status == "ok"
-    state["report"] = 1
-    with pytest.raises(RuntimeError, match="perturbed_pivots"):
-        first.solve(np.ones(3))
-    state["report"] = 0
-    again = cache.factorize(A, MatrixClass.SYMMETRIC_INDEFINITE)
-    assert again is not first
-    assert again.status == "ok"
-    assert again.metadata["cache_hit"] is False
-    again.solve(np.ones(3))
-    diagnostics = cache.diagnostics()
-    assert diagnostics["hits"] == 0
-    assert diagnostics["misses"] == 2
-    assert diagnostics["factorization_failures"] == 1
-
-
-def test_r2_rejected_stale_handle_does_not_retain_the_rhs(monkeypatch) -> None:
-    """Codex r2 P3: a rejection keeps no reference to the triggering RHS."""
-
-    import gc
-    import weakref
-
-    state = {"report": 0}
-    _backend, first, _solvers = _stale_forced_handle(monkeypatch, state)
-    state["report"] = 1
-    rhs = np.ones(3)
-    rhs_ref = weakref.ref(rhs)
-    try:
-        first.solve(rhs)
-    except linalg.PardisoPerturbedPivotError:
-        pass
-    del rhs
-    gc.collect()
-    assert rhs_ref() is None
-
-
 def test_r2_mtype2_rejection_does_not_publish_a_measured_count(monkeypatch) -> None:
     """Codex r2 P3: for mtype 2 a positive raw iparm[13] is refused but is not a count."""
 
@@ -702,86 +520,6 @@ def test_r2_mtype2_rejection_does_not_publish_a_measured_count(monkeypatch) -> N
     assert handle.metadata["pardiso_failure_kind"] == "perturbed_pivots"
     assert handle.metadata["pardiso_perturbed_pivots"] == {"2": "unsupported"}
     assert handle.metadata["pardiso_iparm13_raw"] == {"2": 1}
-
-    state = {"report": 0}
-    _backend, first, _solvers = _stale_forced_handle(
-        monkeypatch, state, matrix_class=MatrixClass.SPD
-    )
-    state["report"] = 1
-    with pytest.raises(linalg.PardisoPerturbedPivotError):
-        first.solve(np.ones(3))
-    assert first.metadata["pardiso_perturbed_pivots"] == {"2": "unsupported"}
-    assert first.metadata["pardiso_iparm13_raw"] == {"2": 1}
-
-
-def test_r4_rejected_stale_handle_raises_the_same_perturbation_type_every_time(monkeypatch) -> None:
-    """Codex r3 P2: A=diag(1,2,3) and 2A share a slot; A's private rebuild is perturbed."""
-
-    state = {"report": 0}
-    _backend, first, solvers = _stale_forced_handle(monkeypatch, state)
-    state["report"] = 1
-    with pytest.raises(linalg.PardisoPerturbedPivotError) as first_error:
-        first.solve(np.ones(3))
-    built = len(solvers)
-    state["report"] = 0
-    for call in (first.solve, first.solve_many, first._solver.solve):
-        with pytest.raises(linalg.PardisoPerturbedPivotError) as later:
-            call(np.ones(3))
-        assert str(later.value) == str(first_error.value)
-    assert len(solvers) == built
-
-
-def test_r4_zero_count_native_error_keeps_one_exception_type(monkeypatch) -> None:
-    state = {"report": 0}
-    _backend, first, solvers = _stale_forced_handle(monkeypatch, state)
-    state["report"] = (0, ValueError("simulated native PARDISO error"))
-    with pytest.raises(Exception) as first_error:
-        first.solve(np.ones(3))
-    built = len(solvers)
-    state["report"] = 0
-    for call in (first.solve, first._solver.solve):
-        with pytest.raises(Exception) as later:
-            call(np.ones(3))
-        assert type(later.value) is type(first_error.value)
-        assert str(later.value) == str(first_error.value)
-    assert type(first_error.value) is RuntimeError
-    assert "stale-handle rebuild failed (ValueError: simulated" in str(first_error.value)
-    assert first.status == "failed"
-    assert first.metadata["pardiso_failure_kind"] == "pardiso_error"
-    assert len(solvers) == built
-
-
-@pytest.mark.parametrize(
-    ("report", "expected"),
-    [(1, linalg.PardisoPerturbedPivotError), (0, RuntimeError)],
-)
-def test_r4_interrupt_at_native_call_rejects_and_cleans_up(monkeypatch, report, expected) -> None:
-    """Codex r3 P2: a KeyboardInterrupt at the stale rebuild's phase 12 call."""
-
-    state = {"report": 0}
-    _backend, first, solvers = _stale_forced_handle(monkeypatch, state)
-    interrupt = KeyboardInterrupt()
-    state["report"] = (report, interrupt)
-    with pytest.raises(KeyboardInterrupt) as raised:
-        first.solve(np.ones(3))
-    assert raised.value is interrupt  # re-raised unchanged
-    rebuilt = solvers[-1]
-    assert rebuilt.phases == [12]
-    assert rebuilt.freed  # phase -1 cleanup ran
-    assert first.status == "failed"
-    assert first.metadata["pardiso_failure_stage"] == "stale_rebuild"
-    assert first.metadata["pardiso_failure_kind"] == (
-        "perturbed_pivots" if report else "pardiso_error"
-    )
-    built = len(solvers)
-    state["report"] = 0  # a second rebuild would succeed
-    for call in (first.solve, first._solver.solve):
-        with pytest.raises(expected) as later:
-            call(np.ones(3))
-        assert type(later.value) is expected
-        if expected is RuntimeError:
-            assert "interrupted after KeyboardInterrupt" in str(later.value)
-    assert len(solvers) == built  # never rebuilt, never returned a result
 
 
 def test_r4_mtype2_failure_text_does_not_claim_perturbed_pivots(monkeypatch) -> None:
@@ -800,28 +538,237 @@ def test_r4_mtype2_failure_text_does_not_claim_perturbed_pivots(monkeypatch) -> 
     indefinite = PyPardisoSolverBackend().factorize(A, MatrixClass.SYMMETRIC_INDEFINITE)
     assert "perturbed 1 pivot(s)" in str(indefinite.failure_reason)
 
+
+# --------------------------------------------------------------------------
+# Option B (owner decision 2026-11-25, Codex round 4): a stale PARDISO handle
+# is never rebuilt; every native numerical PARDISO call is interrupt-safe.
+# Each test below fails on d89a7a82b.
+# --------------------------------------------------------------------------
+
+
+def _stale_by(monkeypatch, cause, state):
+    """A direct-PARDISO handle made stale by ``cause`` (slot refactorized/evicted/released)."""
+
+    solvers = _install_fake(monkeypatch, lambda matrix: state["report"])
+    backend = PyPardisoSolverBackend(max_pattern_slots=1)
+    A = sparse.csr_matrix(np.diag([1.0, 2.0, 3.0]))
+    first = backend.factorize(A, MatrixClass.SYMMETRIC_INDEFINITE)
+    assert first.status == "ok" and not linalg.factorization_is_stale(first)
+    if cause == "refactorized":
+        assert backend.factorize((A * 2.0).tocsr(), MatrixClass.SYMMETRIC_INDEFINITE).status == "ok"
+    elif cause == "evicted":
+        assert backend.factorize(sparse.eye(4, format="csr"), MatrixClass.SYMMETRIC_INDEFINITE).status == "ok"
+    else:
+        backend.release_pattern_slots()
+    return backend, first, solvers
+
+
+@pytest.mark.parametrize("report", [0, 1])
+@pytest.mark.parametrize("cause", ["refactorized", "evicted", "released"])
+def test_b_stale_handle_raises_one_typed_error_without_a_native_call(monkeypatch, cause, report) -> None:
     state = {"report": 0}
-    _backend, first, _solvers = _stale_forced_handle(
-        monkeypatch, state, matrix_class=MatrixClass.SPD
-    )
-    state["report"] = 1
-    with pytest.raises(linalg.PardisoPerturbedPivotError) as raised:
+    _backend, first, solvers = _stale_by(monkeypatch, cause, state)
+    state["report"] = report  # any rebuild would report this; none may run
+    built, phases = len(solvers), [list(s.phases) for s in solvers]
+    # Truthful status as soon as the slot moved on, before any solve.
+    assert linalg.factorization_is_stale(first)
+    assert first.status == "failed"
+    assert first.failure_reason == linalg.PardisoStaleHandleError.MESSAGE
+    assert first.metadata["pardiso_failure_kind"] == linalg.PARDISO_STALE_HANDLE
+    assert first.metadata["pardiso_failure_stage"] == "stale_handle"
+    assert first.metadata["pardiso_stale_cause"] == cause
+    rhs = np.ones(3)
+    for call in (first.solve, first.solve_many, lambda b: linalg.solve(first, b),
+                 lambda b: linalg.solve_many(first, b[:, None]), first._solver.solve):
+        with pytest.raises(linalg.PardisoStaleHandleError) as raised:
+            call(rhs)
+        assert type(raised.value) is linalg.PardisoStaleHandleError
+        assert str(raised.value) == linalg.PardisoStaleHandleError.MESSAGE
+    assert isinstance(raised.value, RuntimeError)
+    assert len(solvers) == built and [s.phases for s in solvers] == phases  # no native call
+    assert linalg.backend_operation_counts()["pardiso_stale_rebuilds"] == 0
+
+
+def test_b_concurrent_stale_solves_raise_the_same_type(monkeypatch) -> None:
+    """Codex r4 P2: a solve admitted before the invalidation raises the same type."""
+
+    import threading
+    import time
+
+    state = {"report": 0}
+    solvers = _install_fake(monkeypatch, lambda matrix: state["report"])
+    backend = PyPardisoSolverBackend(max_pattern_slots=1)
+    A = sparse.csr_matrix(np.diag([1.0, 2.0, 3.0]))
+    first = backend.factorize(A, MatrixClass.SYMMETRIC_INDEFINITE)
+    outcomes: list[object] = []
+
+    def solve(call) -> None:
+        try:
+            call(np.ones(3))
+            outcomes.append("result")
+        except BaseException as exc:  # noqa: BLE001 - the exact type is the assertion
+            outcomes.append(type(exc))
+
+    # The admitted caller passes the handle checks while the handle is still
+    # current, then waits for the process lock held by the invalidating caller.
+    with linalg._PYPARDISO_PROCESS_LOCK:
+        admitted = threading.Thread(target=solve, args=(first.solve,))
+        admitted.start()
+        time.sleep(0.2)
+        assert backend.factorize((A * 2.0).tocsr(), MatrixClass.SYMMETRIC_INDEFINITE).status == "ok"
+        state["report"] = 1  # a perturbed rebuild would now raise a different type
+    admitted.join(timeout=5.0)
+    barrier = threading.Barrier(6)
+    threads = [threading.Thread(target=lambda c=c: (barrier.wait(), solve(c)))
+               for c in (first.solve, first._solver.solve, first.solve_many) * 2]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=5.0)
+    assert outcomes == [linalg.PardisoStaleHandleError] * 7
+    # Phases: factorize + rule-A probe solve, refactorize + probe; the stale
+    # solves made no native call at all.
+    assert len(solvers) == 1 and solvers[0].phases == [12, 33, 22, 33]
+
+
+def test_b_interrupted_cleanup_cannot_revive_a_stale_handle(monkeypatch) -> None:
+    """Codex r4 P1: a phase -1 interrupt used to bypass the permanent rejection."""
+
+    state = {"report": 0}
+    _backend, first, solvers = _stale_by(monkeypatch, "refactorized", state)
+    real_factory = linalg._new_pypardiso_solver
+
+    def factory(*, mtype: int):
+        solver = real_factory(mtype=mtype)
+
+        def interrupted_free(*, everything: bool) -> None:
+            raise KeyboardInterrupt
+
+        solver.free_memory = interrupted_free
+        return solver
+
+    monkeypatch.setattr(linalg, "_new_pypardiso_solver", factory)
+    built = len(solvers)
+    phases_before = [list(solver.phases) for solver in solvers]  # incl. rule-A probe solves
+    for report in (1, 0):  # perturbed, then a clean report a rebuild would accept
+        state["report"] = report
+        with pytest.raises(linalg.PardisoStaleHandleError):
+            first.solve(np.ones(3))
+    assert len(solvers) == built
+    assert [solver.phases for solver in solvers] == phases_before  # no native call
+
+
+@pytest.mark.parametrize("report", [0, 1])
+def test_b_interrupted_warm_factorization_retires_its_slot(monkeypatch, report) -> None:
+    """Codex r4 P2: an interrupted phase 22 left the slot eligible for reuse."""
+
+    interrupt = KeyboardInterrupt()
+    state = {"armed": False}
+
+    @_by_phase
+    def interrupted22(matrix, phase):
+        del matrix
+        return (report, interrupt) if (state["armed"] and phase == 22) else 0
+
+    solvers = _install_fake(monkeypatch, interrupted22)
+    backend = PyPardisoSolverBackend(max_pattern_slots=2)
+    A = sparse.csr_matrix(np.diag([1.0, 2.0, 3.0]))
+    first = backend.factorize(A, MatrixClass.GENERAL)
+    state["armed"] = True
+    with pytest.raises(KeyboardInterrupt) as raised:
+        backend.factorize((A * 2.0).tocsr(), MatrixClass.GENERAL)
+    assert raised.value is interrupt  # the original exception, re-raised
+    assert any(f"iparm[13]={report}" in note for note in getattr(raised.value, "__notes__", []))
+    assert solvers[0].phases == [12, 33, 22]  # 33: rule-A probe of the accepted phase 12
+    assert solvers[0].freed is True  # phase -1 ran
+    assert backend.retained_pattern_slots == 0  # the slot can never be reused
+    with pytest.raises(linalg.PardisoStaleHandleError):
         first.solve(np.ones(3))
-    for text in (str(raised.value), str(first.failure_reason)):
-        assert "pivot(s)" not in text
-        assert "not a documented perturbed-pivot count for mtype 2" in text
+    state["armed"] = False
+    third = backend.factorize((A * 3.0).tocsr(), MatrixClass.GENERAL)
+    assert third.status == "ok"
+    assert third.metadata["pardiso_symbolic_reused"] is False
+    assert len(solvers) == 2 and solvers[1].phases == [12, 33] and solvers[0].phases == [12, 33, 22]
 
 
-def test_r4_open_certification_xfails_match_only_the_intended_failure() -> None:
-    """Codex r3 P3: an unrelated exception must FAIL the strict xfails, not XFAIL them."""
+def test_b_interrupted_phase12_retry_retires_its_slot(monkeypatch) -> None:
+    state = {"armed": False}
 
-    # The band and SPD-chain holes are closed (rule A); MINRES (option I1) stays open.
-    for name in ("test_open_minres_reports_converged_for_inconsistent_singular_system",):
-        function = globals()[name]
-        marks = [m for m in getattr(function, "pytestmark", []) if m.name == "xfail"]
-        assert len(marks) == 1, name
-        assert marks[0].kwargs.get("strict") is True, name
-        assert marks[0].kwargs.get("raises") is AssertionError, name
+    @_by_phase
+    def error22_then_interrupt12(matrix, phase):
+        del matrix
+        if not state["armed"]:
+            return 0
+        return (0, RuntimeError("simulated PARDISO error -3")) if phase == 22 else (0, KeyboardInterrupt())
+
+    solvers = _install_fake(monkeypatch, error22_then_interrupt12)
+    backend = PyPardisoSolverBackend(max_pattern_slots=2)
+    A = sparse.csr_matrix(np.diag([1.0, 2.0, 3.0]))
+    assert backend.factorize(A, MatrixClass.GENERAL).status == "ok"
+    state["armed"] = True
+    with pytest.raises(KeyboardInterrupt):
+        backend.factorize((A * 2.0).tocsr(), MatrixClass.GENERAL)
+    assert solvers[0].phases == [12, 33, 22, 12]  # 33: rule-A probe of the accepted phase 12
+    assert solvers[0].freed is True
+    assert backend.retained_pattern_slots == 0
+
+
+@pytest.mark.parametrize("report", [0, 1])
+def test_b_interrupted_fresh_factorization_releases_its_solver(monkeypatch, report) -> None:
+    """Codex r4 P2: an interrupted fresh phase 12 leaked its native memory."""
+
+    @_by_phase
+    def interrupted12(matrix, phase):
+        del matrix, phase
+        return report, SystemExit(3)
+
+    solvers = _install_fake(monkeypatch, interrupted12)
+    backend = PyPardisoSolverBackend()
+    with pytest.raises(SystemExit):
+        backend.factorize(sparse.csr_matrix(np.diag([1.0, 2.0, 3.0])), MatrixClass.SYMMETRIC_INDEFINITE)
+    assert len(solvers) == 1 and solvers[0].phases == [12]
+    assert solvers[0].freed is True
+    assert backend.retained_pattern_slots == 0
+
+
+def test_b_cache_treats_a_stale_handle_as_a_miss(monkeypatch) -> None:
+    state = {"report": 0}
+    solvers = _install_fake(monkeypatch, lambda matrix: state["report"])
+    backend = PyPardisoSolverBackend(max_pattern_slots=1)
+    cache = linalg.FactorizationCache(name="b_cache", backend=backend)
+    A = sparse.csr_matrix(np.diag([1.0, 2.0, 3.0]))
+    first = cache.factorize(A, MatrixClass.SYMMETRIC_INDEFINITE)
+    assert cache.factorize(A, MatrixClass.SYMMETRIC_INDEFINITE) is first  # ordinary hit
+    assert backend.factorize((A * 2.0).tocsr(), MatrixClass.SYMMETRIC_INDEFINITE).status == "ok"
+    again = cache.factorize(A, MatrixClass.SYMMETRIC_INDEFINITE)
+    assert again is not first and again.status == "ok"
+    assert again.metadata["cache_hit"] is False
+    np.testing.assert_array_equal(again.solve(np.ones(3)), _DIAG123_SOLUTION)
+    diagnostics = cache.diagnostics()
+    assert (diagnostics["hits"], diagnostics["misses"], diagnostics["factorization_failures"]) == (1, 2, 0)
+    with pytest.raises(linalg.PardisoStaleHandleError):
+        first.solve(np.ones(3))
+    # refactorize_if_stale (holders of a handle) uses the same route.
+    assert linalg.refactorize_if_stale(again, A, MatrixClass.SYMMETRIC_INDEFINITE, cache=cache) is again
+    assert backend.factorize((A * 3.0).tocsr(), MatrixClass.SYMMETRIC_INDEFINITE).status == "ok"
+    fresh = linalg.refactorize_if_stale(again, A, MatrixClass.SYMMETRIC_INDEFINITE, cache=cache)
+    assert fresh is not again and fresh.status == "ok" and not linalg.factorization_is_stale(fresh)
+    assert len(solvers) == 1  # every refactorization reused the one slot (phase 22)
+
+
+def test_b_mtype2_chained_cause_makes_no_count_claim(monkeypatch) -> None:
+    """Codex r4 P3: the chained cause of an mtype 2 rejection said 'perturbed 1 pivot(s)'."""
+
+    _install_fake(monkeypatch, lambda matrix: 1)
+    A = sparse.csr_matrix(np.diag([1.0, 2.0, 3.0]))
+    prepared = linalg._pardiso_prepared_matrix(A, 2)
+    with pytest.raises(linalg.PardisoPerturbedPivotError) as raised:
+        PyPardisoSolverBackend()._factorize_prepared(prepared, 2)
+    error: BaseException | None = raised.value
+    assert "not a documented perturbed-pivot count for mtype 2" in str(error)
+    while error is not None:
+        assert "pivot(s)" not in str(error)
+        error = error.__cause__ or error.__context__
 
 
 def test_fake_pivot_count_metadata_per_mtype(monkeypatch) -> None:
@@ -931,6 +878,20 @@ def test_real_large_singular_band_rejects_pardiso_and_does_not_try_weaker_mtypes
 # Former open certification holes, closed by the static linear-solve
 # certification slice (rule A: factorization known-solution check).
 
+def _call_under_test(function, *args):
+    """Run the call whose outcome a strict xfail asserts on.
+
+    The xfails use ``raises=AssertionError`` for their final outcome
+    assertion only: an AssertionError raised *inside* the call is unrelated
+    and fails the test instead of being counted as the expected failure.
+    """
+
+    try:
+        return function(*args)
+    except AssertionError as exc:
+        pytest.fail(f"unrelated AssertionError inside the call under test: {exc}")
+
+
 _CERTIFICATION_SLICE = (
     " Deferred to the static linear-solve certification slice (owner decision; "
     "outside the perturbed-pivot fix)."
@@ -974,22 +935,14 @@ def test_spd_cholesky_refuses_rounding_singular_chain() -> None:
         linalg.solve(handle, np.ones(_N))
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "OPEN: MINRES reports 'converged' for the inconsistent singular system "
-        "A=[[1,-1],[-1,1]], b=[1,1] with x=[0,0] (relative residual 1): the "
-        "iterative solvers' status is SciPy's info flag, not a certified residual "
-        "(assembly._solve_reduced_system)."
-        + _CERTIFICATION_SLICE
-    ),
-)
-def test_open_minres_reports_converged_for_inconsistent_singular_system() -> None:
+def test_minres_inconsistent_singular_system_is_not_converged() -> None:
+    # Formerly a strict xfail (MINRES reported 'converged' for A=[[1,-1],[-1,1]],
+    # b=[1,1] with x=[0,0], relative residual 1). Closed by the iterative
+    # true-residual verification (I1, PR #87): the status is now decided by
+    # the verified residual, not SciPy's info flag.
     matrix = sparse.csr_matrix(np.array([[1.0, -1.0], [-1.0, 1.0]]))
     rhs = np.ones(2)
-    # Only the certification outcome: a correct failure (any iterate) XPASSes.
-    _q, info = assembly._solve_reduced_system(matrix, rhs, "minres")
+    _q, info = _call_under_test(assembly._solve_reduced_system, matrix, rhs, "minres")
     assert info["status"] != "converged"
 
 
@@ -1036,8 +989,10 @@ def test_real_warm_reused_slot_rejects_singular_values_and_recovers() -> None:
     assert recovered.metadata["pardiso_symbolic_reused"] is False
     rhs = np.ones(regular.shape[0])
     np.testing.assert_allclose((regular * 3.0) @ recovered.solve(rhs), rhs, atol=1.0e-9)
-    # The handle created before the failed refactorization still solves its own matrix.
-    np.testing.assert_allclose(regular @ first.solve(rhs), rhs, atol=1.0e-9)
+    # Option B: the handle created before the failed refactorization is stale
+    # (its slot was refactorized and released) and is never rebuilt.
+    with pytest.raises(linalg.PardisoStaleHandleError):
+        first.solve(rhs)
     backend.release_pattern_slots()
 
 
@@ -1062,7 +1017,8 @@ def test_real_general_warm_slot_perturbed_phase22_is_rejected() -> None:
     assert reused.metadata["fallback_failure_kind"] == "perturbed_pivots"
     assert reused.metadata["fallback_pardiso_perturbed_pivots"]["11"] >= 1
     assert backend.pardiso_backend.retained_pattern_slots == 0
-    np.testing.assert_allclose(regular @ first.solve(rhs), rhs, atol=1.0e-9)
+    with pytest.raises(linalg.PardisoStaleHandleError):  # option B: never rebuilt
+        first.solve(rhs)
     backend.release_pattern_slots()
 
     forced_backend = AutoSparseSolverBackend()
@@ -1073,3 +1029,108 @@ def test_real_general_warm_slot_perturbed_phase22_is_rejected() -> None:
     assert forced.status == "failed"
     assert forced.metadata["pardiso_failure_kind"] == "perturbed_pivots"
     forced_backend.release_pattern_slots()
+
+
+def _beam_chain(n_elements: int = 40):
+    from anyfesolver import FixedSupport
+    from anyfesolver.elements import BeamElement
+    from anyfesolver.fe_core import FEModel
+
+    model = FEModel("stale_stream")
+    model.add_material("steel", 210.0e9, 0.3, density=7850.0)
+    for node in range(n_elements + 1):
+        model.add_node(node + 1, 0.25 * node, 0.01 * node * node, 0.0)
+    for element in range(n_elements):
+        model.add_element(element + 1, BeamElement(element + 1, [element + 1, element + 2], "steel",
+            {"area": 1.0e-2, "Iy": 2.0e-5, "Iz": 3.0e-5, "J": 4.0e-5}))
+    model.add_boundary_condition(FixedSupport("fixed", [1]))
+    return model
+
+
+def _stream_cases(n_nodes: int, count: int = 5):
+    from anyfesolver import LoadCase, StaticCase
+
+    cases = []
+    for index in range(count):
+        load = LoadCase(str(index))
+        for node in range(2, n_nodes + 1, 7):
+            load.add_nodal_load(node, [1.0e3 * (index + 1), -2.0e2 * node, 3.0e1 * index, 0.0, 5.0, -7.0 * index])
+        cases.append(StaticCase(str(index), load, float(index)))
+    return cases
+
+
+@requires_pypardiso
+@pytest.mark.parametrize("interference", ["none", "shared_slot", "eviction"])
+def test_b_static_stream_keeps_its_leased_handle_bitwise_identically(interference) -> None:
+    """iter_linear_batches pins its operator with a lease (design D2).
+
+    A consumer factorization between blocks either targets the stream's
+    mtype -2 slot (a SEMIDEFINITE matrix with the same pattern) or evicts it
+    (five other patterns past the 4-slot LRU).  The stream must continue and
+    stay bitwise identical to the undisturbed stream.  Contract change (owner
+    decision 2026-11-25, D2): on a5beb3f34 the stream re-fetched its stale
+    handle through the session cache (2 extra misses); the leased handle is
+    never stale, so there is no re-fetch, and the same-pattern newcomer takes
+    a new slot (a lease conflict, fresh analysis) instead of refactorizing
+    the stream's slot.
+    """
+
+    from anyfesolver import AnalysisSession, iter_linear_batches
+
+    def run(mode):
+        model = _beam_chain()
+        cases = _stream_cases(41)
+        backend = PyPardisoSolverBackend()
+        cache = linalg.FactorizationCache(backend=backend)
+        blocks = []
+        try:
+            with AnalysisSession(model, factorization_cache=cache) as session:
+                for k, block in enumerate(iter_linear_batches(model, cases, batch_size=2, session=session)):
+                    blocks.append(np.array(block.displacements, dtype=float, copy=True))
+                    matrix = session.static_operator_plan().matrix
+                    if mode == "shared_slot":
+                        other = backend.factorize(matrix * (2.0 + k), MatrixClass.SYMMETRIC_SEMIDEFINITE)
+                        # Block 0: conflict with the pinned slot (fresh phase 12);
+                        # later blocks reuse the newcomer's own slot (phase 22).
+                        assert other.status == "ok" and other.metadata["pardiso_symbolic_reused"] is (k > 0)
+                        assert other.metadata.get("pardiso_lease_conflict", False) is (k == 0)
+                    elif mode == "eviction":
+                        for j in range(5):
+                            other = sparse.eye(7 + j + 5 * k, format="csr") * (1.0 + j)
+                            assert backend.factorize(other, MatrixClass.SYMMETRIC_INDEFINITE).status == "ok"
+            return np.concatenate([b.reshape(-1) for b in blocks]), cache.diagnostics()
+        finally:
+            backend.release_pattern_slots()
+
+    expected, _ = run("none")
+    observed, diagnostics = run(interference)
+    assert observed.shape == expected.shape and observed.size > 0
+    assert observed.tobytes() == expected.tobytes()
+    assert diagnostics["factorization_failures"] == 0
+    assert diagnostics["misses"] == 1  # 3 blocks, never re-fetched
+
+
+def test_b_handle_holder_refactorizes_instead_of_solving_a_stale_handle(monkeypatch) -> None:
+    """Decision 3: holders that keep a handle re-factorize it once it is stale."""
+
+    from anyfesolver._b2_attachment_elimination_dev import EliminatedHandle
+
+    solvers = _install_fake(monkeypatch, lambda matrix: 0)
+    backend = PyPardisoSolverBackend(max_pattern_slots=1)
+    monkeypatch.setattr(linalg, "DEFAULT_BACKEND", backend)
+    A = sparse.csr_matrix(np.diag([1.0, 2.0, 3.0]))
+
+    class Maps:
+        reduced, info, primal_count, constraint_count = A, {}, 3, 0
+
+        def solve(self, handle, rhs):
+            return handle.solve(rhs)
+
+    held = EliminatedHandle(Maps(), linalg.factorize_cached(A, MatrixClass.GENERAL))
+    original = held.handle
+    assert backend.factorize((A * 2.0).tocsr(), MatrixClass.GENERAL).status == "ok"
+    np.testing.assert_array_equal(held.solve(np.ones(3)), _DIAG123_SOLUTION)
+    assert held.handle is not original and not linalg.factorization_is_stale(held.handle)
+    # Each accepted factorization is followed by its rule-A probe solve (33):
+    # refactorized into the slot, then solved.
+    assert solvers[0].phases == [12, 33, 22, 33, 22, 33, 33]
