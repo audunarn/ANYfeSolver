@@ -12,6 +12,8 @@ from .prepared_static_numeric import (NumericCase, NumericField, prepare_numeric
 from .analysis_session import _immutable_array
 from .linalg import close_propagating
 from .prepared_static import PreparedStaticEvaluator, _certified_backward_error, _block_norm_data
+from .linalg import (FORWARD_ERROR_ESTIMATE_EXCEEDED, RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT,
+    relative_forward_error_estimates)
 from .prepared_static_loads import (PreparedStaticError, PreparedStaticCapabilityError,
     ingest_static_case, evaluate_load_vector, load_packet_storage_bytes,
     require_native_source_authority)
@@ -269,7 +271,8 @@ class PreparedStaticResponseEvaluator(PreparedStaticEvaluator):
                                      element_library_probes=0, vectorized_stress_cases=0,
                                      compiled_load_cases=0, native_load_cases=0,
                                      compiled_disagreement_cases=0, pattern_canonical_solves=0,
-                                     native_load_scope_blocks=0, compiled_load_scope_blocks=0)
+                                     native_load_scope_blocks=0, compiled_load_scope_blocks=0,
+                                     forward_error_fallback_cases=0)
         preparation_started = _preparation_clock_ns()
         super().__init__(model, **kwargs)
         self._preparation_timings['snapshot_operator_seconds'] = (_preparation_clock_ns()-preparation_started)/1e9
@@ -313,6 +316,21 @@ class PreparedStaticResponseEvaluator(PreparedStaticEvaluator):
                 if not np.isfinite(error) or error > self._backward_error_limit:
                     raise PreparedStaticError('source response library equation failed certification',
                         diagnostics={'column':j, 'relative_backward_error':float(error)})
+            # Rule B for every library column (factorized variables; the
+            # displacement block of an augmented operator).
+            forward_errors = (np.zeros(m) if self._operator_handle is None else
+                relative_forward_error_estimates(self._operator_matrix, solved, rhs,
+                    handle=self._operator_handle, scaling=self._operator_scaling,
+                    rows=slice(0, snapshot.reduced_stiffness.shape[0])))
+            for j in range(m):
+                if not (np.isfinite(forward_errors[j])
+                        and forward_errors[j] <= RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT):
+                    raise PreparedStaticError('source response library equation failed certification',
+                        diagnostics={'column':j,
+                            'relative_backward_error_disposition':FORWARD_ERROR_ESTIMATE_EXCEEDED,
+                            'relative_forward_error_estimate':(float(forward_errors[j])
+                                if np.isfinite(forward_errors[j]) else None),
+                            'relative_forward_error_estimate_limit':RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT})
             self._response_counts['preparation_solves'] = m
             self._force_columns = _immutable_array(forces)
             self._solution_columns = _immutable_array(solved)
@@ -601,11 +619,13 @@ class PreparedStaticResponseEvaluator(PreparedStaticEvaluator):
             batch_size=batch_size, cancellation_token=cancellation_token, progress_callback=progress_callback,
             _numeric_recovery=True)
 
-    def _recover_numeric_block(self,snapshot,full,loads,recovery,labels,certified,envelope,block,*,cancellation_token=None):
-        flags = tuple(self._reconstructed_block)
+    def _recover_numeric_block(self,snapshot,full,loads,recovery,labels,certified,envelope,block,*,
+                               block_state=None,cancellation_token=None):
+        flags = _block_flags(block_state,block)
         if (self._stress_execution != 'certified_library' or envelope is not None
                 or not all(flags) or self._numeric_export_plan is None):
-            return self._recover_block(snapshot,full,loads,recovery,labels,certified,envelope,block)
+            return self._recover_block(snapshot,full,loads,recovery,labels,certified,envelope,block,
+                                       block_state=block_state)
         packets = tuple(packet for _,_,packet in block)
         for j,packet in enumerate(packets):
             native_ids=tuple(eid for eid in self._native_affinity_fallbacks
@@ -819,10 +839,10 @@ class PreparedStaticResponseEvaluator(PreparedStaticEvaluator):
             raise PreparedStaticError('source response load overflow')
         return vector, {'method':'owned_source_columns','active_patterns':len(owned.indices)}
 
-    def _solve_block(self, solve_rhs, block):
+    def _solve_block_state(self, solve_rhs, block):
+        """(solved block, its own _SolvedBlockState): flags and Rule B travel with the block."""
         library = self._stress_execution != 'canonical'
         if not library and (self._envelope is not None or self._recovery.include_stresses):
-            self._reconstructed_block = [False]*len(block)
             made = np.empty_like(solve_rhs)
             for j,(_,_,packet) in enumerate(block):
                 source_matches = self._canonical_matches.pop(id(packet),True)
@@ -837,9 +857,10 @@ class PreparedStaticResponseEvaluator(PreparedStaticEvaluator):
                 # when ingress and output publication retain multi-case blocks.
                 one_rhs = np.array(solve_rhs[:,j:j+1],dtype=float,copy=True,order='C')
                 made[:,j:j+1] = super()._solve_block(one_rhs,())
-            return made
+            # Canonical solves only: the parent measures Rule B on the block.
+            return made, _SolvedBlockState((False,)*len(block), None)
         made = np.empty_like(solve_rhs)
-        self._reconstructed_block = []
+        flags = []
         # M31b: the operator norm data is computed at the first certification and
         # again after any canonical solve in between.
         certification_norm = None
@@ -861,24 +882,53 @@ class PreparedStaticResponseEvaluator(PreparedStaticEvaluator):
                     reconstruct = False
                     self._response_counts['certification_fallback_cases'] += 1
             if not reconstruct:
-                made[:,j:j+1] = super()._solve_block(solve_rhs[:,j:j+1],())
+                self._canonical_column(made,solve_rhs,j,packet,library)
                 certification_norm = None
-                if type(packet) is _PatternPacket and self._envelope is not None:
-                    key = 'canonical_envelope_cases'
-                elif type(packet) is _PatternPacket and library:
-                    key = 'pattern_canonical_solves'
-                else:
-                    key = 'direct_cases'
-                self._response_counts[key] += 1
-            else:
+            flags.append(reconstruct)
+        if not any(flags):
+            # Canonical solves only: the parent measures Rule B on the block.
+            return made, _SolvedBlockState(tuple(flags), None)
+        # Rule B on the whole candidate block (one multi-RHS correction) while
+        # the per-column fallback decision is still open: a reconstructed
+        # column (a combination of library columns can cancel) that fails it
+        # takes the canonical solve, and only the replaced columns are
+        # measured again.  The parent evaluator certifies every column
+        # (backward error and these Rule B values) before publication.
+        n = self._snapshot.reduced_stiffness.shape[0]
+        estimates = np.array(PreparedStaticEvaluator._block_forward_errors(self,made,solve_rhs,n),
+                             dtype=float, copy=True)
+        replaced = []
+        for j,flag in enumerate(flags):
+            if not flag:
+                continue
+            value = estimates[j]
+            if np.isfinite(value) and value <= RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT:
                 self._response_counts['reconstructed_cases'] += 1
-            self._reconstructed_block.append(reconstruct)
-        return made
+                continue
+            flags[j] = False
+            self._response_counts['certification_fallback_cases'] += 1
+            self._response_counts['forward_error_fallback_cases'] += 1
+            self._canonical_column(made,solve_rhs,j,block[j][2],library)
+            replaced.append(j)
+        if replaced:
+            estimates[replaced] = PreparedStaticEvaluator._block_forward_errors(
+                self,made[:,replaced],solve_rhs[:,replaced],n)
+        return made, _SolvedBlockState(tuple(flags), estimates)
 
-    def _recover_block(self,snapshot,full,loads,recovery,labels,certified,envelope,block):
+    def _canonical_column(self,made,solve_rhs,j,packet,library):
+        made[:,j:j+1] = PreparedStaticEvaluator._solve_block(self,solve_rhs[:,j:j+1],())
+        if type(packet) is _PatternPacket and self._envelope is not None:
+            key = 'canonical_envelope_cases'
+        elif type(packet) is _PatternPacket and library:
+            key = 'pattern_canonical_solves'
+        else:
+            key = 'direct_cases'
+        self._response_counts[key] += 1
+
+    def _recover_block(self,snapshot,full,loads,recovery,labels,certified,envelope,block,block_state=None):
+        flags = _block_flags(block_state,block)
         if self._stress_execution == 'certified_vectorized' and self._vector is not None and (
                 envelope is not None or recovery.include_stresses):
-            flags = tuple(self._reconstructed_block)
             for j,(_,_,packet) in enumerate(block):
                 certified[j]['source_response'] = {'reconstructed': flags[j],
                     'stress_execution': 'certified_vectorized',
@@ -890,7 +940,6 @@ class PreparedStaticResponseEvaluator(PreparedStaticEvaluator):
                                         self._reaction_plan,
                                         lean_selected=self._selected_reaction_diagnostics == 'lean')
         if self._stress_execution == 'certified_library' and (envelope is not None or recovery.include_stresses):
-            flags = tuple(self._reconstructed_block)
             packets = tuple(packet for _,_,packet in block)
             library = self._element_library
             native_visits=[0 for _ in block]
@@ -922,7 +971,7 @@ class PreparedStaticResponseEvaluator(PreparedStaticEvaluator):
         stats = {'physical_element_evaluations':0,'reaction_diagnostic_evaluations':0,
                  'reconstructed_element_records':0}
         for j,(_,_,packet) in enumerate(block):
-            if not self._reconstructed_block[j]:
+            if not flags[j]:
                 items,_,counts = super()._recover_block(snapshot,None if full is None else full[:,j:j+1],loads[:,j:j+1],
                     recovery,labels[j:j+1],certified[j:j+1],None,block[j:j+1])
                 results.extend(items)
@@ -940,6 +989,21 @@ class PreparedStaticResponseEvaluator(PreparedStaticEvaluator):
                 stats['reaction_diagnostic_evaluations'] += 1
             results.append(item)
         return results,None,stats
+
+@dataclass(frozen=True)
+class _SolvedBlockState:
+    """One solved block's own certification state (never shared between blocks).
+
+    ``flags[j]``: column j is a certified reconstruction; ``forward_errors``:
+    its Rule B values for every column, or None when the parent measures them.
+    """
+    flags: tuple
+    forward_errors: Optional[np.ndarray]
+
+
+def _block_flags(block_state, block):
+    return tuple(block_state.flags) if block_state is not None else (False,)*len(block)
+
 
 def prepare_static_response_evaluator(model, patterns, *, baseline_load_case=None, numerical_affinity_fallback=False, **kwargs):
     # stress_execution and selected_reaction_diagnostics (M24) pass through kwargs.

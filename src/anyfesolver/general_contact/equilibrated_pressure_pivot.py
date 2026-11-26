@@ -108,6 +108,7 @@ def equilibrated_pressure_pivot(
                 delta = np.asarray(factorize(
                     matrix, MatrixClass.GENERAL,
                     signature="contact_path:equilibrated_pressure_pivot",
+                    options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
                 ).solve(np.r_[residual, constraint])).reshape(-1)
                 proposed = np.asarray(transform @ (q+delta[:len(q)]) + offset).reshape(-1)
                 fraction = manager.admissible_step_fraction(u, proposed)

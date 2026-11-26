@@ -765,7 +765,9 @@ def _factorized_solve(
     *,
     matrix_class: MatrixClass = MatrixClass.SYMMETRIC_INDEFINITE,
 ) -> np.ndarray:
-    handle = factorize(matrix, matrix_class, signature=signature)
+    handle = factorize(matrix, matrix_class, signature=signature,
+                       options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
+                       )
     solution = np.asarray(handle.solve(np.asarray(rhs, dtype=float)), dtype=float).reshape(-1)
     if np.any(~np.isfinite(solution)):
         raise np.linalg.LinAlgError("non-finite tangent solution")
@@ -2022,6 +2024,7 @@ def _solve_static_arc_length_under_lease(
                             else MatrixClass.SYMMETRIC_INDEFINITE
                         ),
                         signature=f"arc_length.corrector:{step_index}:{retry}:{iteration}",
+                        options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
                     )
                     corrector_rhs[:, 0] = residual
                     corrector_rhs[:, 1] = path_direction_trial_red

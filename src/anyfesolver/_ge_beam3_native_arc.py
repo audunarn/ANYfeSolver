@@ -97,7 +97,8 @@ def bordered(matrix,column,free,row):
 
 def direction(matrix,column,free,previous,metric):
     row=metric*previous;rhs=np.zeros(len(free)+1);rhs[-1]=1.
-    handle=factorize(bordered(matrix,column,free,row),MatrixClass.GENERAL)
+    handle=factorize(bordered(matrix,column,free,row),MatrixClass.GENERAL,
+        options={'forward_error_probe': 'report'})  # N1: tangent/iterative solve, outer residual test accepts
     reduced=np.asarray(handle.solve(rhs),dtype=float).reshape(-1)
     if reduced.shape!=(len(free)+1,) or not np.isfinite(reduced).all():raise ValueError('native arc predictor range')
     value=np.zeros(len(metric));value[free]=reduced[:-1];value[-1]=reduced[-1]
@@ -182,7 +183,8 @@ def attempt_step(model,program,store,total,parameter,previous,index,step,maps,me
         if iteration==program.max_iterations:break
         column=parameter_column(model,store,trial,program.distributed,nodal_moments=program.nodal_moments)['column']
         observe('before_corrector',index,iteration)
-        handle=factorize(bordered(matrix,column,free,row),MatrixClass.GENERAL)
+        handle=factorize(bordered(matrix,column,free,row),MatrixClass.GENERAL,
+            options={'forward_error_probe': 'report'})  # N1: tangent/iterative solve, outer residual test accepts
         delta=np.asarray(handle.solve(-np.r_[force[free],gap]),dtype=float).reshape(-1)
         if delta.shape!=(len(free)+1,) or not np.isfinite(delta).all():raise ValueError('native arc corrector range')
         for cut in range(program.max_backtracks+1):

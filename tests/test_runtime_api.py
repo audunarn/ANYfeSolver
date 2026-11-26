@@ -405,6 +405,13 @@ def test_runtime_static_only_cylinder_never_enters_eigenvalue_buckling(
 
     monkeypatch.setattr(runtime, "_backend_solve_buckling", forbidden_buckling)
 
+    # Clamped ends (owner decision 1a, 2026-11-25): the "auto" cylinder anchors
+    # restrain only five translations and leave one rigid-body mode (reduced K
+    # has one zero eigenvalue, 1.3e-16 vs next 4e-5).  The base code certified
+    # that mechanism's solution (eta 2.9e-17); the factorization-level
+    # known-solution check (rule A) now refuses it (kfe 2.1 > 1e-3).  This test
+    # is about the static-only route never entering buckling, so it uses a
+    # well-posed support.
     result = runtime.run_production_fem(
         geometry,
         runtime.LightweightFEMConfig(
@@ -415,6 +422,7 @@ def test_runtime_static_only_cylinder_never_enters_eigenvalue_buckling(
             include_stiffeners=False,
             include_girders=False,
             num_buckling_modes=3,
+            boundary_condition="clamped",
         ),
     )
 

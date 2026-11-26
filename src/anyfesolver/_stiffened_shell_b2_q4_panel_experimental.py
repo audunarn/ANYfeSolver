@@ -1798,7 +1798,8 @@ class ExperimentalB2Q4PanelAnalysis:
             # Pinned for the Arnoldi iteration: other factorizations (callbacks,
             # other threads, other work on the shared backend) may run between
             # actions.  The lease ends with the eigensolve or on any exit.
-            lease = lease_from(factorize_cached, shifted, MatrixClass.GENERAL)
+            lease = lease_from(factorize_cached, shifted, MatrixClass.GENERAL,
+                               options={"forward_error_probe": "report"})  # Eigen results are judged by the per-mode residuals computed downstream; a shift at or near an eigenvalue is legitimate.
             handle = lease.handle
 
             def action(vector):

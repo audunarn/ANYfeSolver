@@ -43,7 +43,9 @@ import numpy as np
 from scipy import sparse
 
 from .analysis_session import _immutable_array, _immutable_csr
-from .linalg import AutoSparseSolverBackend, FactorizationCache, MatrixClass, close_propagating, factorize_cached
+from .linalg import (AutoSparseSolverBackend, FactorizationCache, MatrixClass, close_propagating, factorize_cached,
+    FORWARD_ERROR_ESTIMATE_EXCEEDED, RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT,
+    relative_forward_error_estimates)
 from .prepared_static_loads import (
     PreparedStaticCapabilityError,
     PreparedStaticError,
@@ -355,6 +357,7 @@ class PreparedStaticEvaluator:
             _LINEAR_STATIC_BACKWARD_ERROR_LIMIT,
             _backward_error,
             _equilibrate_supported_stiffness,
+            nullspace_augmented_factorization_options,
         )
         from .threading_policy import solver_thread_scope
         from .control import SolveCancelled, cancellation_safe_point, emit_progress
@@ -481,6 +484,9 @@ class PreparedStaticEvaluator:
                     MatrixClass.SYMMETRIC_INDEFINITE,
                     cache=self._factorization_cache,
                     signature=signature,
+                    # Rule A of an augmented operator measures the displacement block.
+                    options=(nullspace_augmented_factorization_options(
+                        snapshot.reduced_stiffness.shape[0]) if augmented else None),
                 )
             cancellation_safe_point(cancellation_token, "prepared_static.after_factorization")
             if handle is not None and handle.status != "ok":
@@ -868,7 +874,10 @@ class PreparedStaticEvaluator:
                     raise RuntimeError("prepared static operator handle is unavailable")
                 try:
                     with solver_thread_scope(resource_config):
-                        solved = self._solve_block(solve_rhs, block)
+                        # The block's own certification state (for example
+                        # reconstruction flags and Rule B estimates) travels
+                        # with the solved block, never through evaluator state.
+                        solved, block_state = self._solve_block_state(solve_rhs, block)
                 except (PreparedStaticError, ResourcePolicyError):
                     raise
                 except Exception as error:
@@ -907,6 +916,10 @@ class PreparedStaticEvaluator:
                 certification_norm = _block_norm_data(
                     self._operator_matrix if self._operator_augmented else snapshot.reduced_stiffness,
                     self._backward_error)
+                # Rule B per case, in the factorized variables (the displacement
+                # block of an augmented operator).
+                forward_errors = self._block_forward_errors(
+                    solved, solve_rhs, rhs.shape[0], block_state)
                 for j, (case_id, _case_time, _owned) in enumerate(block):
                     error = (
                         _certified_backward_error(self._operator_matrix, solved[:, j], solve_rhs[:, j],
@@ -931,6 +944,23 @@ class PreparedStaticEvaluator:
                                 ),
                             },
                         )
+                    forward_error = float(forward_errors[j])
+                    if not (np.isfinite(forward_error)
+                            and forward_error <= RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT):
+                        self._count_failure("forward_error_estimate_limit_exceeded")
+                        raise PreparedStaticError(
+                            "static case exceeded the relative forward-error estimate limit",
+                            diagnostics={
+                                "case_id": case_id,
+                                "input_index": indices[j],
+                                "relative_backward_error": error,
+                                "relative_backward_error_disposition": FORWARD_ERROR_ESTIMATE_EXCEEDED,
+                                "relative_forward_error_estimate": (
+                                    forward_error if np.isfinite(forward_error) else None),
+                                "relative_forward_error_estimate_limit":
+                                    RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT,
+                            },
+                        )
                     info = {
                         "status": "converged",
                         "case_id": case_id,
@@ -938,6 +968,8 @@ class PreparedStaticEvaluator:
                         "relative_backward_error": error,
                         "relative_backward_error_limit": self._backward_error_limit,
                         "relative_backward_error_disposition": "CERTIFIED",
+                        "relative_forward_error_estimate": forward_error,
+                        "relative_forward_error_estimate_limit": RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT,
                         "load": load_infos[j],
                         "backend": {} if self._operator_handle is None
                         else self._operator_handle.diagnostics(),
@@ -972,7 +1004,7 @@ class PreparedStaticEvaluator:
                     results, envelope_transaction, shared_statistics = recover(
                         snapshot, full, F, recovery,
                         tuple((case_id, case_time, indices[j]) for j, (case_id, case_time, _owned) in enumerate(block)),
-                        certified, self._envelope, block, **numeric_options)
+                        certified, self._envelope, block, block_state=block_state, **numeric_options)
                 except PreparedStaticError:
                     self._count_failure('case_recovery_failures')
                     raise
@@ -1069,12 +1101,35 @@ class PreparedStaticEvaluator:
     def _load_vector(self, snapshot, owned):
         return evaluate_load_vector(snapshot.load_maps, owned)
 
+    def _block_forward_errors(self, solved, solve_rhs, n, block_state=None):
+        """Rule B per case column (factorized variables, displacement rows ``:n``).
+
+        A block whose solve already measured every column (``block_state``
+        carrying ``forward_errors``) reports those values; nothing else is
+        consulted, so no other block's estimate can certify this one.
+        """
+
+        known = getattr(block_state, "forward_errors", None)
+        if known is not None:
+            return np.array(known, dtype=float, copy=True)
+        if self._operator_handle is None:
+            return np.zeros(solved.shape[1])
+        return relative_forward_error_estimates(
+            self._operator_matrix, solved, solve_rhs, handle=self._operator_handle,
+            scaling=self._operator_scaling, rows=slice(0, n))
+
     def _solve_block(self, solve_rhs, block):
         return (np.zeros_like(solve_rhs) if self._operator_handle is None else
                 self._operator_scaling[:, None] * self._operator_handle.solve_many(
                     self._operator_scaling[:, None] * solve_rhs))
 
-    def _recover_block(self, snapshot, full, loads, recovery, labels, certified, envelope, block):
+    def _solve_block_state(self, solve_rhs, block):
+        """(solved block, its certification state or None)."""
+
+        return self._solve_block(solve_rhs, block), None
+
+    def _recover_block(self, snapshot, full, loads, recovery, labels, certified, envelope, block,
+                       block_state=None):
         return _SHARED_BINDINGS[0][1](snapshot, full, loads, recovery, labels, certified, envelope)
 
     def _count_failure(self, name: str) -> None:

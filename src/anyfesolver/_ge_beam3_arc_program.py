@@ -97,7 +97,8 @@ def _bordered(matrix,column,free,row):
 
 def _direction(matrix,column,free,previous,metric):
     row = metric*previous; rhs = np.zeros(len(free)+1); rhs[-1] = 1.
-    handle = factorize(_bordered(matrix,column,free,row),MatrixClass.GENERAL)
+    handle = factorize(_bordered(matrix,column,free,row),MatrixClass.GENERAL,
+                       options={'forward_error_probe': 'report'})  # N1: tangent/iterative solve, outer residual test accepts
     reduced = np.asarray(handle.solve(rhs),dtype=float).reshape(-1)
     made = np.zeros(len(metric)); made[free] = reduced[:-1]; made[-1] = reduced[-1]
     norm = math.sqrt(float(np.sum(metric*made*made)))
@@ -283,7 +284,8 @@ def solve_arc_program(model,program,*,checkpoint=None,stop_after=None,cancellati
                 if iteration == program.max_iterations: break
                 column = _parameter_column(model,elements,store,trial,n,nodal)
                 observe('native_arc.before_corrector',index+1,iteration)
-                handle = factorize(_bordered(matrix,column,free,row),MatrixClass.GENERAL)
+                handle = factorize(_bordered(matrix,column,free,row),MatrixClass.GENERAL,
+                                   options={'forward_error_probe': 'report'})  # N1: tangent/iterative solve, outer residual test accepts
                 delta = np.asarray(handle.solve(-np.r_[force[free],gap]),dtype=float).reshape(-1)
                 if not np.isfinite(delta).all(): raise ValueError('nonfinite arc corrector')
                 for cut in range(program.max_backtracks+1):

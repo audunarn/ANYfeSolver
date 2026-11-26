@@ -24,6 +24,7 @@ from .assembly import (
     assemble_system, build_constraint_transformation, build_reduced_rigid_body_modes,
 )
 from .boundary import LoadCase
+from .linalg import RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT, relative_forward_error_estimates
 from .cases import make_result_case
 from .constraint_audit import require_valid_constraints
 from .control import cancellation_safe_point, emit_progress
@@ -481,18 +482,25 @@ def _balance_inertia_relief(plan: _InertiaReliefPlan, loads: np.ndarray,
     inertial = -(plan.MR @ acceleration)
     effective = F+inertial
     summaries = []
+    # Rule B for the 6x6 rigid-inertia solve (dense Cholesky factor).
+    acceleration_forward_errors = relative_forward_error_estimates(
+        plan.Gs, scaled_acceleration, rhs, solve=lambda r: linalg.cho_solve(plan.factor, r))
     for j in range(F.shape[1]):
         cancellation_safe_point(token, "inertia_relief.balance_column")
         resultants, balance = _balance(Rref, F[:, j], inertial[:, j])
         central_resultants, central_balance = _balance(plan.R, F[:, j], inertial[:, j])
         acceleration_error = _backward_error(sparse.csr_matrix(plan.Gs), scaled_acceleration[:, j], rhs[:, j])
         diagnostics = {**deepcopy(plan.diagnostics), **balance, "central_balance": central_balance,
-            "central_resultants": central_resultants, "acceleration_backward_error": acceleration_error}
+            "central_resultants": central_resultants, "acceleration_backward_error": acceleration_error,
+            "acceleration_forward_error_estimate": float(acceleration_forward_errors[j]),
+            "acceleration_forward_error_estimate_limit": RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT}
         checks = [acceleration_error, diagnostics["mpc_compatibility_error"],
             diagnostics["rigid_mode_stiffness_error"], balance["force_balance_error"],
             balance["moment_balance_error"], central_balance["force_balance_error"],
             central_balance["moment_balance_error"]]
-        ok = all(np.isfinite(v) and v <= _ERROR_LIMIT for v in checks)
+        ok = all(np.isfinite(v) and v <= _ERROR_LIMIT for v in checks) and bool(
+            np.isfinite(acceleration_forward_errors[j])
+            and acceleration_forward_errors[j] <= RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT)
         a = acceleration[:, j]
         summaries.append({"analysis_type": "inertia_relief", "method": _METHOD,
             "status": "balanced" if ok else "numerical_failure", "total_mass": plan.mass,

@@ -633,7 +633,8 @@ def solve(owner, request, *, cancellation_token=None):
         a, g, scale = _scaled_pencil(owner, packet)
         guard('before_factorization')
         # Pinned for the Arnoldi iteration (other factorizations may run between actions).
-        lease = lease_from(factorize_cached, (a+request.shift*g).tocsc(), MatrixClass.GENERAL)
+        lease = lease_from(factorize_cached, (a+request.shift*g).tocsc(), MatrixClass.GENERAL,
+                           options={'forward_error_probe': 'report'})  # Eigen results are judged by the per-mode residuals computed downstream; a shift at or near an eigenvalue is legitimate.
         handle = lease.handle
         if handle.status != 'ok':
             raise _Failure('buckling shift factorization failed: '+str(handle.failure_reason))

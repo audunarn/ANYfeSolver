@@ -1805,6 +1805,7 @@ def _solve_static_displacement_control_block(
                         K_red,
                         MatrixClass.SYMMETRIC_INDEFINITE,
                         signature=f"nonlinear.displacement_control.block:{step_index}:{iteration}",
+                        options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
                     )
                     rhs = np.column_stack((residual, F_prop_red))
                     solutions = np.asarray(handle.solve_many(rhs), dtype=float)
