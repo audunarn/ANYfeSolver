@@ -169,8 +169,10 @@ runs and no other thread mutates V2D elements.
   Addition (owner trust boundary, 2026-11-26, recovery-guard follow-up): writes into a package object's instance namespace
   that bypass attribute assignment (`object.__dict__` / `vars()` edits, non-str keys) are outside supported use, like
   run-time class rewriting; the shortcuts make their common forms fall back but are not an exhaustive defence. Hostile
-  caller DATA stays in scope: objects passed in (element ids, flags, displacement arrays and their dtypes), caller element
-  subclasses and custom metaclasses on caller objects must never get a different answer or skip a refusal.
+  caller DATA stays in scope: objects passed as arguments (element ids, flags, displacement arrays and their dtypes,
+  including custom metaclasses on those argument objects) and caller element subclasses with ordinary metaclasses must
+  never get a different answer or skip a refusal. Custom metaclasses on element classes placed in the model remain
+  outside supported use (contract above).
 
 ## static_batch enumeration (round 4; all now identity-classified)
 Inside the core trusted span: none (the span is the kernel, the V2D guard and the load-vector assembly). Upstream/outside the span but
