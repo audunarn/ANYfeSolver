@@ -1283,7 +1283,31 @@ def _key_labels(values: set[Any] | frozenset[Any]) -> list[str]:
     return sorted(repr(value) for value in values)
 
 
+_CANONICAL_FLOAT64 = np.dtype(np.float64)
+
 def _canonical_value(value: Any, *, path: str = "$") -> Any:
+    # Exact-type fast paths.  They return the same tree, bytes and errors
+    # as the general branches below, which remain the definition: exact
+    # builtins and exact float64 ndarrays under the internal exact-str path
+    # run no caller code, and a nonfinite array falls through to the
+    # element-wise path for the identical located error.
+    if type(path) is str:
+        value_type = type(value)
+        if value_type is float:
+            if not math.isfinite(value):
+                raise S3CommittedStateError(f"nonfinite canonical value at {path}")
+            return 0.0 if value == 0.0 else value
+        if value_type is str or value_type is int or value_type is bool or value is None:
+            return value
+        if value_type is np.ndarray and value.dtype is _CANONICAL_FLOAT64:
+            if bool(np.isfinite(value).all()):
+                return np.where(value == 0.0, 0.0, value).tolist()
+            return _canonical_value(value.tolist(), path=path)
+        if value_type is list or value_type is tuple:
+            return [
+                _canonical_value(member, path=f"{path}[{index}]")
+                for index, member in enumerate(value)
+            ]
     if isinstance(value, np.ndarray):
         return _canonical_value(value.tolist(), path=path)
     if isinstance(value, np.generic):

@@ -26,6 +26,7 @@ import argparse
 import ast
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -387,6 +388,161 @@ def physical(problems: list[str], name: str, raw: bytes) -> dict[str, Any]:
     return out
 
 
+GUARD_CADENCE_SUCCESSOR = ROOT / "docs" / "reference_cases" / "qualified_shell_nonlinear_guard_cadence_successor.json"
+GUARD_CADENCE_SCHEMA = "anysolver.qualified-shell-nonlinear-guard-cadence-successor-v1"
+# The delta chain after this record (pinned identities; see the 2026-11-24 and
+# 2026-11-25 collectors and tests/test_e4_pl_s3_mixed_mesh_manifest.py):
+# 2026-11-11 -> 2026-11-24 -> 2026-11-25 -> guard cadence successor.
+SOURCE_BINDING_DELTA = "docs/reference_cases/e4_pl_source_binding_20261124.json"
+SOURCE_BINDING_DELTA_SHA256 = "340CF7EB6B15B01799FA5838CC558BE74C1D6033C267120C5A142F6C257E50A7"
+SOURCE_BINDING_DELTA2 = "docs/reference_cases/e4_pl_source_binding_20261125.json"
+SOURCE_BINDING_DELTA2_SHA256 = "CFBA512F71CF589FC8C2E31E7EE12FA7A58E90F6ADDBAA28EA7E52FD7B3B3032"
+_DELTA_LINE = re.compile(rb"[^\n]*\n|[^\n]+\Z")
+
+
+def guard_cadence_prior(problems: list[str], relative: str, raw: bytes) -> bytes:
+    """The bytes the 2026-11-25 delta binds as live for *relative*: *raw*, or
+    for a carrier the owner-approved guard cadence successor (G2/L1/G1,
+    2026-11-24) changed, the prior bytes rebuilt through that successor.
+
+    The successor is the single recorded successor of the 2026-11-25 delta: its
+    ``predecessor`` must be exactly the pinned 2026-11-25 record bytes.  It
+    binds the exact live bytes of each changed carrier (``current_raw`` /
+    ``current_lf``) to an exact reverse line patch that reproduces the bytes
+    the 2026-11-25 chain binds (``prior_raw`` / ``prior_lf``).  Any mismatch is
+    a problem, never a silent fallback.  Files it does not bind are returned
+    as given.
+    """
+
+    if not GUARD_CADENCE_SUCCESSOR.is_file():
+        return raw
+    successor_raw = GUARD_CADENCE_SUCCESSOR.read_bytes()
+    successor = strict_json(successor_raw)
+    if successor_raw != (json.dumps(successor, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8"):
+        problems.append("guard cadence successor is not canonical JSON")
+        return raw
+    if successor.get("schema") != GUARD_CADENCE_SCHEMA:
+        problems.append("guard cadence successor schema differs")
+        return raw
+    if not all(value is False for value in successor["qualification_boundary"].values()):
+        problems.append("guard cadence successor claims a qualification change")
+        return raw
+    predecessor_raw = (ROOT / SOURCE_BINDING_DELTA2).read_bytes()
+    if sha256_upper(predecessor_raw) != SOURCE_BINDING_DELTA2_SHA256 or successor.get("predecessor") != {
+        "path": SOURCE_BINDING_DELTA2, **identity(predecessor_raw),
+    }:
+        problems.append("guard cadence successor does not chain from the pinned 2026-11-25 record")
+        return raw
+    for name, row in successor["change"]["sealed_carriers"].items():
+        if row["live_path"] != relative:
+            continue
+        portable = name in PORTABLE_AUTO_TEXT
+        canonical = lf(raw)
+        if row["portable_text"] is not portable:
+            problems.append(f"guard cadence successor {name}: portable_text differs")
+            return raw
+        if identity(canonical) != row["current_lf"]:
+            problems.append(f"guard cadence successor {name}: live LF bytes are not the recorded current bytes")
+            return raw
+        if portable:
+            if raw not in (canonical, canonical.replace(b"\n", b"\r\n")):
+                problems.append(f"guard cadence successor {name}: live raw is not uniform LF/CRLF")
+                return raw
+            source = canonical
+        else:
+            if identity(raw) != row["current_raw"]:
+                problems.append(f"guard cadence successor {name}: live raw bytes are not the recorded current bytes")
+                return raw
+            source = raw
+        lines = source.decode("utf-8").splitlines(keepends=True)
+        for start, end, replacement in reversed(row["reverse_line_patch"]):
+            lines[start:end] = replacement
+        prior = "".join(lines).encode("utf-8")
+        if identity(lf(prior)) != row["prior_lf"] or (not portable and identity(prior) != row["prior_raw"]):
+            problems.append(f"guard cadence successor {name}: reverse patch does not reproduce the prior bytes")
+            return raw
+        if portable and raw != canonical:
+            return prior.replace(b"\n", b"\r\n")
+        return prior
+    return raw
+
+
+def delta_records(problems: list[str]) -> tuple[Any, Any]:
+    """The pinned 2026-11-24 and 2026-11-25 delta records, each chained by
+    exact bytes from its predecessor (this record, then the 2026-11-24 one)."""
+
+    delta_raw = (ROOT / SOURCE_BINDING_DELTA).read_bytes()
+    delta2_raw = (ROOT / SOURCE_BINDING_DELTA2).read_bytes()
+    if sha256_upper(delta_raw) != SOURCE_BINDING_DELTA_SHA256:
+        problems.append("2026-11-24 delta record bytes differ from the pin")
+    if sha256_upper(delta2_raw) != SOURCE_BINDING_DELTA2_SHA256:
+        problems.append("2026-11-25 delta record bytes differ from the pin")
+    delta, delta2 = strict_json(delta_raw), strict_json(delta2_raw)
+    own = OUTPUT.relative_to(ROOT).as_posix()
+    if delta["predecessor"] != {"path": own, **identity(OUTPUT.read_bytes())}:
+        problems.append("2026-11-24 delta record does not chain from this record's bytes")
+    if delta2["predecessor"] != {"path": SOURCE_BINDING_DELTA, **identity(delta_raw)}:
+        problems.append("2026-11-25 delta record does not chain from the 2026-11-24 record's bytes")
+    return delta, delta2
+
+
+def rebuild_through_delta(problems: list[str], label: str, record: Any, relative: str, data: bytes) -> bytes:
+    """The predecessor bytes of *relative* rebuilt from *data* by *record*'s
+    exact reverse hunks (bottom-up, non-overlapping, each hunk's live lines
+    authenticated by SHA-256); *data* if the record does not change it."""
+
+    row = record["files"].get(relative)
+    if row is None:
+        return data
+    if identity(data) != row["live_raw"]:
+        problems.append(f"{label} delta {relative}: bytes are not the recorded live bytes")
+        return data
+    lines = _DELTA_LINE.findall(data)
+    limit = len(lines)
+    for hunk in sorted(row["reverse_hunks"], key=lambda h: h["live_line_start"], reverse=True):
+        start, end = hunk["live_line_start"], hunk["live_line_end"]
+        if not (type(start) is int and type(end) is int and 0 <= start <= end <= limit) or (
+            sha256_upper(b"".join(lines[start:end])) != hunk["live_lines_sha256"]
+        ):
+            problems.append(f"{label} delta {relative}: reverse hunk does not match the live lines")
+            return data
+        lines[start:end] = [hunk["predecessor_text"].encode("utf-8")]
+        limit = start
+    rebuilt = b"".join(lines)
+    if identity(rebuilt) != row["predecessor_raw"]:
+        problems.append(f"{label} delta {relative}: reverse hunks do not rebuild the predecessor bytes")
+        return data
+    return rebuilt
+
+
+def read_bound(problems: list[str], relative: str, level: str = "20261111") -> bytes:
+    """Bytes of *relative* that the chain record named by *level* binds as live.
+
+    The live bytes are walked back link by link: through the guard cadence
+    successor (giving the 2026-11-25-bound bytes), the 2026-11-25 delta (the
+    2026-11-24-bound bytes) and the 2026-11-24 delta (the bytes this record
+    binds).  Every check of the named record then runs unchanged on those bytes.
+    """
+
+    if level not in ("20261125", "20261124", "20261111"):
+        raise ValueError(f"unknown chain level {level!r}")
+    data = guard_cadence_prior(problems, relative, (ROOT / relative).read_bytes())
+    if level == "20261125":
+        return data
+    delta, delta2 = delta_records(problems)
+    data = rebuild_through_delta(problems, "2026-11-25", delta2, relative, data)
+    if level == "20261124":
+        return data
+    return rebuild_through_delta(problems, "2026-11-24", delta, relative, data)
+
+
+def read_live(problems: list[str], relative: str) -> bytes:
+    """The bytes this record binds for *relative*, rebuilt from the live bytes
+    through every later link of the chain (see ``read_bound``)."""
+
+    return read_bound(problems, relative, "20261111")
+
+
 def git_text(*args: str) -> str | None:
     done = subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=False)
     return done.stdout.strip() if done.returncode == 0 else None
@@ -470,7 +626,7 @@ def lineage_section(expect, problems: list[str], reviewed: Any, current: Any, li
     }
 
 
-def historical_gaps(current: Any) -> list[dict[str, Any]]:
+def historical_gaps(current: Any, problems: list[str]) -> list[dict[str, Any]]:
     """Whole-file comparisons of the current record that do not describe live bytes."""
     review = current["source_binding_integration_review"]
     external = current["external_arithmetic_dependencies"]["_elements_module"]
@@ -490,7 +646,7 @@ def historical_gaps(current: Any) -> list[dict[str, Any]]:
     gaps = []
     for check, recorded, digest, leaf in checks:
         live = recorded.replace(RECORDED_PREFIX, LIVE_PREFIX, 1)
-        live_bytes = (ROOT / live).read_bytes()  # protected (-text) carriers: raw is pinned too
+        live_bytes = read_live(problems, live)  # protected (-text) carriers: raw is pinned too
         live_sha = sha256_upper(lf(live_bytes))
         gaps.append({
             "historical_leaf": leaf, "live_raw": identity(live_bytes), "live_lf": identity(lf(live_bytes)),
@@ -549,7 +705,7 @@ def build(lineage_dir: Path = LINEAGE_DIR) -> tuple[dict[str, Any], list[str]]:
     for name in CARRIERS:
         live_path = LIVE_PREFIX + name
         recorded_path = RECORDED_PREFIX + name
-        raw = (ROOT / live_path).read_bytes()
+        raw = read_live(problems, live_path)
         live_lf = lf(raw)
         reverse = reverse_spelling(live_lf)
         raw_blob, lf_blob, lf_sha, reverse_blob = EXPECTED_LIVE[name]
@@ -596,6 +752,15 @@ def build(lineage_dir: Path = LINEAGE_DIR) -> tuple[dict[str, Any], list[str]]:
     candidate = closure_payload(live_lf_sources[ENTRY], roots, required, schema, logical_entry)
     candidate_agg = aggregate(candidate)
     expect("candidate closure", (len(candidate["symbols"]), candidate_agg), EXPECTED_CLOSURE["candidate"])
+    # The mechanics closure of the actual live entry bytes (not only of the
+    # bytes rebuilt through the later chain links) must be the closure the
+    # newest delta of the chain (2026-11-25) binds.
+    actual_entry = lf((ROOT / LIVE_PREFIX / ENTRY).read_bytes()).decode("utf-8")
+    actual = closure_payload(actual_entry, roots, required, schema, logical_entry)
+    newest = delta_records(problems)[1]["mechanics"]
+    expect("closure of the actual live entry bytes",
+           (len(actual["symbols"]), aggregate(actual)), (newest["symbol_count"], newest["aggregate_sha256"]))
+    expect("symbols of the actual live entry closure", actual["symbols"], newest["symbols"])
     upstream_source = git_blob_at(REVISIONS["e0c5f32ab"], RECORDED_PREFIX + ENTRY)
     upstream_agg = ""
     upstream_symbols: dict[str, str] = {}
@@ -618,7 +783,7 @@ def build(lineage_dir: Path = LINEAGE_DIR) -> tuple[dict[str, Any], list[str]]:
         if row["file"] is None or row["relative_level"] > 1:
             problems.append(f"unsupported internal import form: {row}")
             continue
-        data = (ROOT / LIVE_PREFIX / row["file"]).read_bytes()
+        data = read_live(problems, LIVE_PREFIX + row["file"])
         row["live_path"] = LIVE_PREFIX + row["file"]
         row["recorded_path"] = RECORDED_PREFIX + row["file"]
         row.update(physical(problems, row["file"], data))
@@ -627,7 +792,7 @@ def build(lineage_dir: Path = LINEAGE_DIR) -> tuple[dict[str, Any], list[str]]:
         for alias, v in oct19["external_arithmetic_dependencies"].items()
     }
     lineage = lineage_section(expect, problems, oct19, current_record, lineage_dir)
-    gaps = historical_gaps(current_record)
+    gaps = historical_gaps(current_record, problems)
     expect("historical gap count", len(gaps), 5)
     for gap in gaps:
         expect(f"gap {gap['check']} is a nonmatch", gap["live_lf_matches_recorded"], False)

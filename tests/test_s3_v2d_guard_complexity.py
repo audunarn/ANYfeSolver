@@ -568,3 +568,163 @@ def test_census_memo_is_inert_in_a_context_copied_during_the_operation():
         copied = contextvars.copy_context()
     memo = copied.run(_SCOPE_CENSUS_MEMO.get)
     assert memo is not None and not memo.active and not memo.entries
+
+
+# --- follow-up 2026-11-25 (Codex on main): exact list/tuple by identity -------
+
+
+def test_element_ids_with_a_list_equal_metaclass_are_not_treated_as_plain():
+    class _ListEqualMeta(type):
+        def __eq__(cls, other):
+            return other is list or type.__eq__(cls, other)
+
+        __hash__ = type.__hash__
+
+    model, element_ids = _triangle_plate(2)
+    u, _info = solve_linear(model, _pressure(element_ids))
+    wanted = element_ids[:3]
+    shared = iter(wanted)
+
+    class _SharedIterator(metaclass=_ListEqualMeta):
+        def __iter__(self):
+            return shared  # one iterator: a second pass sees nothing
+
+    assert type(_SharedIterator()) in (list, tuple)  # the old check's view
+    stresses = compute_stresses(model, u, element_ids=_SharedIterator())
+    assert sorted(stresses) == sorted(wanted)
+
+
+# --- follow-up 2026-11-25: Codex probes (caller code between guards) ----------
+
+_INPUT_STAGE = "stress-recovery input observation"
+
+
+def _input_guard_runs(call):
+    """(guard ran after every conversion and capability read, result)."""
+
+    events = []
+    owner = "_compute_stresses_under_lease"
+
+    def profiler(frame, event, arg):
+        # Only events of the recovery body itself: conversions and capability
+        # reads in preflight or inside elements do not count.
+        if event == "call":
+            caller = frame.f_back
+            if caller is None or caller.f_code.co_name != owner:
+                return
+            if frame.f_locals.get("stage") == _INPUT_STAGE:
+                events.append("guard")
+            elif frame.f_code.co_name == "require_model_element_capabilities":
+                events.append("capabilities")
+        elif event == "c_call" and arg is np.asarray and frame.f_code.co_name == owner:
+            events.append("asarray")
+
+    previous = sys.getprofile()
+    sys.setprofile(profiler)
+    try:
+        result = call()
+    finally:
+        sys.setprofile(previous)
+    if "guard" not in events:
+        return False, result
+    first_guard = events.index("guard")
+    # The body's first np.asarray is the displacement conversion (later ones
+    # convert per-element DOF maps inside the loop, after the guard).  The
+    # complete guard must follow it and every capability read.
+    conversion = events.index("asarray")
+    capabilities = [k for k, e in enumerate(events) if e == "capabilities"]
+    assert first_guard > conversion, events
+    assert all(first_guard > k for k in capabilities), events
+    return True, result
+
+
+def test_float64_displacements_need_no_input_guard_but_a_cast_does():
+    model, element_ids = _triangle_plate(2, quads_every=3)
+    u, _info = solve_linear(model, _pressure(element_ids))
+    plain, reference = _input_guard_runs(lambda: compute_stresses(model, u))
+    assert not plain
+    # A dtype cast can call a NumPy floating-point error callback (np.seterrcall).
+    cast, single = _input_guard_runs(lambda: compute_stresses(model, u.astype(np.float32)))
+    assert cast
+    assert sorted(single) == sorted(reference)
+
+
+def test_global_recovery_capability_check_is_followed_by_a_complete_guard():
+    model, element_ids = _triangle_plate(2, quads_every=3)
+    u, _info = solve_linear(model, _pressure(element_ids))
+    guarded, stresses = _input_guard_runs(lambda: compute_stresses(model, u, return_global=True))
+    assert guarded and stresses
+
+
+def test_a_return_global_flag_is_read_by_identity_for_the_fast_path():
+    model, element_ids = _triangle_plate(2, quads_every=3)
+    u, _info = solve_linear(model, _pressure(element_ids))
+
+    class _Flag:
+        def __bool__(self):
+            return False
+
+    # Not exactly ``False``: the fast path must not trust its ``__bool__``, so
+    # the complete guard follows (recovery itself still reads the flag).
+    guarded, stresses = _input_guard_runs(lambda: compute_stresses(model, u, return_global=_Flag()))
+    assert guarded and stresses
+
+
+def test_v2d_recovery_check_requires_builtin_node_mapping_reads(monkeypatch):
+    from anyfesolver.fe_core import _QualifiedStateMapping
+    from anyfesolver.recovery_batches import _v2d_recovery_providers_are_builtin
+
+    model, _element_ids = _triangle_plate(2, quads_every=3)
+    assert _v2d_recovery_providers_are_builtin(model)
+    nodes = model.mesh.nodes
+    original = nodes.get
+    object.__setattr__(nodes, "get", lambda key, default=None: original(key, default))
+    try:
+        assert not _v2d_recovery_providers_are_builtin(model)
+    finally:
+        object.__delattr__(nodes, "get")
+    assert _v2d_recovery_providers_are_builtin(model)
+    with monkeypatch.context() as patch:
+        patch.setattr(_QualifiedStateMapping, "get", None, raising=False)
+        assert not _v2d_recovery_providers_are_builtin(model)
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            _QualifiedStateMapping,
+            "__getattribute__",
+            lambda self, name: object.__getattribute__(self, name),
+            raising=False,
+        )
+        assert not _v2d_recovery_providers_are_builtin(model)
+    assert _v2d_recovery_providers_are_builtin(model)
+
+
+def test_node_mapping_check_rejects_non_str_instance_keys():
+    """Codex round 3: a non-str key colliding with "get" must not be consulted."""
+
+    from anyfesolver.e4_pl_s3_v2d_element import node_mapping_reads_are_builtin
+
+    model, _element_ids = _triangle_plate(2, quads_every=3)
+    nodes = model.mesh.nodes
+    calls = []
+
+    class _CollidingKey:
+        def __hash__(self):
+            return hash("get")
+
+        def __eq__(self, other):
+            calls.append(other)
+            return False
+
+    namespace = object.__getattribute__(nodes, "__dict__")
+    assert node_mapping_reads_are_builtin(nodes)
+    namespace[_CollidingKey()] = None
+    # Inserting may itself compare against a key shared by instance dicts of
+    # the class; only calls made by the check count.
+    calls.clear()
+    try:
+        assert not node_mapping_reads_are_builtin(nodes)
+        assert not calls
+    finally:
+        for key in [k for k in namespace if type(k) is _CollidingKey]:
+            del namespace[key]
+    assert node_mapping_reads_are_builtin(nodes)

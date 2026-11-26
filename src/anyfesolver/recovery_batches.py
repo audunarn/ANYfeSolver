@@ -1485,12 +1485,17 @@ def _v2d_recovery_providers_are_builtin(model: "FEModel") -> bool:
         return False
     mesh_namespace = object.__getattribute__(mesh, "__dict__")
     class_namespace = type.__getattribute__(_FEMesh, "__dict__")
+    from .e4_pl_s3_v2d_element import node_mapping_reads_are_builtin
+
     return (
         type(mesh_namespace) is dict
         and "get_node" not in mesh_namespace
         and "get_element" not in mesh_namespace
         and class_namespace.get("get_node") is _EXACT_FE_MESH_GET_NODE
         and class_namespace.get("get_element") is _EXACT_FE_MESH_GET_ELEMENT
+        # ``get_node`` reads ``self.nodes.get``: the node mapping must be read
+        # with ``dict.get`` too (no instance or class replacement).
+        and node_mapping_reads_are_builtin(dict.get(mesh_namespace, "nodes"))
     )
 
 

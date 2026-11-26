@@ -257,7 +257,26 @@ def test_trusted_v2d_path_is_bitwise_result_neutral(
     contexts = _count_complete_scans(monkeypatch)
     complete = _solve(*_mixed_model())
 
-    assert "nonlinear static force tangent assembly" in contexts
+    # L1 (owner 2026-11-24): the complete-scan fallback runs exactly once at
+    # each committed step's entry and once before it commits instead of at
+    # every Newton evaluation; the committed-state and reaction observations
+    # are deferred and covered by the step's unconditional support-reaction
+    # scan (caller-facing, unchanged).
+    steps = len(complete.steps)
+    assert steps == 2
+    counts = {context: contexts.count(context) for context in set(contexts)}
+    assert counts.get("nonlinear static force step cancellation") == steps
+    assert counts.get("nonlinear static step pre-commit") == steps
+    assert counts.get("nonlinear static support reactions") == steps
+    for deferred in (
+        "nonlinear static force tangent assembly",
+        "nonlinear static committed-state observation",
+        "nonlinear static accepted reaction force",
+        "nonlinear static reaction assembly",
+        "nonlinear static reaction load",
+        "nonlinear static force step window exit",
+    ):
+        assert deferred not in counts, deferred
     assert trusted.status == complete.status == "completed"
     assert np.asarray(trusted.displacements).tobytes() == np.asarray(
         complete.displacements

@@ -17,6 +17,13 @@ binds, without rewriting either predecessor:
 * per-module AST symbol deltas and the live qualified-Q4 mechanics closure
   are recorded and recomputable.
 
+This record has exactly one recorded successor, the guard cadence successor
+(``docs/reference_cases/qualified_shell_nonlinear_guard_cadence_successor.json``,
+G2/L1/G1), whose ``predecessor`` is these exact record bytes.  The "live" bytes
+this record binds are the working-tree bytes rebuilt through that successor
+(``guard_cadence_prior`` in the 2026-11-11 collector); the mechanics closure
+of the actual working-tree entry bytes must equal the one recorded here.
+
 The change bound by this record is S2, the bit-identical beam frame-math trim
 in ``src/anyfesolver/elements.py``: ``BeamElement._beam_frame_and_transform``,
 ``BeamElement._linear_rigid_arm_map`` and ``_beam_rotation_matrix`` change,
@@ -148,6 +155,7 @@ git_blob_at = _prev.git_blob_at
 reverse_hunks = _prev.reverse_hunks
 apply_reverse = _prev.apply_reverse
 symbol_delta = _prev.symbol_delta
+read_bound = _prev._prev.read_bound
 
 
 def chain_bound_files(
@@ -178,7 +186,7 @@ def build() -> tuple[dict[str, Any], list[str]]:
     files: dict[str, Any] = {}
     for path, bound in sorted(chain_bound_files(predecessor, origin).items()):
         base = git_blob_at(BASE_REVISION, path)
-        live = (ROOT / path).read_bytes()
+        live = read_bound(problems, path, "20261125")
         if base is None:
             problems.append(f"{path}: absent at base revision {BASE_REVISION}")
             continue
@@ -214,8 +222,12 @@ def build() -> tuple[dict[str, Any], list[str]]:
     contract = strict_json((ROOT / CONTRACT).read_bytes())
     authority = contract["candidate"]["qualified_q4_mechanics_authority"]
     roots, required = set(authority["roots"]), set(authority["symbols"])
-    live_entry = lf((ROOT / ENTRY).read_bytes()).decode("utf-8")
+    live_entry = lf(read_bound(problems, ENTRY, "20261125")).decode("utf-8")
     live_closure = closure_payload(live_entry, roots, required, authority["schema"], authority["path"])
+    actual_entry = lf((ROOT / ENTRY).read_bytes()).decode("utf-8")
+    actual_closure = closure_payload(actual_entry, roots, required, authority["schema"], authority["path"])
+    if actual_closure != live_closure:
+        problems.append("the working-tree entry mechanics closure differs from the 2026-11-25-bound closure")
     old_symbols = predecessor["mechanics"]["symbols"]
     mechanics_delta = symbol_delta(old_symbols, live_closure["symbols"])
     if any(mechanics_delta.values()) or aggregate(live_closure) != predecessor["mechanics"]["aggregate_sha256"]:

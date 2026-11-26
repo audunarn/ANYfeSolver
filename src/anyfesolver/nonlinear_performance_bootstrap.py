@@ -13,6 +13,10 @@ from . import linalg as _linalg
 from . import nonlinear_performance as _performance
 from . import nonlinear_performance_batch_b as _batch_b
 from . import nonlinear_performance_batch_c as _batch_c
+from .e4_pl_element import (
+    _q4_class_authority_on_refusal as _Q4_CLASS_AUTHORITY_ON_REFUSAL,
+    _q4_class_authority_window as _Q4_CLASS_AUTHORITY_WINDOW,
+)
 from .jit_compiler import JIT_DISABLED_REASON, JIT_ENABLED
 
 # Keep one size-aware backend policy in every environment. AutoSparseSolverBackend
@@ -45,6 +49,12 @@ def _purge_dead(model_id: int) -> None:
         _PLAN_CACHE.pop(int(model_id), None)
 
 
+def _evict_plan(entry: _ModelPlanCache, layers: int, plan: Any) -> None:
+    with _CACHE_LOCK:
+        if entry.plans.get(layers) is plan:
+            del entry.plans[layers]
+
+
 def get_nonlinear_assembly_plan(model: Any, num_layers: int):
     global _PLAN_CACHE_EVICTIONS
 
@@ -58,7 +68,18 @@ def get_nonlinear_assembly_plan(model: Any, num_layers: int):
             _PLAN_CACHE[model_id] = entry
         plan = entry.plans.get(layers)
         if plan is None or not plan.is_valid(model, layers):
-            plan = _performance.NonlinearAssemblyPlan.build(model, layers)
+            # G2 (owner 2026-11-24): the build is its own Q4 class-authority
+            # window, so its close validation runs before the plan is
+            # published to this reusable cache; a refused build is never
+            # stored.  If an enclosing window later refuses, the published
+            # plan is evicted before any retry can reuse it.
+            with _Q4_CLASS_AUTHORITY_WINDOW():
+                plan = _performance.NonlinearAssemblyPlan.build(model, layers)
+            _Q4_CLASS_AUTHORITY_ON_REFUSAL(
+                lambda entry=entry, layers=layers, plan=plan: _evict_plan(
+                    entry, layers, plan
+                )
+            )
             if layers not in entry.plans and len(entry.plans) >= MAX_NONLINEAR_LAYER_PLANS_PER_MODEL:
                 entry.plans.popitem(last=False)
                 entry.evictions += 1

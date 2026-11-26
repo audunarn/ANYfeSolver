@@ -17,6 +17,7 @@ from scipy import sparse
 from . import nonlinear_performance as _performance
 from . import nonlinear_performance_batch_b as _batch_b
 from . import nonlinear_reduced_assembly as _reduced
+from .e4_pl_element import _q4_class_authority_window as _Q4_CLASS_AUTHORITY_WINDOW
 from .jit_compiler import JIT_ENABLED
 from .nonlinear_analysis_diagnostics import record_nonlinear_assembly_execution
 from .nonlinear_element_evaluation import evaluate_nonlinear_element
@@ -553,7 +554,10 @@ def _batch_c_assemble_nonlinear_system(
     assembly_start = time.perf_counter()
     from .nonlinear_performance_bootstrap import get_nonlinear_assembly_plan
 
-    nonlinear_plan = get_nonlinear_assembly_plan(model, int(num_layers))
+    # G2 (owner 2026-11-24): the plan build and the direct evaluation are each
+    # one Q4 class-authority window (complete on first use and on close).
+    with _Q4_CLASS_AUTHORITY_WINDOW():
+        nonlinear_plan = get_nonlinear_assembly_plan(model, int(num_layers))
     if (
         context.reduced_plan is None
         or context.reduced_plan.source_plan is not nonlinear_plan
@@ -587,7 +591,7 @@ def _batch_c_assemble_nonlinear_system(
     # local buffers after ``assemble_reduced_system`` released its inner lock
     # but before this payload recorded ``timings.calls``.
     try:
-        with nonlinear_plan._lock:
+        with nonlinear_plan._lock, _Q4_CLASS_AUTHORITY_WINDOW():
             force_reduced, tangent_reduced, trial_states = assemble_reduced_system(
                 nonlinear_plan,
                 context.reduced_plan,
