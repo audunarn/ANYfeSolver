@@ -73,7 +73,7 @@ own global family tensors are the reference.
 
 from __future__ import annotations
 
-import inspect
+import functools
 import math
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Mapping, Optional, Tuple
@@ -276,6 +276,20 @@ def _frame_problem(frames: np.ndarray, bound: float = ORTHONORMAL_BOUND) -> str:
     return ""
 
 
+@functools.lru_cache(maxsize=None)
+def _class_method_names(kind: type) -> frozenset:
+    """Names bound to callables (functions, static/class methods) anywhere in
+    the MRO of an admitted class.  Cached per class: A'' trusts the class
+    internals not to be rebound at run time."""
+
+    names = set()
+    for cls in kind.__mro__:
+        for name, value in vars(cls).items():
+            if callable(value) or isinstance(value, (staticmethod, classmethod)):
+                names.add(name)
+    return frozenset(names)
+
+
 def _refuse_method_shadows(element: Any) -> None:
     """Refuse instance attributes that shadow a class-level method (A'')."""
 
@@ -283,13 +297,12 @@ def _refuse_method_shadows(element: Any) -> None:
         own = vars(element)
     except TypeError:
         return
-    for name in own:
-        static = inspect.getattr_static(type(element), name, None)
-        if static is not None and (callable(static) or isinstance(static, (staticmethod, classmethod))):
-            raise ShellAxesRefusal(
-                "AXES_INSTANCE_SHADOW",
-                f"instance attribute {name!r} shadows the {type(element).__name__} method",
-            )
+    shadows = _class_method_names(type(element)).intersection(own)
+    if shadows:
+        raise ShellAxesRefusal(
+            "AXES_INSTANCE_SHADOW",
+            f"instance attribute(s) {sorted(shadows)!r} shadow {type(element).__name__} methods",
+        )
 
 
 def _check_attribute_types(element: Any, names: Tuple[str, ...]) -> None:
@@ -322,8 +335,13 @@ def _tangent_normals(element: Any, coords: np.ndarray, points: np.ndarray) -> np
     out = np.zeros((len(points), 3), dtype=float)
     for index, (xi, eta) in enumerate(points):
         _n, d_xi, d_eta = element.compute_shape_functions(float(xi), float(eta))
-        cross = np.cross(np.asarray(d_xi, dtype=float) @ coords, np.asarray(d_eta, dtype=float) @ coords)
-        length = float(np.linalg.norm(cross))
+        a = np.asarray(d_xi, dtype=float) @ coords
+        b = np.asarray(d_eta, dtype=float) @ coords
+        cross = np.array(
+            (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]),
+            dtype=float,
+        )
+        length = math.sqrt(float(cross @ cross))
         if not (math.isfinite(length) and length > 0.0):
             raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "zero or nonfinite surface tangent cross product")
         out[index] = cross / length
@@ -485,7 +503,7 @@ def _resolve_branch(element, mesh, material, recovered, override, requested) -> 
     from .e4_pl_s3_v2d_element import _NORMAL_TOLERANCE, HAMMER_POINTS, NativeParityE4PLS3V2DShellElement
     from .elements import ShellElement
 
-    kind = _admit(element)
+    kind = type(element)  # admitted by the caller (_derive_shell_axes_from_recovery)
     generalized = getattr(element, "shell_section", None) is not None
     try:
         # V2D recovers on ``_coordinates`` (exact FEMesh); the others on get_node_coordinates
