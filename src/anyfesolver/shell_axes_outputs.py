@@ -48,7 +48,7 @@ scalar attributes both the recovery and this module read must be exact types
 float64 ndarray of shape (3,) or None).
 
 Geometry domain: every element must have geometry conditioning ``G = (max|x|
-/ shortest tangent, diagonal or edge + 1) |a||b| / |a x b| <= 5e5`` (see
+/ shortest tangent, diagonal or edge + 1) |a||b| / |a x b| <= 2.5e5`` (see
 ``GEOMETRY_CONDITIONING_LIMIT``); outside it the module raises
 ``AXES_GEOMETRY_CONDITIONING``.  Inside it no reversed basis normal and no
 normal tilt above 1e-9 can certify.  Models far from their origin relative to
@@ -138,6 +138,10 @@ GEOMETRY_ROUNDOFF = 8.0 * EPS
 # margin and the check was per component); outside it the module refuses
 # (AXES_GEOMETRY_CONDITIONING).  Measured: barge5 G <= 5.0e3 (median 5.4e2),
 # solver test fixtures G <= 5.4.
+# The cutoff is evaluated in double precision: an element whose exact G lies
+# within a few ulp of 2.5e5 may fall on either side.  That decides only which
+# side of the stated boundary it lands on; the guarantee keeps its 2x margin
+# there (bound <= 4.5e-10 at G = 2.5e5 (1 + 1e-12)), so it cannot fail open.
 GEOMETRY_CONDITIONING_LIMIT = 2.5e5
 _FLOAT_TYPES = (float, int, np.float64)
 _INT_TYPES = (int, np.int64)
@@ -498,14 +502,22 @@ def _geometry_conditioning(coords: np.ndarray, a: np.ndarray, b: np.ndarray, *le
     covers coordinate differences far from the origin, the second the
     cancellation of a nearly parallel pair."""
 
-    la = math.sqrt(float(a @ a))
-    lb = math.sqrt(float(b @ b))
-    cross = _cross(a, b)
+    # dimensionless: scale the vectors before squaring (Codex r8: 2**270 sides
+    # overflowed into a DEGENERATE instead of a CONDITIONING refusal)
+    scale = max(float(np.max(np.abs(a))), float(np.max(np.abs(b))))
+    if not (math.isfinite(scale) and scale > 0.0):
+        raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "zero or nonfinite tangent, diagonal or edge")
+    a_s = np.asarray(a, dtype=float) / scale
+    b_s = np.asarray(b, dtype=float) / scale
+    la = math.sqrt(float(a_s @ a_s))
+    lb = math.sqrt(float(b_s @ b_s))
+    cross = _cross(a_s, b_s)
     area = math.sqrt(float(cross @ cross))
-    shortest = min([la, lb, *(float(length) for length in lengths)])
+    shortest = min([la, lb, *(float(length) / scale for length in lengths)])
     if not (math.isfinite(shortest) and shortest > 0.0 and math.isfinite(area) and area > 0.0):
         raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "zero or nonfinite tangent, diagonal or edge")
-    return (float(np.max(np.abs(coords))) / shortest + 1.0) * (la * lb / area)
+    reach = float(np.max(np.abs(coords))) / scale
+    return (reach / shortest + 1.0) * (la * lb / area)
 
 
 def _relative_tangents(element: Any, coords: np.ndarray, xi: float, eta: float) -> Tuple[np.ndarray, np.ndarray]:
@@ -531,7 +543,9 @@ def _check_geometry_domain(element: Any, coords: np.ndarray, requested: Optional
         values = []
         if len(coords) == 4:
             values.append(_geometry_conditioning(coords, coords[2] - coords[0], coords[3] - coords[1]))
-        stations = np.asarray(element.gauss_points, dtype=float)
+        # default stations, the element centre (warped Q4 builds its centre
+        # shear frame there; Codex r8) and any requested natural_points
+        stations = np.concatenate((np.asarray(element.gauss_points, dtype=float), np.zeros((1, 2))))
         if requested is not None:
             stations = np.concatenate((stations, np.asarray(requested, dtype=float)))
         for xi, eta in stations:
@@ -542,7 +556,7 @@ def _check_geometry_domain(element: Any, coords: np.ndarray, requested: Optional
         raise ShellAxesRefusal(
             "AXES_GEOMETRY_CONDITIONING",
             f"geometry conditioning G={conditioning:.3e} is outside the declared domain "
-            f"G <= {GEOMETRY_CONDITIONING_LIMIT:.0e} (|x| / element size, or nearly parallel edges)",
+            f"G <= {GEOMETRY_CONDITIONING_LIMIT:.6g} (|x| / element size, or nearly parallel edges)",
         )
     return conditioning
 
@@ -555,7 +569,7 @@ def _geometry_bound(coords: np.ndarray, a: np.ndarray, b: np.ndarray, *lengths: 
         raise ShellAxesRefusal(
             "AXES_GEOMETRY_CONDITIONING",
             f"geometry conditioning G={conditioning:.3e} is outside the declared domain "
-            f"G <= {GEOMETRY_CONDITIONING_LIMIT:.0e} (|x| / element size, or nearly parallel edges)",
+            f"G <= {GEOMETRY_CONDITIONING_LIMIT:.6g} (|x| / element size, or nearly parallel edges)",
         )
     return GEOMETRY_BOUND + GEOMETRY_ROUNDOFF * conditioning
 
@@ -567,13 +581,22 @@ def _unit_normal(cross: np.ndarray) -> np.ndarray:
     return cross / length
 
 
+def _normal_of(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Unit a x b, scaled first so that large finite vectors do not overflow."""
+
+    scale = max(float(np.max(np.abs(a))), float(np.max(np.abs(b))))
+    if not (math.isfinite(scale) and scale > 0.0):
+        raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "zero or nonfinite surface normal")
+    return _unit_normal(_cross(np.asarray(a, dtype=float) / scale, np.asarray(b, dtype=float) / scale))
+
+
 def _diagonal_normal(coords: np.ndarray) -> Tuple[np.ndarray, float]:
     """Bilinear Q4 centre normal: X_xi x X_eta at the centre = (x2-x0) x (x3-x1) / 8,
     from coordinate differences (well conditioned far from the origin)."""
 
     d1 = coords[2] - coords[0]
     d2 = coords[3] - coords[1]
-    normal = _unit_normal(_cross(d1, d2))
+    normal = _normal_of(d1, d2)
     return normal[None], _geometry_bound(coords, d1, d2)
 
 
@@ -583,7 +606,7 @@ def _facet_normal(coords: np.ndarray, owner: Any) -> Tuple[np.ndarray, float]:
     e1 = coords[1] - coords[0]
     e2 = coords[2] - coords[0]
     e3 = coords[2] - coords[1]
-    normal = _unit_normal(_cross(e1, e2))
+    normal = _normal_of(e1, e2)
     alignment = float(normal @ np.asarray(owner, dtype=float))
     if not (math.isfinite(alignment) and alignment != 0.0):
         raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "owner normal is tangential to the facet")
@@ -599,7 +622,7 @@ def _tangent_normals(element: Any, coords: np.ndarray, points: np.ndarray) -> Tu
     bounds = np.zeros(len(points), dtype=float)
     for index, (xi, eta) in enumerate(points):
         a, b = _relative_tangents(element, coords, xi, eta)
-        out[index] = _unit_normal(_cross(a, b))
+        out[index] = _normal_of(a, b)
         bounds[index] = _geometry_bound(coords, a, b)
     return out, bounds
 
@@ -632,9 +655,17 @@ def _requested_points(natural_points: Any) -> Optional[np.ndarray]:
         plain = natural_points.dtype.kind in "iuf" and not natural_points.dtype.hasobject
     elif _is(kind, (list, tuple)):
         plain = all(
-            _is(type(row), (list, tuple))
-            and len(row) == 2
-            and all(_is(type(v), (float, int, np.float64, np.float32, np.int64, np.int32)) for v in row)
+            (
+                _is(type(row), (list, tuple))
+                and len(row) == 2
+                and all(_is(type(v), (float, int, np.float64, np.float32, np.int64, np.int32)) for v in row)
+            )
+            or (
+                type(row) is np.ndarray
+                and row.shape == (2,)
+                and row.dtype.kind in "iuf"
+                and not row.dtype.hasobject
+            )
             for row in natural_points
         )
     else:
@@ -855,6 +886,10 @@ def _resolve_branch(element, mesh, material, recovered, override, requested) -> 
             centre = _apply_override(override, "centre", centre)
             physical = np.asarray(element.physical_reference_director, dtype=float)
             centre_normal, centre_bound = _diagonal_normal(coords)
+            # the centre frame comes from the centre tangents: their conditioning
+            # bounds the centre normal too (Codex r8)
+            _a0, _b0 = _relative_tangents(element, coords, 0.0, 0.0)
+            centre_bound = max(centre_bound, _geometry_bound(coords, _a0, _b0))
             centre_geometry = _oriented(centre_normal, physical)
             station_geometry, station_bounds = _tangent_normals(element, coords, points)
             branch = _Branch(

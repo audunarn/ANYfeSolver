@@ -1345,6 +1345,22 @@ def _assert_surface_arrays(res, n_stations):
         assert np.all(np.isfinite(values)), key
 
 
+def _projected_surface_stress(tensor, direction):
+    """r8 P3: finite components can still project to +-inf; require finite projections."""
+
+    stress = np.einsum("i,nij,j->n", direction, tensor, direction)
+    assert np.all(np.isfinite(stress)), stress
+    return stress
+
+
+def test_r8_surface_oracle_rejects_infinite_projections():
+    s_vec = np.sign(R0[:, 0])
+    huge = 1.6e308 * np.outer(s_vec, s_vec)
+    assert np.all(np.isfinite(huge))
+    with pytest.raises(AssertionError):
+        _projected_surface_stress(huge[None], R0[:, 0])
+
+
 def test_r7_surface_oracle_rejects_nonfinite_arrays():
     el, mesh, loc = build("e4pl", "q4", "h")
     result = recover_shell_axes(el, mesh, plate_field(loc, kx=K), MATERIAL)
@@ -1389,7 +1405,7 @@ def test_r4_surface_stresses_are_tension_on_the_physically_tensioned_fibre(kind,
             values = np.asarray(res[f"global_{label}_{surface}"], dtype=float)
             tensor[:, i, j] = values
             tensor[:, j, i] = values
-        stress = np.einsum("i,nij,j->n", e_x, tensor, e_x)
+        stress = _projected_surface_stress(tensor, e_x)
         expected = np.sign(offset * float(director @ N0))
         assert np.all(np.sign(stress) == expected), (surface, offset, stress)
 
@@ -1765,3 +1781,74 @@ def test_r7_numpy_scalars_in_natural_points_rows_are_admitted():
     result = recover_shell_axes(el, mesh, u, MATERIAL, natural_points=request)
     direct = el.compute_stresses(mesh, u, MATERIAL, return_global=True, natural_points=np.asarray(request, dtype=float))
     assert _identical(result.recovery, direct)
+
+
+# ------------------------------------------------------------- Codex r8 fixes
+def test_r8_domain_includes_the_warped_centre_tangents():
+    """r8 P1: diagonals and stations G ~ 1.9e5, the centre tangents ~ 4e5."""
+
+    mesh = FEMesh()
+    for i, p in enumerate(((-3.0, -2.0e-5, 0.1), (-1.0, -2.0e-5, -0.1), (3.0, 2.0e-5, 0.1), (1.0, 2.0e-5, -0.1)), start=1):
+        mesh.add_node(i, *p)
+    el = create_shell_element(
+        1, [1, 2, 3, 4], "steel", formulation="e4-pl", thickness=H, reference_normal=[0.0, 0.0, 1.0], director_polarity=1
+    )
+    with pytest.raises(ShellAxesRefusal) as info:
+        recover_shell_axes(el, mesh, np.zeros(24), MATERIAL)
+    assert info.value.code == "AXES_GEOMETRY_CONDITIONING"
+
+
+def test_r8_huge_finite_geometry_gets_the_conditioning_code():
+    """r8 P2: sides 2**270 x 2**250 must not overflow into AXES_GEOMETRY_DEGENERATE."""
+
+    a, b = 2.0**270, 2.0**250
+    mesh = FEMesh()
+    for i, p in enumerate(((0.0, 0.0, 0.0), (a, 0.0, 0.0), (a, b, 0.0), (0.0, b, 0.0)), start=1):
+        mesh.add_node(i, *p)
+    el = create_shell_element(
+        1, [1, 2, 3, 4], "steel", formulation="e4-pl", thickness=H, reference_normal=[0.0, 0.0, 1.0], director_polarity=1
+    )
+    with pytest.raises(ShellAxesRefusal) as info:
+        recover_shell_axes(el, mesh, np.zeros(24), MATERIAL)
+    assert info.value.code == "AXES_GEOMETRY_CONDITIONING"
+
+
+def test_r8_natural_points_rows_may_be_exact_1d_arrays():
+    """r8 P2: a list of exact (2,) numeric ndarray rows, as the recovery accepts."""
+
+    el, mesh, loc = build("legacy", "q4", "h")
+    u = displacement(loc)
+    request = [np.array([0.25, 0.0], dtype=np.float32), np.array([-0.5, 1.0])]
+    result = recover_shell_axes(el, mesh, u, MATERIAL, natural_points=request)
+    direct = el.compute_stresses(mesh, u, MATERIAL, return_global=True, natural_points=np.asarray(request, dtype=float))
+    assert _identical(result.recovery, direct)
+    with pytest.raises(ShellAxesRefusal):
+        recover_shell_axes(el, mesh, u, MATERIAL, natural_points=[np.array([0.25, 0.0, 1.0])])
+
+
+def test_r8_refusal_text_states_the_actual_limit():
+    """r8 P3: the refusal prints 250000, not 2e+05."""
+
+    el, mesh = _square_at(1.25)
+    with pytest.raises(ShellAxesRefusal) as info:
+        recover_shell_axes(el, mesh, np.zeros(24), MATERIAL)
+    assert "250000" in info.value.reason
+    import anyfesolver.shell_axes_outputs as module
+
+    assert "2.5e5" in module.__doc__ and "5e5`` (see" not in module.__doc__.replace("2.5e5`` (see", "")
+
+
+def test_cutoff_in_double_precision_keeps_the_2x_margin():
+    """The cutoff is evaluated in double precision; within a few ulp of the
+    limit the tilt guarantee keeps its 2x margin below the 1e-9 resolution."""
+
+    import anyfesolver.shell_axes_outputs as module
+
+    for ulps in (-4, 0, 4):
+        g = GEOMETRY_CONDITIONING_LIMIT * (1.0 + ulps * 2.0**-52)
+        bound = module.GEOMETRY_BOUND + GEOMETRY_ROUNDOFF * g
+        assert 2.0 * bound <= module.RESOLUTION, (ulps, bound)
+    # and behaviourally: an element at the limit (to 1e-3) refuses a 1e-9 tilt
+    el, mesh = _square_at(0.9999)
+    out = recover_shell_axes(el, mesh, np.zeros(24), MATERIAL, _frame_override=_override(_ry(1.0e-9))).axes
+    assert set(out.refusals) >= set(FAMILIES), out.refusals
