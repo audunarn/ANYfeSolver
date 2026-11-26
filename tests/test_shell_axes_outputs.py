@@ -1943,3 +1943,52 @@ def test_r9_exponent_extremes_get_the_conditioning_code():
         with pytest.raises(ShellAxesRefusal) as info:
             recover_shell_axes(el, mesh, np.zeros(24), MATERIAL)
         assert info.value.code == "AXES_GEOMETRY_CONDITIONING", nodes
+
+
+# ------------------------------------------------------------ Codex r10 fixes
+@pytest.mark.parametrize(
+    "nodes",
+    (
+        ((0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 2.0**-600, 0.0)),
+        ((0.0, 0.0, 0.0), (2.0**600, 0.0, 0.0), (0.0, 2.0**-600, 0.0)),
+    ),
+)
+def test_r10_triangle_exponent_extremes_get_the_conditioning_code(nodes):
+    """r10 P2: the third edge and the coordinate scaling must not underflow into DEGENERATE."""
+
+    import anyfesolver.shell_axes_outputs as module
+
+    coords = np.array(nodes)
+    el = ShellElement(1, [1, 2, 3], "steel", thickness=H)
+    with pytest.raises(ShellAxesRefusal) as info:
+        module._check_geometry_domain(el, coords)
+    assert info.value.code == "AXES_GEOMETRY_CONDITIONING"
+    # a genuinely repeated node stays degenerate
+    with pytest.raises(ShellAxesRefusal) as info:
+        module._check_geometry_domain(el, np.array([(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 0.0)]))
+    assert info.value.code == "AXES_GEOMETRY_DEGENERATE"
+
+
+def test_r10_computed_g_relative_error_is_within_the_stated_model():
+    """r10 P3: computed G has relative error <= 8 eps G (r10 case at G ~ 3.2e8)."""
+
+    import decimal
+
+    import anyfesolver.shell_axes_outputs as module
+
+    decimal.getcontext().prec = 60
+    D = decimal.Decimal
+    for xy, z in (
+        (((0.0, 0.0), (1.3, 0.9), (-1.1, -0.7615384515384614)), 0.0),
+        (((0.0, 0.0), (1.3, 0.9), (-1.1, -0.7615214585384616)), 2.157056434447613),
+    ):
+        coords = np.array([(x, y, z) for x, y in xy])
+        reach, shortest_sq, ratio_sq = _exact_triangle_conditioning(coords)
+        exact = (D(reach.numerator) / D(reach.denominator) / (D(shortest_sq.numerator) / D(shortest_sq.denominator)).sqrt() + 1) * (
+            D(ratio_sq.numerator) / D(ratio_sq.denominator)
+        ).sqrt()
+        computed = module._geometry_conditioning(
+            coords, coords[1] - coords[0], coords[2] - coords[0], float(np.linalg.norm(coords[2] - coords[1]))
+        )
+        relative = abs((D(computed) - exact) / exact)
+        assert relative <= D(8) * D(2.0**-52) * exact, (float(exact), relative)

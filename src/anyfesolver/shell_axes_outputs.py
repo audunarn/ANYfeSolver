@@ -138,9 +138,11 @@ GEOMETRY_ROUNDOFF = 8.0 * EPS
 # margin and the check was per component); outside it the module refuses
 # (AXES_GEOMETRY_CONDITIONING).  Measured: barge5 G <= 5.0e3 (median 5.4e2),
 # solver test fixtures G <= 5.4.
-# The cutoff is evaluated in double precision with relative error <= 1e-9 (an
-# element whose exact G lies within that of 2.5e5 may fall on either side;
-# Codex r9 measured 1.1e-12).  That decides only which side of the stated
+# The cutoff is evaluated in double precision.  The computed G has relative
+# error <= 8 eps G (the same roundoff model as the rule (6) bound; measured
+# <= 0.03 eps G, Codex r9/r10 cases), i.e. <= 5e-10 for every G up to 2.8e5,
+# so near the cutoff an element whose exact G lies within 1e-9 of 2.5e5 may
+# fall on either side.  That decides only which side of the stated
 # boundary it lands on: the tilt guarantee keeps its 2x margin for every G up
 # to 2.8e5 (bound 1e-13 + 8 eps 2.8e5 = 4.97e-10 <= 0.5e-9), so it cannot fail
 # open.
@@ -512,11 +514,20 @@ def _power_of_two_scaled(coords: np.ndarray) -> np.ndarray:
     """Coordinates times an exact power of two so max|x| is in [0.5, 1): G is
     scale invariant and differences can no longer overflow (Codex r9)."""
 
+    coords = np.asarray(coords, dtype=float)
     largest = float(np.max(np.abs(coords)))
     if not (math.isfinite(largest) and largest > 0.0):
         raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "node coordinates are zero or not finite")
     _mantissa, exponent = math.frexp(largest)
-    return np.ldexp(np.asarray(coords, dtype=float), -exponent)
+    scaled = np.ldexp(coords, -exponent)
+    if bool(np.any((scaled == 0.0) & (coords != 0.0))):
+        # the coordinates span more binary orders than a double holds: a
+        # nonzero geometry astronomically outside the domain (Codex r10)
+        raise ShellAxesRefusal(
+            "AXES_GEOMETRY_CONDITIONING",
+            "node coordinates span more than the double-precision exponent range; outside the declared domain",
+        )
+    return scaled
 
 
 def _geometry_conditioning(coords: np.ndarray, a: np.ndarray, b: np.ndarray, *lengths: float) -> float:
@@ -538,8 +549,15 @@ def _geometry_conditioning(coords: np.ndarray, a: np.ndarray, b: np.ndarray, *le
     cross = _cross(a_s, b_s)
     area = _safe_norm(cross)
     shortest = min([la, lb, *(float(length) / scale for length in lengths)])
-    if not (math.isfinite(shortest) and shortest > 0.0 and math.isfinite(area) and area > 0.0):
-        raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "zero or nonfinite tangent, diagonal or edge")
+    if not (math.isfinite(shortest) and math.isfinite(area)):
+        raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "nonfinite tangent, diagonal or edge")
+    if not (shortest > 0.0 and area > 0.0):
+        if bool(np.any(cross != 0.0)) or (la > 0.0 and lb > 0.0 and area > 0.0):
+            raise ShellAxesRefusal(
+                "AXES_GEOMETRY_CONDITIONING",
+                "a tangent, diagonal or edge is below the double-precision range of the element; outside the declared domain",
+            )
+        raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "zero tangent, diagonal or edge")
     reach = float(np.max(np.abs(coords))) / scale
     return (reach / shortest + 1.0) * (la * lb / area)
 
@@ -565,7 +583,7 @@ def _check_geometry_domain(element: Any, coords: np.ndarray, requested: Optional
     coords = _power_of_two_scaled(coords)
     if len(coords) == 3:
         values = [_geometry_conditioning(coords, coords[1] - coords[0], coords[2] - coords[0],
-                                         math.sqrt(float((coords[2] - coords[1]) @ (coords[2] - coords[1]))))]
+                                         _safe_norm(coords[2] - coords[1]))]
     else:
         values = []
         if len(coords) == 4:
