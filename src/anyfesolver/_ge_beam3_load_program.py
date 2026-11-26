@@ -254,7 +254,8 @@ def solve_force_program(model, program, *, checkpoint=None, stop_after=None, can
                 safe('native_force.before_factorization')
                 reduced = k[free][:,free].tocsr()
                 handle = factorize(reduced,MatrixClass.SYMMETRIC_INDEFINITE,
-                    signature=f'native_force:{identity}:{index}:{iteration}')
+                    signature=f'native_force:{identity}:{index}:{iteration}',
+                    options={'forward_error_probe': 'report'})  # N1: tangent/iterative solve, outer residual test accepts
                 increment = np.asarray(handle.solve(-f[free]),dtype=float).reshape(-1)
                 if not np.isfinite(increment).all(): raise ValueError('nonfinite native force increment')
                 safe('native_force.after_factorization')

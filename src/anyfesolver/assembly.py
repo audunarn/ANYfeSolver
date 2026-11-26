@@ -57,6 +57,7 @@ from .linalg import (
     factorize_cached,
     forward_error_estimate_accepted,
     relative_forward_error_estimate,
+    relative_forward_error_estimates,
 )
 from .matrix_assembly import (
     assemble_load_matrix,
@@ -675,6 +676,20 @@ def _forward_error_estimate_fields(value: float) -> Dict[str, Any]:
     return {
         "relative_forward_error_estimate": value if np.isfinite(value) else None,
         "relative_forward_error_estimate_limit": RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT,
+    }
+
+
+def _forward_error_column_fields(values: np.ndarray) -> Dict[str, Any]:
+    """Rule B per input column: estimates (None when non-finite) and failing columns."""
+
+    values = np.asarray(values, dtype=float).reshape(-1)
+    return {
+        "relative_forward_error_estimates": [
+            float(v) if np.isfinite(v) else None for v in values
+        ],
+        "relative_forward_error_failed_columns": [
+            int(j) for j, v in enumerate(values) if not forward_error_estimate_accepted(float(v))
+        ],
     }
 
 
@@ -1444,10 +1459,15 @@ def solve_linear_many(
     q_matrix = scaling[:, None] * scaled_q_matrix
     backward_error = _backward_error(K_red, q_matrix, F_red)
     cancellation_safe_point(cancellation_token, "linear_static_many.after_solve")
-    forward_error = (
-        relative_forward_error_estimate(equilibrated, scaled_q_matrix, scaled_rhs, handle=handle)
+    # Rule B per input column (load case); the route decision uses the maximum.
+    forward_errors = (
+        relative_forward_error_estimates(equilibrated, scaled_q_matrix, scaled_rhs, handle=handle)
         if np.isfinite(backward_error) and backward_error <= _LINEAR_STATIC_BACKWARD_ERROR_LIMIT
-        else float("inf")
+        else None
+    )
+    forward_error = (
+        float("inf") if forward_errors is None
+        else float(np.max(forward_errors)) if forward_errors.size else 0.0
     )
     forward_error_failed = (
         np.isfinite(backward_error)
@@ -1487,6 +1507,7 @@ def solve_linear_many(
             "relative_backward_error_disposition": backward_error_disposition,
             "relative_backward_error_limit": _LINEAR_STATIC_BACKWARD_ERROR_LIMIT,
             **(_forward_error_estimate_fields(forward_error) if forward_error_failed else {}),
+            **(_forward_error_column_fields(forward_errors) if forward_error_failed else {}),
             "solve_time": time.time() - start,
             "thread_policy": thread_policy_diagnostics(resource_config),
         }
@@ -1529,6 +1550,7 @@ def solve_linear_many(
         "relative_backward_error_disposition": "CERTIFIED",
         "relative_backward_error_limit": _LINEAR_STATIC_BACKWARD_ERROR_LIMIT,
         **_forward_error_estimate_fields(forward_error),
+        **_forward_error_column_fields(forward_errors),
         "solve_time": time.time() - start,
         "num_result_cases": len(load_cases),
         "thread_policy": thread_policy_diagnostics(resource_config),

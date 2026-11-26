@@ -202,7 +202,8 @@ def _solve_translation(model,program,*,checkpoint=None,expected_sha256=None,stop
                 column=parameter_column(model,store,trial,program.distributed,nodal_moments=program.nodal_moments)['column']
                 safe('before_factorization')
                 handle=factorize(bordered(matrix,column,free,local_control),MatrixClass.GENERAL,
-                    signature=f'native_translation:{fingerprint}:{index}:{iteration}')
+                    signature=f'native_translation:{fingerprint}:{index}:{iteration}',
+                    options={'forward_error_probe': 'report'})  # N1: tangent/iterative solve, outer residual test accepts
                 delta=np.asarray(handle.solve(-np.r_[force[free],candidate[control]-target]),dtype=float).reshape(-1)
                 if delta.shape!=(len(free)+1,) or not np.isfinite(delta).all():raise ValueError('translation Newton increment range')
                 for cut in range(program.max_backtracks+1):

@@ -201,11 +201,21 @@ def test_free_free_balanced_beam_probes_the_displacement_block() -> None:
     assert 0.0 <= convergence["relative_forward_error_estimate"] <= 1.0e-3
     with AnalysisSession(model) as session:
         u_session, info_session = solve_linear(model, load, session=session)
-        again, _ = solve_linear(model, load, session=session)
         session_convergence = info_session["convergence_info"]
         assert session_convergence["status"] == "converged"
         assert session_convergence["backend"]["forward_error_probe_measured_entries"] == n_displacement
-        # The masked factorization is reused (the hit path passes the same options).
+        first_handle = session._static_operator.handle
+        cache = session.factorization_cache
+        hits, misses = cache.hits, cache.misses
+        again, info_again = solve_linear(model, load, session=session)
+        # The masked factorization is reused (the hit path passes the same
+        # options): a factorization-cache hit, no miss, the identical handle.
+        assert (cache.hits - hits, cache.misses - misses) == (1, 0)
+        assert session._static_operator.handle is first_handle
+        assert first_handle.metadata["cache_hit"] is True
+        assert first_handle.metadata["forward_error_probe_measured_entries"] == n_displacement
+        assert (info_again["convergence_info"]["backend"]["forward_error_probe_measured_entries"]
+                == n_displacement)
         assert session.diagnostics()["counters"]["static_operator_builds"] == 1
         np.testing.assert_array_equal(again, u_session)
     np.testing.assert_allclose(u_session, u, rtol=1e-10, atol=1e-14)
@@ -291,8 +301,14 @@ def test_probe_mask_selects_entries_and_keys_the_cache_by_full_content() -> None
     signature_a = linalg._options_signature({"forward_error_probe_mask": a})
     assert signature_a != linalg._options_signature({"forward_error_probe_mask": b})
     assert signature_a == linalg._options_signature({"forward_error_probe_mask": a.copy()})
-    assert linalg._options_signature({"forward_error_probe_mask": None}) == linalg._options_signature(
-        {"forward_error_probe_mask": None})
+    # A None mask is no mask: it keys apart from a real mask, and the options
+    # without it are unchanged (no digest is substituted).
+    none_signature = linalg._options_signature({"forward_error_probe_mask": None})
+    assert none_signature == '{"forward_error_probe_mask":null}'
+    assert none_signature != signature_a
+    handle = linalg.factorize(matrix, MatrixClass.SYMMETRIC_INDEFINITE,
+                              options={"forward_error_probe_mask": None})
+    assert handle.metadata["forward_error_probe_measured_entries"] == 2000
 
 
 def test_empty_matrix_skips_the_probe() -> None:
@@ -359,11 +375,41 @@ def test_rule_b_refuses_the_hinge_mechanism_through_solve_linear(rule_a_disabled
 
 
 def test_rule_b_refuses_solve_linear_many(rule_a_disabled) -> None:
-    model, load = _hinge_model()
-    _u, info = solve_linear_many(model, [load, load])
+    """R1 #8: two different loads, one consistent with the rz mechanism (passes), one not."""
+
+    model, failing = _hinge_model()
+    passing = LoadCase("out_of_plane")
+    passing.add_nodal_load(21, [0.0, 0.0, -2.0e4, 50.0, 0.0, 0.0])
+    u, info = solve_linear_many(model, [passing, failing])
     assert info["status"] == "failed"
     assert info["relative_backward_error_disposition"] == linalg.FORWARD_ERROR_ESTIMATE_EXCEEDED
     assert str(info["error"]).startswith(linalg.FORWARD_ERROR_ESTIMATE_EXCEEDED)
+    # Per input column evidence (additive); the failure shape is unchanged.
+    estimates = info["relative_forward_error_estimates"]
+    assert len(estimates) == 2
+    assert estimates[0] is not None and estimates[0] <= 1.0e-3
+    assert estimates[1] is None or estimates[1] > 1.0e-3
+    assert info["relative_forward_error_failed_columns"] == [1]
+    assert info["relative_forward_error_estimate"] == (None if estimates[1] is None else max(estimates))
+    # As on the LIMIT_EXCEEDED path: every column is the constrained baseline u0.
+    assert u.shape[1] == 2 and np.array_equal(u[:, 0], u[:, 1])
+    assert np.all(u == 0.0)
+
+
+def test_solve_linear_many_reports_per_column_estimates_when_certified() -> None:
+    model = _beam(4, {"ux": 0.0, "uy": 0.0, "uz": 0.0, "rx": 0.0, "ry": 0.0, "rz": 0.0})
+    loads = []
+    for k, component in enumerate((1, 2)):
+        load = LoadCase(f"tip{k}")
+        vector = [0.0] * 6
+        vector[component] = 1.0e3
+        load.add_nodal_load(5, vector)
+        loads.append(load)
+    _u, info = solve_linear_many(model, loads)
+    assert info["status"] == "converged"
+    assert len(info["relative_forward_error_estimates"]) == 2
+    assert info["relative_forward_error_failed_columns"] == []
+    assert info["relative_forward_error_estimate"] == max(info["relative_forward_error_estimates"])
 
 
 def test_rule_b_refuses_the_static_batch_route(rule_a_disabled) -> None:
@@ -726,3 +772,57 @@ def test_cache_hit_validates_the_probe_mode() -> None:
     # A numpy string scalar is a str and keys exactly as the plain string (a hit).
     again = cache.factorize(matrix, MatrixClass.SPD, options={"forward_error_probe": np.str_("report")})
     assert again.status == "ok" and cache.hits == 1
+
+
+def test_native_beam_arc_predictors_use_report_mode(monkeypatch) -> None:
+    """R1 #5 (N1): the native GE beam arc tangents (bordered predictors) use report mode."""
+
+    import anyfesolver._ge_beam3_arc_program as arc_program
+    import anyfesolver._ge_beam3_native_arc as native_arc
+
+    matrix = sparse.diags([1.0, 2.0], format="csr")
+    column = np.array([-1.0, 0.0])
+    for module, direction in ((arc_program, arc_program._direction), (native_arc, native_arc.direction)):
+        seen = []
+        original = module.factorize
+
+        def spy(matrix, matrix_class, _original=original, _seen=seen, **kwargs):
+            _seen.append(dict(kwargs.get("options") or {}))
+            return _original(matrix, matrix_class, **kwargs)
+
+        monkeypatch.setattr(module, "factorize", spy)
+        direction(matrix, column, np.array([0, 1]), np.array([1.0, 0.0, 0.0]), np.ones(3))
+        assert seen and all(options.get("forward_error_probe") == "report" for options in seen)
+
+
+def test_shell_b2_reference_buckling_shift_invert_uses_report_mode(monkeypatch) -> None:
+    """R1 #5 (decision 2a): a stiffened-shell shift-invert factorization uses report mode."""
+
+    import importlib.util
+    from pathlib import Path
+
+    from anyfesolver import stiffened_shell as api
+
+    spec = importlib.util.spec_from_file_location(
+        "b2_buckling_example_r1",
+        Path(__file__).parents[1] / "examples/stiffened_shell_b2_reference_buckling.py")
+    example = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(example)
+    seen = []
+    original = linalg.factorize_cached
+
+    def spy(matrix, matrix_class, **kwargs):
+        seen.append((linalg._coerce_matrix_class(matrix_class), dict(kwargs.get("options") or {})))
+        return original(matrix, matrix_class, **kwargs)
+
+    owner = api.create_analysis(definition=example.definition())
+    try:
+        load = np.zeros(54)
+        load[[12, 30]] = -1.0
+        monkeypatch.setattr(linalg, "factorize_cached", spy)
+        result = owner.buckling(api.B2ReferenceBucklingRequest(load, example.traction_sources()))
+        assert result.status == "ok", result.failure_reason
+    finally:
+        owner.close()
+    shifted = [options for matrix_class, options in seen if matrix_class == MatrixClass.GENERAL]
+    assert shifted and all(options.get("forward_error_probe") == "report" for options in shifted)
