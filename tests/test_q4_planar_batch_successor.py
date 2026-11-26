@@ -27,7 +27,7 @@ PREDECESSOR_SHA256 = "96EB8040773D4E05F33938C333F34BF63372428D0A7EEE5D099867690A
 RECORDED_BASE_COMMIT = "d4cf5011fea7539b315a37b5de4359591c801ae0"
 # Pinned without history (Codex L4 round 1 P2): a shallow checkout that skips
 # the ancestry checks still refuses a substituted change identity.
-RECORDED_BASE_TREE_LENGTH = 40
+RECORDED_BASE_TREE = "736b9aa3c5c35429d339c0c836b91c474c0bea61"
 RECORDED_CHANGE_COMMIT = "704536ab0c590f09af99ed53a09d8b74eefda119"
 RECORDED_CHANGE_COMMIT_IDS = ("704536ab0", "84810a7dc")
 SEALED_CARRIERS = ("e4_pl_element.py", "matrix_assembly.py")
@@ -133,7 +133,7 @@ def test_record_chains_from_the_pinned_guard_cadence_successor() -> None:
     assert record["predecessor"] == {"path": PREDECESSOR.relative_to(ROOT).as_posix(), **_identity(raw)}
     assert record["schema"] == "anysolver.qualified-q4-planar-batch-successor-v1"
     assert record["base"]["commit"] == RECORDED_BASE_COMMIT
-    assert len(record["base"]["tree"]) == RECORDED_BASE_TREE_LENGTH
+    assert record["base"]["tree"] == RECORDED_BASE_TREE  # Codex L4 round 2 P3
     _assert_change_identity(record)
     assert all(value is False for value in record["qualification_boundary"].values())
     assert len(record["qualification_boundary"]) == 8

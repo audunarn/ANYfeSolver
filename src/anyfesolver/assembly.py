@@ -1963,6 +1963,12 @@ def _qualified_q4_recovery_prepass(
             # Too few rows for a batch: no material or DOF lookups here; the
             # per-element loop runs unchanged (Codex L4 round 1 P3).
             return {}
+        from . import _q4_planar_batch as _batch
+
+        if _batch._known_unavailable():
+            # The batch is already known to be off (self-check failed or the
+            # forced fallback): skip the lookups (Codex L4 round 2 P3).
+            return {}
         candidates = []
         for elem_id, element in exact:
             material = model.get_material(element.material_name)

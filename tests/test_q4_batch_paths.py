@@ -42,12 +42,20 @@ class _CountSolves:
         if code is self.code:
             self.calls += 1
 
+    def _profile(self, frame, event, arg):
+        if event == "call" and frame.f_code is self.code:
+            self.calls += 1
+
     def __enter__(self):
         if hasattr(sys, "monitoring"):
             mon = sys.monitoring
             mon.use_tool_id(self.TOOL, "q4-batch-path-count")
             mon.register_callback(self.TOOL, mon.events.PY_START, self._callback)
             mon.set_local_events(self.TOOL, self.code, mon.events.PY_START)
+        else:
+            # Python 3.11 (Codex L4 round 2 P3): count with a profile hook.
+            self._previous = sys.getprofile()
+            sys.setprofile(self._profile)
         return self
 
     def __exit__(self, *exc):
@@ -56,6 +64,8 @@ class _CountSolves:
             mon.set_local_events(self.TOOL, self.code, 0)
             mon.register_callback(self.TOOL, mon.events.PY_START, None)
             mon.free_tool_id(self.TOOL)
+        else:
+            sys.setprofile(self._previous)
         return False
 
 
@@ -106,10 +116,9 @@ def test_fast_path_equals_forced_fallback(case, n, monkeypatch):
     assert fast[:2] == fallback[:2]
     assert fallback[2] == {"form": 0, "recover": 0}
     assert fast[2]["recover"] > 0
-    if hasattr(sys, "monitoring"):
-        # Every successful batch row replaced exactly one per-element solve.
-        assert fallback[3] > 0
-        assert fast[3] == fallback[3] - fast[2]["form"] - fast[2]["recover"]
+    # Every successful batch row replaced exactly one per-element solve.
+    assert fallback[3] > 0
+    assert fast[3] == fallback[3] - fast[2]["form"] - fast[2]["recover"]
     if case == "rplate":
         # Distinct geometries: every element misses the shared-geometry cache.
         assert fast[2]["form"] == n * n
@@ -129,5 +138,28 @@ def test_path_check_detects_a_batch_that_is_never_consumed(monkeypatch):
     fallback = _run("rplate", 12, monkeypatch, forced=True)
     assert fast[:2] == fallback[:2]
     assert fast[2] == {"form": 0, "recover": 0}  # "recover > 0" in the path test fails
-    if hasattr(sys, "monitoring"):
-        assert fast[3] == fallback[3] > 0
+    assert fast[3] == fallback[3] > 0
+
+
+def test_path_check_detects_a_successful_batch_whose_rows_are_discarded(monkeypatch):
+    """Codex L4 round 2 P3: a kernel that succeeds but whose rows are never
+    used (here: the caller sees a refusal after the kernel ran) is counted as
+    a batch, and the solve-count check then fails on every interpreter."""
+
+    form, recover = B.form, B.recover
+
+    def discarded(kernel):
+        def run(*args, **kwargs):
+            kernel(*args, **kwargs)
+            raise B.PlanarBatchFallback("rows discarded for the test")
+        return run
+
+    monkeypatch.setattr(B, "form", discarded(form))
+    monkeypatch.setattr(B, "recover", discarded(recover))
+    fast = _run("rplate", 12, monkeypatch, forced=False)
+    monkeypatch.undo()
+    fallback = _run("rplate", 12, monkeypatch, forced=True)
+    assert fast[:2] == fallback[:2]
+    # Nothing consumed: every element solved per element, so the path test's
+    # "fast == fallback - rows" equality fails as soon as any row is counted.
+    assert fast[3] == fallback[3] > 0
