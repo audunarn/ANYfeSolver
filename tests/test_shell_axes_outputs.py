@@ -1230,13 +1230,20 @@ def test_r4_hostile_scalar_attribute_types_are_refused():
 def test_r4_v2d_station_check_is_exact_far_from_the_origin():
     """r4 P1: at x = 1e13 a relative bound let a reversed table and a second mesh pass."""
 
-    mesh = FEMesh()
-    for i, p in enumerate([(1.0e13, 0.0, 0.0), (1.0e13 + 1.0, 0.0, 0.0), (1.0e13, 1.0, 0.0)], start=1):
-        mesh.add_node(i, *p)
     el = create_shell_element(
         1, [1, 2, 3], "steel", formulation="e4-pl-s3-v2d", thickness=H, reference_normal=[0.0, 0.0, 1.0], director_polarity=1
     )
     u = np.zeros(18)
+    far = FEMesh()
+    for i, p in enumerate([(1.0e13, 0.0, 0.0), (1.0e13 + 1.0, 0.0, 0.0), (1.0e13, 1.0, 0.0)], start=1):
+        far.add_node(i, *p)
+    with pytest.raises(ShellAxesRefusal) as info:  # option 1: outside the declared domain
+        recover_shell_axes(el, far, u, MATERIAL)
+    assert info.value.code == "AXES_GEOMETRY_CONDITIONING"
+    origin = 1.0e5  # inside the domain (G ~ 3e5): the exact table checks still bite
+    mesh = FEMesh()
+    for i, p in enumerate([(origin, 0.0, 0.0), (origin + 1.0, 0.0, 0.0), (origin, 1.0, 0.0)], start=1):
+        mesh.add_node(i, *p)
     res = el.compute_stresses(mesh, u, MATERIAL, return_global=True)
     assert recover_shell_axes(el, mesh, u, MATERIAL).axes.refusals == {}
     broken = dict(res)
@@ -1245,7 +1252,7 @@ def test_r4_v2d_station_check_is_exact_far_from_the_origin():
         derive(el, mesh, u, broken)
     assert info.value.code == "AXES_STATIONS_NOT_QUALIFIED"
     moved = FEMesh()
-    for i, p in enumerate([(1.0e13, 0.25, 0.0), (1.0e13 + 1.0, 0.25, 0.0), (1.0e13, 1.25, 0.0)], start=1):
+    for i, p in enumerate([(origin, 0.25, 0.0), (origin + 1.0, 0.25, 0.0), (origin, 1.25, 0.0)], start=1):
         moved.add_node(i, *p)
     with pytest.raises(ShellAxesRefusal) as info:
         derive(el, moved, u, res)
@@ -1346,6 +1353,9 @@ def test_r4_surface_stresses_are_tension_on_the_physically_tensioned_fibre(kind,
     res = result.recovery
     missing = [k for k in SURFACE_KEYS if k not in res]
     assert not missing, (kind, missing)  # r5 P3: never skip when a field disappears
+    n_stations = result.axes.arrays["recovery_station_positions"].shape[0]
+    for key in SURFACE_KEYS:  # r6 P3: twelve empty arrays would pass vacuously
+        assert np.asarray(res[key]).shape == (n_stations,) and n_stations > 0, key
     director = np.asarray(el.physical_reference_director, dtype=float)
     if kind == "e4pl":
         top_offset, bot_offset = 0.5 * H, -0.5 * H
@@ -1383,7 +1393,7 @@ def test_r5_large_origin_is_not_a_spurious_rule_6_refusal(kind):
 
     e1 = np.array([1.1, 0.4, 0.39])
     e2 = np.array([0.04, 1.05, 0.89])
-    origin = np.array([1.0e6, 1.0e6, 1.0e6])
+    origin = np.array([1.0e5, 1.0e5, 1.0e5])  # inside the declared domain (G ~ 1.8e5)
     mesh = FEMesh()
     for i, p in enumerate((origin, origin + e1, origin + e1 + e2, origin + e2), start=1):
         mesh.add_node(i, *p)
@@ -1417,9 +1427,10 @@ def test_r5_ill_conditioned_warped_centre_shear_is_not_certified():
     def rotate_centre(role, frames):
         return np.asarray(frames) @ _rz(1.0e-8) if role == "centre" else frames
 
-    out = recover_shell_axes(el, mesh, u, MATERIAL, _frame_override=rotate_centre).axes
-    assert not out.certified["shear"], out.diagnostics.get("shear")
-    assert FAMILY_KEYS["shear"] not in out.arrays
+    # option 1: this geometry (aspect 1e13) is outside the declared domain
+    with pytest.raises(ShellAxesRefusal) as info:
+        recover_shell_axes(el, mesh, u, MATERIAL, _frame_override=rotate_centre)
+    assert info.value.code == "AXES_GEOMETRY_CONDITIONING"
 
 
 # --------------------------------------- option P (owner 2026-11-26): r5 repeats
@@ -1515,3 +1526,133 @@ def test_p_object_and_ragged_natural_points_are_typed_refusals():
         with pytest.raises(ShellAxesRefusal) as info:
             recover_shell_axes(el, mesh, u, MATERIAL, natural_points=request)
         assert info.value.code == "AXES_STATIONS_NOT_QUALIFIED", request
+
+
+# ------------------------------- option 1 (owner 2026-11-26): domain, ordinary inputs
+from anyfesolver.shell_axes_outputs import GEOMETRY_CONDITIONING_LIMIT, GEOMETRY_ROUNDOFF  # noqa: E402
+
+
+def _square_e4pl(offset, *, warped=0.0, side=1.0):
+    mesh = FEMesh()
+    for i, (x, y) in enumerate(((0.0, 0.0), (side, 0.0), (side, side), (0.0, side)), start=1):
+        z = warped * (1.0 if i in (1, 3) else -1.0)
+        mesh.add_node(i, offset + x, offset + y, offset + z)
+    el = create_shell_element(
+        1, [1, 2, 3, 4], "steel", formulation="e4-pl", thickness=H, reference_normal=[0.0, 0.0, 1.0], director_polarity=1
+    )
+    return el, mesh
+
+
+def _element_conditioning(el, mesh):
+    import anyfesolver.shell_axes_outputs as module
+
+    coords = np.asarray(el.get_node_coordinates(mesh), dtype=float)
+    values = [module._geometry_conditioning(coords, coords[2] - coords[0], coords[3] - coords[1])]
+    for xi, eta in np.asarray(el.gauss_points, dtype=float):
+        _n, dxi, deta = el.compute_shape_functions(float(xi), float(eta))
+        values.append(module._geometry_conditioning(coords, np.asarray(dxi) @ coords, np.asarray(deta) @ coords))
+    return max(values)
+
+
+def _square_at(fraction, *, warped=0.0):
+    """e4-pl unit square translated so that its geometry conditioning is
+    ``fraction`` of the declared limit (bisection on the module's own G)."""
+
+    low, high = 0.0, 1.0e8
+    for _ in range(200):
+        mid = 0.5 * (low + high)
+        el, mesh = _square_e4pl(mid, warped=warped)
+        if _element_conditioning(el, mesh) < fraction * GEOMETRY_CONDITIONING_LIMIT:
+            low = mid
+        else:
+            high = mid
+    el, mesh = _square_e4pl(low, warped=warped)
+    assert abs(_element_conditioning(el, mesh) / GEOMETRY_CONDITIONING_LIMIT - fraction) < 1e-3 * fraction
+    return el, mesh
+
+
+def _rx(angle):
+    c, s = math.cos(angle), math.sin(angle)
+    return np.array([[1.0, 0.0, 0.0], [0.0, c, -s], [0.0, s, c]])
+
+
+@pytest.mark.parametrize("fraction", (0.8, 0.999))
+def test_domain_inside_boundary_reversed_normal_and_tilt_are_refused(fraction):
+    """Just inside the domain: ordinary input certifies; a reversed normal and a
+    normal tilt of 1e-9 (the resolution) are refused."""
+
+    el, mesh = _square_at(fraction)
+    for u in (np.zeros(24), np.tile(np.array([0.0, 0.0, 0.0, -0.001, 0.0, 0.0]), 4)):
+        assert recover_shell_axes(el, mesh, u, MATERIAL).axes.refusals == {}
+        flipped = recover_shell_axes(el, mesh, u, MATERIAL, _frame_override=_flip_y_and_normal).axes
+        assert set(flipped.refusals) >= set(FAMILIES), flipped.refusals
+        tilted = recover_shell_axes(el, mesh, u, MATERIAL, _frame_override=_override(_rx(1.0e-9))).axes
+        assert set(tilted.refusals) >= set(FAMILIES), tilted.refusals
+
+
+def test_domain_inside_boundary_warped_centre_tilt_is_refused():
+    """r6 P1 #5 inside the domain: a centre-plane tilt is seen by rule (6)."""
+
+    el, mesh = _square_at(0.8, warped=0.02)
+    u = np.tile(np.array([0.0, 0.0, 0.0, -0.001, 0.0, 0.0]), 4)
+    honest = recover_shell_axes(el, mesh, u, MATERIAL).axes
+    # the rotation-only field leaves membrane/bending unresolvable on this
+    # surface-only branch (rule (3)); shear is the family under test
+    assert honest.certified["shear"], honest.refusals
+    assert {r.reason for r in honest.refusals.values()} <= {"unresolvable_family"}, honest.refusals
+    out = recover_shell_axes(el, mesh, u, MATERIAL, _frame_override=_override(_rx(1.0e-8), roles=("centre",))).axes
+    assert not out.certified["shear"], out.refusals
+
+
+@pytest.mark.parametrize("z", ("1.25 limit", 2.0e14))
+def test_domain_outside_is_a_typed_conditioning_refusal(z):
+    """r6 P1 #4: outside the declared domain the module refuses instead of bounding."""
+
+    if z == "1.25 limit":
+        el, mesh = _square_at(1.25)
+    else:
+        el, mesh = _square_e4pl(0.0)
+        mesh = FEMesh()
+        for i, (x, y) in enumerate(((0, 0), (1, 0), (1, 1), (0, 1)), start=1):
+            mesh.add_node(i, float(x), float(y), z)
+    with pytest.raises(ShellAxesRefusal) as info:
+        recover_shell_axes(el, mesh, np.zeros(24), MATERIAL)
+    assert info.value.code == "AXES_GEOMETRY_CONDITIONING"
+
+
+def test_domain_nearly_parallel_diagonals_inside_the_domain_certify():
+    """r6 P2 #6: the conditioned bound covers nearly parallel diagonals."""
+
+    u_dir = np.array([1.0, 2.0, 3.0]) / math.sqrt(14.0)
+    v_dir = np.array([3.0, 0.0, -1.0]) / math.sqrt(10.0)
+    normal = np.cross(u_dir, v_dir)
+    normal /= np.linalg.norm(normal)
+    mesh = FEMesh()
+    for i, (r, s) in enumerate(((-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)), start=1):
+        mesh.add_node(i, *(r * u_dir + 1.0e-5 * s * v_dir))
+    el = create_shell_element(
+        1, [1, 2, 3, 4], "steel", formulation="e4-pl", thickness=H,
+        reference_normal=[float(v) for v in normal], director_polarity=1,
+    )
+    out = recover_shell_axes(el, mesh, np.zeros(24), MATERIAL).axes
+    assert out.refusals == {}, out.refusals
+
+
+def test_ordinary_element_activity_int64_ids_and_float32_coordinates_are_admitted():
+    """r6 P2 #8: ordinary solver inputs the legacy recovery accepts."""
+
+    from anyfesolver.activity import ElementActivity
+
+    el, mesh, loc = build("legacy", "q4", "h")
+    mesh.element_activity = ElementActivity([1])  # what FEModel.set_element_activity attaches
+    assert recover_shell_axes(el, mesh, displacement(loc), MATERIAL).axes.refusals == {}
+
+    el, mesh, loc = build("legacy", "q4", "h")
+    wide = ShellElement(1, [np.int64(i) for i in (1, 2, 3, 4)], "steel", thickness=H)
+    assert recover_shell_axes(wide, mesh, displacement(loc), MATERIAL).axes.refusals == {}
+
+    el, mesh, loc = build("legacy", "q4", "h")
+    for node in mesh.nodes.values():
+        node.x, node.y, node.z = (np.float32(node.x), np.float32(node.y), np.float32(node.z))
+    out = recover_shell_axes(el, mesh, displacement(loc), MATERIAL).axes
+    assert {r.reason for r in out.refusals.values()} <= {"unresolvable_family"}, out.refusals

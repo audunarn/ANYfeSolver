@@ -33,11 +33,26 @@ never raises: the family is refused with ``AXES_FRAME_RULE_MISMATCH`` and its
 derived array is omitted; a frame that a refused family shows wrong feeds no
 returned value.
 
-Before anything else the element is admitted by exact type, instance
-attributes shadowing element methods are refused, and the scalar attributes
-both the recovery and this module read must be exact built-in types
+Contract (owner 2026-11-26, option 1).  Trust boundary A'' with one
+narrowing for this opt-in module: customising the Python object model INSIDE
+solver-owned values (instance overrides in a section, mapping, material or
+activity object; custom mapping or key behaviour; metaclass tricks) is out of
+contract.  As defence in depth the module still admits, by type identity and
+before any other access, only exact element / FEMesh / Node objects with an
+exact ``dict`` instance dict, ``str`` keys, no instance attribute naming a
+class attribute (declared dataclass fields excepted) and plain values (exact
+scalars, containers, numeric ndarrays, or exact solver-owned classes, which
+are not looked into); custom subclasses of these objects are refused.  The
+scalar attributes both the recovery and this module read must be exact types
 (``float``/``int``/``numpy.float64``; polarity ``int`` +-1; reference normal a
 float64 ndarray of shape (3,) or None).
+
+Geometry domain: every element must have geometry conditioning ``G = (max|x|
+/ shortest tangent, diagonal or edge + 1) |a||b| / |a x b| <= 5e5`` (see
+``GEOMETRY_CONDITIONING_LIMIT``); outside it the module raises
+``AXES_GEOMETRY_CONDITIONING``.  Inside it no reversed basis normal and no
+normal tilt above 1e-9 can certify.  Models far from their origin relative to
+the element size (e.g. georeferenced coordinates) must be translated first.
 
 Frames per branch (``station`` = per recovery point, ``centre`` = element
 centre; families m = membrane, b = bending, q = shear):
@@ -109,12 +124,20 @@ ORTHONORMAL_BOUND = 1.0e-13  # |G^T G - I| of every frame used (and det G > 0); 
 GEOMETRY_BOUND = 1.0e-13  # rule (6): |n - n_geometry| (measured <= 2.3e-16 on every fixture) ...
 # ... plus the roundoff of coordinate differences: 64 eps max|x| / (shortest
 # tangent, diagonal or edge used), so a large origin is not a spurious refusal
-GEOMETRY_ROUNDOFF = 64.0 * EPS
+# Measured |n - n_geometry| <= 0.335 eps G (300 random elements, origins to
+# 1e7, slivers to 1e-4) and <= 0.008 eps G on ANYfem barge5: 8 eps is 24x that.
+GEOMETRY_ROUNDOFF = 8.0 * EPS
+# Declared geometry domain (owner 2026-11-26): G <= 5e5 keeps the rule (6)
+# bound <= 1e-13 + 8 eps 5e5 = 8.9e-10 < RESOLUTION, so inside the domain no
+# reversed normal and no normal tilt above 1e-9 certifies; outside it the
+# module refuses (AXES_GEOMETRY_CONDITIONING).  Measured: barge5 G <= 5.0e3
+# (median 5.4e2), solver test fixtures G <= 5.4.
+GEOMETRY_CONDITIONING_LIMIT = 5.0e5
 _FLOAT_TYPES = (float, int, np.float64)
 _INT_TYPES = (int, np.int64)
 # Option P (owner 2026-11-26): plain-object admission by type IDENTITY (never
 # ``==`` or ``in``, which a metaclass can answer).
-_PLAIN_SCALARS = (float, int, bool, str, bytes, type(None), np.float64, np.int64, np.bool_)
+_PLAIN_SCALARS = (float, int, bool, str, bytes, type(None), np.float64, np.float32, np.int64, np.int32, np.bool_)
 _PLAIN_CONTAINERS = (tuple, list, set, frozenset)
 _PLAIN_BUDGET = 200_000  # values visited per object (measured qualified S3 guard: see the API note)
 
@@ -298,6 +321,7 @@ def _solver_value_types() -> Tuple[type, ...]:
 
     from anymaterial import IsotropicMaterial, OrthotropicMaterial
 
+    from .activity import ElementActivity
     from .fe_core import DOFManager, FEMesh, _QualifiedMutationEpoch, _QualifiedStateMapping
     from .shell_sections import GeneralizedShellSection
 
@@ -311,6 +335,7 @@ def _solver_value_types() -> Tuple[type, ...]:
         FEMesh,
         IsotropicMaterial,
         OrthotropicMaterial,
+        ElementActivity,  # FEModel.set_element_activity attaches it to the mesh
     )
 
 
@@ -420,7 +445,7 @@ def _admit_mesh_and_nodes(element_dict: Mapping[str, Any], mesh: Any) -> None:
     if not (type(nodes) is _QualifiedStateMapping or type(nodes) is dict):
         raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", "mesh.nodes is not the solver node mapping")
     node_ids = element_dict.get("node_ids")
-    if not (_is(type(node_ids), (tuple, list)) and all(type(n) is int for n in node_ids)):
+    if not (_is(type(node_ids), (tuple, list)) and all(_is(type(n), (int, np.int64, np.int32)) for n in node_ids)):
         raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", "element node_ids are not exact ints")
     for node_id in node_ids:
         node = dict.get(nodes, node_id)
@@ -460,11 +485,59 @@ def _cross(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     )
 
 
-def _geometry_bound(coords: np.ndarray, *lengths: float) -> float:
-    shortest = min(float(length) for length in lengths)
-    if not (math.isfinite(shortest) and shortest > 0.0):
+def _geometry_conditioning(coords: np.ndarray, a: np.ndarray, b: np.ndarray, *lengths: float) -> float:
+    """G = (max|x| / shortest vector + 1) * |a||b| / |a x b| for the two vectors
+    a, b whose cross product gives a geometric normal (tangents, diagonals or
+    edges).  Relative roundoff of the normal is <= 64 eps G: the first factor
+    covers coordinate differences far from the origin, the second the
+    cancellation of a nearly parallel pair."""
+
+    la = math.sqrt(float(a @ a))
+    lb = math.sqrt(float(b @ b))
+    cross = _cross(a, b)
+    area = math.sqrt(float(cross @ cross))
+    shortest = min([la, lb, *(float(length) for length in lengths)])
+    if not (math.isfinite(shortest) and shortest > 0.0 and math.isfinite(area) and area > 0.0):
         raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "zero or nonfinite tangent, diagonal or edge")
-    return GEOMETRY_BOUND + GEOMETRY_ROUNDOFF * float(np.max(np.abs(coords))) / shortest
+    return (float(np.max(np.abs(coords))) / shortest + 1.0) * (la * lb / area)
+
+
+def _check_geometry_domain(element: Any, coords: np.ndarray) -> float:
+    """The declared domain, the same measure for every branch: the largest G
+    over the edges (3-node), or the diagonals (4-node) and the shape-function
+    tangents at the element's own stations (4-, 6- and 8-node)."""
+
+    if len(coords) == 3:
+        values = [_geometry_conditioning(coords, coords[1] - coords[0], coords[2] - coords[0],
+                                         math.sqrt(float((coords[2] - coords[1]) @ (coords[2] - coords[1]))))]
+    else:
+        values = []
+        if len(coords) == 4:
+            values.append(_geometry_conditioning(coords, coords[2] - coords[0], coords[3] - coords[1]))
+        for xi, eta in np.asarray(element.gauss_points, dtype=float):
+            _n, d_xi, d_eta = element.compute_shape_functions(float(xi), float(eta))
+            values.append(_geometry_conditioning(coords, np.asarray(d_xi, dtype=float) @ coords, np.asarray(d_eta, dtype=float) @ coords))
+    conditioning = max(values)
+    if not conditioning <= GEOMETRY_CONDITIONING_LIMIT:
+        raise ShellAxesRefusal(
+            "AXES_GEOMETRY_CONDITIONING",
+            f"geometry conditioning G={conditioning:.3e} is outside the declared domain "
+            f"G <= {GEOMETRY_CONDITIONING_LIMIT:.0e} (|x| / element size, or nearly parallel edges)",
+        )
+    return conditioning
+
+
+def _geometry_bound(coords: np.ndarray, a: np.ndarray, b: np.ndarray, *lengths: float) -> float:
+    """Rule (6) bound inside the declared geometry domain; outside it a typed refusal."""
+
+    conditioning = _geometry_conditioning(coords, a, b, *lengths)
+    if not conditioning <= GEOMETRY_CONDITIONING_LIMIT:
+        raise ShellAxesRefusal(
+            "AXES_GEOMETRY_CONDITIONING",
+            f"geometry conditioning G={conditioning:.3e} is outside the declared domain "
+            f"G <= {GEOMETRY_CONDITIONING_LIMIT:.0e} (|x| / element size, or nearly parallel edges)",
+        )
+    return GEOMETRY_BOUND + GEOMETRY_ROUNDOFF * conditioning
 
 
 def _unit_normal(cross: np.ndarray) -> np.ndarray:
@@ -481,7 +554,7 @@ def _diagonal_normal(coords: np.ndarray) -> Tuple[np.ndarray, float]:
     d1 = coords[2] - coords[0]
     d2 = coords[3] - coords[1]
     normal = _unit_normal(_cross(d1, d2))
-    return normal[None], _geometry_bound(coords, math.sqrt(float(d1 @ d1)), math.sqrt(float(d2 @ d2)))
+    return normal[None], _geometry_bound(coords, d1, d2)
 
 
 def _facet_normal(coords: np.ndarray, owner: Any) -> Tuple[np.ndarray, float]:
@@ -494,7 +567,7 @@ def _facet_normal(coords: np.ndarray, owner: Any) -> Tuple[np.ndarray, float]:
     alignment = float(normal @ np.asarray(owner, dtype=float))
     if not (math.isfinite(alignment) and alignment != 0.0):
         raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "owner normal is tangential to the facet")
-    bound = _geometry_bound(coords, *(math.sqrt(float(e @ e)) for e in (e1, e2, e3)))
+    bound = _geometry_bound(coords, e1, e2, math.sqrt(float(e3 @ e3)))
     return (normal if alignment > 0.0 else -normal)[None], bound
 
 
@@ -509,7 +582,7 @@ def _tangent_normals(element: Any, coords: np.ndarray, points: np.ndarray) -> Tu
         a = np.asarray(d_xi, dtype=float) @ coords
         b = np.asarray(d_eta, dtype=float) @ coords
         out[index] = _unit_normal(_cross(a, b))
-        bounds[index] = _geometry_bound(coords, math.sqrt(float(a @ a)), math.sqrt(float(b @ b)))
+        bounds[index] = _geometry_bound(coords, a, b)
     return out, bounds
 
 
@@ -696,6 +769,7 @@ def _resolve_branch(element, mesh, material, recovered, override, requested) -> 
     except (TypeError, ValueError) as exc:
         raise ShellAxesRefusal("AXES_RECOVERY_MALFORMED", f"node coordinates: {exc}") from None
     coords = _numeric(raw, "node coordinates")
+    _check_geometry_domain(element, coords)
     n = _station_count(recovered, generalized)
 
     def no_custom_stations(what: str) -> None:
@@ -867,6 +941,7 @@ def _resolve_branch(element, mesh, material, recovered, override, requested) -> 
             )
         if element.reference_normal is None:
             raise ShellAxesRefusal("AXES_FORMULATION_NOT_QUALIFIED", "S3 V2D without reference_normal")
+        _facet_normal(coords, element.reference_normal)  # geometry domain (the V2D normal is the owner normal)
         frame, orthonormal_bound = _v2d_frame(coords, np.asarray(element.reference_normal, dtype=float), _NORMAL_TOLERANCE)
         if "frame" not in recovered:
             raise ShellAxesRefusal("AXES_RETURN_GLOBAL_REQUIRED", "V2D recovery without its frame")

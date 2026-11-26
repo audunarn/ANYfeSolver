@@ -168,6 +168,7 @@ def test_functional_lane_direct_shell_calls_are_non_q4_or_explicit_refusal() -> 
             ("tests/test_shell_axes_outputs.py", "build"): 1,
             ("tests/test_shell_axes_outputs.py", "_q4_about_z"): 1,
             ("tests/test_shell_axes_outputs.py", "test_r5_large_origin_is_not_a_spurious_rule_6_refusal"): 1,
+            ("tests/test_shell_axes_outputs.py", "test_ordinary_element_activity_int64_ids_and_float32_coordinates_are_admitted"): 1,
         }
     )
     # This explicit negative constructs legacy Q4 only to verify rejection by
