@@ -166,6 +166,13 @@ runs and no other thread mutates V2D elements.
   records once any record takes the guarded route) and `_build_trusted_v2d_recovery_require` (lease trusted-state check
   plus captured V2D authority plus provider identity; a complete guard after converting non-plain recovery inputs) make
   the common forms of such rewriting fall back to the reference path, but are not an exhaustive defence against them.
+  Addition (owner trust boundary, 2026-11-26, recovery-guard follow-up): writes into a package object's instance namespace
+  that bypass attribute assignment (`object.__dict__` / `vars()` edits, non-str keys) are outside supported use, like
+  run-time class rewriting; the shortcuts make their common forms fall back but are not an exhaustive defence. Hostile
+  caller DATA stays in scope: objects passed as arguments (element ids, flags, displacement arrays and their dtypes,
+  including custom metaclasses on those argument objects) and caller element subclasses with ordinary metaclasses must
+  never get a different answer or skip a refusal. Custom metaclasses on element classes placed in the model remain
+  outside supported use (contract above).
 
 ## static_batch enumeration (round 4; all now identity-classified)
 Inside the core trusted span: none (the span is the kernel, the V2D guard and the load-vector assembly). Upstream/outside the span but

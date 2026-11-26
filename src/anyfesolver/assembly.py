@@ -1970,16 +1970,26 @@ def _compute_stresses_under_lease(
     mesh = model.mesh
     stresses: Dict[int, Dict[str, np.ndarray]] = {}
     # Converting caller inputs may run foreign code (``__array__``,
-    # ``__float__``, ``__int__``, a custom iterable).  Constant-time element
-    # checks below assume no foreign code ran since the last complete guard,
-    # so such a conversion is followed by one.
+    # ``__float__``, ``__int__``, a custom iterable, a NumPy floating-point
+    # error callback during a dtype cast), and the global-recovery capability
+    # check reads element attributes.  Constant-time element checks below
+    # assume no foreign code ran since the last complete guard, so either is
+    # followed by one.  Only an exact float64 ndarray is converted without
+    # arithmetic (``np.asarray`` returns it as is).
     inputs_are_plain = (
-        type(displacements) is np.ndarray
-        and displacements.dtype.kind in "biuf"
+        # ``is False``: a caller object's ``__bool__`` must not be consulted here
+        # (it is read again below and could answer differently).
+        return_global is False
+        and type(displacements) is np.ndarray
+        and displacements.dtype == np.float64
+        and type(displacements.dtype) is type(np.dtype(np.float64))
         and (
             element_ids is None
             or (
-                type(element_ids) in (list, tuple)
+                # Identity, not ``in``: ``==`` on a type could run a metaclass
+                # ``__eq__``, and only an exact list/tuple may be iterated here
+                # without a guard (twice: here and below).
+                (type(element_ids) is list or type(element_ids) is tuple)
                 and all(type(element_id) is int for element_id in element_ids)
             )
         )
