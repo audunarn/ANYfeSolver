@@ -12,6 +12,29 @@ recovery, serialization.  Everything else (nonlinear/current-state, restart
 state, contact, mass/geometric stiffness, reference offset, reversed polarity,
 generalized sections, plastic or non-isotropic materials, mixed shell scope)
 is refused with ``NativeParityCapabilityError``.
+
+Trust contract (owner decision 2026-11-26, consistent with trust boundary A'').
+The process-wide local-block cache and the registry-scope cache are sound for
+every input reachable through the documented construction, solve, recovery and
+serialization routes, including hostile *data* (non-finite and extreme values,
+float/Material subclasses), instance attributes (protected names are refused at
+assignment, shadows are refused at use) and subclasses (refused).  Mutation or
+rebinding of shared library state at run time is outside the supported surface:
+module-level arrays of this package (quadrature rules, index arrays, cached
+material matrices, cache entries and their write flags), numpy flag/stride/view
+manipulation of arrays the package owns, ``__class__`` reassignment, custom
+metaclasses and direct ``__dict__``/``object.__setattr__`` writes.
+
+Known v1 limits (generic package behaviour, not specific to this element):
+(1) the legacy contact module admits every ``ShellElement``
+(``contact.py::_shell_contact_candidates``), so sphere-contact assembly accepts
+this element as it accepts the default V2D; (2) ``recover_stress_result``
+accepts caller-supplied ``element_states`` and ``kinematics`` for any shell;
+(3) an explicit unbound base-class call such as
+``ShellElement.compute_mass_matrix(element, ...)`` bypasses the typed refusals,
+because the sealed dispatch-guard list in ``elements.py`` does not know the
+formulation id (closed by the registration step).  The element is not
+registered in ``elements.py`` and is not reachable from the factory or ANYfem.
 """
 from __future__ import annotations
 
