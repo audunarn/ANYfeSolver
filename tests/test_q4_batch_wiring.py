@@ -506,8 +506,11 @@ def test_failing_assembly_with_later_stale_cache_converges():
     candidate = _later_stale_cache_run(False)
     assert reference[0][0] == "raise" and candidate[0] == reference[0]
     assert reference[1] is True
-    if WIRED:
-        # The documented difference (not a defect under decision A).
+    if WIRED and B.available():
+        # The documented difference (not a defect under decision A); with the
+        # batch disabled by its self-check both runs keep the later cache.
         assert candidate[1] is False
+    else:
+        assert candidate[1] is True
     assert reference[2][0] == "ok" and candidate[2] == reference[2]
     assert candidate[3] == reference[3]

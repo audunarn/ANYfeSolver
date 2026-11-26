@@ -102,6 +102,13 @@ def _run(case, n, monkeypatch, forced):
     return hu.hexdigest(), hs.hexdigest(), rows, solves.calls
 
 
+def _assert_consumed(fast, fallback):
+    """Every counted (successful) batch row replaced exactly one per-element solve."""
+
+    assert fallback[3] > 0
+    assert fast[3] == fallback[3] - fast[2]["form"] - fast[2]["recover"]
+
+
 def test_batch_available_on_ci():
     assert B.available() is True
     with B._forced_fallback():
@@ -116,9 +123,7 @@ def test_fast_path_equals_forced_fallback(case, n, monkeypatch):
     assert fast[:2] == fallback[:2]
     assert fallback[2] == {"form": 0, "recover": 0}
     assert fast[2]["recover"] > 0
-    # Every successful batch row replaced exactly one per-element solve.
-    assert fallback[3] > 0
-    assert fast[3] == fallback[3] - fast[2]["form"] - fast[2]["recover"]
+    _assert_consumed(fast, fallback)
     if case == "rplate":
         # Distinct geometries: every element misses the shared-geometry cache.
         assert fast[2]["form"] == n * n
@@ -141,25 +146,26 @@ def test_path_check_detects_a_batch_that_is_never_consumed(monkeypatch):
     assert fast[3] == fallback[3] > 0
 
 
-def test_path_check_detects_a_successful_batch_whose_rows_are_discarded(monkeypatch):
-    """Codex L4 round 2 P3: a kernel that succeeds but whose rows are never
-    used (here: the caller sees a refusal after the kernel ran) is counted as
-    a batch, and the solve-count check then fails on every interpreter."""
+def test_path_check_detects_counted_rows_that_are_not_consumed(monkeypatch):
+    """Codex L4 rounds 2/3 P3: rows counted as successful batch output but not
+    consumed by the solve must fail the consumption check on every
+    interpreter.  The counts of a real batched run are paired with the
+    per-element solve count of a run whose batch was not consumed; the check
+    must refuse that pairing."""
 
-    form, recover = B.form, B.recover
-
-    def discarded(kernel):
-        def run(*args, **kwargs):
-            kernel(*args, **kwargs)
-            raise B.PlanarBatchFallback("rows discarded for the test")
-        return run
-
-    monkeypatch.setattr(B, "form", discarded(form))
-    monkeypatch.setattr(B, "recover", discarded(recover))
-    fast = _run("rplate", 12, monkeypatch, forced=False)
-    monkeypatch.undo()
+    used = _run("rplate", 12, monkeypatch, forced=False)
     fallback = _run("rplate", 12, monkeypatch, forced=True)
-    assert fast[:2] == fallback[:2]
-    # Nothing consumed: every element solved per element, so the path test's
-    # "fast == fallback - rows" equality fails as soon as any row is counted.
-    assert fast[3] == fallback[3] > 0
+    _assert_consumed(used, fallback)
+    assert used[2]["form"] > 0 and used[2]["recover"] > 0
+
+    def refusing(*args, **kwargs):
+        raise B.PlanarBatchFallback("refused for the test")
+
+    monkeypatch.setattr(B, "form", refusing)
+    monkeypatch.setattr(B, "recover", refusing)
+    unused = _run("rplate", 12, monkeypatch, forced=False)
+    monkeypatch.undo()
+    assert unused[3] == fallback[3]
+    counted_but_unused = (unused[0], unused[1], used[2], unused[3])
+    with pytest.raises(AssertionError):
+        _assert_consumed(counted_but_unused, fallback)
