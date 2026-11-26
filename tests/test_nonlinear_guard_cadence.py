@@ -1474,6 +1474,9 @@ def _assert_successor_bindings(payload: dict) -> bool:
         assert row["prior_lf"] != row["current_lf"]
     assert tuple(sorted(change["other_changed_sources"])) == OTHER_CHANGED_SOURCES
     for name, row in change["other_changed_sources"].items():
+        # Codex P2 (#92 shallow review): a row must bind the file its key names.
+        assert set(row) == {"current_lf_git_blob", "live_path", "prior_lf_git_blob"}
+        assert row["live_path"] == f"src/anyfesolver/{name}"
         live = _read_checkout(row["live_path"]).replace(b"\r\n", b"\n")
         assert _identity(live)["git_blob"] == row["current_lf_git_blob"]
         assert row["prior_lf_git_blob"] != row["current_lf_git_blob"]
@@ -1726,3 +1729,17 @@ def test_guard_cadence_successor_defers_only_ancestry_at_the_github_shallow_boun
     monkeypatch.setattr(module, "GIT_ROOT", full)
     with pytest.raises(AssertionError):
         _assert_successor_bindings(payload)
+
+
+@pytest.mark.parametrize("name", OTHER_CHANGED_SOURCES)
+def test_guard_cadence_successor_rows_bind_the_file_their_key_names(name) -> None:
+    """Codex P2 (#92 shallow review): replacing one other_changed_sources row
+    with another valid row must be refused, so the keyed file is checked."""
+
+    payload = _load_successor()
+    rows = payload["change"]["other_changed_sources"]
+    donor = next(other for other in OTHER_CHANGED_SOURCES if other != name)
+    mutated = copy.deepcopy(payload)
+    mutated["change"]["other_changed_sources"][name] = copy.deepcopy(rows[donor])
+    with pytest.raises(AssertionError):
+        _assert_successor_bindings(mutated)
