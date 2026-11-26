@@ -32,6 +32,7 @@ import copy
 import hashlib
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import warnings
@@ -1315,13 +1316,70 @@ def _git(*args: str) -> subprocess.CompletedProcess:
     )
 
 
-def _assert_change_commit(commit) -> None:
+SHALLOW_BOUNDARY_SKIP = (
+    "commit history is absent at the explicit GitHub shallow boundary "
+    "(actions/checkout fetch-depth 1); every byte binding was checked, "
+    "ancestry is checked in full clones and by the builder's --check"
+)
+
+
+def _is_explicit_github_shallow_boundary() -> bool:
+    """True only in a GitHub Actions checkout that git itself records as
+    shallow with HEAD as a shallow boundary.  Anywhere else absent history
+    is a refusal, never a skip (same rule as the S3 V2 candidate binding)."""
+
+    if os.environ.get("GITHUB_ACTIONS") != "true":
+        return False
+    shallow = _git("rev-parse", "--is-shallow-repository")
+    if shallow.returncode or shallow.stdout.strip() != b"true":
+        return False
+    name = _git("rev-parse", "--git-path", "shallow")
+    head = _git("rev-parse", "HEAD")
+    if name.returncode or head.returncode:
+        return False
+    path = Path(os.fsdecode(name.stdout.strip()))
+    if not path.is_absolute():
+        path = Path(GIT_ROOT) / path
+    if not path.is_file():
+        return False
+    return head.stdout.decode("ascii").strip() in path.read_text(encoding="ascii").splitlines()
+
+
+def _history_present(*revisions: str) -> bool:
+    return all(
+        _git("cat-file", "-e", f"{revision}^{{commit}}").returncode == 0
+        for revision in revisions
+    )
+
+
+def _require_history(*revisions: str) -> None:
+    """Skip only at the explicit GitHub shallow boundary; refuse elsewhere."""
+
+    if _history_present(*revisions):
+        return
+    assert _is_explicit_github_shallow_boundary(), (
+        f"recorded commits are not in this repository: {revisions}"
+    )
+    pytest.skip(SHALLOW_BOUNDARY_SKIP)
+
+
+def _assert_change_commit(commit) -> bool:
+    """Validate change.commit; return False only when its history is absent
+    at the explicit GitHub shallow boundary (the caller then skips after its
+    byte checks).  Absent history anywhere else fails closed."""
+
     assert type(commit) is str and len(commit) == 40
     assert all(c in "0123456789abcdef" for c in commit)
+    if not _history_present(commit, f"{commit}^"):
+        assert _is_explicit_github_shallow_boundary(), (
+            f"change.commit {commit} (or its parent) is not in this repository"
+        )
+        return False
     assert _git("merge-base", "--is-ancestor", commit, "HEAD").returncode == 0
     touched = _git("diff", "--name-only", f"{commit}^", commit)
     assert touched.returncode == 0
     assert CHANGE_COMMIT_TOUCHES in touched.stdout.decode().split()
+    return True
 
 
 def _identity(data: bytes) -> dict:
@@ -1375,7 +1433,7 @@ def _load_successor() -> dict:
     return payload
 
 
-def _assert_successor_bindings(payload: dict) -> None:
+def _assert_successor_bindings(payload: dict) -> bool:
     assert payload["schema"] == "anysolver.qualified-shell-nonlinear-guard-cadence-successor-v1"
     assert set(payload["base"]) == {"commit", "tree"}
     assert all(len(value) == 40 for value in payload["base"].values())
@@ -1394,7 +1452,7 @@ def _assert_successor_bindings(payload: dict) -> None:
         "qualified_recovery_changed": False,
     }
     change = payload["change"]
-    _assert_change_commit(change["commit"])
+    history_verified = _assert_change_commit(change["commit"])
     assert tuple(sorted(change["sealed_carriers"])) == SEALED_CARRIERS
     for name, row in change["sealed_carriers"].items():
         assert row["live_path"] == f"src/anyfesolver/{name}"
@@ -1443,10 +1501,12 @@ def _assert_successor_bindings(payload: dict) -> None:
     assert payload["review"]["outcome"] in {"PENDING", "ACCEPT"}
     if payload["review"]["outcome"] == "PENDING":
         assert payload["terminal"] == "PENDING_INDEPENDENT_REVIEW"
+    return history_verified
 
 
 def test_guard_cadence_successor_binds_every_changed_source() -> None:
-    _assert_successor_bindings(_load_successor())
+    if not _assert_successor_bindings(_load_successor()):
+        pytest.skip(SHALLOW_BOUNDARY_SKIP)
 
 
 def _checkout_attributes(relative: str) -> dict:
@@ -1475,7 +1535,7 @@ def test_guard_cadence_successor_is_checkout_independent(monkeypatch, ending) ->
 
     monkeypatch.setattr(sys.modules[__name__], "_read_checkout", checkout)
     payload = _load_successor()
-    _assert_successor_bindings(payload)
+    history_verified = _assert_successor_bindings(payload)
     hashed = [row["live_path"] for row in payload["change"]["sealed_carriers"].values()]
     hashed += [payload["predecessor"]["path"], payload["validation"]["performance_note"]["path"]]
     for relative in hashed:
@@ -1488,6 +1548,8 @@ def test_guard_cadence_successor_is_checkout_independent(monkeypatch, ending) ->
         if raw_bound:
             # Raw bytes are hashed: the checkout must not convert them.
             assert attributes.get("text") == "unset" or attributes.get("eol") == "lf", relative
+    if not history_verified:
+        pytest.skip(SHALLOW_BOUNDARY_SKIP)
 
 
 def test_guard_cadence_change_commit_is_validated() -> None:
@@ -1495,7 +1557,8 @@ def test_guard_cadence_change_commit_is_validated() -> None:
     diff touches the bound entry carrier."""
 
     payload = _load_successor()
-    _assert_change_commit(payload["change"]["commit"])
+    if not _assert_change_commit(payload["change"]["commit"]):
+        pytest.skip(SHALLOW_BOUNDARY_SKIP)
     for bogus in ("0" * 40, "071910d60031beb455ef0fa2328a027d8ba77c3d"):
         with pytest.raises(AssertionError):
             _assert_change_commit(bogus)
@@ -1510,7 +1573,17 @@ def _load_builder():
     return module
 
 
+def _require_builder_history() -> None:
+    payload = _load_successor()
+    _require_history(
+        payload["base"]["commit"],
+        payload["change"]["commit"],
+        *(entry.split(" ", 1)[0] for entry in payload["change"]["commits"]),
+    )
+
+
 def test_guard_cadence_builder_validates_every_change_commit() -> None:
+    _require_builder_history()
     builder = _load_builder()
     recorded = _load_successor()["change"]["commits"]
     assert builder.validated_change_commits(list(recorded)) == recorded
@@ -1529,6 +1602,7 @@ def test_guard_cadence_builder_validates_every_change_commit() -> None:
 def test_guard_cadence_builder_refuses_a_patch_that_does_not_rebuild_the_base(monkeypatch) -> None:
     """The round-trip check is explicit (it must survive ``python -O``)."""
 
+    _require_builder_history()
     builder = _load_builder()
     monkeypatch.setattr(builder, "apply_patch", lambda current, hunks: current + b"#")
     with pytest.raises(SystemExit, match="reverse line patch does not rebuild the base bytes"):
@@ -1538,6 +1612,7 @@ def test_guard_cadence_builder_refuses_a_patch_that_does_not_rebuild_the_base(mo
 
 
 def test_guard_cadence_builder_check_is_fresh() -> None:
+    _require_builder_history()
     done = subprocess.run(
         [sys.executable, "-B", str(ROOT / "scripts" / "build_guard_cadence_successor.py"), "--check"],
         cwd=ROOT, capture_output=True, check=False,
@@ -1585,6 +1660,9 @@ def test_original_q4_source_binding_builder_check_still_passes() -> None:
     ),
 )
 def test_guard_cadence_successor_rejects_mutations(path, value) -> None:
+    if path == ("change", "commit"):
+        # A bogus id is indistinguishable from absent history at the shallow boundary.
+        _require_history(_load_successor()["change"]["commit"])
     mutated = copy.deepcopy(_load_successor())
     target = mutated
     for key in path[:-1]:
@@ -1592,3 +1670,59 @@ def test_guard_cadence_successor_rejects_mutations(path, value) -> None:
     target[path[-1]] = value
     with pytest.raises(AssertionError):
         _assert_successor_bindings(mutated)
+
+
+def _git_at(cwd: Path, *args: str) -> None:
+    subprocess.run(
+        ["git", "-c", "user.name=t", "-c", "user.email=t@invalid", "-c", "commit.gpgsign=false",
+         "-c", "init.defaultBranch=main", *args],
+        cwd=cwd, capture_output=True, check=True,
+    )
+
+
+def test_guard_cadence_successor_defers_only_ancestry_at_the_github_shallow_boundary(
+    tmp_path, monkeypatch
+) -> None:
+    """CI #92: actions/checkout fetch-depth 1 has no change-commit history,
+    so ``merge-base --is-ancestor`` exits 128.  At that explicit boundary the
+    record still verifies every byte binding and defers only ancestry; a
+    missing commit anywhere else (no GitHub Actions, or a full clone) is
+    still refused."""
+
+    origin = tmp_path / "origin"
+    origin.mkdir()
+    _git_at(origin, "init", "-q")
+    for message in ("one", "two"):
+        _git_at(origin, "commit", "-q", "--allow-empty", "-m", message)
+    shallow = tmp_path / "shallow"
+    _git_at(tmp_path, "clone", "-q", "--depth", "1", origin.as_uri(), str(shallow))
+    full = tmp_path / "full"
+    _git_at(tmp_path, "clone", "-q", str(origin), str(full))
+    module = sys.modules[__name__]
+    payload = _load_successor()
+
+    monkeypatch.setattr(module, "GIT_ROOT", shallow)
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    with pytest.raises(AssertionError):
+        _assert_successor_bindings(payload)
+
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    assert _assert_successor_bindings(payload) is False
+    for path in (
+        ("change", "sealed_carriers", "e4_pl_element.py", "current_raw", "sha256"),
+        ("change", "other_changed_sources", "nonlinear_static.py", "current_lf_git_blob"),
+        ("predecessor", "sha256"),
+    ):
+        mutated = copy.deepcopy(payload)
+        target = mutated
+        for key in path[:-1]:
+            target = target[key]
+        target[path[-1]] = "0"
+        with pytest.raises(AssertionError):
+            _assert_successor_bindings(mutated)
+    with pytest.raises(AssertionError):
+        _assert_change_commit("z" * 40)
+
+    monkeypatch.setattr(module, "GIT_ROOT", full)
+    with pytest.raises(AssertionError):
+        _assert_successor_bindings(payload)
