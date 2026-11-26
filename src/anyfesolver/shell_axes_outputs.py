@@ -56,6 +56,7 @@ own global family tensors are the reference.
 
 from __future__ import annotations
 
+import inspect
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 
@@ -82,6 +83,7 @@ RELATIVE_BOUND = 1.0e-13  # rule (1) relative allowance and the tangency bound
 ROUNDOFF = 64.0 * EPS  # rule (1) allowance of the emitted m +- b surfaces
 RESOLUTION = 1.0e-9  # rule (3): a_f <= 1e-9 s_f
 LEGACY_RECOVERY_FLOOR = 1.0e-12  # elements._SMALL in 6 M / max(h^2, _SMALL)
+ORTHONORMAL_BOUND = 1.0e-13  # |G^T G - I| of every frame used (and det G > 0)
 
 FAMILY_KEYS = {
     "membrane": "global_membrane_resultant_tensors",
@@ -194,18 +196,81 @@ def _rotate_vectors(frames: np.ndarray, local: np.ndarray) -> np.ndarray:
 
 
 def _max_abs(*arrays: np.ndarray) -> float:
+    """Largest magnitude; NaN if any entry is NaN (never order dependent)."""
+
     values = [float(np.max(np.abs(a))) for a in arrays if np.size(a)]
-    return max(values) if values else 0.0
+    return float(np.max(values)) if values else 0.0
 
 
 def _finite(*arrays: Any) -> bool:
     return all(np.all(np.isfinite(np.asarray(a, dtype=float))) for a in arrays)
 
 
-def _column_stack(recovered: Mapping[str, Any], keys: Tuple[str, ...]) -> Optional[np.ndarray]:
+def _numeric(value: Any, what: str) -> np.ndarray:
+    """Float array of a recovery value, or a typed refusal (never a bare error)."""
+
+    try:
+        return np.array(value, dtype=float, copy=True)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ShellAxesRefusal("AXES_RECOVERY_MALFORMED", f"{what} is not numeric: {exc}") from None
+
+
+def _column_stack(recovered: Mapping[str, Any], keys: Tuple[str, ...], n: int) -> Optional[np.ndarray]:
+    """(n, len(keys)) native values, or None when any key is missing or not (n,)."""
+
     if not all(key in recovered for key in keys):
         return None
-    return np.column_stack([np.asarray(recovered[key], dtype=float) for key in keys])
+    columns = [_numeric(recovered[key], key) for key in keys]
+    if any(column.shape != (n,) for column in columns):
+        return None
+    return np.column_stack(columns)
+
+
+def _frame_problem(frames: np.ndarray) -> str:
+    """'' when every frame is finite, orthonormal and right-handed."""
+
+    frames = np.asarray(frames, dtype=float)
+    if not _finite(frames):
+        return "frame is not finite"
+    gram = np.einsum("nki,nkj->nij", frames, frames) - np.eye(3)[None]
+    if not float(np.max(np.abs(gram))) <= ORTHONORMAL_BOUND:
+        return "frame is not orthonormal"
+    if not bool(np.all(np.linalg.det(frames) > 0.0)):
+        return "frame is not right-handed (reversed basis normal)"
+    return ""
+
+
+def _refuse_method_shadows(element: Any) -> None:
+    """Refuse instance attributes that shadow a class-level method (A'')."""
+
+    try:
+        own = vars(element)
+    except TypeError:
+        return
+    for name in own:
+        static = inspect.getattr_static(type(element), name, None)
+        if static is not None and (callable(static) or isinstance(static, (staticmethod, classmethod))):
+            raise ShellAxesRefusal(
+                "AXES_INSTANCE_SHADOW",
+                f"instance attribute {name!r} shadows the {type(element).__name__} method",
+            )
+
+
+def _requested_points(natural_points: Any) -> Optional[np.ndarray]:
+    """The caller's compute_stresses natural_points request, validated like the solver."""
+
+    if natural_points is None:
+        return None
+    points = _numeric(natural_points, "natural_points")
+    if (
+        points.ndim != 2
+        or points.shape[1] != 2
+        or len(points) == 0
+        or not _finite(points)
+        or np.any(np.abs(points) > 1.0)
+    ):
+        raise ShellAxesRefusal("AXES_STATIONS_NOT_QUALIFIED", "natural_points must be nonempty finite Nx2 in [-1,1]")
+    return points
 
 
 def _shape_positions(element: Any, coords: np.ndarray, points: np.ndarray) -> np.ndarray:
@@ -253,7 +318,23 @@ def _station_count(recovered: Mapping[str, Any], generalized: bool) -> int:
         key = "membrane_resultants" if "membrane_resultants" in recovered else "membrane_xx"
     if key not in recovered:
         raise ShellAxesRefusal("AXES_FORMULATION_NOT_QUALIFIED", "no native family values in the recovery")
-    return int(np.asarray(recovered[key]).shape[0])
+    values = _numeric(recovered[key], key)
+    if values.ndim == 0 or values.shape[0] == 0:
+        raise ShellAxesRefusal("AXES_RECOVERY_MALFORMED", f"{key} has no stations")
+    return int(values.shape[0])
+
+
+def _exact_table(recovered: Mapping[str, Any], key: str, expected: np.ndarray, what: str) -> None:
+    """The emitted station table must equal the trusted sampling rule exactly."""
+
+    if key not in recovered:
+        raise ShellAxesRefusal("AXES_STATIONS_NOT_QUALIFIED", f"{what} recovery without {key}")
+    table = _numeric(recovered[key], key)
+    if table.shape != expected.shape or not np.array_equal(table, expected):
+        raise ShellAxesRefusal(
+            "AXES_STATIONS_NOT_QUALIFIED",
+            f"{what}: emitted {key} is not the sampling rule of the request",
+        )
 
 
 def _legacy_station_frames(element: Any, coords: np.ndarray, points: np.ndarray, material: Any, homogeneous: bool) -> np.ndarray:
@@ -277,19 +358,37 @@ def _numbered_conventions() -> Dict[str, str]:
     return {"membrane": "polarity_even", "bending": "numbered_normal", "shear": "numbered_normal"}
 
 
-def _resolve_branch(element, mesh, material, recovered, override) -> _Branch:
-    from .e4_pl_element import QualifiedE4PLShellElement, equation7_frame
+def _resolve_branch(element, mesh, material, recovered, override, requested) -> _Branch:
+    from .e4_pl_element import _GAUSS, QualifiedE4PLShellElement, equation7_frame
     from .e4_pl_s3_element import TRIANGLE_QUADRATURE, QualifiedE4PLS3ShellElement, triangle_frame
-    from .e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
+    from .e4_pl_s3_v2d_element import HAMMER_POINTS, NativeParityE4PLS3V2DShellElement
     from .elements import ShellElement
 
-    generalized = getattr(element, "shell_section", None) is not None
-    coords = np.asarray(element.get_node_coordinates(mesh), dtype=float)
-    n = _station_count(recovered, generalized)
+    # exact type first: no attribute of an unsupported class (or subclass) is read
     kind = type(element)
+    if kind not in (ShellElement, QualifiedE4PLShellElement, QualifiedE4PLS3ShellElement, NativeParityE4PLS3V2DShellElement):
+        raise ShellAxesRefusal(
+            "AXES_FORMULATION_NOT_QUALIFIED",
+            f"no axes adapter for element type {kind.__name__}",
+        )
+    _refuse_method_shadows(element)
+    generalized = getattr(element, "shell_section", None) is not None
+    try:
+        # V2D recovers on ``_coordinates`` (exact FEMesh); the others on get_node_coordinates
+        raw = element._coordinates(mesh) if kind is NativeParityE4PLS3V2DShellElement else element.get_node_coordinates(mesh)
+    except (TypeError, ValueError) as exc:
+        raise ShellAxesRefusal("AXES_RECOVERY_MALFORMED", f"node coordinates: {exc}") from None
+    coords = _numeric(raw, "node coordinates")
+    n = _station_count(recovered, generalized)
+
+    def no_custom_stations(what: str) -> None:
+        if requested is not None:
+            raise ShellAxesRefusal("AXES_STATIONS_NOT_QUALIFIED", f"{what} takes no custom natural_points")
 
     def legacy(name: str) -> _Branch:
-        points = np.asarray(element.gauss_points, dtype=float)
+        if generalized:
+            no_custom_stations(f"{name} generalized section")
+        points = np.asarray(element.gauss_points, dtype=float) if requested is None else requested
         if len(points) != n:
             raise ShellAxesRefusal(
                 "AXES_STATIONS_NOT_QUALIFIED",
@@ -324,6 +423,8 @@ def _resolve_branch(element, mesh, material, recovered, override) -> _Branch:
                 "physical_reference_director": np.asarray(element.physical_reference_director, dtype=float),
             }
             conventions = {"membrane": "polarity_even", "bending": "physical_director", "shear": "physical_director"}
+        if warped:
+            no_custom_stations("warped e4-pl Q4")
         if warped and element.reference_normal is None:
             branch = legacy("e4pl-warped-unreferenced")
             if "warped_direct" in recovered or "natural_point_coordinates" in recovered:
@@ -352,12 +453,11 @@ def _resolve_branch(element, mesh, material, recovered, override) -> _Branch:
             if recovered.get("warped_direct") is not True:
                 branch.consistency_problem = "recovery is not the warped direct path the module recomputed"
             return branch
-        if "natural_point_coordinates" not in recovered:
-            raise ShellAxesRefusal(
-                "AXES_STATIONS_NOT_QUALIFIED",
-                "planar e4-pl recovery without natural_point_coordinates",
-            )
-        points = np.asarray(recovered["natural_point_coordinates"], dtype=float)
+        if generalized:
+            no_custom_stations("planar e4-pl generalized section")
+        # the trusted sampling request (default rule or the caller's natural_points)
+        points = np.asarray(_GAUSS, dtype=float) if requested is None else requested
+        _exact_table(recovered, "natural_point_coordinates", points, "planar e4-pl")
         if points.shape != (n, 2):
             raise ShellAxesRefusal("AXES_STATIONS_NOT_QUALIFIED", "planar e4-pl station table mismatch")
         frame = np.asarray(element._physical_director_context(equation7_frame(coords)[0])[0], dtype=float)
@@ -375,6 +475,7 @@ def _resolve_branch(element, mesh, material, recovered, override) -> _Branch:
         )
 
     if kind is QualifiedE4PLS3ShellElement:
+        no_custom_stations("qualified S3")
         if n != len(TRIANGLE_QUADRATURE):
             raise ShellAxesRefusal("AXES_STATIONS_NOT_QUALIFIED", "qualified S3 station count mismatch")
         barycentric = np.asarray([(1.0 - r - s, r, s) for r, s, _w in TRIANGLE_QUADRATURE], dtype=float)
@@ -398,17 +499,27 @@ def _resolve_branch(element, mesh, material, recovered, override) -> _Branch:
         )
 
     if kind is NativeParityE4PLS3V2DShellElement:
-        if "external_barycentric_coordinates" not in recovered:
-            raise ShellAxesRefusal("AXES_STATIONS_NOT_QUALIFIED", "V2D recovery without station coordinates")
-        barycentric = np.asarray(recovered["external_barycentric_coordinates"], dtype=float)
+        no_custom_stations("S3 V2D")
+        hammer = np.asarray(HAMMER_POINTS, dtype=float)
+        barycentric = np.column_stack((1.0 - hammer[:, 0] - hammer[:, 1], hammer[:, 0], hammer[:, 1]))
+        _exact_table(recovered, "external_barycentric_coordinates", barycentric, "S3 V2D")
         if barycentric.shape != (n, 3):
             raise ShellAxesRefusal("AXES_STATIONS_NOT_QUALIFIED", "V2D station table mismatch")
+        positions = barycentric @ coords
+        if "physical_station_coordinates" not in recovered:
+            raise ShellAxesRefusal("AXES_STATIONS_NOT_QUALIFIED", "V2D recovery without physical_station_coordinates")
+        emitted = _numeric(recovered["physical_station_coordinates"], "physical_station_coordinates")
+        if emitted.shape != positions.shape or not float(np.max(np.abs(emitted - positions))) <= RELATIVE_BOUND * _max_abs(positions):
+            raise ShellAxesRefusal(
+                "AXES_STATIONS_NOT_QUALIFIED",
+                "V2D emitted physical_station_coordinates differ from the recomputed stations",
+            )
         frame = _v2d_frame(coords, np.asarray(element.reference_normal, dtype=float))
         stations = _apply_override(override, "station", np.repeat(frame[None], n, axis=0))
         return _Branch(
             name="v2d",
             surface_only=False,
-            positions=barycentric @ coords,
+            positions=positions,
             station_frames=stations,
             shear_frames=stations,
             shear_role="station",
@@ -421,10 +532,7 @@ def _resolve_branch(element, mesh, material, recovered, override) -> _Branch:
             },
         )
 
-    raise ShellAxesRefusal(
-        "AXES_FORMULATION_NOT_QUALIFIED",
-        f"no axes adapter for element type {kind.__name__}",
-    )
+    raise AssertionError("unreachable: element type was admitted above")
 
 
 def _offsets(element: Any) -> Dict[str, float]:
@@ -467,9 +575,9 @@ def _certify(
         if np.all(derived == 0.0):
             return None, diag, ""
         return "residual", diag, "reference family is exactly zero, derived is not"
-    if allowance > RESOLUTION * scale:
+    if not allowance <= RESOLUTION * scale:
         return "unresolvable_family", diag, f"a_f={allowance:.3e} > 1e-9 s_f={RESOLUTION * scale:.3e}"
-    if residual > allowance:
+    if not residual <= allowance:
         return "residual", diag, f"r_f={residual:.3e} > a_f={allowance:.3e}"
     return None, diag, ""
 
@@ -487,6 +595,7 @@ def derive_shell_axes_outputs(
     material: Any,
     recovered: Mapping[str, Any],
     *,
+    natural_points: Any = None,
     _frame_override: Optional[Callable[[str, np.ndarray], np.ndarray]] = None,
 ) -> ShellAxesOutputs:
     """Derive and cross-check the axes outputs of one shell element.
@@ -495,6 +604,13 @@ def derive_shell_axes_outputs(
     displacements, material, return_global=True)`` returned; it is read only.
     ``displacements`` is accepted for the call contract (the module recomputes
     frames on the reference geometry the recovery used) and is not modified.
+    ``natural_points`` must be the same request passed to ``compute_stresses``
+    (``None`` = the element's default rule).  The legacy recovery emits no
+    station table, so its stations are bound to this request; branches that
+    emit one (planar e4-pl, V2D) must emit exactly the requested rule, and
+    branches that take no custom stations refuse a request.
+    Element types are admitted by exact type before any attribute is read, and
+    instance attributes that shadow element methods are refused.
     ``_frame_override(role, frames)`` (role ``"station"`` with an (n,3,3)
     array or ``"centre"`` with a (3,3) array) is a private test hook that
     replaces the recomputed frames, so a wrong frame can be shown refused.
@@ -513,7 +629,7 @@ def derive_shell_axes_outputs(
             "recovery lacks the global outputs; call compute_stresses(..., return_global=True)",
         )
 
-    branch = _resolve_branch(element, mesh, material, recovered, _frame_override)
+    branch = _resolve_branch(element, mesh, material, recovered, _frame_override, _requested_points(natural_points))
     n = len(branch.positions)
     stations = branch.station_frames
     shear_frames = branch.shear_frames
@@ -529,15 +645,26 @@ def derive_shell_axes_outputs(
         for family in FAMILIES:
             refuse(family, "residual", branch.consistency_problem)
 
+    # Every frame used must be finite, orthonormal and right-handed: the
+    # in-plane tensor comparisons cannot see a reversed basis normal (Codex r3).
+    station_families = ("membrane", "bending", "shear") if branch.shear_role == "station" else ("membrane", "bending")
+    station_problem = _frame_problem(stations)
+    if station_problem:
+        for family in station_families:
+            refuse(family, "residual", f"station {station_problem}")
+    shear_problem = _frame_problem(shear_frames)
+    if shear_problem:
+        refuse("shear", "residual", f"shear {shear_problem}")
+
     station_normals = stations[:, :, 2]
     shear_normals = shear_frames[:, :, 2]
 
     if branch.surface_only:
         # ---- surface-only branches: legacy homogeneous, e4-pl warped homogeneous
         h = float(element.thickness)
-        sigma_m = _column_stack(recovered, ("membrane_xx", "membrane_yy", "membrane_xy"))
-        sigma_b = _column_stack(recovered, ("bending_xx", "bending_yy", "bending_xy"))
-        tau = _column_stack(recovered, ("shear_xz", "shear_yz"))
+        sigma_m = _column_stack(recovered, ("membrane_xx", "membrane_yy", "membrane_xy"), n)
+        sigma_b = _column_stack(recovered, ("bending_xx", "bending_yy", "bending_xy"), n)
+        tau = _column_stack(recovered, ("shear_xz", "shear_yz"), n)
         surfaces: Dict[str, np.ndarray] = {}
         missing_surface = False
         for surface in _SURFACES:
@@ -547,7 +674,7 @@ def derive_shell_axes_outputs(
                 if key not in recovered:
                     missing_surface = True
                     continue
-                values = np.asarray(recovered[key], dtype=float)
+                values = _numeric(recovered[key], key)
                 if values.shape != (n,):
                     missing_surface = True
                     continue
@@ -603,7 +730,9 @@ def derive_shell_axes_outputs(
                     if reason is not None:
                         refuse(family, reason, detail)
                 # Rule (5): rebuild the full surface tensors and rotate back out.
-                worst = 0.0
+                # NaN-safe: a nonfinite rebuild refuses every family (Codex r3).
+                residuals = []
+                rebuilt_finite = True
                 for surface, sign in (("top", 1.0), ("bot", -1.0)):
                     in_plane = sigma_m + sign * sigma_b
                     rebuilt_local = _in_plane_tensors(in_plane)
@@ -611,13 +740,20 @@ def derive_shell_axes_outputs(
                     rebuilt_local[:, 2, 0] = surface_shear[:, 0]
                     rebuilt_local[:, 1, 2] = surface_shear[:, 1]
                     rebuilt_local[:, 2, 1] = surface_shear[:, 1]
-                    rebuilt = _rotate_tensors(stations, rebuilt_local)
-                    worst = max(worst, float(np.max(np.abs(rebuilt - surfaces[surface]))))
+                    with np.errstate(over="ignore", invalid="ignore"):
+                        rebuilt = _rotate_tensors(stations, rebuilt_local)
+                        difference = np.abs(rebuilt - surfaces[surface])
+                    rebuilt_finite = rebuilt_finite and _finite(rebuilt, difference)
+                    residuals.append(float(np.max(difference)))
+                worst = float(np.max(residuals))
                 bound = (RELATIVE_BOUND + ROUNDOFF) * s_surf
                 for family in FAMILIES:
                     diagnostics[family]["out_of_plane_residual"] = worst
                     diagnostics[family]["out_of_plane_allowance"] = bound
-                if worst > bound:
+                if not rebuilt_finite:
+                    for family in FAMILIES:
+                        refuse(family, "nonfinite", "rule (5) surface rebuild is not finite")
+                elif not worst <= bound:
                     for family in FAMILIES:
                         refuse(
                             family,
@@ -642,8 +778,8 @@ def derive_shell_axes_outputs(
             if key not in recovered or native[family] is None:
                 refuse(family, "no_reference", f"solver did not emit {key} or the native values")
                 continue
-            reference = np.asarray(recovered[key], dtype=float)
-            values = np.asarray(native[family], dtype=float)
+            reference = _numeric(recovered[key], key)
+            values = _numeric(native[family], f"native {family} values")
             expected_shape = (n, 3) if family == "shear" else (n, 3, 3)
             if reference.shape != expected_shape or values.shape != ((n, 2) if family == "shear" else (n, 3)):
                 refuse(family, "no_reference", f"{key} has an unexpected shape")
@@ -684,18 +820,35 @@ def derive_shell_axes_outputs(
         arrays["recovery_station_positions"] = _frozen(branch.positions)
     else:
         refuse("positions", "nonfinite", "station positions are not finite")
-    normals_ok = {}
     for family, normals in (("membrane", station_normals), ("bending", station_normals), ("shear", shear_normals)):
         ok = _finite(normals) and float(np.max(np.abs(np.linalg.norm(normals, axis=1) - 1.0))) <= ROUNDOFF
-        normals_ok[family] = ok
-        if ok:
-            arrays[NORMAL_KEYS[family]] = _frozen(normals)
-        else:
+        if not ok:
             refuse(family, "residual", "tensor-basis normal is not unit length")
+
+    def frame_certified(families: Tuple[str, ...]) -> bool:
+        # A frame is certified when a family that uses it certified and no
+        # family that uses it shows a mismatch (an unresolvable or missing
+        # family is no evidence against the frame).  Codex r3: a refused
+        # frame feeds no returned value.
+        if not any(family not in refusals for family in families):
+            return False
+        return not any(
+            refusals[family].reason in ("residual", "out_of_plane", "nonfinite")
+            for family in families
+            if family in refusals
+        )
+
+    station_ok = frame_certified(station_families)
+    shear_ok = frame_certified(station_families if branch.shear_role == "station" else ("shear",))
+    if station_ok:
+        arrays[NORMAL_KEYS["membrane"]] = _frozen(station_normals)
+        arrays[NORMAL_KEYS["bending"]] = _frozen(station_normals)
+    if shear_ok:
+        arrays[NORMAL_KEYS["shear"]] = _frozen(shear_normals)
     for family in FAMILIES:
         if family in family_arrays and family not in refusals:
             arrays[FAMILY_KEYS[family]] = _frozen(family_arrays[family])
-    if "shear" in family_arrays and normals_ok["membrane"] and "shear" not in refusals:
+    if "shear" in family_arrays and station_ok and "shear" not in refusals:
         # nu . Q with the station (membrane/bending) normal: recorded, not required
         components = np.einsum("ni,ni->n", station_normals, family_arrays["shear"])
         if _finite(components):

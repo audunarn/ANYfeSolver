@@ -166,6 +166,7 @@ def test_functional_lane_direct_shell_calls_are_non_q4_or_explicit_refusal() -> 
             # D2-1 B2 axes-output probe: builds legacy shells (also Q4) only to
             # read compute_stresses outputs; no solve admission.
             ("tests/test_shell_axes_outputs.py", "build"): 1,
+            ("tests/test_shell_axes_outputs.py", "_q4_about_z"): 1,
         }
     )
     # This explicit negative constructs legacy Q4 only to verify rejection by

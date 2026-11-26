@@ -915,3 +915,186 @@ def test_nonfinite_metadata_is_refused_not_copied():
     out = derive(el, mesh, u, res)
     assert out.refusals["metadata"].reason == "nonfinite"
     assert "physical_bottom_offset_from_reference" not in out.arrays
+
+
+# ------------------------------------------- Codex r3 (2026-11-26) regressions
+def _q4_about_z(angle, sec="h"):
+    """Flat legacy Q4 in the global XY plane, rotated about Z (no R0)."""
+
+    c, s = math.cos(angle), math.sin(angle)
+    rot = np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+    mesh = FEMesh()
+    for i, p in enumerate(topology("q4"), start=1):
+        mesh.add_node(i, *(rot @ np.asarray(p, float)))
+    kw = dict(thickness=H)
+    if sec == "g":
+        kw["shell_section"] = _section()
+    return ShellElement(1, [1, 2, 3, 4], "steel", **kw), mesh
+
+
+def test_r3_custom_legacy_stations_are_bound_to_the_request():
+    """P1: reversed natural_points with an equal count must not reuse the default order."""
+
+    el, mesh, loc = build("legacy", "q4", "h")
+    u = displacement(loc)
+    points = np.asarray(el.gauss_points, dtype=float)[::-1].copy()
+    res = el.compute_stresses(mesh, u, MATERIAL, return_global=True, natural_points=points)
+    out = derive(el, mesh, u, res, natural_points=points)
+    coords = el.get_node_coordinates(mesh)
+    expected = np.asarray([el.compute_shape_functions(float(x), float(y))[0] @ coords for x, y in points])
+    assert np.array_equal(out.arrays["recovery_station_positions"], expected)
+    # a generalized section, a warped Q4, S3 and V2D take no custom stations
+    for kind, topo, sec in (("legacy", "q4", "g"), ("e4pl", "q4w", "h"), ("s3", "t3", "h"), ("v2d", "t3", "h")):
+        el2, mesh2, loc2 = build(kind, topo, sec)
+        res2, u2 = recover(el2, mesh2, loc2)
+        with pytest.raises(ShellAxesRefusal) as info:
+            derive(el2, mesh2, u2, res2, natural_points=points)
+        assert info.value.code == "AXES_STATIONS_NOT_QUALIFIED"
+
+
+@pytest.mark.parametrize("sec", ("h", "g"))
+def test_r3_tampered_station_tables_are_refused(sec):
+    """P1: a reordered emitted station table must not relocate valid tensors."""
+
+    el, mesh, loc = build("e4pl", "q4", sec)
+    res, u = recover(el, mesh, loc)
+    broken = dict(res)
+    broken["natural_point_coordinates"] = np.asarray(res["natural_point_coordinates"])[::-1].copy()
+    with pytest.raises(ShellAxesRefusal) as info:
+        derive(el, mesh, u, broken)
+    assert info.value.code == "AXES_STATIONS_NOT_QUALIFIED"
+    if sec == "h":
+        points = np.asarray(res["natural_point_coordinates"])[::-1].copy()
+        custom = el.compute_stresses(mesh, u, MATERIAL, return_global=True, natural_points=points)
+        with pytest.raises(ShellAxesRefusal):
+            derive(el, mesh, u, custom)  # request not passed: table != default rule
+        out = derive(el, mesh, u, custom, natural_points=points)
+        assert out.refusals == {}, out.refusals
+    el, mesh, loc = build("v2d", "t3", sec)
+    res, u = recover(el, mesh, loc)
+    for key in ("external_barycentric_coordinates", "physical_station_coordinates"):
+        broken = dict(res)
+        broken[key] = np.asarray(res[key])[::-1].copy()
+        with pytest.raises(ShellAxesRefusal) as info:
+            derive(el, mesh, u, broken)
+        assert info.value.code == "AXES_STATIONS_NOT_QUALIFIED", key
+
+
+@pytest.mark.parametrize("sec", ("h", "g"))
+def test_r3_instance_method_shadows_are_refused(sec):
+    """P1: instance attributes shadowing element methods (A'': instance attributes in scope)."""
+
+    el, mesh, loc = build("v2d", "t3", sec)
+    res, u = recover(el, mesh, loc)
+    original = el.get_node_coordinates
+    el.get_node_coordinates = lambda m: 2.0 * np.asarray(original(m))
+    with pytest.raises(ShellAxesRefusal) as info:
+        derive(el, mesh, u, res)
+    assert info.value.code == "AXES_INSTANCE_SHADOW"
+    el, mesh, loc = build("v2d", "t3", sec)
+    res, u = recover(el, mesh, loc)
+    offset = el.material_surface_offset_from_reference
+    el.material_surface_offset_from_reference = lambda side: offset(-side)
+    with pytest.raises(ShellAxesRefusal) as info:
+        derive(el, mesh, u, res)
+    assert info.value.code == "AXES_INSTANCE_SHADOW"
+
+
+def test_r3_nan_in_the_rule_5_rebuild_refuses_every_family():
+    """P1: max(0.0, nan) must not hide a nonfinite rule (5) surface rebuild."""
+
+    el, mesh = _q4_about_z(math.pi / 4.0)
+    loc = topology("q4")
+    u = displacement(loc)
+    res = el.compute_stresses(mesh, u, MATERIAL, return_global=True)
+    forged = dict(res)
+    for key in ("membrane_xx", "membrane_yy", "membrane_xy", "shear_xz", "shear_yz"):
+        forged[key] = np.zeros_like(np.asarray(res[key], dtype=float))
+    for key in ("bending_xx", "bending_yy", "bending_xy"):
+        forged[key] = np.full_like(np.asarray(res[key], dtype=float), 1.4e308)
+    for key in SURFACE_KEYS:
+        forged[key] = np.zeros_like(np.asarray(res[key], dtype=float))
+    out = derive(el, mesh, u, forged)
+    assert set(out.refusals) >= set(FAMILIES), out.refusals
+    assert not any(out.certified.values())
+    assert set(FAMILY_KEYS.values()).isdisjoint(out.arrays)
+
+
+def _negate_normal(role, frames):
+    out = np.array(frames, copy=True)
+    out[..., :, 2] *= -1.0
+    return out
+
+
+@pytest.mark.parametrize("branch", ["legacy-Q4-g", "e4pl-Q4flat-g", "e4pl-Q4flat-h", "s3-g", "v2d-g", "legacy-Q4-h"])
+def test_r3_left_handed_frame_with_reversed_normal_is_refused(branch):
+    """P1: negating only the basis normal leaves every in-plane tensor unchanged."""
+
+    _bid, kind, topo, sec, _n_p, ref = dict((x[0], x) for x in BRANCHES)[branch]
+    el, mesh, loc = build(kind, topo, sec, ref=ref)
+    res, u = recover(el, mesh, loc)
+    assert derive(el, mesh, u, res).refusals == {}
+    out = derive(el, mesh, u, res, _frame_override=_negate_normal)
+    assert set(out.refusals) >= set(FAMILIES), out.refusals
+    assert set(NORMAL_KEYS.values()).isdisjoint(out.arrays)
+
+
+def test_r3_refused_station_frames_feed_no_returned_value():
+    """P1: refused station frames must not leak normals or nu.Q."""
+
+    el, mesh, loc = build("e4pl", "q4w", "g")
+    res, u = recover(el, mesh, loc)
+    assert derive(el, mesh, u, res).refusals == {}
+    out = derive(el, mesh, u, res, _frame_override=_override(_ry(1.0e-6), roles=("station",)))
+    assert "membrane" in out.refusals and "bending" in out.refusals, out.refusals
+    assert out.certified["shear"], out.refusals
+    assert NORMAL_KEYS["membrane"] not in out.arrays
+    assert NORMAL_KEYS["bending"] not in out.arrays
+    assert "shear_normal_components" not in out.arrays
+    assert NORMAL_KEYS["shear"] in out.arrays
+
+
+def test_r3_malformed_recovery_and_subclasses_are_typed_refusals():
+    """P2: malformed input stays inside the typed refusal boundary."""
+
+    el, mesh, loc = build("legacy", "q4", "h")
+    res, u = recover(el, mesh, loc)
+    for value in (1.0, "text", [[1.0, 2.0]], np.zeros((4, 2))):
+        broken = dict(res)
+        broken["membrane_xx"] = value
+        try:
+            out = derive(el, mesh, u, broken)
+        except ShellAxesRefusal:
+            continue
+        assert not any(out.certified.values()), (value, out.refusals)
+
+    class Probe(ShellElement):
+        def get_node_coordinates(self, mesh):  # must not run before the type check
+            raise RuntimeError("subclass code ran")
+
+    sub = Probe(1, [1, 2, 3, 4], "steel", thickness=H)
+    with pytest.raises(ShellAxesRefusal) as info:
+        derive(sub, mesh, u, res)
+    assert info.value.code == "AXES_FORMULATION_NOT_QUALIFIED"
+
+
+@pytest.mark.parametrize("polarity", (1, -1))
+@pytest.mark.parametrize("sec", ("h", "g"))
+@pytest.mark.parametrize("kind,topo", (("e4pl", "q4"), ("s3", "t3"), ("v2d", "t3")))
+def test_r3_bending_sign_matches_the_physically_tensioned_side(kind, topo, sec, polarity):
+    """P2: oracle independent of the solver's top/bot labels.
+
+    w = -K x^2 / 2 puts the fibre on the +N0 side in tension (eps = z K), so
+    e_x . M e_x is positive in the owner-normal (N0) convention and has the
+    sign of the polarity in the physical-director convention.
+    """
+
+    el, mesh, loc = build(kind, topo, sec, polarity=polarity)
+    u = plate_field(loc, kx=K)
+    res = el.compute_stresses(mesh, u, MATERIAL, return_global=True)
+    out = derive(el, mesh, u, res)
+    assert out.certified["bending"], out.refusals
+    e_x = R0[:, 0]
+    value = np.einsum("i,nij,j->n", e_x, out.arrays[FAMILY_KEYS["bending"]], e_x)
+    expected = 1.0 if out.conventions["bending"] == "owner_normal" else float(polarity)
+    assert np.all(np.sign(value) == expected), (out.conventions["bending"], value)
