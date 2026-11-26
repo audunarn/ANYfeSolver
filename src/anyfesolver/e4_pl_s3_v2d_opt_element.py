@@ -119,6 +119,16 @@ def _snapshot_constitutive(material: Material, thickness: float) -> Dict[str, An
     }
 
 
+_HAMMER_REFERENCE = (HAMMER_POINTS.copy(), HAMMER_POINTS.strides, HAMMER_REFERENCE_WEIGHTS.copy(), HAMMER_REFERENCE_WEIGHTS.strides)
+
+
+def _require_intact_quadrature() -> None:
+    points, point_strides, weights, weight_strides = _HAMMER_REFERENCE
+    if (HAMMER_POINTS.strides != point_strides or HAMMER_REFERENCE_WEIGHTS.strides != weight_strides
+            or not np.array_equal(HAMMER_POINTS, points) or not np.array_equal(HAMMER_REFERENCE_WEIGHTS, weights)):
+        raise NativeParityCapabilityError("S3 V2D-OPT shared quadrature arrays were altered")
+
+
 def _refuse(operation: str) -> None:
     raise NativeParityCapabilityError(f"S3 V2D-OPT linear v1 does not admit {operation}")
 
@@ -135,8 +145,6 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
     _legacy_shell_dispatch_forbidden = FORMULATION_ID
     director_polarity = 1
     reference_surface_offset = 0.0
-    TRI_GAUSS_POINTS_3 = _V2D.TRI_GAUSS_POINTS_3
-    TRI_GAUSS_WEIGHTS_3 = _V2D.TRI_GAUSS_WEIGHTS_3
 
     # Reviewed V2D/V2C functions used unchanged (unbound functions bind to this class).
     _membrane_operator = staticmethod(_V2C._membrane_operator)
@@ -155,6 +163,14 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
     native_reference_directors = _V2D.native_reference_directors
     material_mid_surface_offset_from_reference = _V2D.material_mid_surface_offset_from_reference
     material_surface_offset_from_reference = _V2D.material_surface_offset_from_reference
+
+    @property
+    def TRI_GAUSS_POINTS_3(self) -> np.ndarray:
+        return HAMMER_POINTS.copy()
+
+    @property
+    def TRI_GAUSS_WEIGHTS_3(self) -> np.ndarray:
+        return HAMMER_REFERENCE_WEIGHTS.copy()
 
     @property
     def gauss_points(self) -> np.ndarray:
@@ -271,6 +287,7 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
         hit = _LOCAL_CACHE.get(key)
         if hit is not None:
             return hit
+        _require_intact_quadrature()  # never fill the cache while a shared rule array is altered
         ops = _V2C._operators(self, geometry, raw)
         curvature, shear_op = ops["B_b"], ops["B_s"]
         weight = float(geometry["area"]) / 3.0
@@ -333,6 +350,8 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
         transform = np.asarray(geometry["local_from_external"], dtype=np.float64)
         zero = np.zeros((18, 18), dtype=np.float64)
         physical = self._globalize(data["membrane"] + data["bending"] + data["shear"], transform)
+        if not np.all(np.isfinite(physical)):
+            raise ValueError("S3 V2D-OPT global stiffness is not finite")
         return {
             "membrane": self._globalize(data["membrane"], transform),
             "membrane_bending_coupling": zero.copy(),
@@ -351,7 +370,10 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
         geometry = self._geometry(mesh)
         data = self._local_data(geometry, material)
         total = data["membrane"] + data["bending"] + data["shear"]
-        return self._globalize(total, np.asarray(geometry["local_from_external"], dtype=np.float64))
+        made = self._globalize(total, np.asarray(geometry["local_from_external"], dtype=np.float64))
+        if not np.all(np.isfinite(made)):
+            raise ValueError("S3 V2D-OPT global stiffness is not finite")
+        return made
 
     def compute_internal_forces(self, mesh: FEMesh, displacements: np.ndarray, material: Material) -> np.ndarray:
         vector = self._get_element_displacements(mesh, displacements)
@@ -384,6 +406,9 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
         membrane_resultants = epsilon @ section["A"].T
         bending_resultants = kappa @ section["D"].T
         shear_resultants = phi_squared * gamma @ section["H"].T
+        if not (np.all(np.isfinite(membrane_resultants)) and np.all(np.isfinite(bending_resultants))
+                and np.all(np.isfinite(shear_resultants))):
+            raise ValueError("S3 V2D-OPT recovered resultants are not finite")
         order = tuple(int(value) for value in geometry["internal_order"])
 
         def external_order(values: np.ndarray) -> np.ndarray:

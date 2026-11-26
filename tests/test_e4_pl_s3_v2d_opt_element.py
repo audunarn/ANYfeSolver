@@ -429,3 +429,53 @@ def test_finite_inputs_with_nonfinite_outputs_are_refused_and_copy_is_refused():
         copy.copy(el)
     from anyfesolver.e4_pl_opt_membrane import optimal_beta0, isotropic_plane_stress
     assert optimal_beta0(isotropic_plane_stress(1e308, 0.3)) == pytest.approx(0.32)
+
+
+# ---- Codex round 3 regressions -------------------------------------------------------------------
+def test_public_class_quadrature_attributes_are_copies_and_an_altered_shared_rule_never_fills_the_cache():
+    import anyfesolver.e4_pl_s3_v2d_opt_element as mod
+    xyz = [[0.0, 0.0, 0.0], [1.3, 0.2, 0.0], [0.3, 1.1, 0.0]]
+    m, el = _single(OPT_KIND, xyz)
+    mat = m.materials["mat"]
+    mod._LOCAL_CACHE.clear()
+    try:
+        el.TRI_GAUSS_POINTS_3.strides = (0, 8)       # only a copy: harmless
+    except (ValueError, TypeError, AttributeError):
+        pass
+    clean = el.compute_stiffness_matrix(m.mesh, mat)
+    mod._LOCAL_CACHE.clear()
+    shared = mod.HAMMER_POINTS
+    shared.strides = (0, 8)                           # direct corruption of the shared rule array
+    try:
+        with pytest.raises(ElementCapabilityError):
+            el.compute_stiffness_matrix(m.mesh, mat)
+        assert len(mod._LOCAL_CACHE) == 0
+    finally:
+        shared.strides = mod._HAMMER_REFERENCE[1]
+    assert np.array_equal(el.compute_stiffness_matrix(m.mesh, mat), clean)
+
+
+def test_global_overflow_and_nonfinite_resultants_are_refused():
+    c = np.cos(np.pi / 4)
+    rot = np.array([[c, -c, 0], [c, c, 0], [0, 0, 1.0]])
+    pts = (rot @ np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0.0]]).T).T
+    m = FEModel("o")
+    m.add_material("mat", 8.25e307, NU)
+    for i, p in enumerate(pts, 1):
+        m.add_node(i, *map(float, p))
+    el = OPT(1, [1, 2, 3], "mat", thickness=1.0, reference_normal=NORMAL)
+    m.add_element(1, el)
+    with pytest.raises(ValueError):
+        el.compute_stiffness_matrix(m.mesh, m.materials["mat"])
+    with pytest.raises(ValueError):
+        el.compute_stiffness_components(m.mesh, m.materials["mat"])
+    huge = FEModel("h")
+    huge.add_material("mat", 1e170, NU)
+    for i, p in enumerate([[0, 0, 0], [1, 0, 0], [0, 1, 0]], 1):
+        huge.add_node(i, *map(float, p))
+    big = OPT(1, [1, 2, 3], "mat", thickness=0.1, reference_normal=NORMAL)
+    huge.add_element(1, big)
+    u = np.zeros(18)
+    u[0] = 1e150
+    with pytest.raises(ValueError):
+        big.compute_variational_resultants(huge.mesh, u, huge.materials["mat"])
