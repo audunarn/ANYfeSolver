@@ -6010,7 +6010,7 @@ class QualifiedE4PLShellElement(
     def _qualified_planar_batch_stiffness(
         items: Sequence[tuple[Any, Any, tuple[Any, ...]]],
         mesh: Any,
-    ) -> Optional[tuple[Dict[int, np.ndarray], Optional[tuple[int, BaseException]]]]:
+    ) -> Optional[tuple[Any, Optional[tuple[int, BaseException]]]]:
         """``compute_stiffness_matrix`` of several planar cache misses at once.
 
         ``items`` holds ``(element, material, cache_key)`` triples, where
@@ -6020,8 +6020,11 @@ class QualifiedE4PLShellElement(
         planar branch of :meth:`compute_stiffness_components` (no
         post-observation callback).  The batched result is then bound as
         ``compute_stiffness_matrix`` binds it (component cache, guard, the two
-        derived matrices, guard again); the returned mapping (keyed by the
-        position in ``items``) holds the public stiffness view.
+        derived matrices, guard again).  The returned publication's
+        ``get(position)`` (position in ``items``) performs that bind only when
+        the caller's ordered per-element loop reaches the element and returns
+        its public stiffness view, or ``None`` when the element must be
+        computed per element; nothing is bound ahead of the caller's order.
 
         The inner cache-key recomputation of ``compute_stiffness_components``
         is replaced by checking that the coordinates read here reproduce the
@@ -6033,17 +6036,19 @@ class QualifiedE4PLShellElement(
         admitted elements skip the batch (and its lazy self-check).  Any
         exception or batch refusal returns ``None`` before any element is
         bound.  A failing bind restores that element's five cache attributes
-        and stops; it and the later elements are rerun by the caller's
-        per-element path, which reports the error itself.
+        and stops publishing; it and the later elements are rerun by the
+        caller's per-element path, which reports the error itself.
 
-        Returns ``(bound, rejection)``.  Each element's front end and its bind
-        are bracketed by the guarded wrappers' runtime-authority generation
-        capture/require.  A move inside one element's span is that element's
-        rejection ``(position, error)`` (earlier positions bound as returned);
-        the caller raises it through ``_reject_q4_batch_generation`` when its
-        per-element order reaches that position.  A move outside every
+        Returns ``(publication, rejection)``.  Each element's front end and
+        its bind are bracketed by the guarded wrappers' runtime-authority
+        generation capture/require.  A move inside one element's front-end
+        span is that element's rejection ``(position, error)`` (with an empty
+        publication); the caller raises it through
+        ``_reject_q4_batch_generation`` when its per-element order reaches that
+        position.  A move inside one element's bind span is raised by ``get``
+        through the same rejection, at that element.  A move outside every
         element's span (between elements, or during the shared batch kernel)
-        returns ``None`` or stops binding, and rejects nothing.
+        returns ``None`` or stops publishing, and rejects nothing.
         """
 
         minimum = _Q4_PLANAR_BATCH_FORM_MIN_ROWS
@@ -6150,20 +6155,34 @@ class QualifiedE4PLShellElement(
             "_stiffness_matrix",
         )
         missing = object()
-        bound: Dict[int, np.ndarray] = {}
-        deferred_rejection = None
-        for row, (position, element, material, cache_key, frame, warpage) in enumerate(
-            admitted
-        ):
+        rows = {
+            position: (row, element, material, cache_key, frame, warpage)
+            for row, (position, element, material, cache_key, frame, warpage) in enumerate(
+                admitted
+            )
+        }
+        stopped = []
+
+        def publish(position: int) -> Optional[np.ndarray]:
+            # Binds one batch-formed row when the caller's ordered per-element
+            # loop reaches it, never ahead of it, so an earlier failure leaves
+            # every later element exactly as the per-element loop leaves it.
+            # ``None`` means "compute this element per element".
+            entry = rows.pop(position, None)
+            if entry is None or stopped:
+                return None
+            row, element, material, cache_key, frame, warpage = entry
             # Generation capture of this element's bind span; a move since the
-            # batch was formed (outside every element's span) stops binding and
-            # this and later elements rerun per element.
+            # batch was formed (outside every element's span) stops publishing
+            # and this and later elements rerun per element.
             try:
                 element_generation = capture()
             except Exception:  # noqa: BLE001 - the per-element rerun reports it
-                break
+                stopped.append(True)
+                return None
             if element_generation != generation:
-                break
+                stopped.append(True)
+                return None
             core = formed["core"][row]
             result = {
                 "core": core,
@@ -6222,13 +6241,13 @@ class QualifiedE4PLShellElement(
                     context="qualified Q4 compute_stiffness_matrix",
                 )
             except Exception:  # noqa: BLE001 - rerun this and later elements per element
+                stopped.append(True)
                 rejection = changed(element_generation)
                 if rejection is not None:
                     # The wrapper rejects this element (its generation error
-                    # replaces the bind error); the caller invalidates and
-                    # raises it in the per-element order.
-                    deferred_rejection = (position, rejection)
-                    break
+                    # replaces the bind error): invalidate and raise here, in
+                    # the per-element order.
+                    _reject_q4_batch_generation(element, rejection)
                 # Restore the pre-batch attributes; the caller's per-element
                 # rerun then leaves exactly the per-element failure state.
                 for name, value in zip(names, previous):
@@ -6236,13 +6255,14 @@ class QualifiedE4PLShellElement(
                         namespace.pop(name, None)
                     else:
                         object.__setattr__(element, name, value)
-                break
+                return None
             rejection = changed(element_generation)
             if rejection is not None:
-                deferred_rejection = (position, rejection)
-                break
-            bound[position] = view
-        return bound, deferred_rejection
+                stopped.append(True)
+                _reject_q4_batch_generation(element, rejection)
+            return view
+
+        return _Q4PlanarBatchPublication(publish), None
 
     @staticmethod
     def _qualified_planar_batch_stresses(
@@ -7972,6 +7992,21 @@ def _make_q4_cached_stiffness_epoch_holder() -> tuple[Any, Any]:
     _install_q4_cached_stiffness_runtime_epoch_authority,
     _require_q4_cached_stiffness_runtime_epoch_authority,
 ) = _make_q4_cached_stiffness_epoch_holder()
+
+
+class _Q4PlanarBatchPublication:
+    """Lazy publication of batch-formed Q4 rows: ``get(position)`` binds that
+    row when the caller's ordered per-element loop reaches it and returns its
+    public stiffness view, or ``None`` when the element must be computed per
+    element.  Each position is published at most once."""
+
+    __slots__ = ("_publish",)
+
+    def __init__(self, publish: Any) -> None:
+        self._publish = publish
+
+    def get(self, position: int) -> Optional[np.ndarray]:
+        return self._publish(position)
 
 
 def _make_q4_batch_generation_holder() -> tuple[Any, Any, Any, Any]:

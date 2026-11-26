@@ -300,3 +300,31 @@ def test_outputs_do_not_alias_inputs_or_each_other():
     a["frames"][:] = 0.0
     assert np.all(np.isfinite(again["total"]))
     assert again["core"].tobytes() == pb.form(*form_args(before))["core"].tobytes()
+
+
+def test_stationary_diagnostics_bitwise_identical_for_dominant_coupling_rows():
+    """Codex L4 round 1 P2: the per-element backward error reduces
+    ``abs(coupling.T)`` (an F-ordered operand) along its strided axis; the
+    batch must reproduce that order, not the contiguous pairwise row sum, so
+    every published stationary diagnostic is bit-identical."""
+
+    rng = np.random.default_rng(7)
+    compared = 0
+    for _trial in range(400):
+        q = rng.standard_normal((35, 35))
+        stationary = q @ q.T / 35.0 + np.eye(35)
+        stationary = 0.5 * (stationary + stationary.T)
+        coupling = rng.standard_normal((24, 35))
+        coupling[rng.integers(0, 24), :] *= 10.0 ** rng.integers(8, 17)
+        try:
+            solution, diagnostics = sealed._solve_stationary_system(stationary, coupling)
+        except ValueError:
+            continue
+        batch_solution, batch_diagnostics = pb._solve_stationary(
+            np.ascontiguousarray(stationary[None]), np.ascontiguousarray(coupling[None])
+        )
+        assert batch_solution[0].tobytes() == solution.tobytes()
+        for name, values in batch_diagnostics.items():
+            assert np.float64(values[0]).tobytes() == np.float64(diagnostics[name]).tobytes(), name
+        compared += 1
+    assert compared > 300

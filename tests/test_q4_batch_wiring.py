@@ -294,9 +294,9 @@ def test_generation_change_in_batched_formation_span_rejected_as_per_element(tar
     # Rejected at the same element: no later element's span work ran.
     assert reference[6] == 0 and candidate[6] == 0
     if WIRED:
-        # The move happened inside the batch helper, not in a per-element call.
-        expected = "front_end" if target == "_constitutive_and_drill_stiffness" else (
-            "_qualified_planar_batch_stiffness")
+        # The move happened inside the batch helper (its front end or its
+        # lazy per-row publication), not in a per-element call.
+        expected = "front_end" if target == "_constitutive_and_drill_stiffness" else "publish"
         assert candidate[5] == [expected]
 
 
@@ -379,22 +379,23 @@ def test_batch_helper_rejection_equals_guarded_wrapper(target, element_id):
 
     model, _ = q4bench.CASES["rplate"](N)
     mesh, items = _direct_items(model)
+    got = None
     with _Bump(function, element_id):
         result = Q._qualified_planar_batch_stiffness(items, mesh)
-    assert result is not None
-    bound, rejection = result
-    assert rejection is not None, "generation change inside a batched span not rejected"
-    position, error = rejection
-    got = None
-    for index, (element, material, _key) in enumerate(items):
-        if index == position:
+        assert result is not None
+        publication, rejection = result
+        # Drive the result as the assembly caller does: in item order, raise a
+        # front-end rejection at its position, otherwise publish each row when
+        # reached (a bind-span move is raised by ``get`` at that element).
+        for index, (element, material, _key) in enumerate(items):
             try:
-                E4._reject_q4_batch_generation(element, error)
+                if rejection is not None and index == rejection[0]:
+                    E4._reject_q4_batch_generation(element, rejection[1])
+                if publication.get(index) is None:
+                    element.compute_stiffness_matrix(mesh, material)
             except Exception as exc:  # noqa: BLE001
                 got = (type(exc).__name__, str(exc), element.element_id)
-            break
-        if index not in bound:
-            element.compute_stiffness_matrix(mesh, material)
+                break
     assert got == ref
     assert element_state(model) == ref_state
 
@@ -438,3 +439,33 @@ def test_wired_batch_actually_runs(monkeypatch):
     u, _ = solve_linear(model, lc)
     compute_stresses(model, u)
     assert rows == {"form": N * N, "recover": N * N}
+
+
+def _rejected_element_run(forced, failing_element):
+    """A warped element with ``warped_formulation="reject"`` is not batch
+    admitted; the per-element loop raises at it.  Elements after it in the
+    assembly order must not have been published by the batch."""
+
+    model, lc = q4bench.CASES["rplate"](N)
+    element = model.mesh.elements[failing_element]
+    object.__setattr__(element, "warped_formulation", "reject")
+    model.mesh.get_node(element.node_ids[2]).z += 0.01
+    if forced:
+        with B._forced_fallback():
+            first = outcome(lambda: solve_linear(model, lc)[0])
+    else:
+        first = outcome(lambda: solve_linear(model, lc)[0])
+    return first, element_state(model)
+
+
+@pytest.mark.parametrize("failing_element", [1, 17, N * N - N])
+def test_failing_element_leaves_later_caches_unpublished(failing_element):
+    """Codex L4 round 1 P2: the batch publishes each row only when the
+    ordered per-element loop reaches it, so a failing element leaves exactly
+    the per-element cache state (and error)."""
+
+    reference = _rejected_element_run(True, failing_element)
+    candidate = _rejected_element_run(False, failing_element)
+    assert reference[0][0] == "raise"
+    assert candidate[0] == reference[0]
+    assert candidate[1] == reference[1]

@@ -1952,12 +1952,19 @@ def _qualified_q4_recovery_prepass(
     )
 
     try:
-        candidates = []
+        exact = []
         for elem_id, element in mesh.elements.items():
             if selected is not None and int(elem_id) not in selected:
                 continue
             if type(element) is not QualifiedE4PLShellElement:
                 continue
+            exact.append((elem_id, element))
+        if len(exact) < RECOVER_MIN_ROWS:
+            # Too few rows for a batch: no material or DOF lookups here; the
+            # per-element loop runs unchanged (Codex L4 round 1 P3).
+            return {}
+        candidates = []
+        for elem_id, element in exact:
             material = model.get_material(element.material_name)
             dof_mapping = np.asarray(element.get_dof_mapping(mesh), dtype=np.intp)
             if (

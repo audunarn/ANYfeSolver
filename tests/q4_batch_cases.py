@@ -181,4 +181,3 @@ def feed(h, obj):
         h.update(np.float64(obj).tobytes())
     else:
         h.update(repr(obj).encode())
-

@@ -649,7 +649,14 @@ def _solve_stationary(stationary, coupling):
         residual = made @ solution - rhs
         matrix_norm = _inf_norm(made)
         solution_norm = _inf_norm(solution)
-        rhs_norm = _inf_norm(rhs)
+        # The per-element right-hand side is ``coupling.T``, an F-ordered
+        # operand that numpy reduces along its strided axis; that summation
+        # order differs from the contiguous row sum of ``_inf_norm``.  Take the
+        # same call on the same per-element layout (Codex L4 round 1 P2).
+        rhs_norm = np.array(
+            [np.linalg.norm(coupling[index].T, ord=np.inf) for index in range(coupling.shape[0])],
+            dtype=np.float64,
+        )
         residual_norm = _inf_norm(residual)
         denominator = matrix_norm * solution_norm + rhs_norm
         backward = residual_norm / denominator

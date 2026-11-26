@@ -5143,8 +5143,8 @@ def _assemble_element_matrix_under_lease_impl(
                 # deferred so that the first cache miss of each cache key can be
                 # formed in one batch; the deferred entries then replay the
                 # original compute/adopt code in order, a batch-formed element
-                # taking its already-bound public stiffness view in place of
-                # ``compute_stiffness_matrix``.  Keys of deferred
+                # taking its public stiffness view (bound by the batch only when
+                # this loop reaches it) in place of ``compute_stiffness_matrix``.  Keys of deferred
                 # first misses are tracked so that a later cached element's
                 # ``setdefault`` cannot pre-empt the miss's own assignment, exactly
                 # as in the per-element loop.
