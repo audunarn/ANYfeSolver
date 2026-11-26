@@ -66,6 +66,7 @@ CHANGE_COMMITS = (
     "11eb4531c Canonical fast paths: only under the internal exact-str path; trace tests",
     "1b7492669 Nonlinear guard cadence: Q4 class authority per evaluation (G2), lifecycle per step (L1), exact sweeps (G1)",
     "5c4c8f8ba Guard cadence: validate every window close, no publication before validation",
+    "2a5ddf5a3 Guard window: re-check swallowed nested refusals and hand nested elements to the parent",
 )
 
 
