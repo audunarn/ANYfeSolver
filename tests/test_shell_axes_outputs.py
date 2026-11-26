@@ -1992,3 +1992,48 @@ def test_r10_computed_g_relative_error_is_within_the_stated_model():
         )
         relative = abs((D(computed) - exact) / exact)
         assert relative <= D(8) * D(2.0**-52) * exact, (float(exact), relative)
+
+
+# ------------------------------------------------------------ Codex r11 check
+_TINY = 2.0**-1074
+
+
+@pytest.mark.parametrize(
+    "xy",
+    (((0.0, 0.0), (1.0, 0.0), (0.0, 1.0)), ((0.0, 0.0), (1.3, 0.2), (0.4, 1.1))),
+)
+def test_r11_a_negligible_subnormal_coordinate_does_not_refuse_an_ordinary_triangle(xy):
+    """r11 regression: z = 2**-1074 next to unit coordinates is an ordinary element."""
+
+    mesh = FEMesh()
+    for i, (x, y) in enumerate(xy, start=1):
+        mesh.add_node(i, x, y, _TINY)
+    el = ShellElement(1, [1, 2, 3], "steel", thickness=H)
+    out = recover_shell_axes(el, mesh, np.zeros(18), MATERIAL).axes
+    assert {r.reason for r in out.refusals.values()} <= {"unresolvable_family"}, out.refusals
+
+
+def test_r11_collinear_triangle_stays_degenerate():
+    import anyfesolver.shell_axes_outputs as module
+
+    el = ShellElement(1, [1, 2, 3], "steel", thickness=H)
+    for z in (0.0, _TINY):
+        with pytest.raises(ShellAxesRefusal) as info:
+            module._check_geometry_domain(el, np.array([(0.0, 0.0, z), (1.0, 0.0, z), (2.0, 0.0, z)]))
+        assert info.value.code == "AXES_GEOMETRY_DEGENERATE", z
+
+
+def test_r11_affine_t6_inside_the_domain_is_evaluated_not_refused():
+    """r11: corners (0,0,d), (1,0,d), (0,1/249000,d), exact midpoints: G ~ 2.49e5 < limit."""
+
+    import anyfesolver.shell_axes_outputs as module
+
+    corners = [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0 / 249000.0)]
+    mids = [((corners[0][0] + corners[1][0]) / 2, (corners[0][1] + corners[1][1]) / 2),
+            ((corners[1][0] + corners[2][0]) / 2, (corners[1][1] + corners[2][1]) / 2),
+            ((corners[2][0] + corners[0][0]) / 2, (corners[2][1] + corners[0][1]) / 2)]
+    el = ShellElement(1, [1, 2, 3, 4, 5, 6], "steel", thickness=H)
+    for d in (0.0, _TINY):
+        coords = np.array([(x, y, d) for x, y in corners + mids])
+        g = module._check_geometry_domain(el, coords)
+        assert g <= GEOMETRY_CONDITIONING_LIMIT, g

@@ -172,6 +172,9 @@ def test_functional_lane_direct_shell_calls_are_non_q4_or_explicit_refusal() -> 
             ("tests/test_shell_axes_outputs.py", "test_r9_cutoff_relative_error_and_the_guarantee_reach"): 1,
             ("tests/test_shell_axes_outputs.py", "test_r9_valid_t6_is_not_refused_by_a_vertex_centre_check"): 1,
             ("tests/test_shell_axes_outputs.py", "test_r10_triangle_exponent_extremes_get_the_conditioning_code"): 1,
+            ("tests/test_shell_axes_outputs.py", "test_r11_a_negligible_subnormal_coordinate_does_not_refuse_an_ordinary_triangle"): 1,
+            ("tests/test_shell_axes_outputs.py", "test_r11_collinear_triangle_stays_degenerate"): 1,
+            ("tests/test_shell_axes_outputs.py", "test_r11_affine_t6_inside_the_domain_is_evaluated_not_refused"): 1,
         }
     )
     # This explicit negative constructs legacy Q4 only to verify rejection by

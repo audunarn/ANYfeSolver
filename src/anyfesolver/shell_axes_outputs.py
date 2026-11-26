@@ -139,8 +139,10 @@ GEOMETRY_ROUNDOFF = 8.0 * EPS
 # (AXES_GEOMETRY_CONDITIONING).  Measured: barge5 G <= 5.0e3 (median 5.4e2),
 # solver test fixtures G <= 5.4.
 # The cutoff is evaluated in double precision.  The computed G has relative
-# error <= 8 eps G (the same roundoff model as the rule (6) bound; measured
-# <= 0.03 eps G, Codex r9/r10 cases), i.e. <= 5e-10 for every G up to 2.8e5,
+# error <= 8 eps G (the same roundoff model as the rule (6) bound; verified in
+# exact arithmetic for triangle edges, <= 0.03 eps G on the Codex r9/r10
+# cases; for shape-function tangents it is the measured rule (6) roundoff,
+# <= 0.335 eps G over 300 random quadrilaterals), i.e. <= 5e-10 up to 2.8e5,
 # so near the cutoff an element whose exact G lies within 1e-9 of 2.5e5 may
 # fall on either side.  That decides only which side of the stated
 # boundary it lands on: the tilt guarantee keeps its 2x margin for every G up
@@ -519,47 +521,45 @@ def _power_of_two_scaled(coords: np.ndarray) -> np.ndarray:
     if not (math.isfinite(largest) and largest > 0.0):
         raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "node coordinates are zero or not finite")
     _mantissa, exponent = math.frexp(largest)
-    scaled = np.ldexp(coords, -exponent)
-    if bool(np.any((scaled == 0.0) & (coords != 0.0))):
-        # the coordinates span more binary orders than a double holds: a
-        # nonzero geometry astronomically outside the domain (Codex r10)
-        raise ShellAxesRefusal(
-            "AXES_GEOMETRY_CONDITIONING",
-            "node coordinates span more than the double-precision exponent range; outside the declared domain",
-        )
-    return scaled
+    # a negligible coordinate may vanish here (e.g. z = 2**-1074 next to 1):
+    # that changes no difference that matters (Codex r11: refusing it was a
+    # regression); used only when the unscaled differences overflow
+    return np.ldexp(coords, -exponent)
 
 
 def _geometry_conditioning(coords: np.ndarray, a: np.ndarray, b: np.ndarray, *lengths: float) -> float:
     """G = (max|x| / shortest vector + 1) * |a||b| / |a x b| for the two vectors
     a, b whose cross product gives a geometric normal (tangents, diagonals or
-    edges).  Relative roundoff of the normal is <= 64 eps G: the first factor
+    edges).  Relative roundoff of the normal is <= 8 eps G: the first factor
     covers coordinate differences far from the origin, the second the
-    cancellation of a nearly parallel pair."""
+    cancellation of a nearly parallel pair.
 
-    # dimensionless: scale the vectors before squaring (Codex r8: 2**270 sides
-    # overflowed into a DEGENERATE instead of a CONDITIONING refusal)
-    scale = max(float(np.max(np.abs(a))), float(np.max(np.abs(b))))
-    if not (math.isfinite(scale) and scale > 0.0):
-        raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "zero or nonfinite tangent, diagonal or edge")
-    a_s = np.asarray(a, dtype=float) / scale
-    b_s = np.asarray(b, dtype=float) / scale
-    la = _safe_norm(a_s)
-    lb = _safe_norm(b_s)
-    cross = _cross(a_s, b_s)
-    area = _safe_norm(cross)
-    shortest = min([la, lb, *(float(length) / scale for length in lengths)])
-    if not (math.isfinite(shortest) and math.isfinite(area)):
+    Exponent safe (Codex r8-r11): each vector is normalized by its own largest
+    component before the cross product, so the dimensionless ratio neither
+    overflows nor underflows; lengths use ``_safe_norm``; an extreme
+    reach / shortest overflows to inf, which is outside the domain."""
+
+    a = np.asarray(a, dtype=float)
+    b = np.asarray(b, dtype=float)
+    if not _finite(a, b, coords) or not all(math.isfinite(float(length)) for length in lengths):
         raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "nonfinite tangent, diagonal or edge")
-    if not (shortest > 0.0 and area > 0.0):
-        if bool(np.any(cross != 0.0)) or (la > 0.0 and lb > 0.0 and area > 0.0):
-            raise ShellAxesRefusal(
-                "AXES_GEOMETRY_CONDITIONING",
-                "a tangent, diagonal or edge is below the double-precision range of the element; outside the declared domain",
-            )
+    largest_a = float(np.max(np.abs(a)))
+    largest_b = float(np.max(np.abs(b)))
+    if largest_a == 0.0 or largest_b == 0.0 or any(float(length) == 0.0 for length in lengths):
         raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "zero tangent, diagonal or edge")
-    reach = float(np.max(np.abs(coords))) / scale
-    return (reach / shortest + 1.0) * (la * lb / area)
+    a_hat = a / largest_a
+    b_hat = b / largest_b
+    area_hat = _safe_norm(_cross(a_hat, b_hat))
+    if area_hat == 0.0:
+        raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "parallel tangents, diagonals or edges")
+    norm_a_hat = _safe_norm(a_hat)
+    norm_b_hat = _safe_norm(b_hat)
+    ratio = norm_a_hat * norm_b_hat / area_hat
+    with np.errstate(over="ignore"):
+        shortest = min([largest_a * norm_a_hat, largest_b * norm_b_hat, *(float(length) for length in lengths)])
+        reach = float(np.max(np.abs(coords)))
+        conditioning = (reach / shortest + 1.0) * ratio
+    return conditioning if math.isfinite(conditioning) else math.inf
 
 
 def _relative_tangents(element: Any, coords: np.ndarray, xi: float, eta: float) -> Tuple[np.ndarray, np.ndarray]:
@@ -580,7 +580,11 @@ def _check_geometry_domain(element: Any, coords: np.ndarray, requested: Optional
     quadrilaterals.  Evaluated on power-of-two scaled coordinates (G is scale
     invariant)."""
 
-    coords = _power_of_two_scaled(coords)
+    coords = np.asarray(coords, dtype=float)
+    with np.errstate(over="ignore", invalid="ignore"):
+        differences = coords - coords[0]
+    if not _finite(differences):
+        coords = _power_of_two_scaled(coords)  # G is scale invariant
     if len(coords) == 3:
         values = [_geometry_conditioning(coords, coords[1] - coords[0], coords[2] - coords[0],
                                          _safe_norm(coords[2] - coords[1]))]
