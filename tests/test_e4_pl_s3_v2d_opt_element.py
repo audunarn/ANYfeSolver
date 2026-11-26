@@ -367,3 +367,65 @@ def test_recovery_is_invariant_to_connectivity_order_for_a_nonuniform_field():
         assert other.keys() == seen[0].keys()
         for key, tensor in seen[0].items():
             assert np.allclose(tensor, other[key], rtol=1e-9, atol=1e-9 * np.abs(tensor).max())
+
+
+# ---- Codex round 2 regressions -------------------------------------------------------------------
+def test_snapshot_constitutive_equals_the_v2d_baseline_bitwise():
+    from anyfesolver.e4_pl_s3_v2d_opt_element import _snapshot_constitutive
+    m, el = _single(OPT_KIND, [[0.1, 0.05, 0], [1.3, 0.4, 0], [0.5, 1.1, 0]], t=0.137)
+    d = create_shell_element(1, [1, 2, 3], "mat", thickness=0.137, reference_normal=NORMAL)
+    ref = NativeParityE4PLS3V2DShellElement._elastic_baseline_constitutive(d, m.materials["mat"])
+    got = _snapshot_constitutive(m.materials["mat"], 0.137)
+    for key in ("A", "B", "D", "H", "E", "nu", "drill_scale"):
+        assert np.array_equal(np.asarray(got[key]), np.asarray(ref[key])), key
+
+
+def test_hostile_thickness_float_subclass_cannot_poison_the_shared_cache():
+    import anyfesolver.e4_pl_s3_v2d_opt_element as mod
+
+    class Evil(float):
+        def __pow__(self, other):
+            return Evil(float(self) ** other * 10.0)
+
+    xyz = [[0.1, 0.05, 0], [1.3, 0.4, 0], [0.5, 1.1, 0]]
+    mod._LOCAL_CACHE.clear()
+    m, bad = _single(OPT_KIND, xyz)
+    bad.thickness = Evil(0.1)
+    k_bad = bad.compute_stiffness_matrix(m.mesh, m.materials["mat"])
+    clean_m, clean = _single(OPT_KIND, xyz)
+    k_clean = clean.compute_stiffness_matrix(clean_m.mesh, clean_m.materials["mat"])
+    assert np.array_equal(k_bad, k_clean)   # the snapshot makes both elements compute the same values
+
+
+def test_public_quadrature_arrays_are_copies_not_the_shared_assembly_arrays():
+    el = OPT(3, [1, 2, 3], "mat", thickness=0.1, reference_normal=NORMAL)
+    before = el.shear_gauss_points.copy()
+    arr = el.shear_gauss_points
+    try:
+        arr.strides = (0, 8)
+    except (ValueError, TypeError, AttributeError):
+        pass
+    assert np.array_equal(OPT(4, [1, 2, 3], "mat", thickness=0.1, reference_normal=NORMAL).shear_gauss_points, before)
+    d = create_shell_element(5, [1, 2, 3], "mat", thickness=0.1, reference_normal=NORMAL)
+    assert np.array_equal(d.shear_gauss_points, before)   # the default's shared array is untouched too
+
+
+def test_finite_inputs_with_nonfinite_outputs_are_refused_and_copy_is_refused():
+    import copy
+    m, el = _single(OPT_KIND, [[0, 0, 0], [1, 0, 0], [0, 1, 0]])
+    huge = FEModel("h")
+    huge.add_material("mat", 1e170, NU)
+    for i, p in enumerate([[0, 0, 0], [1, 0, 0], [0, 1, 0]], 1):
+        huge.add_node(i, *map(float, p))
+    big = OPT(1, [1, 2, 3], "mat", thickness=0.1, reference_normal=NORMAL)
+    huge.add_element(1, big)
+    u = np.zeros(18)
+    u[0] = 1e-3
+    with pytest.raises(ValueError):
+        big.compute_stresses(huge.mesh, u, huge.materials["mat"])
+    with pytest.raises(ElementCapabilityError):
+        copy.deepcopy(el)
+    with pytest.raises(ElementCapabilityError):
+        copy.copy(el)
+    from anyfesolver.e4_pl_opt_membrane import optimal_beta0, isotropic_plane_stress
+    assert optimal_beta0(isotropic_plane_stress(1e308, 0.3)) == pytest.approx(0.32)

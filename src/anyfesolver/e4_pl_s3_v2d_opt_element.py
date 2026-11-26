@@ -96,6 +96,29 @@ def _require_opt_only_shell_scope(elements: Any) -> None:
             _SCOPE_CACHE.clear()
 
 
+def _plain_float(value: Any, label: str) -> float:
+    """Exact Python float of a finite real: never evaluates caller-supplied arithmetic."""
+    return float(np.float64(_real_scalar(value, label)))
+
+
+def _snapshot_constitutive(material: Material, thickness: float) -> Dict[str, Any]:
+    """Elastic isotropic section from plain-float snapshots (same expressions as the V2D baseline)."""
+    modulus = _plain_float(getattr(material, "elastic_modulus", None), "elastic_modulus")
+    poisson = _plain_float(getattr(material, "poisson_ratio", None), "poisson_ratio")
+    if modulus <= 0.0 or not -1.0 < poisson < 0.5:
+        raise ValueError("S3 V2D-OPT isotropic elastic constants are inadmissible")
+    scale = modulus / (1.0 - poisson**2)
+    plane = scale * np.asarray(
+        ((1.0, poisson, 0.0), (poisson, 1.0, 0.0), (0.0, 0.0, 0.5 * (1.0 - poisson))), dtype=np.float64
+    )
+    shear_scalar = (5.0 / 6.0) * modulus * thickness / (2.0 * (1.0 + poisson))
+    return {
+        "A": thickness * plane, "B": np.zeros((3, 3), dtype=np.float64), "D": thickness**3 / 12.0 * plane,
+        "H": shear_scalar * np.eye(2, dtype=np.float64), "E": modulus, "nu": poisson,
+        "drill_scale": thickness * modulus / (2.0 * (1.0 + poisson)),
+    }
+
+
 def _refuse(operation: str) -> None:
     raise NativeParityCapabilityError(f"S3 V2D-OPT linear v1 does not admit {operation}")
 
@@ -135,19 +158,19 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
 
     @property
     def gauss_points(self) -> np.ndarray:
-        return HAMMER_POINTS
+        return HAMMER_POINTS.copy()
 
     @property
     def gauss_weights(self) -> np.ndarray:
-        return HAMMER_REFERENCE_WEIGHTS
+        return HAMMER_REFERENCE_WEIGHTS.copy()
 
     @property
     def shear_gauss_points(self) -> np.ndarray:
-        return HAMMER_POINTS
+        return HAMMER_POINTS.copy()
 
     @property
     def shear_gauss_weights(self) -> np.ndarray:
-        return HAMMER_REFERENCE_WEIGHTS
+        return HAMMER_REFERENCE_WEIGHTS.copy()
 
     def __setattr__(self, name: str, value: Any) -> None:
         if name in _PROTECTED_NAMES:
@@ -241,9 +264,10 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
         path; the membrane block is the OPT kernel.
         """
         _require_no_shadow(self)
-        raw = _V2D._elastic_baseline_constitutive(self, material)
+        thickness = _plain_float(self.thickness, "thickness")
+        raw = _snapshot_constitutive(material, thickness)
         local = np.asarray(geometry["local_coordinates"], dtype=np.float64)
-        key = (local.tobytes(), float(self.thickness), float(raw["E"]), float(raw["nu"]))
+        key = (local.tobytes(), thickness, raw["E"], raw["nu"])
         hit = _LOCAL_CACHE.get(key)
         if hit is not None:
             return hit
@@ -274,14 +298,14 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
         plane, beta0 = material_entry
         membrane_local = np.zeros((18, 18), dtype=np.float64)
         membrane_local[np.ix_(_LOCAL_MEMBRANE_INDEX, _LOCAL_MEMBRANE_INDEX)] = opt_membrane_stiffness(
-            local, plane, float(self.thickness), beta0, validated=True
+            local, plane, thickness, beta0, validated=True
         )
         bary = np.column_stack(
             (1.0 - HAMMER_POINTS[:, 0] - HAMMER_POINTS[:, 1], HAMMER_POINTS[:, 0], HAMMER_POINTS[:, 1])
         )
         membrane_ops = np.zeros((3, 3, 18), dtype=np.float64)
         membrane_ops[:, :, _LOCAL_MEMBRANE_INDEX] = opt_membrane_strain_operator(
-            local, bary, float(self.thickness), RECOVERY_E0
+            local, bary, thickness, RECOVERY_E0
         )
         entry = {
             "membrane": membrane_local, "bending": bending, "shear": phi_squared * unrelaxed,
@@ -333,7 +357,10 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
         vector = self._get_element_displacements(mesh, displacements)
         if vector.shape != (18,) or not np.all(np.isfinite(vector)):
             raise ValueError("S3 V2D-OPT displacement must resolve to a finite 18-vector")
-        return self.compute_stiffness_matrix(mesh, material) @ vector
+        forces = self.compute_stiffness_matrix(mesh, material) @ vector
+        if not np.all(np.isfinite(forces)):
+            raise ValueError("S3 V2D-OPT internal forces are not finite")
+        return forces
 
     # ---------------------------------------------------------------- recovery
     def compute_variational_resultants(
@@ -352,6 +379,8 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
         kappa = np.einsum("gij,j->gi", data["B_b"], local_vector)
         gamma = np.einsum("gij,j->gi", data["B_s"], local_vector)
         phi_squared = float(data["phi_squared"])
+        if not (np.all(np.isfinite(epsilon)) and np.all(np.isfinite(kappa)) and np.all(np.isfinite(gamma))):
+            raise ValueError("S3 V2D-OPT recovered strains are not finite")
         membrane_resultants = epsilon @ section["A"].T
         bending_resultants = kappa @ section["D"].T
         shear_resultants = phi_squared * gamma @ section["H"].T
@@ -395,6 +424,9 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
     ):
         self._require_material(material)
         result = dict(_V2D.compute_stresses(self, mesh, displacements, material, return_global))
+        for name, value in result.items():
+            if isinstance(value, np.ndarray) and value.dtype.kind == "f" and not np.all(np.isfinite(value)):
+                raise ValueError(f"S3 V2D-OPT recovered field {name!r} is not finite")
         result["formulation_id"] = FORMULATION_ID
         result["implementation_id"] = IMPLEMENTATION_ID
         result["membrane_policy_id"] = MEMBRANE_POLICY_ID
@@ -420,6 +452,21 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
         _refuse("current-configuration pressure tangent")
 
     # ---------------------------------------------------------------- serialization
+    def __getstate__(self) -> Dict[str, Any]:
+        _refuse("python pickle/copy (use to_dict/from_dict)")
+
+    def __setstate__(self, state: Mapping[str, Any]) -> None:
+        _refuse("python pickle/copy (use to_dict/from_dict)")
+
+    def __reduce_ex__(self, protocol: int) -> Any:
+        _refuse("python pickle/copy (use to_dict/from_dict)")
+
+    def __deepcopy__(self, memo: Dict[int, Any]) -> Any:
+        _refuse("python deepcopy (use to_dict/from_dict)")
+
+    def __copy__(self) -> Any:
+        _refuse("python copy (use to_dict/from_dict)")
+
     def to_dict(self) -> Dict[str, Any]:
         self._validate_configuration()
         return {
@@ -433,7 +480,7 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
             "selector": SELECTOR,
             "membrane_policy_id": MEMBRANE_POLICY_ID,
             "scope_policy_id": SCOPE_POLICY_ID,
-            "thickness": float(self.thickness),
+            "thickness": _plain_float(self.thickness, "thickness"),
             "type": type(self).__name__,
         }
 

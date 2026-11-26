@@ -30,10 +30,15 @@ def _checked_material(emat) -> np.ndarray:
     d = np.array(emat, dtype=float)
     if d.shape != (3, 3) or not np.all(np.isfinite(d)):
         raise ValueError("elasticity matrix must be a finite 3x3 array")
-    if np.max(np.abs(d - d.T)) > 1e-12 * np.max(np.abs(d)):
+    scale = float(np.max(np.abs(d)))
+    if not scale > 0.0:
+        raise ValueError("elasticity matrix must be nonzero")
+    unit = d / scale  # checks on the scaled matrix: no overflow at extreme moduli
+    if np.max(np.abs(unit - unit.T)) > 1e-12:
         raise ValueError("elasticity matrix must be symmetric")
-    d = 0.5 * (d + d.T)
-    if np.min(np.linalg.eigvalsh(d)) <= 0.0:
+    unit = 0.5 * (unit + unit.T)
+    d = unit * scale
+    if np.min(np.linalg.eigvalsh(unit)) <= 0.0:
         raise ValueError("elasticity matrix must be positive definite")
     return d
 
