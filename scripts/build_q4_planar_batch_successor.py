@@ -43,7 +43,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "docs" / "reference_cases" / "qualified_q4_planar_batch_successor.json"
 SCHEMA = "anysolver.qualified-q4-planar-batch-successor-v1"
-BASE_REF = "d4cf5011f"  # origin/main after G2 (#92); resolved to the full id below
+BASE_REF = "3b5f23d5d"  # origin/main after #93 (G2 #92 is d4cf5011f); resolved to the full id below
 PREDECESSOR = "docs/reference_cases/qualified_shell_nonlinear_guard_cadence_successor.json"
 PREDECESSOR_SHA256 = "96EB8040773D4E05F33938C333F34BF63372428D0A7EEE5D099867690A88936D"
 PERFORMANCE_NOTE = "docs/Q4_PLANAR_BATCH_SPEEDUP.md"

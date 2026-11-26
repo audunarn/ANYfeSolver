@@ -24,10 +24,10 @@ RECORD = ROOT / "docs" / "reference_cases" / "qualified_q4_planar_batch_successo
 BUILDER = ROOT / "scripts" / "build_q4_planar_batch_successor.py"
 PREDECESSOR = ROOT / "docs" / "reference_cases" / "qualified_shell_nonlinear_guard_cadence_successor.json"
 PREDECESSOR_SHA256 = "96EB8040773D4E05F33938C333F34BF63372428D0A7EEE5D099867690A88936D"
-RECORDED_BASE_COMMIT = "d4cf5011fea7539b315a37b5de4359591c801ae0"
+RECORDED_BASE_COMMIT = "3b5f23d5dae37c5f12e4863064c8ae008f4e0ee1"
 # Pinned without history (Codex L4 round 1 P2): a shallow checkout that skips
 # the ancestry checks still refuses a substituted change identity.
-RECORDED_BASE_TREE = "736b9aa3c5c35429d339c0c836b91c474c0bea61"
+RECORDED_BASE_TREE = "bead787079acb171dd8023abb7d314bae5ad8fcd"
 RECORDED_CHANGE_COMMIT = "704536ab0c590f09af99ed53a09d8b74eefda119"
 RECORDED_CHANGE_COMMIT_IDS = ("704536ab0", "84810a7dc")
 SEALED_CARRIERS = ("e4_pl_element.py", "matrix_assembly.py")
