@@ -15,6 +15,8 @@ is refused with ``NativeParityCapabilityError``.
 """
 from __future__ import annotations
 
+import math
+import weakref
 from typing import Any, Dict, Mapping, Optional, Sequence
 
 import numpy as np
@@ -26,16 +28,22 @@ from .e4_pl_opt_membrane import (
     opt_membrane_stiffness,
     opt_membrane_strain_operator,
 )
-from .e4_pl_s3_v2c_element import HAMMER_POINTS, StrictFlatLinearE4PLS3V2CShellElement as _V2C
+from .e4_pl_s3_v2c_element import (
+    HAMMER_POINTS,
+    RESULTANT_POLICY_ID,
+    StrictFlatLinearE4PLS3V2CShellElement as _V2C,
+)
 from .e4_pl_s3_v2d_element import (
     NativeParityCapabilityError,
+    CBMIN3,
     NativeParityE4PLS3V2DShellElement as _V2D,
+    _ROTATIONAL_INDICES,
     _immutable_serialized_unit_vector,
     _immutable_vector,
     _real_scalar,
 )
 from .elements import ShellElement
-from .fe_core import FEMesh, Material
+from .fe_core import FEMesh, Material, _QualifiedMutationEpoch, _QualifiedStateMapping
 
 SELECTOR = "e4-pl-s3-v2d-opt"
 FORMULATION_ID = "CANDIDATE_E4_PL_S3_V2D_OPT_V1"
@@ -43,11 +51,43 @@ FORMULATION_SCHEMA = "ANYFESOLVER_E4_PL_S3_V2D_OPT_ELEMENT_V1"
 IMPLEMENTATION_ID = "E4_PL_S3_V2D_OPT_LINEAR_V1"
 MEMBRANE_POLICY_ID = "FELIPPA_2003_ANDES_OPT_LST39R_V1"
 SCOPE_POLICY_ID = "LINEAR_STATIC_AND_RECOVERY_ONLY_V1"
+_LOCAL_CACHE: Dict[Any, Dict[str, Any]] = {}
+_LOCAL_CACHE_LIMIT = 1024
+_MATERIAL_CACHE: Dict[Any, Any] = {}
 _LOCAL_MEMBRANE_INDEX = np.asarray((0, 1, 5, 6, 7, 11, 12, 13, 17), dtype=np.intp)  # (u,v,rz) per node
 _OPT_FIELDS = (
     "element_id", "formulation_id", "formulation_schema", "implementation_id", "material_name", "node_ids",
     "reference_normal", "selector", "membrane_policy_id", "scope_policy_id", "thickness", "type",
 )
+
+
+_SCOPE_CACHE: list = []  # [(weakref(elements), token, epoch, length)] of the last verified registry
+
+
+def _require_opt_only_shell_scope(elements: Any) -> None:
+    """Refuse a model holding any shell other than V2D-OPT.
+
+    The class census is linear in mesh size; per owner contract 2026-11-24 the
+    registry does not change mid-request in supported use, so a verified census
+    is reused while the registry's mutation epoch and length are unchanged.
+    """
+    key = None
+    if type(elements) is _QualifiedStateMapping:
+        token = dict.get(object.__getattribute__(elements, "__dict__"), "_qualified_token")
+        if type(token) is _QualifiedMutationEpoch:
+            key = (token, list.__getitem__(token, 0), dict.__len__(elements))
+            if _SCOPE_CACHE:
+                ref, token0, epoch0, length0 = _SCOPE_CACHE[0]
+                if ref() is elements and token0 is key[0] and epoch0 == key[1] and length0 == key[2]:
+                    return
+    for kind in set(map(type, dict.values(elements))):
+        if kind is not NativeParityE4PLS3V2DOptShellElement and issubclass(kind, ShellElement):
+            raise NativeParityCapabilityError("S3 V2D-OPT mixed shell scope admits only V2D-OPT shells")
+    if key is not None:
+        try:
+            _SCOPE_CACHE[:] = [(weakref.ref(elements), *key)]
+        except TypeError:
+            _SCOPE_CACHE.clear()
 
 
 def _refuse(operation: str) -> None:
@@ -76,21 +116,13 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
     _coordinates = _V2D._coordinates
     _elastic_baseline_constitutive = _V2D._elastic_baseline_constitutive
     _is_v2d_elastic_overlap = staticmethod(_V2D._is_v2c_elastic_overlap)
-    # The reused V2D recovery/stiffness functions delegate to V2C when this predicate holds;
-    # OPT must always take the native path (its membrane operator differs).
-    _is_v2c_elastic_overlap = staticmethod(lambda material: False)
-    _director_adjusted_section = _V2D._director_adjusted_section
-    _effective_station_operators = _V2D._effective_station_operators
-    _reference_surface_strain_transform = _V2D._reference_surface_strain_transform
     _globalize = staticmethod(_V2D._globalize)
-    _native_generalized_components = _V2D._native_generalized_components
     _pressure_virtual_work_density_local = staticmethod(_V2C._pressure_virtual_work_density_local)
     compute_native_surface_shape_functions = staticmethod(_V2D.compute_native_surface_shape_functions)
     sheet_area_orientation_sign = _V2D.sheet_area_orientation_sign
     compute_dead_transverse_pressure_load = _V2D.compute_dead_transverse_pressure_load
     compute_native_dead_pressure_load = _V2D.compute_native_dead_pressure_load
     compute_native_pressure_density = _V2D.compute_native_pressure_density
-    compute_variational_resultants = _V2D.compute_variational_resultants
     physical_reference_director = _V2D.physical_reference_director
     native_reference_directors = _V2D.native_reference_directors
     material_mid_surface_offset_from_reference = _V2D.material_mid_surface_offset_from_reference
@@ -163,52 +195,106 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
             return
         if not isinstance(elements, dict) or elements.get(self.element_id) is not self:
             raise NativeParityCapabilityError("S3 V2D-OPT evaluation requires exact model-registry ownership")
-        for other in elements.values():
-            if isinstance(other, ShellElement) and type(other) is not NativeParityE4PLS3V2DOptShellElement:
-                raise NativeParityCapabilityError("S3 V2D-OPT mixed shell scope admits only V2D-OPT shells")
+        _require_opt_only_shell_scope(elements)
 
     def _require_material(self, material: Material) -> None:
         if not self._is_v2d_elastic_overlap(material):
             raise NativeParityCapabilityError("S3 V2D-OPT admits exact elastic isotropic Material only")
 
-    # ---------------------------------------------------------------- operators
-    def _operators(self, geometry: Mapping[str, Any], constitutive: Mapping[str, Any]) -> Dict[str, Any]:
-        """V2C plate operators; B_m is the per-station OPT strain-recovery operator (3,3,18)."""
-        ops = _V2C._operators(self, geometry, constitutive)
+    # ---------------------------------------------------------------- local data (cached)
+    def _local_data(self, geometry: Mapping[str, Any], material: Material) -> Dict[str, Any]:
+        """Element-local (internal node order) blocks, operators and MIN3 relaxation.
+
+        Pure function of (local coordinates, thickness, E, nu); results are cached by those exact
+        float64 values (bit-identical reuse; congruent triangles share an entry).  Bending and
+        shear blocks use the reviewed V2C operators with the operation order of the V2D native
+        path; the membrane block is the OPT kernel.
+        """
+        raw = self._elastic_baseline_constitutive(material)
         local = np.asarray(geometry["local_coordinates"], dtype=np.float64)
-        bary = np.column_stack((1.0 - HAMMER_POINTS[:, 0] - HAMMER_POINTS[:, 1], HAMMER_POINTS[:, 0], HAMMER_POINTS[:, 1]))
-        recovery = opt_membrane_strain_operator(local, bary, float(self.thickness), RECOVERY_E0)
-        membrane = np.zeros((3, 3, 18), dtype=np.float64)
-        membrane[:, :, _LOCAL_MEMBRANE_INDEX] = recovery
-        ops = dict(ops)
-        ops["B_m"] = membrane
-        return ops
+        key = (local.tobytes(), float(self.thickness), float(raw["E"]), float(raw["nu"]))
+        hit = _LOCAL_CACHE.get(key)
+        if hit is not None:
+            return hit
+        ops = _V2C._operators(self, geometry, raw)
+        curvature, shear_op = ops["B_b"], ops["B_s"]
+        weight = float(geometry["area"]) / 3.0
+        bending = np.zeros((18, 18), dtype=np.float64)
+        unrelaxed = np.zeros((18, 18), dtype=np.float64)
+        for b_op, s_op in zip(curvature, shear_op):
+            bending += b_op.T @ raw["D"] @ b_op * weight
+            unrelaxed += s_op.T @ raw["H"] @ s_op * weight
+        bending_sum = float(sum(bending[i, i] for i in _ROTATIONAL_INDICES))
+        shear_sum = float(sum(unrelaxed[i, i] for i in _ROTATIONAL_INDICES))
+        if bending_sum <= 0.0 or shear_sum <= 0.0:
+            raise ValueError("S3 V2D-OPT MIN3 relaxation traces must be positive")
+        psi_hat = bending_sum / shear_sum
+        phi_squared = CBMIN3 * psi_hat / (1.0 + CBMIN3 * psi_hat)
+        if not math.isfinite(phi_squared) or not 0.0 < phi_squared <= 1.0:
+            raise ValueError("S3 V2D-OPT MIN3 relaxation is invalid")
+        plane_key = (float(raw["E"]), float(raw["nu"]))
+        material_entry = _MATERIAL_CACHE.get(plane_key)
+        if material_entry is None:
+            plane = isotropic_plane_stress(*plane_key)
+            material_entry = (plane, float(optimal_beta0(plane)))
+            if len(_MATERIAL_CACHE) >= _LOCAL_CACHE_LIMIT:
+                _MATERIAL_CACHE.clear()
+            _MATERIAL_CACHE[plane_key] = material_entry
+        plane, beta0 = material_entry
+        membrane_local = np.zeros((18, 18), dtype=np.float64)
+        membrane_local[np.ix_(_LOCAL_MEMBRANE_INDEX, _LOCAL_MEMBRANE_INDEX)] = opt_membrane_stiffness(
+            local, plane, float(self.thickness), beta0, validated=True
+        )
+        bary = np.column_stack(
+            (1.0 - HAMMER_POINTS[:, 0] - HAMMER_POINTS[:, 1], HAMMER_POINTS[:, 0], HAMMER_POINTS[:, 1])
+        )
+        membrane_ops = np.zeros((3, 3, 18), dtype=np.float64)
+        membrane_ops[:, :, _LOCAL_MEMBRANE_INDEX] = opt_membrane_strain_operator(
+            local, bary, float(self.thickness), RECOVERY_E0
+        )
+        entry = {
+            "membrane": membrane_local, "bending": bending, "shear": phi_squared * unrelaxed,
+            "phi_squared": phi_squared, "phi": np.asarray(ops["phi"], dtype=np.float64),
+            "B_m": membrane_ops, "B_b": np.asarray(curvature, dtype=np.float64),
+            "B_s": np.asarray(shear_op, dtype=np.float64), "section": raw,
+            "beta0": beta0,
+        }
+        for value in entry.values():
+            if isinstance(value, np.ndarray):
+                value.flags.writeable = False
+        if len(_LOCAL_CACHE) >= _LOCAL_CACHE_LIMIT:
+            _LOCAL_CACHE.clear()
+        _LOCAL_CACHE[key] = entry
+        return entry
 
     # ---------------------------------------------------------------- stiffness
     def compute_stiffness_components(self, mesh: FEMesh, material: Material) -> Mapping[str, Any]:
         self._validate_configuration()
         self._require_material(material)
-        parts = dict(self._native_generalized_components(mesh, material))
         geometry = self._geometry(mesh)
-        raw = self._elastic_baseline_constitutive(material)
-        plane = isotropic_plane_stress(raw["E"], raw["nu"])
-        k9 = opt_membrane_stiffness(np.asarray(geometry["local_coordinates"], dtype=np.float64), plane, float(self.thickness))
-        membrane_local = np.zeros((18, 18), dtype=np.float64)
-        membrane_local[np.ix_(_LOCAL_MEMBRANE_INDEX, _LOCAL_MEMBRANE_INDEX)] = k9
+        data = self._local_data(geometry, material)
         transform = np.asarray(geometry["local_from_external"], dtype=np.float64)
-        membrane = self._globalize(membrane_local, transform)
         zero = np.zeros((18, 18), dtype=np.float64)
-        physical = membrane + parts["membrane_bending_coupling"] + parts["bending"] + parts["shear"]
-        parts.update(
-            membrane=membrane, pl=zero.copy(), numerical=zero.copy(), physical=physical,
-            total=0.5 * (physical + physical.T), drill_scale=0.0,
-            formulation_id=FORMULATION_ID, membrane_policy_id=MEMBRANE_POLICY_ID,
-            membrane_beta0=float(optimal_beta0(plane)),
-        )
-        return parts
+        physical = self._globalize(data["membrane"] + data["bending"] + data["shear"], transform)
+        return {
+            "membrane": self._globalize(data["membrane"], transform),
+            "membrane_bending_coupling": zero.copy(),
+            "bending": self._globalize(data["bending"], transform),
+            "shear": self._globalize(data["shear"], transform),
+            "physical": physical, "pl": zero.copy(), "numerical": zero.copy(), "hourglass": zero.copy(),
+            "total": physical.copy(), "frame": np.asarray(geometry["frame"], dtype=np.float64).copy(),
+            "area": float(geometry["area"]), "phi": data["phi"].copy(), "phi_squared": data["phi_squared"],
+            "drill_scale": 0.0, "formulation_id": FORMULATION_ID, "membrane_policy_id": MEMBRANE_POLICY_ID,
+            "membrane_beta0": data["beta0"],
+        }
 
     def compute_stiffness_matrix(self, mesh: FEMesh, material: Material) -> np.ndarray:
-        return np.asarray(self.compute_stiffness_components(mesh, material)["total"], dtype=np.float64).copy()
+        self._validate_configuration()
+        self._require_material(material)
+        geometry = self._geometry(mesh)
+        data = self._local_data(geometry, material)
+        total = data["membrane"] + data["bending"] + data["shear"]
+        return self._globalize(total, np.asarray(geometry["local_from_external"], dtype=np.float64))
 
     def compute_internal_forces(self, mesh: FEMesh, displacements: np.ndarray, material: Material) -> np.ndarray:
         vector = self._get_element_displacements(mesh, displacements)
@@ -217,7 +303,61 @@ class NativeParityE4PLS3V2DOptShellElement(ShellElement):
         return self.compute_stiffness_matrix(mesh, material) @ vector
 
     # ---------------------------------------------------------------- recovery
-    def compute_stresses(self, mesh: FEMesh, displacements: np.ndarray, material: Material, return_global: bool = False):
+    def compute_variational_resultants(
+        self, mesh: FEMesh, displacements: np.ndarray, material: Material
+    ) -> Dict[str, Any]:
+        self._validate_configuration()
+        self._require_material(material)
+        geometry = self._geometry(mesh)
+        data = self._local_data(geometry, material)
+        section = data["section"]
+        vector = self._get_element_displacements(mesh, displacements)
+        local_vector = np.asarray(geometry["local_from_external"], dtype=np.float64) @ vector
+        epsilon = np.einsum("gij,j->gi", data["B_m"], local_vector)
+        kappa = np.einsum("gij,j->gi", data["B_b"], local_vector)
+        gamma = np.einsum("gij,j->gi", data["B_s"], local_vector)
+        phi_squared = float(data["phi_squared"])
+        membrane_resultants = epsilon @ section["A"].T
+        bending_resultants = kappa @ section["D"].T
+        shear_resultants = phi_squared * gamma @ section["H"].T
+        order = tuple(int(value) for value in geometry["internal_order"])
+
+        def external_order(values: np.ndarray) -> np.ndarray:
+            made = np.empty_like(values)
+            for internal, external in enumerate(order):
+                made[external] = values[internal]
+            return made
+
+        barycentric = np.column_stack(
+            (1.0 - HAMMER_POINTS[:, 0] - HAMMER_POINTS[:, 1], HAMMER_POINTS[:, 0], HAMMER_POINTS[:, 1])
+        )
+        return {
+            "recovery_scope": RESULTANT_POLICY_ID, "qualified_recovery": False,
+            "physical_stress_available": False, "numerical_fields_excluded": True,
+            "membrane_strain": external_order(epsilon), "curvature": external_order(kappa),
+            "transverse_shear_strain": external_order(gamma),
+            "membrane_resultants": external_order(membrane_resultants),
+            "bending_resultants": external_order(bending_resultants),
+            "transverse_shear_resultants": external_order(shear_resultants),
+            "min3_relaxation_phi_squared": phi_squared,
+            "hammer_points": np.asarray(HAMMER_POINTS, dtype=np.float64).copy(),
+            "external_barycentric_coordinates": barycentric,
+            "physical_station_coordinates": barycentric
+            @ np.asarray(geometry["external_coordinates"], dtype=np.float64),
+            "internal_order": order,
+            "physical_weights": np.full(3, float(geometry["area"]) / 3.0),
+            "frame": np.asarray(geometry["frame"], dtype=np.float64).copy(),
+            "resultant_policy_id": RESULTANT_POLICY_ID,
+            "native_section_policy_id": "S3_V2D_LAYERED_ELASTIC_BASELINE_V1",
+            "director_polarity": 1, "reference_surface_offset": 0.0,
+            "section_origin_offset_from_reference": 0.0,
+            "physical_bottom_offset_from_reference": self.material_surface_offset_from_reference(-1.0),
+            "physical_top_offset_from_reference": self.material_surface_offset_from_reference(1.0),
+        }
+
+    def compute_stresses(
+        self, mesh: FEMesh, displacements: np.ndarray, material: Material, return_global: bool = False
+    ):
         self._require_material(material)
         result = dict(_V2D.compute_stresses(self, mesh, displacements, material, return_global))
         result["formulation_id"] = FORMULATION_ID

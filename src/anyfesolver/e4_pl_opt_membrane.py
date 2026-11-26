@@ -93,10 +93,10 @@ def _template_matrices(xy, thickness: float):
     return h, area, lm, tu, te, (q1, q2, q3)
 
 
-def opt_membrane_stiffness_parts(xy, emat, thickness: float, beta0: float | None = None):
+def opt_membrane_stiffness_parts(xy, emat, thickness: float, beta0: float | None = None, *, validated: bool = False):
     """Return (K_basic, K_higher), each 9x9, for a counter-clockwise triangle."""
     h, area, lm, tu, te, (q1, q2, q3) = _template_matrices(xy, thickness)
-    em = _checked_material(emat)
+    em = np.asarray(emat, dtype=float) if validated else _checked_material(emat)
     b0 = optimal_beta0(em) if beta0 is None else float(beta0)
     kb = lm @ em @ lm.T / (h * area)
     q4, q5, q6 = (q1 + q2) / 2, (q2 + q3) / 2, (q3 + q1) / 2
@@ -119,7 +119,9 @@ def opt_membrane_strain_operator(xy, barycentric, thickness: float = 1.0, e0: fl
     return out
 
 
-def opt_membrane_stiffness(xy, emat, thickness: float, beta0: float | None = None) -> np.ndarray:
-    kb, kh = opt_membrane_stiffness_parts(xy, emat, thickness, beta0)
+def opt_membrane_stiffness(
+    xy, emat, thickness: float, beta0: float | None = None, *, validated: bool = False
+) -> np.ndarray:
+    kb, kh = opt_membrane_stiffness_parts(xy, emat, thickness, beta0, validated=validated)
     k = kb + kh
     return 0.5 * (k + k.T)

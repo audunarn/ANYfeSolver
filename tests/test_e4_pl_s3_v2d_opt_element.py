@@ -251,3 +251,21 @@ def test_dead_pressure_load_matches_the_default_triangle():
     md, ed = _single("e4-pl-s3-v2d", xyz)
     assert np.array_equal(eo.compute_dead_transverse_pressure_load(mo.mesh, 3.0),
                           ed.compute_dead_transverse_pressure_load(md.mesh, 3.0))
+
+
+def test_local_cache_is_bit_identical_and_keyed_by_exact_geometry():
+    import anyfesolver.e4_pl_s3_v2d_opt_element as mod
+    xyz = [[0.1, 0.05, 0], [1.3, 0.4, 0], [0.5, 1.1, 0]]
+    m, el = _single(OPT_KIND, xyz)
+    mat = m.materials["mat"]
+    mod._LOCAL_CACHE.clear()
+    cold = el.compute_stiffness_matrix(m.mesh, mat)
+    warm = el.compute_stiffness_matrix(m.mesh, mat)
+    assert np.array_equal(cold, warm) and len(mod._LOCAL_CACHE) == 1
+    xyz2 = [[0.1, 0.05, 0], [1.3, 0.4, 0], [0.5, 1.1 + 1e-9, 0]]  # a one-ulp-scale change must not hit the cache
+    m2, el2 = _single(OPT_KIND, xyz2)
+    el2.compute_stiffness_matrix(m2.mesh, m2.materials["mat"])
+    assert len(mod._LOCAL_CACHE) == 2
+    # returned matrices are caller-owned copies: mutating them cannot poison the cache
+    cold[0, 0] = 1e30
+    assert np.array_equal(el.compute_stiffness_matrix(m.mesh, mat), warm)
