@@ -105,7 +105,10 @@ ROUNDOFF = 64.0 * EPS  # rule (1) allowance of the emitted m +- b surfaces
 RESOLUTION = 1.0e-9  # rule (3): a_f <= 1e-9 s_f
 LEGACY_RECOVERY_FLOOR = 1.0e-12  # elements._SMALL in 6 M / max(h^2, _SMALL)
 ORTHONORMAL_BOUND = 1.0e-13  # |G^T G - I| of every frame used (and det G > 0); V2D: see _v2d_frame
-GEOMETRY_BOUND = 1.0e-13  # rule (6): |n - n_geometry| (measured <= 2.3e-16 on every fixture)
+GEOMETRY_BOUND = 1.0e-13  # rule (6): |n - n_geometry| (measured <= 2.3e-16 on every fixture) ...
+# ... plus the roundoff of coordinate differences: 64 eps max|x| / (shortest
+# tangent, diagonal or edge used), so a large origin is not a spurious refusal
+GEOMETRY_ROUNDOFF = 64.0 * EPS
 _FLOAT_TYPES = (float, int, np.float64)
 _INT_TYPES = (int, np.int64)
 
@@ -329,23 +332,64 @@ def _check_attribute_types(element: Any, names: Tuple[str, ...]) -> None:
             )
 
 
-def _tangent_normals(element: Any, coords: np.ndarray, points: np.ndarray) -> np.ndarray:
-    """Rule (6) geometry: normalized cross product of the shape-function tangents."""
+def _cross(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    return np.array(
+        (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]),
+        dtype=float,
+    )
+
+
+def _geometry_bound(coords: np.ndarray, *lengths: float) -> float:
+    shortest = min(float(length) for length in lengths)
+    if not (math.isfinite(shortest) and shortest > 0.0):
+        raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "zero or nonfinite tangent, diagonal or edge")
+    return GEOMETRY_BOUND + GEOMETRY_ROUNDOFF * float(np.max(np.abs(coords))) / shortest
+
+
+def _unit_normal(cross: np.ndarray) -> np.ndarray:
+    length = math.sqrt(float(cross @ cross))
+    if not (math.isfinite(length) and length > 0.0):
+        raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "zero or nonfinite surface normal")
+    return cross / length
+
+
+def _diagonal_normal(coords: np.ndarray) -> Tuple[np.ndarray, float]:
+    """Bilinear Q4 centre normal: X_xi x X_eta at the centre = (x2-x0) x (x3-x1) / 8,
+    from coordinate differences (well conditioned far from the origin)."""
+
+    d1 = coords[2] - coords[0]
+    d2 = coords[3] - coords[1]
+    normal = _unit_normal(_cross(d1, d2))
+    return normal[None], _geometry_bound(coords, math.sqrt(float(d1 @ d1)), math.sqrt(float(d2 @ d2)))
+
+
+def _facet_normal(coords: np.ndarray, owner: Any) -> Tuple[np.ndarray, float]:
+    """Flat-triangle facet normal oriented by the owner normal (qualified S3 convention)."""
+
+    e1 = coords[1] - coords[0]
+    e2 = coords[2] - coords[0]
+    e3 = coords[2] - coords[1]
+    normal = _unit_normal(_cross(e1, e2))
+    alignment = float(normal @ np.asarray(owner, dtype=float))
+    if not (math.isfinite(alignment) and alignment != 0.0):
+        raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "owner normal is tangential to the facet")
+    bound = _geometry_bound(coords, *(math.sqrt(float(e @ e)) for e in (e1, e2, e3)))
+    return (normal if alignment > 0.0 else -normal)[None], bound
+
+
+def _tangent_normals(element: Any, coords: np.ndarray, points: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Rule (6) geometry: normalized cross product of the shape-function
+    tangents, with the per-station bound (see ``_geometry_bound``)."""
 
     out = np.zeros((len(points), 3), dtype=float)
+    bounds = np.zeros(len(points), dtype=float)
     for index, (xi, eta) in enumerate(points):
         _n, d_xi, d_eta = element.compute_shape_functions(float(xi), float(eta))
         a = np.asarray(d_xi, dtype=float) @ coords
         b = np.asarray(d_eta, dtype=float) @ coords
-        cross = np.array(
-            (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]),
-            dtype=float,
-        )
-        length = math.sqrt(float(cross @ cross))
-        if not (math.isfinite(length) and length > 0.0):
-            raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "zero or nonfinite surface tangent cross product")
-        out[index] = cross / length
-    return out
+        out[index] = _unit_normal(_cross(a, b))
+        bounds[index] = _geometry_bound(coords, math.sqrt(float(a @ a)), math.sqrt(float(b @ b)))
+    return out, bounds
 
 
 def _oriented(normals: np.ndarray, director: np.ndarray) -> np.ndarray:
@@ -408,6 +452,8 @@ class _Branch:
     consistency_problem: str = ""
     expected_station_normals: Optional[np.ndarray] = None  # rule (6), (n,3)
     expected_shear_normals: Optional[np.ndarray] = None  # rule (6), (n,3)
+    station_normal_bounds: Optional[np.ndarray] = None  # rule (6), (n,)
+    shear_normal_bounds: Optional[np.ndarray] = None  # rule (6), (n,)
     orthonormal_bound: float = ORTHONORMAL_BOUND
     emitted_frame: Optional[np.ndarray] = None  # V2D recovery "frame"
 
@@ -529,7 +575,7 @@ def _resolve_branch(element, mesh, material, recovered, override, requested) -> 
         stations = _apply_override(
             override, "station", _legacy_station_frames(element, coords, points, material, not generalized)
         )
-        geometry = _tangent_normals(element, coords, points)  # numbered convention
+        geometry, bounds = _tangent_normals(element, coords, points)  # numbered convention
         return _Branch(
             name=name,
             surface_only=not generalized,
@@ -542,6 +588,8 @@ def _resolve_branch(element, mesh, material, recovered, override, requested) -> 
             metadata={},
             expected_station_normals=geometry,
             expected_shear_normals=geometry,
+            station_normal_bounds=bounds,
+            shear_normal_bounds=bounds,
         )
 
     if kind is ShellElement:
@@ -575,7 +623,9 @@ def _resolve_branch(element, mesh, material, recovered, override, requested) -> 
             stations = _apply_override(override, "station", stations)
             centre = _apply_override(override, "centre", centre)
             physical = np.asarray(element.physical_reference_director, dtype=float)
-            centre_geometry = _oriented(_tangent_normals(element, coords, np.zeros((1, 2))), physical)
+            centre_normal, centre_bound = _diagonal_normal(coords)
+            centre_geometry = _oriented(centre_normal, physical)
+            station_geometry, station_bounds = _tangent_normals(element, coords, points)
             branch = _Branch(
                 name="e4pl-warped",
                 surface_only=not generalized,
@@ -586,8 +636,10 @@ def _resolve_branch(element, mesh, material, recovered, override, requested) -> 
                 moment_shear_sign=1.0,
                 conventions=conventions,
                 metadata=director,
-                expected_station_normals=_oriented(_tangent_normals(element, coords, points), physical),
+                expected_station_normals=_oriented(station_geometry, physical),
                 expected_shear_normals=np.repeat(centre_geometry, n, axis=0),
+                station_normal_bounds=station_bounds,
+                shear_normal_bounds=np.full(n, centre_bound),
             )
             if recovered.get("warped_direct") is not True:
                 branch.consistency_problem = "recovery is not the warped direct path the module recomputed"
@@ -603,7 +655,7 @@ def _resolve_branch(element, mesh, material, recovered, override, requested) -> 
         stations = _apply_override(override, "station", np.repeat(frame[None], n, axis=0))
         # bilinear Q4: the centre tangent cross product is the diagonal cross
         # product, exact for any admitted (near-)planar facet
-        centre_geometry = _tangent_normals(element, coords, np.zeros((1, 2)))
+        centre_geometry, centre_bound = _diagonal_normal(coords)
         if element.reference_normal is not None:
             centre_geometry = _oriented(centre_geometry, np.asarray(element.physical_reference_director, dtype=float))
         geometry = np.repeat(centre_geometry, n, axis=0)
@@ -611,6 +663,8 @@ def _resolve_branch(element, mesh, material, recovered, override, requested) -> 
             name="e4pl-planar",
             expected_station_normals=geometry,
             expected_shear_normals=geometry,
+            station_normal_bounds=np.full(n, centre_bound),
+            shear_normal_bounds=np.full(n, centre_bound),
             surface_only=False,
             positions=_shape_positions(element, coords, points),
             station_frames=stations,
@@ -631,11 +685,15 @@ def _resolve_branch(element, mesh, material, recovered, override, requested) -> 
         frame = np.asarray(triangle_frame(coords, element.reference_normal)[0], dtype=float)
         stations = _apply_override(override, "station", np.repeat(frame[None], n, axis=0))
         polarity = int(element.director_polarity)
-        geometry = _unit_rows(element.reference_normal, n)  # owner normal, not times polarity
+        # facet normal oriented by the owner normal (not times the polarity)
+        facet, facet_bound = _facet_normal(coords, element.reference_normal)
+        geometry = np.repeat(facet, n, axis=0)
         return _Branch(
             name="s3",
             expected_station_normals=geometry,
             expected_shear_normals=geometry,
+            station_normal_bounds=np.full(n, facet_bound),
+            shear_normal_bounds=np.full(n, facet_bound),
             surface_only=False,
             positions=barycentric @ coords,
             station_frames=stations,
@@ -744,8 +802,16 @@ def _certify(
     derived: np.ndarray,
     reference: np.ndarray,
     allowance_extra: float,
+    conditioning: float = 1.0,
 ) -> Tuple[Optional[str], Dict[str, float], str]:
-    """Rules (2)-(3) for one family; returns (reason or None, diagnostics, detail)."""
+    """Rules (2)-(3) for one family; returns (reason or None, diagnostics, detail).
+
+    ``conditioning`` (<= 1) is the smallest singular value of the map from the
+    certified quantity to the compared one (warped centre shear projected into
+    the station tangent planes): an error e in the certified quantity shows as
+    at least ``conditioning |e|``, so rule (3) requires ``a_f / conditioning <=
+    1e-9 s_f``.
+    """
 
     if not _finite(derived, reference):
         return "nonfinite", {}, "derived or reference values are not finite"
@@ -757,8 +823,12 @@ def _certify(
         if np.all(derived == 0.0):
             return None, diag, ""
         return "residual", diag, "reference family is exactly zero, derived is not"
-    if not allowance <= RESOLUTION * scale:
-        return "unresolvable_family", diag, f"a_f={allowance:.3e} > 1e-9 s_f={RESOLUTION * scale:.3e}"
+    if not allowance <= RESOLUTION * scale * conditioning:
+        return (
+            "unresolvable_family",
+            diag,
+            f"a_f={allowance:.3e} > 1e-9 s_f c={RESOLUTION * scale * conditioning:.3e} (conditioning c={conditioning:.3e})",
+        )
     if not residual <= allowance:
         return "residual", diag, f"r_f={residual:.3e} > a_f={allowance:.3e}"
     return None, diag, ""
@@ -962,9 +1032,21 @@ def _derive_shell_axes_from_recovery(
                 }
                 derived_stress = {"membrane": sigma_m, "bending": sigma_b, "shear": surface_shear}
                 s_surf = _max_abs(*surfaces.values())
+                conditioning = {family: 1.0 for family in FAMILIES}
+                if branch.shear_role == "centre":
+                    # Codex r5: the projection centre tangent plane -> station
+                    # tangent plane can be ill conditioned on extreme warping
+                    with np.errstate(invalid="ignore"):
+                        maps = np.einsum("nki,nkj->nij", stations[:, :, :2], shear_frames[:, :, :2])
+                        sigma = np.linalg.svd(maps, compute_uv=False)[:, -1] if _finite(maps) else np.array([np.nan])
+                    conditioning["shear"] = float(np.min(sigma)) if _finite(sigma) else 0.0
                 for family in FAMILIES:
-                    reason, diag, detail = _certify(derived_stress[family], resolved[family], ROUNDOFF * s_surf)
+                    reason, diag, detail = _certify(
+                        derived_stress[family], resolved[family], ROUNDOFF * s_surf, conditioning[family]
+                    )
                     diag["surface_scale"] = s_surf
+                    if branch.shear_role == "centre" and family == "shear":
+                        diag["projection_conditioning"] = conditioning["shear"]
                     diagnostics[family] = diag
                     if reason is not None:
                         refuse(family, reason, detail)
@@ -1062,20 +1144,22 @@ def _derive_shell_axes_from_recovery(
         refuse("positions", "nonfinite", "station positions are not finite")
     # Rule (6): every basis normal against independent geometry (after rules
     # (1)-(5), so their refusal reasons stay the first recorded ones).
-    def normal_mismatch(frames: np.ndarray, expected: Optional[np.ndarray]) -> str:
+    def normal_mismatch(frames: np.ndarray, expected: Optional[np.ndarray], bounds: Optional[np.ndarray]) -> str:
         if expected is None or expected.shape != frames[:, :, 2].shape:
             return "no geometric normal for this branch"
+        limit = np.full(len(expected), GEOMETRY_BOUND) if bounds is None else np.asarray(bounds, dtype=float)
         with np.errstate(invalid="ignore"):
-            difference = float(np.max(np.abs(frames[:, :, 2] - expected)))
-        if not difference <= GEOMETRY_BOUND:
-            return f"rule (6) basis normal differs from the geometry by {difference:.3e}"
+            difference = np.max(np.abs(frames[:, :, 2] - expected), axis=1)
+        if not bool(np.all(difference <= limit)):
+            worst = float(np.max(difference - limit))
+            return f"rule (6) basis normal differs from the geometry by {worst:.3e} beyond its bound"
         return ""
 
-    station_geometry = normal_mismatch(stations, branch.expected_station_normals)
+    station_geometry = normal_mismatch(stations, branch.expected_station_normals, branch.station_normal_bounds)
     if station_geometry:
         for family in station_families:
             refuse(family, "normal_geometry", station_geometry)
-    shear_geometry = normal_mismatch(shear_frames, branch.expected_shear_normals)
+    shear_geometry = normal_mismatch(shear_frames, branch.expected_shear_normals, branch.shear_normal_bounds)
     if shear_geometry:
         refuse("shear", "normal_geometry", shear_geometry)
     if branch.emitted_frame is not None:

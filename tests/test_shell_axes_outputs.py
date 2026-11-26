@@ -1341,9 +1341,8 @@ def test_r4_surface_stresses_are_tension_on_the_physically_tensioned_fibre(kind,
     u = plate_field(loc, kx=K)
     result = recover_shell_axes(el, mesh, u, MATERIAL)
     res = result.recovery
-    keys = ("global_xx_top", "global_yy_top", "global_xy_top", "global_xx_bot")
-    if not all(k in res for k in keys):
-        pytest.skip(f"{kind} homogeneous emits no global surfaces")
+    missing = [k for k in SURFACE_KEYS if k not in res]
+    assert not missing, (kind, missing)  # r5 P3: never skip when a field disappears
     director = np.asarray(el.physical_reference_director, dtype=float)
     if kind == "e4pl":
         top_offset, bot_offset = 0.5 * H, -0.5 * H
@@ -1360,3 +1359,61 @@ def test_r4_surface_stresses_are_tension_on_the_physically_tensioned_fibre(kind,
         stress = np.einsum("i,nij,j->n", e_x, tensor, e_x)
         expected = np.sign(offset * float(director @ N0))
         assert np.all(np.sign(stress) == expected), (surface, offset, stress)
+
+
+# ------------------------------------------------------ Codex r5 new classes
+def test_r5_s3_with_a_tilted_owner_normal_certifies():
+    """r5 P2: S3 frames use the facet normal oriented by the owner normal."""
+
+    first_edge = R0 @ np.array([1.2, 0.0, 0.0])
+    owner = math.cos(0.01) * N0 + math.sin(0.01) * first_edge / np.linalg.norm(first_edge)
+    for sec in ("h", "g"):
+        el, mesh, loc = build("s3", "t3", sec, normal=owner)
+        out = recover_shell_axes(el, mesh, displacement(loc), MATERIAL).axes
+        assert out.refusals == {}, out.refusals
+        assert np.allclose(out.arrays[NORMAL_KEYS["bending"]], N0[None], rtol=0, atol=1e-14)
+
+
+@pytest.mark.parametrize("kind", ("e4pl", "legacy"))
+def test_r5_large_origin_is_not_a_spurious_rule_6_refusal(kind):
+    """r5 P2: cancellation of absolute coordinates must not refuse an admitted facet."""
+
+    e1 = np.array([1.1, 0.4, 0.39])
+    e2 = np.array([0.04, 1.05, 0.89])
+    origin = np.array([1.0e6, 1.0e6, 1.0e6])
+    mesh = FEMesh()
+    for i, p in enumerate((origin, origin + e1, origin + e1 + e2, origin + e2), start=1):
+        mesh.add_node(i, *p)
+    normal = np.cross(e1, e2)
+    normal /= np.linalg.norm(normal)
+    if kind == "e4pl":
+        el = create_shell_element(
+            1, [1, 2, 3, 4], "steel", formulation="e4-pl", thickness=H,
+            reference_normal=[float(v) for v in normal], director_polarity=1,
+        )
+    else:
+        el = ShellElement(1, [1, 2, 3, 4], "steel", thickness=H)
+    for u in (np.zeros(24), np.tile(np.array([1e-4, -2e-4, 3e-4, 1e-3, -2e-3, 0.0]), 4) * np.repeat([0.0, 1.0, 2.0, 1.0], 6)):
+        out = recover_shell_axes(el, mesh, u, MATERIAL).axes
+        assert {r.reason for r in out.refusals.values()} <= {"unresolvable_family"}, out.refusals
+
+
+def test_r5_ill_conditioned_warped_centre_shear_is_not_certified():
+    """r5 P1: the projected surface residual cannot bound the full centre shear
+    on extreme warping; a 1e-8 centre-frame rotation must not certify."""
+
+    mesh = FEMesh()
+    for i, (r, s) in enumerate(((-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)), start=1):
+        mesh.add_node(i, r, 1.0e13 * s, 1.0e7 * r * s)
+    el = create_shell_element(
+        1, [1, 2, 3, 4], "steel", formulation="e4-pl", thickness=H,
+        reference_normal=[0.0, 0.0, 1.0], director_polarity=1,
+    )
+    u = np.tile(np.array([0.0, 0.0, 0.0, -0.001, 0.0, 0.0]), 4)
+
+    def rotate_centre(role, frames):
+        return np.asarray(frames) @ _rz(1.0e-8) if role == "centre" else frames
+
+    out = recover_shell_axes(el, mesh, u, MATERIAL, _frame_override=rotate_centre).axes
+    assert not out.certified["shear"], out.diagnostics.get("shear")
+    assert FAMILY_KEYS["shear"] not in out.arrays
