@@ -56,6 +56,13 @@ cadence successor.
 - In error cases, cache-hit elements that come before a failing element may already be bound
   when the error is raised.
 - Both differences are visible only outside a lease. The caller sees the same error and state.
+- Owner decision A (2026-11-26): in a failing assembly, elements after the failing one may already
+  have had their cache-hit steps applied: stale caches cleared, guards rebound. This happens because
+  the batched route collects every element's cache-hit steps before it forms the misses, while the
+  per-element loop stops at the failing element. The error and every result are identical, and a
+  following successful solve ends in the same state on both paths
+  (`tests/test_q4_batch_wiring.py::test_failing_assembly_with_later_stale_cache_converges`).
+  Further members of this class are documented, not repaired.
 
 ## Tests
 

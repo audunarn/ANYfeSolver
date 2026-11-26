@@ -139,7 +139,7 @@ def test_record_chains_from_the_pinned_guard_cadence_successor() -> None:
     assert len(record["qualification_boundary"]) == 8
     assert record["owner_decisions"]["approved"] == ["L4"]
     assert set(record["owner_decisions"]["decisions"]) == {"D1", "D2"}
-    assert len(record["owner_decisions"]["contract_notes"]) == 4
+    assert len(record["owner_decisions"]["contract_notes"]) == 5
     assert record["review"]["outcome"] in {"PENDING", "ACCEPT"}
 
 

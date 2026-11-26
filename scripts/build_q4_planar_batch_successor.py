@@ -396,6 +396,10 @@ def build(evidence: dict) -> dict:
                 "in error cases, cache-hit elements that precede a failing element may already be bound when "
                 "the error is raised",
                 "both differences are visible only outside a lease; the caller sees the same error and state",
+                "owner decision A (2026-11-26): in a failing assembly, elements after the failing one may "
+                "already have had their cache-hit steps applied (stale caches cleared, guards rebound); the "
+                "error and every result are identical, and a following successful solve ends in the same state; "
+                "further members of this class are documented, not repaired",
             ],
         },
         "qualification_boundary": dict(QUALIFICATION_BOUNDARY),

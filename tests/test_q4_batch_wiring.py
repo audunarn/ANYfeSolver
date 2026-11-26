@@ -469,3 +469,45 @@ def test_failing_element_leaves_later_caches_unpublished(failing_element):
     assert reference[0][0] == "raise"
     assert candidate[0] == reference[0]
     assert candidate[1] == reference[1]
+
+
+def _later_stale_cache_run(forced):
+    """Warm the last element alone, invert element 1, solve (fails), undo the
+    inversion, solve again (succeeds)."""
+
+    model, lc = q4bench.CASES["rplate"](N)
+    late = model.mesh.elements[N * N]
+    late.compute_stiffness_matrix(model.mesh, model.get_material(late.material_name))
+    element = model.mesh.elements[1]
+    node = model.mesh.get_node(element.node_ids[0])
+    original = (node.x, node.y)
+    invert(model, 1)
+
+    def solve():
+        if forced:
+            with B._forced_fallback():
+                return solve_linear(model, lc)[0]
+        return solve_linear(model, lc)[0]
+
+    failed = outcome(solve)
+    late_kept = object.__getattribute__(late, "__dict__").get("_qualified_components") is not None
+    node.x, node.y = original
+    succeeded = outcome(solve)
+    return failed, late_kept, succeeded, element_state(model)
+
+
+def test_failing_assembly_with_later_stale_cache_converges():
+    """Owner decision A (2026-11-26): in a failing assembly the batched route
+    may already have applied later elements' cache-hit steps (here: a stale
+    cache cleared).  Pinned: the same error, and a following successful solve
+    ends in the same result and element state on both paths."""
+
+    reference = _later_stale_cache_run(True)
+    candidate = _later_stale_cache_run(False)
+    assert reference[0][0] == "raise" and candidate[0] == reference[0]
+    assert reference[1] is True
+    if WIRED:
+        # The documented difference (not a defect under decision A).
+        assert candidate[1] is False
+    assert reference[2][0] == "ok" and candidate[2] == reference[2]
+    assert candidate[3] == reference[3]
