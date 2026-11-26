@@ -66,3 +66,14 @@ def test_refuses_clockwise_degenerate_and_bad_material():
         opt_membrane_stiffness(FIG11_XY, -em, 1.0)
     with pytest.raises(ValueError):
         opt_membrane_stiffness(FIG11_XY, em, 0.0)
+
+
+def test_strain_recovery_exact_for_constant_strain_and_rigid_rotation():
+    xy = np.array([[0.1, 0.05], [1.3, 0.4], [0.5, 1.1]])
+    from anyfesolver.e4_pl_opt_membrane import opt_membrane_strain_operator
+    bary = np.array([[0.2, 0.3, 0.5], [1 / 3, 1 / 3, 1 / 3], [0.7, 0.2, 0.1]])
+    ops = opt_membrane_strain_operator(xy, bary, 0.1)
+    exx, eyy, gxy, w = 1e-3, -2e-4, 5e-4, 3e-4  # constant strain + rigid rotation w (theta = w)
+    u = np.concatenate([[exx * x + 0.5 * gxy * y - w * y, eyy * y + 0.5 * gxy * x + w * x, w] for x, y in xy])
+    for op in ops:
+        assert op @ u == pytest.approx([exx, eyy, gxy], abs=1e-14)

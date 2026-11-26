@@ -52,16 +52,13 @@ def optimal_beta0(emat) -> float:
     return max(2.0 / (w / (128.0 * edet)) - 1.5, BETA0_FLOOR)
 
 
-def opt_membrane_stiffness_parts(xy, emat, thickness: float, beta0: float | None = None):
-    """Return (K_basic, K_higher), each 9x9, for a counter-clockwise triangle."""
+def _template_matrices(xy, thickness: float):
     p = np.array(xy, dtype=float)
     if p.shape != (3, 2) or not np.all(np.isfinite(p)):
         raise ValueError("triangle coordinates must be a finite 3x2 array")
     h = float(thickness)
     if not (np.isfinite(h) and h > 0.0):
         raise ValueError("thickness must be positive and finite")
-    em = _checked_material(emat)
-    b0 = optimal_beta0(em) if beta0 is None else float(beta0)
     (x1, y1), (x2, y2), (x3, y3) = p
     x12, x23, x31 = x1 - x2, x2 - x3, x3 - x1
     y12, y23, y31 = y1 - y2, y2 - y3, y3 - y1
@@ -80,7 +77,6 @@ def opt_membrane_stiffness_parts(xy, emat, thickness: float, beta0: float | None
         np.array([y31 * (y21 - y32), x13 * (x12 - x23), (x12 * y21 - x23 * y32) * 2]) * b / 6,
         [y12, 0, x21], [0, x21, y12],
         np.array([y12 * (y32 - y13), x21 * (x23 - x31), (x23 * y32 - x31 * y13) * 2]) * b / 6]) * h / 2
-    kb = lm @ em @ lm.T / (h * area)
     tu = np.array([[x32, y32, a4, x13, y13, 0, x21, y21, 0],
                    [x32, y32, 0, x13, y13, a4, x21, y21, 0],
                    [x32, y32, 0, x13, y13, 0, x21, y21, a4]]) / a4
@@ -94,10 +90,33 @@ def opt_membrane_stiffness_parts(xy, emat, thickness: float, beta0: float | None
                    np.array([k[5], k[3], k[4]]) / l13]) * a2 / 3
     q3 = np.array([np.array([k[4], k[5], k[3]]) / l21, np.array([k[7], k[8], k[6]]) / l32,
                    np.array([k[1], k[2], k[0]]) / l13]) * a2 / 3
+    return h, area, lm, tu, te, (q1, q2, q3)
+
+
+def opt_membrane_stiffness_parts(xy, emat, thickness: float, beta0: float | None = None):
+    """Return (K_basic, K_higher), each 9x9, for a counter-clockwise triangle."""
+    h, area, lm, tu, te, (q1, q2, q3) = _template_matrices(xy, thickness)
+    em = _checked_material(emat)
+    b0 = optimal_beta0(em) if beta0 is None else float(beta0)
+    kb = lm @ em @ lm.T / (h * area)
     q4, q5, q6 = (q1 + q2) / 2, (q2 + q3) / 2, (q3 + q1) / 2
     en = te.T @ em @ te
     kt = 0.75 * b0 * h * area * (q4.T @ en @ q4 + q5.T @ en @ q5 + q6.T @ en @ q6)
     return kb, tu.T @ kt @ tu
+
+
+RECOVERY_E0 = 1.5
+
+
+def opt_membrane_strain_operator(xy, barycentric, thickness: float = 1.0, e0: float = RECOVERY_E0) -> np.ndarray:
+    """Strain recovery operators, paper eq. (48): shape (n, 3, 9) for each barycentric row."""
+    h, area, lm, tu, te, (q1, q2, q3) = _template_matrices(xy, thickness)
+    bary = np.asarray(barycentric, dtype=float).reshape(-1, 3)
+    basic = lm.T / (h * area)
+    out = np.empty((bary.shape[0], 3, 9))
+    for index, (z1, z2, z3) in enumerate(bary):
+        out[index] = basic + te @ (float(e0) * (z1 * q1 + z2 * q2 + z3 * q3)) @ tu
+    return out
 
 
 def opt_membrane_stiffness(xy, emat, thickness: float, beta0: float | None = None) -> np.ndarray:
