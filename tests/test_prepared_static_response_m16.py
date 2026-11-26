@@ -222,3 +222,85 @@ def test_reconstructed_cases_need_one_rule_b_solve_per_block():
     for result in batch.case_results:
         assert result['solver_info']['source_response']['stress_execution'] == 'certified_library'
         assert result['solver_info']['relative_forward_error_estimate'] <= 1e-3
+
+
+def test_overlapping_iterators_keep_their_own_reconstruction_state():
+    """R2 #2: flags and Rule B estimates travel with the solved block.  Batch B runs
+    entirely inside batch A (A's after-solve safe point); A's failed reconstruction
+    (canonical fallback) must never take B's flags or estimates."""
+
+    patterns = {'p': _case(1, 3.).load_case, 'q': _case(2, 3.).load_case}
+    with prepare_static_response_evaluator(_bar(), patterns, recovery_config=STRESS, **LIBRARY) as owner:
+        handle = owner._operator_handle
+        # Solve 1 is A's Rule B at its reconstruction decision: corrupted.
+        counting = _CountingSolver(handle._solver, corrupt=(1,))
+        inner = {}
+
+        class Overlap:
+            def raise_if_cancelled(self, where=''):
+                if where == 'prepared_static.after_solve' and not inner:
+                    inner['batch'] = next(owner.iter_batches([PatternCase('b', {'p': 2.})]))
+
+        handle._solver = counting
+        try:
+            outer = next(owner.iter_batches([PatternCase('a', {'p': 1., 'q': -0.5})],
+                                            cancellation_token=Overlap()))
+        finally:
+            handle._solver = counting.solver
+    a, b = outer.case_results[0]['solver_info'], inner['batch'].case_results[0]['solver_info']
+    assert a['source_response']['stress_execution'] == 'canonical_fallback'
+    assert b['source_response']['stress_execution'] == 'certified_library'
+    assert a['relative_backward_error_disposition'] == 'CERTIFIED'
+    assert a['relative_forward_error_estimate'] <= 1e-3
+    assert b['relative_forward_error_estimate'] <= 1e-3
+
+
+def test_mixed_block_measures_rule_b_once_plus_replaced_columns():
+    """R2 #8: one reconstructed and one direct column: one canonical solve and one
+    multi-RHS Rule B correction (not one per column kind)."""
+
+    with prepare_static_response_evaluator(_bar(), {'p': _case(1, 3).load_case}, recovery_config=STRESS, **LIBRARY) as owner:
+        handle = owner._operator_handle
+        counting = _CountingSolver(handle._solver)
+        handle._solver = counting
+        try:
+            batch = next(owner.iter_batches([PatternCase('a', {'p': 2.}), _case(3, 1.5)]))
+        finally:
+            handle._solver = counting.solver
+    assert counting.calls == 2  # the direct case's solve + one block correction
+    first, second = (result['solver_info'] for result in batch.case_results)
+    assert first['source_response']['stress_execution'] == 'certified_library'
+    for info in (first, second):
+        assert info['relative_backward_error_disposition'] == 'CERTIFIED'
+        assert info['relative_forward_error_estimate'] <= 1e-3
+
+
+def test_mixed_block_remeasures_only_the_replaced_column():
+    """R2 #8: a reconstructed column failing Rule B is replaced and measured again alone."""
+
+    with prepare_static_response_evaluator(_bar(), {'p': _case(1, 3).load_case}, recovery_config=STRESS, **LIBRARY) as owner:
+        handle = owner._operator_handle
+        # Call 1: the direct column's solve; call 2: the block correction (corrupted);
+        # call 3: the replaced column's canonical solve; call 4: its correction.
+        counting = _CountingSolver(handle._solver)
+        widths = []
+        original = counting.solve
+
+        def solve(rhs):
+            widths.append(1 if np.ndim(rhs) == 1 else np.shape(rhs)[1])
+            answer = np.array(original(rhs), dtype=float, copy=True)
+            if counting.calls == 2:  # corrupt the reconstructed column's correction only
+                answer[:, 0] += 1.0
+            return answer
+
+        counting.solve = solve
+        handle._solver = counting
+        try:
+            batch = next(owner.iter_batches([PatternCase('a', {'p': 2.}), _case(3, 1.5)]))
+        finally:
+            handle._solver = counting.solver
+    assert counting.calls == 4 and widths == [1, 2, 1, 1]
+    first, second = (result['solver_info'] for result in batch.case_results)
+    assert first['source_response']['stress_execution'] == 'canonical_fallback'
+    for info in (first, second):
+        assert info['relative_forward_error_estimate'] <= 1e-3

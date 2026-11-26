@@ -874,7 +874,10 @@ class PreparedStaticEvaluator:
                     raise RuntimeError("prepared static operator handle is unavailable")
                 try:
                     with solver_thread_scope(resource_config):
-                        solved = self._solve_block(solve_rhs, block)
+                        # The block's own certification state (for example
+                        # reconstruction flags and Rule B estimates) travels
+                        # with the solved block, never through evaluator state.
+                        solved, block_state = self._solve_block_state(solve_rhs, block)
                 except (PreparedStaticError, ResourcePolicyError):
                     raise
                 except Exception as error:
@@ -915,7 +918,8 @@ class PreparedStaticEvaluator:
                     self._backward_error)
                 # Rule B per case, in the factorized variables (the displacement
                 # block of an augmented operator).
-                forward_errors = self._block_forward_errors(solved, solve_rhs, rhs.shape[0])
+                forward_errors = self._block_forward_errors(
+                    solved, solve_rhs, rhs.shape[0], block_state)
                 for j, (case_id, _case_time, _owned) in enumerate(block):
                     error = (
                         _certified_backward_error(self._operator_matrix, solved[:, j], solve_rhs[:, j],
@@ -1000,7 +1004,7 @@ class PreparedStaticEvaluator:
                     results, envelope_transaction, shared_statistics = recover(
                         snapshot, full, F, recovery,
                         tuple((case_id, case_time, indices[j]) for j, (case_id, case_time, _owned) in enumerate(block)),
-                        certified, self._envelope, block, **numeric_options)
+                        certified, self._envelope, block, block_state=block_state, **numeric_options)
                 except PreparedStaticError:
                     self._count_failure('case_recovery_failures')
                     raise
@@ -1097,9 +1101,17 @@ class PreparedStaticEvaluator:
     def _load_vector(self, snapshot, owned):
         return evaluate_load_vector(snapshot.load_maps, owned)
 
-    def _block_forward_errors(self, solved, solve_rhs, n):
-        """Rule B per case column (factorized variables, displacement rows ``:n``)."""
+    def _block_forward_errors(self, solved, solve_rhs, n, block_state=None):
+        """Rule B per case column (factorized variables, displacement rows ``:n``).
 
+        A block whose solve already measured every column (``block_state``
+        carrying ``forward_errors``) reports those values; nothing else is
+        consulted, so no other block's estimate can certify this one.
+        """
+
+        known = getattr(block_state, "forward_errors", None)
+        if known is not None:
+            return np.array(known, dtype=float, copy=True)
         if self._operator_handle is None:
             return np.zeros(solved.shape[1])
         return relative_forward_error_estimates(
@@ -1111,7 +1123,13 @@ class PreparedStaticEvaluator:
                 self._operator_scaling[:, None] * self._operator_handle.solve_many(
                     self._operator_scaling[:, None] * solve_rhs))
 
-    def _recover_block(self, snapshot, full, loads, recovery, labels, certified, envelope, block):
+    def _solve_block_state(self, solve_rhs, block):
+        """(solved block, its certification state or None)."""
+
+        return self._solve_block(solve_rhs, block), None
+
+    def _recover_block(self, snapshot, full, loads, recovery, labels, certified, envelope, block,
+                       block_state=None):
         return _SHARED_BINDINGS[0][1](snapshot, full, loads, recovery, labels, certified, envelope)
 
     def _count_failure(self, name: str) -> None:
