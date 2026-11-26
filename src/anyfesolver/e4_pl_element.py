@@ -7605,7 +7605,11 @@ def _make_q4_class_authority_window() -> tuple[Any, Any, Any]:
     the precedence of the per-call guards) and every Q4 element whose guarded
     call ran inside the refused window has its derived caches dropped, as a
     per-call refusal would have done.  A guard that already refused inside the
-    window is not re-run on the way out: its error is the window's error.
+    window is not re-run when its error leaves the window: that error is the
+    window's error.  If code inside the window swallows such a refusal, the
+    guard is run again at every enclosing close it passed through, and a
+    nested window's successful close hands its tracked elements to the
+    enclosing window together with its evictions.
     Reusable caches written under a window either validate before they
     publish (their own nested window) or register an eviction with
     ``on_refusal``: it runs if the innermost live window, or any enclosing
@@ -7626,7 +7630,8 @@ def _make_q4_class_authority_window() -> tuple[Any, Any, Any]:
 
     class Token:
         __slots__ = (
-            "validated", "live", "parent", "elements", "refusal", "evictions"
+            "validated", "live", "parent", "elements", "refusal", "evictions",
+            "refused_guards",
         )
 
         def __init__(self, parent: Any) -> None:
@@ -7642,11 +7647,23 @@ def _make_q4_class_authority_window() -> tuple[Any, Any, Any]:
             # Cache evictions to run if this window (or, after a successful
             # close, its parent) refuses.
             self.evictions: list[Any] = []
+            # Guards that refused on first use here or in a nested window.  If
+            # caller-visible code swallows that refusal, every window it
+            # passed through runs the guard again when it closes.
+            self.refused_guards: list[Any] = []
 
-    def mark_refused(token: Any, error: BaseException) -> None:
+    def mark_refused(
+        token: Any, error: BaseException, exact_guard: Any = None
+    ) -> None:
         while token is not None:
             if token.refusal is None:
                 token.refusal = error
+            if exact_guard is not None:
+                for refused in token.refused_guards:
+                    if refused is exact_guard:
+                        break
+                else:
+                    token.refused_guards.append(exact_guard)
             token = token.parent
 
     def enclosing_validated(token: Any, exact_guard: Any) -> bool:
@@ -7672,7 +7689,7 @@ def _make_q4_class_authority_window() -> tuple[Any, Any, Any]:
                     except BaseException as error:
                         # Refused on first use, before this call ran: the same
                         # point and error as the per-call guard.
-                        mark_refused(token, error)
+                        mark_refused(token, error, exact_guard)
                         raise
                 token.validated.append(exact_guard)
             if element is not None:
@@ -7699,6 +7716,8 @@ def _make_q4_class_authority_window() -> tuple[Any, Any, Any]:
         try:
             for exact_guard in tuple(token.validated):
                 exact_guard()
+            for exact_guard in tuple(token.refused_guards):
+                exact_guard()
         except BaseException as error:
             mark_refused(token, error)
             drop_caches(token)
@@ -7712,6 +7731,9 @@ def _make_q4_class_authority_window() -> tuple[Any, Any, Any]:
                 else:
                     parent.validated.append(exact_guard)
             parent.evictions.extend(token.evictions)
+            # The parent's close refusal must also drop the derived caches of
+            # elements whose guarded calls ran only in this nested window.
+            parent.elements.update(token.elements)
         token.evictions.clear()
         token.elements.clear()
 

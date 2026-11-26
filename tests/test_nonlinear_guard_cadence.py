@@ -439,6 +439,61 @@ def test_g2_nested_window_validates_before_returning(femesh_probe) -> None:
     assert returned == ["inside"]
 
 
+def test_g2_swallowed_nested_refusal_is_refused_at_the_enclosing_close(
+    femesh_probe,
+) -> None:
+    """Codex re-chain review P2 #1: a first-use refusal in a nested window that
+    code inside the enclosing window catches must not let the enclosing window
+    close successfully while the change persists."""
+
+    model, _load = _plate()
+    element = next(iter(model.mesh.elements.values()))
+    swallowed = []
+    with pytest.raises(ValueError, match="qualified Q4 FEMesh class namespace changed"):
+        with _q4._q4_class_authority_window():
+            femesh_probe.set()
+            try:
+                with _q4._q4_class_authority_window():
+                    _q4._require_exact_q4_runtime_authority(element, context="nested")
+            except ValueError:
+                swallowed.append("caught")
+    assert swallowed == ["caught"]
+
+
+def test_g2_swallowed_nested_refusal_reverted_before_close_is_accepted(
+    femesh_probe,
+) -> None:
+    """Within the accepted cadence contract: the same change reverted before the
+    enclosing window closes is not refused there."""
+
+    model, _load = _plate()
+    element = next(iter(model.mesh.elements.values()))
+    with _q4._q4_class_authority_window():
+        femesh_probe.set()
+        with pytest.raises(ValueError, match="class namespace changed"):
+            with _q4._q4_class_authority_window():
+                _q4._require_exact_q4_runtime_authority(element, context="nested")
+        femesh_probe.clear()
+
+
+def test_g2_enclosing_refusal_drops_caches_of_nested_only_elements(
+    femesh_probe,
+) -> None:
+    """Codex re-chain review P2 #2: an element whose guarded call ran only in a
+    nested window that closed successfully still has its derived caches
+    dropped when the enclosing window refuses."""
+
+    model, _load = _plate()
+    element = next(iter(model.mesh.elements.values()))
+    with pytest.raises(ValueError, match="qualified Q4 FEMesh class namespace changed"):
+        with _q4._q4_class_authority_window():
+            with _q4._q4_class_authority_window():
+                _q4._require_exact_q4_runtime_authority(element, context="nested")
+            object.__getattribute__(element, "__dict__")["_nl_cache"] = {"probe": 1}
+            femesh_probe.set()
+    assert object.__getattribute__(element, "__dict__")["_nl_cache"] is None
+
+
 def test_g2_nested_assembly_cannot_return_under_an_active_change(femesh_probe) -> None:
     """Caller code inside an outer window (e.g. a stiffness-scale mapping)
     runs a nested assembly: its result is refused while the change persists."""
