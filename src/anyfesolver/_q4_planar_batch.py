@@ -116,6 +116,15 @@ def _forced_fallback():
             _FORCED -= 1
 
 
+def _known_unavailable() -> bool:
+    """True when :func:`available` is already known to be False (no self-check run).
+
+    Lets a caller skip its per-element batch front end cheaply; an undecided
+    self-check stays undecided (lazy) until a batch reaches its minimum size.
+    """
+    return bool(_FORCED) or (_SELF_CHECK is not None and _SELF_CHECK is not True)
+
+
 def _require_available():
     if not available():
         raise PlanarBatchFallback("batched Q4 planar numerics are not available")
@@ -124,6 +133,83 @@ def _require_available():
 # ---------------------------------------------------------------------------
 # Batched compensated contractions (same compiled kernel per element slice)
 # ---------------------------------------------------------------------------
+
+# The kernels are module-level so that Numba's on-disk cache applies (the
+# repository convention: ``_compensated_native._kernel`` caches when a cache
+# locator exists and compiles uncached otherwise).  They call the same compiled
+# contraction kernels of ``_compensated_native``.  Note: Numba invalidates a
+# cached kernel by this file's source stamp only, as for the fused kernels of
+# ``_compensated_native`` that call its helpers.
+_contract_weighted = _native.contract_weighted
+_contract_sum = _native.contract_sum
+_prep = _native._prep
+_residual_of = _native._residual
+_fsum_buf = _native._fsum_buf
+
+
+@_native._kernel
+def _batched_weighted(stack, w, out, pow2):
+    for e in range(stack.shape[0]):
+        if _contract_weighted(stack[e], w[e], out[e], pow2) != 0:
+            return e + 1
+    return 0
+
+
+@_native._kernel
+def _batched_sum(stack, out):
+    for e in range(stack.shape[0]):
+        if _contract_sum(stack[e], out[e]) != 0:
+            return e + 1
+    return 0
+
+
+@_native._kernel
+def _batched_product(a, b, out, pow2):
+    """``contract_product`` per slice, skipping pairs with an exact-zero operand.
+
+    A pair with a zero operand contributes (+-0, 0) to the fsum buffer;
+    fsum's result is the correctly rounded exact sum of its inputs, so the
+    omitted zeros cannot change it (verified bitwise by the self-check).
+    Nonfinite input is still refused by ``_prep``.
+    """
+    count, m, k = a.shape
+    n = b.shape[2]
+    ax = np.empty((m, k))
+    ah = np.empty((m, k))
+    al = np.empty((m, k))
+    ae = np.empty((m, k), dtype=np.int64)
+    bx = np.empty((k, n))
+    bh = np.empty((k, n))
+    bl = np.empty((k, n))
+    be = np.empty((k, n), dtype=np.int64)
+    buf = np.empty(2 * k)
+    partials = np.empty(2 * k + 1)
+    for e in range(count):
+        ae_ = a[e]
+        be_ = b[e]
+        if not (_prep(ae_, ax, ah, al, ae) and _prep(be_, bx, bh, bl, be)):
+            return e + 1
+        for i in range(m):
+            for j in range(n):
+                used = 0
+                for l in range(k):
+                    av = ae_[i, l]
+                    bv = be_[l, j]
+                    if av == 0.0 or bv == 0.0:
+                        continue
+                    product = av * bv
+                    if not math.isfinite(product):
+                        return e + 1
+                    buf[used] = product
+                    buf[used + 1] = _residual_of(ax[i, l], ah[i, l], al[i, l], ae[i, l],
+                                                 bx[l, j], bh[l, j], bl[l, j], be[l, j], pow2)
+                    used += 2
+                v, st = _fsum_buf(buf, used, partials)
+                if st != 0:
+                    return e + 1
+                out[e, i, j] = v
+    return 0
+
 
 _KERNELS = None
 
@@ -135,76 +221,7 @@ def _kernels():
     if not (_native.AVAILABLE and _cc._USE_NATIVE):
         _KERNELS = False  # numpy path of the sealed policy (see _numpy_*)
         return _KERNELS
-    from numba import njit
-
-    contract_weighted = _native.contract_weighted
-    contract_sum = _native.contract_sum
-    prep = _native._prep
-    residual_of = _native._residual
-    fsum_buf = _native._fsum_buf
-
-    @njit(cache=False)
-    def batched_weighted(stack, w, out, pow2):
-        for e in range(stack.shape[0]):
-            if contract_weighted(stack[e], w[e], out[e], pow2) != 0:
-                return e + 1
-        return 0
-
-    @njit(cache=False)
-    def batched_sum(stack, out):
-        for e in range(stack.shape[0]):
-            if contract_sum(stack[e], out[e]) != 0:
-                return e + 1
-        return 0
-
-    @njit(cache=False)
-    def batched_product(a, b, out, pow2):
-        """``contract_product`` per slice, skipping pairs with an exact-zero operand.
-
-        A pair with a zero operand contributes (+-0, 0) to the fsum buffer;
-        fsum's result is the correctly rounded exact sum of its inputs, so the
-        omitted zeros cannot change it (verified bitwise by the self-check).
-        Nonfinite input is still refused by ``_prep``.
-        """
-        count, m, k = a.shape
-        n = b.shape[2]
-        ax = np.empty((m, k))
-        ah = np.empty((m, k))
-        al = np.empty((m, k))
-        ae = np.empty((m, k), dtype=np.int64)
-        bx = np.empty((k, n))
-        bh = np.empty((k, n))
-        bl = np.empty((k, n))
-        be = np.empty((k, n), dtype=np.int64)
-        buf = np.empty(2 * k)
-        partials = np.empty(2 * k + 1)
-        for e in range(count):
-            ae_ = a[e]
-            be_ = b[e]
-            if not (prep(ae_, ax, ah, al, ae) and prep(be_, bx, bh, bl, be)):
-                return e + 1
-            for i in range(m):
-                for j in range(n):
-                    used = 0
-                    for l in range(k):
-                        av = ae_[i, l]
-                        bv = be_[l, j]
-                        if av == 0.0 or bv == 0.0:
-                            continue
-                        product = av * bv
-                        if not math.isfinite(product):
-                            return e + 1
-                        buf[used] = product
-                        buf[used + 1] = residual_of(ax[i, l], ah[i, l], al[i, l], ae[i, l],
-                                                    bx[l, j], bh[l, j], bl[l, j], be[l, j], pow2)
-                        used += 2
-                    v, st = fsum_buf(buf, used, partials)
-                    if st != 0:
-                        return e + 1
-                    out[e, i, j] = v
-        return 0
-
-    _KERNELS = (batched_product, batched_weighted, batched_sum)
+    _KERNELS = (_batched_product, _batched_weighted, _batched_sum)
     return _KERNELS
 
 

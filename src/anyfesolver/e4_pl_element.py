@@ -1953,6 +1953,17 @@ def _q4_serialized_input_boundary(method: Any) -> Any:
     return guarded
 
 
+# Minimum rows for which the batched planar route (``_q4_planar_batch``) is
+# used; smaller batches keep the per-element path and never import the batch
+# module or run its lazy self-check.  Measured (CPU, warm on-disk Numba cache,
+# 2026-11-26): first-call cost about 0.2 s (module import 0.016 s, kernel cache
+# load 0.03 s, self-check 0.15 s, first form 0.01 s).  Gate runs: recovery of
+# 64 rows was slower than per element, 128 rows faster (mplate/msl:16); one
+# 96-row-or-more formation batch did not lose in any registered case.
+_Q4_PLANAR_BATCH_FORM_MIN_ROWS = 96
+_Q4_PLANAR_BATCH_RECOVER_MIN_ROWS = 128
+
+
 def _freeze_qualified_component_cache(
     value: Any,
     frozen_arrays: Optional[Dict[int, np.ndarray]] = None,
@@ -5944,6 +5955,482 @@ class QualifiedE4PLShellElement(
         self._bind_qualified_component_guard(mesh, material)
         return _q4_public_stiffness_view(self)
 
+    @staticmethod
+    def _qualified_planar_batch_formation_expected(
+        elements: Sequence[Any],
+        mesh: Any,
+    ) -> bool:
+        """Side-effect-free routing prediction for the formation batch.
+
+        True only when at least ``_Q4_PLANAR_BATCH_FORM_MIN_ROWS`` exact
+        elements without a component cache have distinct raw relative node
+        geometry (scan bounded to twice that many uncached elements) and the
+        batch numerics are available.  Reads only raw instance namespaces and
+        mesh node coordinates, never a guarded call or cache key.  A false
+        prediction routes the caller to its unchanged per-element loop; a true
+        one that then admits too few rows still replays per element.
+        """
+
+        minimum = _Q4_PLANAR_BATCH_FORM_MIN_ROWS
+        if len(elements) < minimum:
+            return False
+        try:
+            from . import _q4_planar_batch as _batch
+
+            if _batch._known_unavailable():
+                return False
+            geometries = set()
+            scanned = 0
+            for element in elements:
+                if type(element) is not __class__:
+                    continue
+                namespace = object.__getattribute__(element, "__dict__")
+                if dict.get(namespace, "_qualified_components") is not None:
+                    continue
+                points = [mesh.get_node(node_id) for node_id in dict.get(namespace, "node_ids")]
+                x0, y0, z0 = float(points[0].x), float(points[0].y), float(points[0].z)
+                geometries.add(
+                    tuple(
+                        (float(p.x) - x0, float(p.y) - y0, float(p.z) - z0)
+                        for p in points[1:]
+                    )
+                )
+                if len(geometries) >= minimum:
+                    break
+                scanned += 1
+                if scanned >= 2 * minimum:
+                    return False
+            if len(geometries) < minimum:
+                return False
+            return bool(_batch.available())
+        except Exception:  # noqa: BLE001 - predict the per-element loop
+            return False
+
+    @staticmethod
+    def _qualified_planar_batch_stiffness(
+        items: Sequence[tuple[Any, Any, tuple[Any, ...]]],
+        mesh: Any,
+    ) -> Optional[tuple[Dict[int, np.ndarray], Optional[tuple[int, BaseException]]]]:
+        """``compute_stiffness_matrix`` of several planar cache misses at once.
+
+        ``items`` holds ``(element, material, cache_key)`` triples, where
+        ``cache_key`` is the element's ``_qualified_stiffness_cache_key`` just
+        computed by the caller and the element's component cache does not hold
+        it.  Each admitted element goes through exactly the front end of the
+        planar branch of :meth:`compute_stiffness_components` (no
+        post-observation callback).  The batched result is then bound as
+        ``compute_stiffness_matrix`` binds it (component cache, guard, the two
+        derived matrices, guard again); the returned mapping (keyed by the
+        position in ``items``) holds the public stiffness view.
+
+        The inner cache-key recomputation of ``compute_stiffness_components``
+        is replaced by checking that the coordinates read here reproduce the
+        key's relative-coordinate entry; the remaining key inputs (material
+        and section fingerprints) are re-observed by both guard bindings.
+
+        Elements outside the compensated planar route are absent from the
+        mapping.  Fewer than ``_Q4_PLANAR_BATCH_FORM_MIN_ROWS`` items or
+        admitted elements skip the batch (and its lazy self-check).  Any
+        exception or batch refusal returns ``None`` before any element is
+        bound.  A failing bind restores that element's five cache attributes
+        and stops; it and the later elements are rerun by the caller's
+        per-element path, which reports the error itself.
+
+        Returns ``(bound, rejection)``.  Each element's front end and its bind
+        are bracketed by the guarded wrappers' runtime-authority generation
+        capture/require.  A move inside one element's span is that element's
+        rejection ``(position, error)`` (earlier positions bound as returned);
+        the caller raises it through ``_reject_q4_batch_generation`` when its
+        per-element order reaches that position.  A move outside every
+        element's span (between elements, or during the shared batch kernel)
+        returns ``None`` or stops binding, and rejects nothing.
+        """
+
+        minimum = _Q4_PLANAR_BATCH_FORM_MIN_ROWS
+        if len(items) < minimum:
+            return None
+        from . import _q4_planar_batch as _batch
+
+        if _batch._known_unavailable():
+            return None
+        capture = _capture_q4_batch_generation
+        changed = _q4_batch_generation_changed
+
+        def front_end(element: Any, material: Any, cache_key: tuple) -> Any:
+            _validate_q4_quadrature_authority(element)
+            coordinates = element.get_node_coordinates(mesh)
+            relative = coordinates - np.mean(coordinates, axis=0)
+            if np.ascontiguousarray(relative, dtype=float).tobytes() != cache_key[5]:
+                return None
+            frame, local, warpage = equation7_frame(coordinates)
+            if warpage > element.planar_tolerance:
+                return None
+            constitutive, drill_stiffness = element._constitutive_and_drill_stiffness(
+                material,
+                frame,
+            )
+            if not element._elastic_increment_admitted(mesh, material, None):
+                return None
+            pl_stabilization = element.pl_stabilization
+            if type(pl_stabilization) is not float:
+                return None
+            hourglass = float(element.hourglass_stabilization)
+            return frame, local, warpage, constitutive, drill_stiffness, pl_stabilization, hourglass
+
+        admitted = []
+        frames, locals_, constitutives, drills, pls, hourglasses = [], [], [], [], [], []
+        generation = None
+        try:
+            for position, (element, material, cache_key) in enumerate(items):
+                if type(element) is not __class__ or type(cache_key) is not tuple:
+                    continue
+                if (
+                    element._qualified_components is not None
+                    and element._qualified_cache_key == cache_key
+                ):
+                    continue
+                # Entry boundary and generation capture of the guarded
+                # compute_stiffness_matrix call this replaces.
+                _require_exact_q4_runtime_authority(
+                    element,
+                    context="qualified Q4 compute_stiffness_matrix",
+                )
+                element_generation = capture()
+                if generation is not None and element_generation != generation:
+                    # Moved between two elements' spans: no element is
+                    # rejected; everything reruns per element.
+                    return None
+                generation = element_generation
+                try:
+                    entry = front_end(element, material, cache_key)
+                except Exception:
+                    rejection = changed(generation)
+                    if rejection is None:
+                        raise
+                    # As the wrapper: the generation rejection replaces it.
+                    return {}, (position, rejection)
+                rejection = changed(generation)
+                if rejection is not None:
+                    return {}, (position, rejection)
+                if entry is None:
+                    continue
+                frame, local, warpage, constitutive, drill_stiffness, pl_stabilization, hourglass = entry
+                admitted.append((position, element, material, cache_key, frame, warpage))
+                frames.append(frame)
+                locals_.append(local)
+                constitutives.append(constitutive)
+                drills.append(drill_stiffness)
+                pls.append(pl_stabilization)
+                hourglasses.append(hourglass)
+            if len(admitted) < minimum:
+                return {}, None
+            if not _batch.available():
+                return None
+            formed = _batch.form(
+                np.ascontiguousarray(np.asarray(frames, dtype=np.float64)),
+                np.ascontiguousarray(np.asarray(locals_, dtype=np.float64)),
+                np.ascontiguousarray(np.asarray(constitutives, dtype=np.float64)),
+                np.asarray(drills, dtype=np.float64),
+                np.asarray(pls, dtype=np.float64),
+                np.asarray(hourglasses, dtype=np.float64),
+            )
+            if changed(generation) is not None:
+                # Moved during the shared batch span, which belongs to no
+                # single element: discard the batch; everything reruns per
+                # element under the new generation.
+                return None
+        except Exception:  # noqa: BLE001 - the per-element path reports it
+            return None
+        diagnostics = formed["stationary_solve_diagnostics"]
+        names = (
+            "_qualified_components",
+            "_qualified_cache_key",
+            "_qualified_component_guard",
+            "_hourglass_stiffness_matrix",
+            "_stiffness_matrix",
+        )
+        missing = object()
+        bound: Dict[int, np.ndarray] = {}
+        deferred_rejection = None
+        for row, (position, element, material, cache_key, frame, warpage) in enumerate(
+            admitted
+        ):
+            # Generation capture of this element's bind span; a move since the
+            # batch was formed (outside every element's span) stops binding and
+            # this and later elements rerun per element.
+            try:
+                element_generation = capture()
+            except Exception:  # noqa: BLE001 - the per-element rerun reports it
+                break
+            if element_generation != generation:
+                break
+            core = formed["core"][row]
+            result = {
+                "core": core,
+                "physical": core,
+                "pl": formed["pl"][row],
+                "hourglass": formed["hourglass"][row],
+                "numerical": formed["numerical"][row],
+                "total": formed["total"][row],
+                "frame": frame,
+                "jacobian_centre": float(formed["jacobian_centre"][row]),
+                "mixed_condensed": True,
+                "legacy_fallback": False,
+                "warped_direct": False,
+                "warped_formulation": "planar_e4_pl",
+                "warpage_ratio": warpage,
+                "stationary_solve_policy_id": STATIONARY_SOLVE_POLICY_ID,
+                "stationary_solve_diagnostics": {
+                    "id": STATIONARY_SOLVE_POLICY_ID,
+                    "iterations": _STATIONARY_RUIZ_ITERATIONS,
+                    "input_asymmetry_relative": float(
+                        diagnostics["input_asymmetry_relative"][row]
+                    ),
+                    "row_norm_ratio": float(diagnostics["row_norm_ratio"][row]),
+                    "row_norm_ratio_limit": _STATIONARY_RUIZ_ROW_NORM_RATIO_LIMIT,
+                    "scale_max": float(diagnostics["scale_max"][row]),
+                    "scale_min": float(diagnostics["scale_min"][row]),
+                    "relative_backward_error": float(
+                        diagnostics["relative_backward_error"][row]
+                    ),
+                    "relative_backward_error_limit": _STATIONARY_BACKWARD_ERROR_LIMIT,
+                    "disposition": "CERTIFIED",
+                },
+            }
+            namespace = object.__getattribute__(element, "__dict__")
+            previous = tuple(dict.get(namespace, name, missing) for name in names)
+            try:
+                # As compute_stiffness_components (planar branch) binds it ...
+                object.__setattr__(
+                    element,
+                    "_qualified_components",
+                    _freeze_qualified_component_cache(result),
+                )
+                object.__setattr__(element, "_qualified_cache_key", cache_key)
+                element._bind_qualified_component_guard(mesh, material)
+                # ... followed by compute_stiffness_matrix.
+                components = element._qualified_components
+                element._hourglass_stiffness_matrix = np.asarray(
+                    components["hourglass"], dtype=float
+                )
+                element._stiffness_matrix = np.asarray(components["total"], dtype=float)
+                element._bind_qualified_component_guard(mesh, material)
+                view = _q4_public_stiffness_view(element)
+                # Exit boundary of the replaced guarded calls.
+                _require_exact_q4_runtime_authority(
+                    element,
+                    context="qualified Q4 compute_stiffness_matrix",
+                )
+            except Exception:  # noqa: BLE001 - rerun this and later elements per element
+                rejection = changed(element_generation)
+                if rejection is not None:
+                    # The wrapper rejects this element (its generation error
+                    # replaces the bind error); the caller invalidates and
+                    # raises it in the per-element order.
+                    deferred_rejection = (position, rejection)
+                    break
+                # Restore the pre-batch attributes; the caller's per-element
+                # rerun then leaves exactly the per-element failure state.
+                for name, value in zip(names, previous):
+                    if value is missing:
+                        namespace.pop(name, None)
+                    else:
+                        object.__setattr__(element, name, value)
+                break
+            rejection = changed(element_generation)
+            if rejection is not None:
+                deferred_rejection = (position, rejection)
+                break
+            bound[position] = view
+        return bound, deferred_rejection
+
+    @staticmethod
+    def _qualified_planar_batch_stresses(
+        items: Sequence[tuple[Any, Any, np.ndarray]],
+        mesh: Any,
+    ) -> Optional[tuple[Dict[int, Dict[str, Any]], Optional[tuple[int, BaseException]]]]:
+        """Default ``compute_stresses`` of several planar elements at once.
+
+        ``items`` holds ``(element, material, element_displacements)``; the
+        result maps the position in ``items`` to the dict that
+        ``element.compute_stresses(mesh, element_displacements, material)``
+        (``return_global=False``, default points, no post-observation
+        callback) returns.  Only exact elements on the compensated planar
+        elastic route without ``reference_normal``, shell section or Hill
+        yield data are admitted; the others are absent from the mapping.
+        Fewer than ``_Q4_PLANAR_BATCH_RECOVER_MIN_ROWS`` items or admitted
+        rows skip the batch (and its lazy self-check).  Any exception or
+        batch refusal returns ``None`` (rerun per element).  Otherwise returns
+        ``(rows, rejection)`` under the generation bracket of the stiffness
+        counterpart (each row's front end; its dict build).
+        """
+
+        minimum = _Q4_PLANAR_BATCH_RECOVER_MIN_ROWS
+        if len(items) < minimum:
+            return None
+        from . import _q4_planar_batch as _batch
+
+        if _batch._known_unavailable():
+            return None
+        capture = _capture_q4_batch_generation
+        changed = _q4_batch_generation_changed
+
+        def front_end(element: Any, material: Any, displacements: Any) -> Any:
+            _validate_q4_quadrature_authority(element)
+            observed = np.asarray(displacements, dtype=float)
+            coordinates = element.get_node_coordinates(mesh)
+            frame, local, warpage = equation7_frame(coordinates)
+            if warpage > element.planar_tolerance:
+                return None
+            if (
+                element.reference_normal is not None
+                or element.shell_section is not None
+                or getattr(material, "hill_yield", None) is not None
+            ):
+                return None
+            element_displacements = element._get_element_displacements(mesh, observed)
+            if (
+                element_displacements.shape != (element.total_dofs,)
+                or element.total_dofs != 24
+                or not np.all(np.isfinite(element_displacements))
+            ):
+                return None
+            if not element._elastic_increment_admitted(mesh, material, None):
+                return None
+            thickness = float(element.thickness)
+            if not math.isfinite(thickness) or thickness <= 0.0:
+                return None
+            constitutive = element._constitutive_and_drill_stiffness(material, frame)[0]
+            return frame, local, constitutive, thickness, element_displacements
+
+        admitted = []
+        frames, locals_, constitutives, thicknesses, vectors = [], [], [], [], []
+        generation = None
+        try:
+            for position, (element, material, displacements) in enumerate(items):
+                if type(element) is not __class__:
+                    continue
+                # Entry boundary and generation capture of the guarded
+                # compute_stresses call this replaces.
+                _require_exact_q4_runtime_authority(
+                    element,
+                    context="qualified Q4 compute_stresses",
+                )
+                element_generation = capture()
+                if generation is not None and element_generation != generation:
+                    return None  # moved between spans: rerun everything per element
+                generation = element_generation
+                try:
+                    entry = front_end(element, material, displacements)
+                except Exception:
+                    rejection = changed(generation)
+                    if rejection is None:
+                        raise
+                    return {}, (position, rejection)
+                rejection = changed(generation)
+                if rejection is not None:
+                    return {}, (position, rejection)
+                if entry is None:
+                    continue
+                frame, local, constitutive, thickness, element_displacements = entry
+                admitted.append((position, frame))
+                frames.append(frame)
+                locals_.append(local)
+                constitutives.append(constitutive)
+                thicknesses.append(thickness)
+                vectors.append(element_displacements)
+            if len(admitted) < minimum:
+                return {}, None
+            if not _batch.available():
+                return None
+            fields = _batch.recover(
+                np.ascontiguousarray(np.asarray(frames, dtype=np.float64)),
+                np.ascontiguousarray(np.asarray(locals_, dtype=np.float64)),
+                np.ascontiguousarray(np.asarray(constitutives, dtype=np.float64)),
+                np.asarray(thicknesses, dtype=np.float64),
+                np.ascontiguousarray(np.asarray(vectors, dtype=np.float64)),
+            )
+            if changed(generation) is not None:
+                return None  # moved during the shared batch span: rerun per element
+        except Exception:  # noqa: BLE001 - the per-element path reports it
+            return None
+        names = (
+            "membrane_strain",
+            "curvature",
+            "transverse_shear_strain",
+            "compatible_membrane_strain",
+            "compatible_curvature",
+            "compatible_transverse_shear_strain",
+            "membrane_resultants",
+            "bending_resultants",
+            "transverse_shear_resultants",
+        )
+        stress_names = (
+            "membrane_xx",
+            "membrane_yy",
+            "membrane_xy",
+            "bending_xx",
+            "bending_yy",
+            "bending_xy",
+            "shear_xz",
+            "shear_yz",
+        )
+        recovered_rows: Dict[int, Dict[str, Any]] = {}
+        deferred_rejection = None
+        for row, (position, _frame) in enumerate(admitted):
+            # Generation capture of this row's dict-build span (see the
+            # stiffness counterpart).
+            try:
+                element_generation = capture()
+            except Exception:  # noqa: BLE001 - the per-element rerun reports it
+                break
+            if element_generation != generation:
+                break
+            recovered: Dict[str, Any] = {
+                "natural_point_coordinates": np.asarray(_GAUSS, dtype=float).copy(),
+                "recovery_scope": "qualified_q4_local_physical_only",
+                "physical_stress_available": True,
+                "membrane_resultant_order": SHELL_MEMBRANE_VOIGT_ORDER,
+                "transverse_shear_resultant_order": SHELL_TRANSVERSE_SHEAR_ORDER,
+            }
+            for name in names:
+                recovered[name] = fields[name][row].copy()
+            recovered.update(
+                {
+                    "numerical_fields_excluded": True,
+                    "implementation_id": IMPLEMENTATION_ID,
+                    "recovery_policy_id": RECOVERY_POLICY_ID,
+                    "director_polarity_policy_id": DIRECTOR_POLARITY_POLICY_ID,
+                    "director_reversal_transform_id": DIRECTOR_REVERSAL_TRANSFORM_ID,
+                    "physical_director_authoritative": False,
+                    "physical_director": fields["physical_director"][row].copy(),
+                    "numbered_frame_director_sign": 1,
+                }
+            )
+            for name in stress_names:
+                recovered[name] = fields[name][row].copy()
+            recovered["von_mises"] = fields["von_mises"][row].copy()
+            recovered["hill_utilization"] = fields["hill_utilization"][row].copy()
+            recovered["equivalent_stress"] = fields["equivalent_stress"][row].copy()
+            recovered["equivalent_stress_measure"] = "von_mises"
+            try:
+                # Exit boundary of the replaced guarded call.
+                _require_exact_q4_runtime_authority(
+                    items[position][0],
+                    context="qualified Q4 compute_stresses",
+                )
+            except Exception:  # noqa: BLE001 - this and later rows rerun per element
+                rejection = changed(element_generation)
+                if rejection is not None:
+                    deferred_rejection = (position, rejection)
+                break
+            rejection = changed(element_generation)
+            if rejection is not None:
+                deferred_rejection = (position, rejection)
+                break
+            recovered_rows[position] = recovered
+        return recovered_rows, deferred_rejection
+
     def compute_mass_matrix(
         self,
         mesh: Any,
@@ -7487,6 +7974,59 @@ def _make_q4_cached_stiffness_epoch_holder() -> tuple[Any, Any]:
 ) = _make_q4_cached_stiffness_epoch_holder()
 
 
+def _make_q4_batch_generation_holder() -> tuple[Any, Any, Any, Any]:
+    """Expose the guarded wrappers' generation bracket to the batched planar route.
+
+    The wrapper factory installs, once, the capture/require of its own runtime
+    epoch manager and its cache invalidation.  ``capture`` and ``changed``
+    bracket one batched element's span exactly as the guarded public call
+    brackets it; ``reject`` applies the wrapper's failure action (invalidate
+    that element's derived caches, then raise the wrapper's rejection).  The
+    holder is closure-owned and has no disabling switch.
+    """
+
+    authority: list[Any] = []
+
+    def install(capture: Any, require: Any, invalidate: Any) -> None:
+        if authority:
+            raise RuntimeError(
+                "qualified Q4 batch generation bracket is already bound"
+            )
+        authority.append((capture, require, invalidate))
+
+    def bound() -> tuple[Any, Any, Any]:
+        if len(authority) != 1:
+            raise RuntimeError("qualified Q4 batch generation bracket is not bound")
+        return authority[0]
+
+    def capture() -> int:
+        return bound()[0]()
+
+    def changed(generation: int) -> Optional[BaseException]:
+        """Return the wrapper's rejection if the generation moved, else ``None``."""
+        require = bound()[1]
+        try:
+            require(generation)
+        except Exception as exc:  # noqa: BLE001 - returned to be raised in order
+            return exc
+        return None
+
+    def reject(element: Any, rejection: BaseException) -> None:
+        invalidate = bound()[2]
+        invalidate(element)
+        raise rejection
+
+    return install, capture, changed, reject
+
+
+(
+    _install_q4_batch_generation_bracket,
+    _capture_q4_batch_generation,
+    _q4_batch_generation_changed,
+    _reject_q4_batch_generation,
+) = _make_q4_batch_generation_holder()
+
+
 _q4_runtime_epoch_manager = make_authority_epoch_manager(
     "qualified Q4 runtime"
 )
@@ -8188,6 +8728,11 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
     if method.__name__ == "compute_stiffness_matrix":
         _install_q4_cached_stiffness_runtime_epoch_authority(
             runtime_epoch_guard
+        )
+        _install_q4_batch_generation_bracket(
+            runtime_manager.capture_generation,
+            runtime_manager.require_generation,
+            _invalidate_q4_guarded_call_caches,
         )
 
     class_window_require = _require_q4_class_authority_in_window

@@ -34,6 +34,7 @@ from ._qualified_authority_epoch import make_authority_epoch_manager
 from .e4_pl_element import (
     QualifiedE4PLShellElement as _QualifiedE4PLShellElement,
     _invalidate_q4_guarded_call_caches as _INVALIDATE_Q4_GUARDED_CACHES,
+    _reject_q4_batch_generation as _REJECT_Q4_BATCH_GENERATION,
     _q4_class_authority_window as _Q4_CLASS_AUTHORITY_WINDOW,
     _q4_runtime_epoch_manager as _Q4_RUNTIME_EPOCH_MANAGER,
     _q4_trusted_operation_scope as _Q4_TRUSTED_OPERATION_SCOPE,
@@ -5066,71 +5067,206 @@ def _assemble_element_matrix_under_lease_impl(
 
         if qualified_stiffness_items:
             shared_components = {}
-            for element_id, element in qualified_stiffness_items:
-                material = (
-                    raw_material_provider(element)
-                    if callable(raw_material_provider)
-                    else owned_material_provider(element)
-                    if callable(owned_material_provider)
-                    else observed_material(
-                        element.material_name,
-                        context=(
-                            f"{matrix_type} assembly qualified material "
-                            "observation"
-                        ),
-                    )
-                )
-                cached_total = (
-                    raw_total_provider(element)
-                    if callable(raw_total_provider)
-                    else _TRY_Q4_FAST_CACHED_STIFFNESS(
-                        element,
-                        mesh,
-                        material,
-                    )
-                )
-                if cached_total is not None:
-                    namespace = object.__getattribute__(element, "__dict__")
-                    cache_key = dict.get(namespace, "_qualified_cache_key")
-                    current_components = dict.get(
-                        namespace,
-                        "_qualified_components",
-                    )
-                    shared_components.setdefault(cache_key, current_components)
-                    precomputed[element_id] = cached_total
-                    prevalidated_element_ids.add(int(element_id))
-                    continue
-                cache_key = element._qualified_stiffness_cache_key(mesh, material)
-                current_components = getattr(element, "_qualified_components", None)
-                if (
-                    current_components is not None
-                    and getattr(element, "_qualified_cache_key", None) == cache_key
-                ):
-                    element._validate_qualified_component_cache_identity()
-                    shared_components.setdefault(cache_key, current_components)
-                    element._bind_qualified_component_guard(mesh, material)
-                    precomputed[element_id] = np.asarray(
-                        current_components["total"], dtype=float
-                    )
-                    continue
-                components = shared_components.get(cache_key)
-                if components is None:
-                    precomputed[element_id] = element.compute_stiffness_matrix(
-                        mesh, material
-                    )
-                    components = element._qualified_components
-                    if components is None:
-                        raise RuntimeError(
-                            "Qualified E4-PL stiffness did not populate its component cache"
+            if not _QualifiedE4PLShellElement._qualified_planar_batch_formation_expected(
+                [element for _element_id, element in qualified_stiffness_items],
+                mesh,
+            ):
+                # No formation batch expected: the unchanged per-element loop.
+                for element_id, element in qualified_stiffness_items:
+                    material = (
+                        raw_material_provider(element)
+                        if callable(raw_material_provider)
+                        else owned_material_provider(element)
+                        if callable(owned_material_provider)
+                        else observed_material(
+                            element.material_name,
+                            context=(
+                                f"{matrix_type} assembly qualified material "
+                                "observation"
+                            ),
                         )
-                    shared_components[cache_key] = components
-                else:
-                    precomputed[element_id] = element._adopt_qualified_components(
-                        cache_key,
-                        components,
-                        mesh,
-                        material,
                     )
+                    cached_total = (
+                        raw_total_provider(element)
+                        if callable(raw_total_provider)
+                        else _TRY_Q4_FAST_CACHED_STIFFNESS(
+                            element,
+                            mesh,
+                            material,
+                        )
+                    )
+                    if cached_total is not None:
+                        namespace = object.__getattribute__(element, "__dict__")
+                        cache_key = dict.get(namespace, "_qualified_cache_key")
+                        current_components = dict.get(
+                            namespace,
+                            "_qualified_components",
+                        )
+                        shared_components.setdefault(cache_key, current_components)
+                        precomputed[element_id] = cached_total
+                        prevalidated_element_ids.add(int(element_id))
+                        continue
+                    cache_key = element._qualified_stiffness_cache_key(mesh, material)
+                    current_components = getattr(element, "_qualified_components", None)
+                    if (
+                        current_components is not None
+                        and getattr(element, "_qualified_cache_key", None) == cache_key
+                    ):
+                        element._validate_qualified_component_cache_identity()
+                        shared_components.setdefault(cache_key, current_components)
+                        element._bind_qualified_component_guard(mesh, material)
+                        precomputed[element_id] = np.asarray(
+                            current_components["total"], dtype=float
+                        )
+                        continue
+                    components = shared_components.get(cache_key)
+                    if components is None:
+                        precomputed[element_id] = element.compute_stiffness_matrix(
+                            mesh, material
+                        )
+                        components = element._qualified_components
+                        if components is None:
+                            raise RuntimeError(
+                                "Qualified E4-PL stiffness did not populate its component cache"
+                            )
+                        shared_components[cache_key] = components
+                    else:
+                        precomputed[element_id] = element._adopt_qualified_components(
+                            cache_key,
+                            components,
+                            mesh,
+                            material,
+                        )
+            else:
+                # Collection pass: every step up to the compute/adopt decision runs
+                # per element in the original order.  Compute/adopt decisions are
+                # deferred so that the first cache miss of each cache key can be
+                # formed in one batch; the deferred entries then replay the
+                # original compute/adopt code in order, a batch-formed element
+                # taking its already-bound public stiffness view in place of
+                # ``compute_stiffness_matrix``.  Keys of deferred
+                # first misses are tracked so that a later cached element's
+                # ``setdefault`` cannot pre-empt the miss's own assignment, exactly
+                # as in the per-element loop.
+                deferred = []
+                pending_keys = set()
+                batch_items = []
+
+                def _q4_setdefault(key, value):
+                    if key not in pending_keys:
+                        shared_components.setdefault(key, value)
+
+                def _q4_compute_or_adopt(entries, batched=None, rejection=None):
+                    for (
+                        d_element_id, d_element, d_material, d_cache_key, d_position
+                    ) in entries:
+                        components = shared_components.get(d_cache_key)
+                        if components is None:
+                            if (
+                                rejection is not None
+                                and d_position is not None
+                                and d_position == rejection[0]
+                            ):
+                                # The batched element's span saw a runtime-authority
+                                # generation change: the wrapper's rejection, raised
+                                # where the per-element loop would raise it.
+                                _REJECT_Q4_BATCH_GENERATION(d_element, rejection[1])
+                            view = (
+                                None
+                                if batched is None or d_position is None
+                                else batched.get(d_position)
+                            )
+                            precomputed[d_element_id] = (
+                                d_element.compute_stiffness_matrix(mesh, d_material)
+                                if view is None
+                                else view
+                            )
+                            components = d_element._qualified_components
+                            if components is None:
+                                raise RuntimeError(
+                                    "Qualified E4-PL stiffness did not populate its component cache"
+                                )
+                            shared_components[d_cache_key] = components
+                        else:
+                            precomputed[d_element_id] = d_element._adopt_qualified_components(
+                                d_cache_key,
+                                components,
+                                mesh,
+                                d_material,
+                            )
+
+                try:
+                    for element_id, element in qualified_stiffness_items:
+                        material = (
+                            raw_material_provider(element)
+                            if callable(raw_material_provider)
+                            else owned_material_provider(element)
+                            if callable(owned_material_provider)
+                            else observed_material(
+                                element.material_name,
+                                context=(
+                                    f"{matrix_type} assembly qualified material "
+                                    "observation"
+                                ),
+                            )
+                        )
+                        cached_total = (
+                            raw_total_provider(element)
+                            if callable(raw_total_provider)
+                            else _TRY_Q4_FAST_CACHED_STIFFNESS(
+                                element,
+                                mesh,
+                                material,
+                            )
+                        )
+                        if cached_total is not None:
+                            namespace = object.__getattribute__(element, "__dict__")
+                            cache_key = dict.get(namespace, "_qualified_cache_key")
+                            current_components = dict.get(
+                                namespace,
+                                "_qualified_components",
+                            )
+                            _q4_setdefault(cache_key, current_components)
+                            precomputed[element_id] = cached_total
+                            prevalidated_element_ids.add(int(element_id))
+                            continue
+                        cache_key = element._qualified_stiffness_cache_key(mesh, material)
+                        current_components = getattr(element, "_qualified_components", None)
+                        if (
+                            current_components is not None
+                            and getattr(element, "_qualified_cache_key", None) == cache_key
+                        ):
+                            element._validate_qualified_component_cache_identity()
+                            _q4_setdefault(cache_key, current_components)
+                            element._bind_qualified_component_guard(mesh, material)
+                            precomputed[element_id] = np.asarray(
+                                current_components["total"], dtype=float
+                            )
+                            continue
+                        position = None
+                        if cache_key not in shared_components and cache_key not in pending_keys:
+                            pending_keys.add(cache_key)
+                            position = len(batch_items)
+                            batch_items.append((element, material, cache_key))
+                        deferred.append((element_id, element, material, cache_key, position))
+                        # Reserve the slot: keeps the per-element insertion order.
+                        precomputed[element_id] = None
+                except Exception:
+                    # Every deferred element precedes the failing one: run them per
+                    # element first so that their errors take precedence.
+                    pending_keys.clear()
+                    _q4_compute_or_adopt(deferred)
+                    raise
+                pending_keys.clear()
+                batched = _QualifiedE4PLShellElement._qualified_planar_batch_stiffness(
+                    batch_items,
+                    mesh,
+                )
+                _q4_compute_or_adopt(
+                    deferred,
+                    None if batched is None else batched[0],
+                    None if batched is None else batched[1],
+                )
             vectorized_shell_groups.append(
                 {
                     "shell_order": "S4",
