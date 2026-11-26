@@ -254,6 +254,8 @@ def _counting(monkeypatch: pytest.MonkeyPatch, owner: Any, name: str) -> list[in
         ("Element", "get_dof_mapping"),
         ("elements", "_beam_rotation_matrix"),
         ("elements", "_cross3"),
+        ("elements", "_contiguous_vector_norm"),
+        ("elements", "_frame_columns"),
         ("elements", "_beam_material_properties"),
     ],
 )
@@ -1207,9 +1209,9 @@ def test_replaced_post_observation_guard_is_called_as_in_scalar_path(
 
 @pytest.mark.parametrize("stored", ["none", "empty", "zeros"])
 def test_any_stored_linear_nodal_offsets_take_scalar_path(stored: str) -> None:
-    # Regression guard (already held on cf30b7545): the default rigid arm of
-    # getattr(self, '_linear_nodal_offsets', np.zeros((2, 3))) is taken only
-    # when the attribute is absent; any stored value takes the scalar loop.
+    # Regression guard (already held on cf30b7545): the default rigid arm is
+    # taken only when the attribute is absent (AttributeError, 30bcd9bf5);
+    # any stored value takes the scalar loop.
     value = {"none": None, "empty": (), "zeros": np.zeros((2, 3))}[stored]
 
     def prepare(model: FEModel) -> None:
@@ -1217,6 +1219,24 @@ def test_any_stored_linear_nodal_offsets_take_scalar_path(stored: str) -> None:
 
     batched, scalar, before, after = _both_paths(_stiffness_and_recovery(prepare))
     assert batched == scalar
+    assert after == before
+
+
+def test_rebound_attribute_error_in_elements_takes_scalar_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The default rigid arm is selected by ``except AttributeError`` (S2,
+    # 30bcd9bf5), a lookup of the elements-module global before the builtin.
+    # A rebound name changes the scalar outcome, so the batch must decline.
+    # Guard: the endpoint scalar checks already declined before the name
+    # joined the identity inventory; the inventory now declines up front.
+    def prepare(model: FEModel) -> Any:
+        monkeypatch.setattr(elements_module, "AttributeError", KeyError, raising=False)
+        return lambda: monkeypatch.delattr(elements_module, "AttributeError")
+
+    batched, scalar, before, after = _both_paths(_stiffness_and_recovery(prepare))
+    assert batched == scalar
+    assert scalar[0][0] == "AttributeError"
     assert after == before
 
 

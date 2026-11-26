@@ -82,3 +82,14 @@ commit with an owner-approved note):
 tests/test_general_contact_c5_elastic_increment.py tests/test_nonlinear_performance_batch_b.py`. Then the five
 elastic hashes (`hashes.py`): the elastic hashes now change by the waiver, so compare with the qualification
 ledger values, not with base.
+
+## Scope of the Q4 source binding (owner decision A, 2026-11-25)
+Applies to the whole chain `e4_pl_source_binding_20261111.json` -> `..._20261124.json` -> `..._20261125.json`
+(and their builders and readers in `tests/test_e4_pl_s3_mixed_mesh_manifest.py`). The 2026-11-11 and 2026-11-24
+records are pinned and stay byte-identical; this section is their documentation of scope. The 2026-11-25 record
+states it as `binding_scope`.
+* Covered: the bytes of the tracked source files in this checkout, and same-directory import-form uniqueness
+  (`_require_sole_import_form`: the bound `.py` file is the only importable form of its module in its directory).
+* Out of scope: runtime import identity. Examples: `sys.path` order (another checkout's `src`, or a checkout-root
+  package, ahead of this `src`); bytecode caches (`__pycache__`, including a timestamp cache that survives an
+  edit-and-restore within the same second); installed copies. A separate runtime check may follow later.
