@@ -78,7 +78,11 @@ centre; families m = membrane, b = bending, q = shear):
   (owner-normal convention), local M and Q are in director convention.
 * S3 V2D: one constant frame recomputed here from the facet (x along the first
   internal edge, normal = owner ``reference_normal``); global M, Q are in the
-  director convention (not re-multiplied).
+  director convention (not re-multiplied).  Owner decision 2026-11-26 (a): V2D
+  basis normals follow the OWNER normal, i.e. the frame the stresses are
+  actually in; rule (6) certifies that frame (owner normal and emitted frame)
+  within the solver's own admission ``|e . n| <= 1e-10 sqrt(edge_scale)``, so
+  a V2D normal may differ from the facet normal by that admitted tilt.
 
 Surface-only branches (legacy homogeneous, e4-pl warped homogeneous) resolve
 each family from the solver's global surface tensors rotated into the
@@ -127,12 +131,14 @@ GEOMETRY_BOUND = 1.0e-13  # rule (6): |n - n_geometry| (measured <= 2.3e-16 on e
 # Measured |n - n_geometry| <= 0.335 eps G (300 random elements, origins to
 # 1e7, slivers to 1e-4) and <= 0.008 eps G on ANYfem barge5: 8 eps is 24x that.
 GEOMETRY_ROUNDOFF = 8.0 * EPS
-# Declared geometry domain (owner 2026-11-26): G <= 5e5 keeps the rule (6)
-# bound <= 1e-13 + 8 eps 5e5 = 8.9e-10 < RESOLUTION, so inside the domain no
-# reversed normal and no normal tilt above 1e-9 certifies; outside it the
-# module refuses (AXES_GEOMETRY_CONDITIONING).  Measured: barge5 G <= 5.0e3
-# (median 5.4e2), solver test fixtures G <= 5.4.
-GEOMETRY_CONDITIONING_LIMIT = 5.0e5
+# Declared geometry domain (owner 2026-11-26): G <= 2.5e5 keeps the rule (6)
+# bound on the EUCLIDEAN normal difference <= 1e-13 + 8 eps 2.5e5 = 4.5e-10,
+# half the 1e-9 resolution, so inside the domain no reversed normal and no
+# normal tilt above 1e-9 certifies (Codex r7: the first limit 5e5 left no
+# margin and the check was per component); outside it the module refuses
+# (AXES_GEOMETRY_CONDITIONING).  Measured: barge5 G <= 5.0e3 (median 5.4e2),
+# solver test fixtures G <= 5.4.
+GEOMETRY_CONDITIONING_LIMIT = 2.5e5
 _FLOAT_TYPES = (float, int, np.float64)
 _INT_TYPES = (int, np.int64)
 # Option P (owner 2026-11-26): plain-object admission by type IDENTITY (never
@@ -502,10 +508,21 @@ def _geometry_conditioning(coords: np.ndarray, a: np.ndarray, b: np.ndarray, *le
     return (float(np.max(np.abs(coords))) / shortest + 1.0) * (la * lb / area)
 
 
-def _check_geometry_domain(element: Any, coords: np.ndarray) -> float:
+def _relative_tangents(element: Any, coords: np.ndarray, xi: float, eta: float) -> Tuple[np.ndarray, np.ndarray]:
+    """Shape-function tangents from element-relative coordinates (the
+    derivatives sum to zero, so this is the same tangent without the
+    cancellation of large absolute coordinates; Codex r7)."""
+
+    relative = coords - coords[0]
+    _n, d_xi, d_eta = element.compute_shape_functions(float(xi), float(eta))
+    return np.asarray(d_xi, dtype=float) @ relative, np.asarray(d_eta, dtype=float) @ relative
+
+
+def _check_geometry_domain(element: Any, coords: np.ndarray, requested: Optional[np.ndarray] = None) -> float:
     """The declared domain, the same measure for every branch: the largest G
     over the edges (3-node), or the diagonals (4-node) and the shape-function
-    tangents at the element's own stations (4-, 6- and 8-node)."""
+    tangents at the element's own stations and at any requested
+    ``natural_points`` (4-, 6- and 8-node)."""
 
     if len(coords) == 3:
         values = [_geometry_conditioning(coords, coords[1] - coords[0], coords[2] - coords[0],
@@ -514,9 +531,12 @@ def _check_geometry_domain(element: Any, coords: np.ndarray) -> float:
         values = []
         if len(coords) == 4:
             values.append(_geometry_conditioning(coords, coords[2] - coords[0], coords[3] - coords[1]))
-        for xi, eta in np.asarray(element.gauss_points, dtype=float):
-            _n, d_xi, d_eta = element.compute_shape_functions(float(xi), float(eta))
-            values.append(_geometry_conditioning(coords, np.asarray(d_xi, dtype=float) @ coords, np.asarray(d_eta, dtype=float) @ coords))
+        stations = np.asarray(element.gauss_points, dtype=float)
+        if requested is not None:
+            stations = np.concatenate((stations, np.asarray(requested, dtype=float)))
+        for xi, eta in stations:
+            a, b = _relative_tangents(element, coords, xi, eta)
+            values.append(_geometry_conditioning(coords, a, b))
     conditioning = max(values)
     if not conditioning <= GEOMETRY_CONDITIONING_LIMIT:
         raise ShellAxesRefusal(
@@ -578,9 +598,7 @@ def _tangent_normals(element: Any, coords: np.ndarray, points: np.ndarray) -> Tu
     out = np.zeros((len(points), 3), dtype=float)
     bounds = np.zeros(len(points), dtype=float)
     for index, (xi, eta) in enumerate(points):
-        _n, d_xi, d_eta = element.compute_shape_functions(float(xi), float(eta))
-        a = np.asarray(d_xi, dtype=float) @ coords
-        b = np.asarray(d_eta, dtype=float) @ coords
+        a, b = _relative_tangents(element, coords, xi, eta)
         out[index] = _unit_normal(_cross(a, b))
         bounds[index] = _geometry_bound(coords, a, b)
     return out, bounds
@@ -616,7 +634,7 @@ def _requested_points(natural_points: Any) -> Optional[np.ndarray]:
         plain = all(
             _is(type(row), (list, tuple))
             and len(row) == 2
-            and all(_is(type(v), (float, int, np.float64, np.int64)) for v in row)
+            and all(_is(type(v), (float, int, np.float64, np.float32, np.int64, np.int32)) for v in row)
             for row in natural_points
         )
     else:
@@ -769,7 +787,7 @@ def _resolve_branch(element, mesh, material, recovered, override, requested) -> 
     except (TypeError, ValueError) as exc:
         raise ShellAxesRefusal("AXES_RECOVERY_MALFORMED", f"node coordinates: {exc}") from None
     coords = _numeric(raw, "node coordinates")
-    _check_geometry_domain(element, coords)
+    _check_geometry_domain(element, coords, requested)
     n = _station_count(recovered, generalized)
 
     def no_custom_stations(what: str) -> None:
@@ -1089,6 +1107,15 @@ def recover_shell_axes(
             "AXES_STATIONS_NOT_QUALIFIED",
             "natural_points apply to homogeneous legacy and planar e4-pl recovery only",
         )
+    # the declared geometry domain before the recovery, so the typed refusal is
+    # not pre-empted by a solver error on extreme geometry (Codex r7)
+    from .e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement
+
+    try:
+        raw = element._coordinates(mesh) if kind is NativeParityE4PLS3V2DShellElement else element.get_node_coordinates(mesh)
+    except (TypeError, ValueError) as exc:
+        raise ShellAxesRefusal("AXES_RECOVERY_MALFORMED", f"node coordinates: {exc}") from None
+    _check_geometry_domain(element, _numeric(raw, "node coordinates"), requested)
     keywords: Dict[str, Any] = {} if requested is None else {"natural_points": np.array(requested, copy=True)}
     recovery = kind.compute_stresses(element, mesh, displacements, material, return_global=True, **keywords)
     axes = _derive_shell_axes_from_recovery(
@@ -1363,7 +1390,7 @@ def _derive_shell_axes_from_recovery(
             return "no geometric normal for this branch"
         limit = np.full(len(expected), GEOMETRY_BOUND) if bounds is None else np.asarray(bounds, dtype=float)
         with np.errstate(invalid="ignore"):
-            difference = np.max(np.abs(frames[:, :, 2] - expected), axis=1)
+            difference = np.linalg.norm(frames[:, :, 2] - expected, axis=1)  # Euclidean (Codex r7)
         if not bool(np.all(difference <= limit)):
             worst = float(np.max(difference - limit))
             return f"rule (6) basis normal differs from the geometry by {worst:.3e} beyond its bound"

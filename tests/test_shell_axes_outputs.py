@@ -1335,6 +1335,28 @@ def test_r4_nonfinite_frame_refuses_only_the_families_using_it():
     assert "shear_normal_components" not in centre.arrays
 
 
+def _assert_surface_arrays(res, n_stations):
+    """r6/r7 P3: the twelve surface components exist, have the station count and are finite."""
+
+    assert n_stations > 0
+    for key in SURFACE_KEYS:
+        values = np.asarray(res[key], dtype=float)
+        assert values.shape == (n_stations,), key
+        assert np.all(np.isfinite(values)), key
+
+
+def test_r7_surface_oracle_rejects_nonfinite_arrays():
+    el, mesh, loc = build("e4pl", "q4", "h")
+    result = recover_shell_axes(el, mesh, plate_field(loc, kx=K), MATERIAL)
+    res = dict(result.recovery)
+    n = result.axes.arrays["recovery_station_positions"].shape[0]
+    _assert_surface_arrays(res, n)
+    res["global_xx_top"] = np.full(n, np.inf)
+    res["global_xx_bot"] = np.full(n, -np.inf)
+    with pytest.raises(AssertionError):
+        _assert_surface_arrays(res, n)
+
+
 @pytest.mark.parametrize("polarity", (1, -1))
 @pytest.mark.parametrize("kind,topo", (("s3", "t3"), ("v2d", "t3"), ("e4pl", "q4")))
 def test_r4_surface_stresses_are_tension_on_the_physically_tensioned_fibre(kind, topo, polarity):
@@ -1353,9 +1375,7 @@ def test_r4_surface_stresses_are_tension_on_the_physically_tensioned_fibre(kind,
     res = result.recovery
     missing = [k for k in SURFACE_KEYS if k not in res]
     assert not missing, (kind, missing)  # r5 P3: never skip when a field disappears
-    n_stations = result.axes.arrays["recovery_station_positions"].shape[0]
-    for key in SURFACE_KEYS:  # r6 P3: twelve empty arrays would pass vacuously
-        assert np.asarray(res[key]).shape == (n_stations,) and n_stations > 0, key
+    _assert_surface_arrays(res, result.axes.arrays["recovery_station_positions"].shape[0])
     director = np.asarray(el.physical_reference_director, dtype=float)
     if kind == "e4pl":
         top_offset, bot_offset = 0.5 * H, -0.5 * H
@@ -1656,3 +1676,92 @@ def test_ordinary_element_activity_int64_ids_and_float32_coordinates_are_admitte
         node.x, node.y, node.z = (np.float32(node.x), np.float32(node.y), np.float32(node.z))
     out = recover_shell_axes(el, mesh, displacement(loc), MATERIAL).axes
     assert {r.reason for r in out.refusals.values()} <= {"unresolvable_family"}, out.refusals
+
+
+# ------------------------------------------------------------- Codex r7 fixes
+def test_r7_tilt_above_resolution_near_the_old_limit_does_not_certify():
+    """r7 P1: G ~ 4.7e5 certified a 1.2e-9 tilt (component check, no margin)."""
+
+    U = np.array([1.0, 1.0, 1.0])
+    V = 7.0 * 2.0**-22 * np.array([1.0, -1.0, 0.0])
+    mesh = FEMesh()
+    for i, p in enumerate((-U - V, U - V, U + V, -U + V), start=1):
+        mesh.add_node(i, *p)
+    normal = np.cross(U, V)
+    normal /= np.linalg.norm(normal)
+    el = create_shell_element(
+        1, [1, 2, 3, 4], "steel", formulation="e4-pl", thickness=H,
+        reference_normal=[float(v) for v in normal], director_polarity=1,
+    )
+
+    def tilt(role, frames):
+        return np.asarray(frames) @ _ry(1.2e-9)
+
+    try:
+        out = recover_shell_axes(el, mesh, np.zeros(24), MATERIAL, _frame_override=tilt).axes
+    except ShellAxesRefusal as exc:
+        assert exc.code == "AXES_GEOMETRY_CONDITIONING"
+        return
+    assert not any(out.certified.values()), out.refusals
+
+
+@pytest.mark.parametrize("axis", ("x", "y"))
+def test_r7_euclidean_tilt_check_inside_the_domain(axis):
+    """Inside the domain at 0.999 of the limit: a 1e-9 tilt in any direction is refused."""
+
+    el, mesh = _square_at(0.999)
+    rotation = _rx(1.0e-9) if axis == "x" else _ry(1.0e-9)
+    out = recover_shell_axes(el, mesh, np.zeros(24), MATERIAL, _frame_override=_override(rotation)).axes
+    assert set(out.refusals) >= set(FAMILIES), out.refusals
+
+
+def test_r7_domain_covers_custom_natural_points():
+    """r7 P1: G 13 at the default stations, 2.2e6 at natural_points [[0, 1]]."""
+
+    mesh = FEMesh()
+    for i, p in enumerate(((0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 1.0, 0.0), (0.999999, 1.0, 0.0)), start=1):
+        mesh.add_node(i, *p)
+    el = create_shell_element(
+        1, [1, 2, 3, 4], "steel", formulation="e4-pl", thickness=H, reference_normal=[0.0, 0.0, 1.0], director_polarity=1
+    )
+    assert recover_shell_axes(el, mesh, np.zeros(24), MATERIAL).axes.refusals == {}
+    with pytest.raises(ShellAxesRefusal) as info:
+        recover_shell_axes(el, mesh, np.zeros(24), MATERIAL, natural_points=[[0.0, 1.0]])
+    assert info.value.code == "AXES_GEOMETRY_CONDITIONING"
+
+
+def test_r7_domain_refusal_comes_before_the_recovery():
+    """r7 P2: an extreme sliver gets the typed refusal, not the solver's ValueError."""
+
+    mesh = FEMesh()
+    for i, p in enumerate(((0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 1.0e-13, 0.0), (0.0, 1.0e-13, 0.0)), start=1):
+        mesh.add_node(i, *p)
+    el = create_shell_element(
+        1, [1, 2, 3, 4], "steel", formulation="e4-pl", thickness=H, reference_normal=[0.0, 0.0, 1.0], director_polarity=1
+    )
+    with pytest.raises(ShellAxesRefusal) as info:
+        recover_shell_axes(el, mesh, np.zeros(24), MATERIAL)
+    assert info.value.code == "AXES_GEOMETRY_CONDITIONING"
+
+
+def test_r7_exact_limit_is_inside_the_domain():
+    """r7 P2: a unit square whose exact G equals the limit is admitted (inclusive).
+
+    For the unit square the station tangents have length 0.5 and are
+    orthogonal, so G = max|x| / 0.5 + 1; the diagonals give less."""
+
+    reach = (GEOMETRY_CONDITIONING_LIMIT - 1.0) * 0.5
+    el, mesh = _square_e4pl(reach - 1.0)
+    assert max(abs(n.x) for n in mesh.nodes.values()) == reach
+    assert recover_shell_axes(el, mesh, np.zeros(24), MATERIAL).axes.refusals == {}
+
+
+def test_r7_numpy_scalars_in_natural_points_rows_are_admitted():
+    """r7 P2: list rows of np.float32 / np.int32 as the recovery accepts them."""
+
+    el, mesh, loc = build("legacy", "q4", "h")
+    u = displacement(loc)
+    request = [(np.float32(0.25), np.int32(0)), (np.float32(-0.5), np.int32(1))]
+    result = recover_shell_axes(el, mesh, u, MATERIAL, natural_points=request)
+    direct = el.compute_stresses(mesh, u, MATERIAL, return_global=True, natural_points=np.asarray(request, dtype=float))
+    assert _identical(result.recovery, direct)
