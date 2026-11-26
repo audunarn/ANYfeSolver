@@ -1302,6 +1302,8 @@ RECORDED_CHANGE_COMMIT_IDS = (
     "c569bd617", "11eb4531c", "1b7492669", "5c4c8f8ba", "2a5ddf5a3", "631f77eba",
 )
 PERFORMANCE_NOTE = "docs/NONLINEAR_STATIC_GUARD_SPEEDUP.md"
+RECORDED_BASE_COMMIT = "72faf02b1e1ee443c11072273cc8b7bf9e035cb3"
+RECORDED_BASE_TREE = "c258b5200101e689fef85faa165d366afb6566dc"
 GIT_ROOT = ROOT
 # Predecessor: the newest link of the Q4 source-binding chain
 # 2026-11-11 -> 2026-11-24 -> 2026-11-25 (pin from
@@ -1493,7 +1495,8 @@ def _assert_successor_bindings(payload: dict) -> bool:
     assert set(payload["base"]) == {"commit", "tree"}
     assert all(len(value) == 40 for value in payload["base"].values())
     # Base: origin/main after S2 (#90), holding the 2026-11-25-bound bytes.
-    assert payload["base"]["commit"].startswith("72faf02b1")
+    # Full constants: a selector such as "72faf02b1~...1" cannot stand in.
+    assert payload["base"] == {"commit": RECORDED_BASE_COMMIT, "tree": RECORDED_BASE_TREE}
     assert payload["owner_decisions"]["date"] == "2026-11-24"
     assert payload["owner_decisions"]["approved"] == ["G2", "L1", "G1"]
     assert payload["qualification_boundary"] == {
@@ -1536,6 +1539,9 @@ def _assert_successor_bindings(payload: dict) -> bool:
         for start, end, replacement in reversed(row["reverse_line_patch"]):
             lines[start:end] = replacement
         prior = "".join(lines).encode("utf-8")
+        if portable:
+            # The builder patches portable carriers on LF bytes only.
+            assert not any("\r" in line for _s, _e, hunk in row["reverse_line_patch"] for line in hunk)
         assert _canonical_reverse_patch(source, prior) == row["reverse_line_patch"]
         if not portable:
             assert _identity(prior) == row["prior_raw"]
@@ -1647,6 +1653,21 @@ def _load_builder():
     return module
 
 
+@contextlib.contextmanager
+def _sanitized_process_git_environment():
+    """The in-process builder runs git with os.environ; clear GIT_* for it."""
+
+    saved = dict(os.environ)
+    sanitized = _git_environment()
+    os.environ.clear()
+    os.environ.update(sanitized)
+    try:
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(saved)
+
+
 def _require_builder_history() -> None:
     payload = _load_successor()
     _require_history(
@@ -1660,7 +1681,8 @@ def test_guard_cadence_builder_validates_every_change_commit() -> None:
     _require_builder_history()
     builder = _load_builder()
     recorded = _load_successor()["change"]["commits"]
-    assert builder.validated_change_commits(list(recorded)) == recorded
+    with _sanitized_process_git_environment():
+        assert builder.validated_change_commits(list(recorded)) == recorded
     first, subject = recorded[0].split(" ", 1)
     for bogus in (
         recorded[:1] + ["0" * 9 + " " + subject],
@@ -1669,7 +1691,7 @@ def test_guard_cadence_builder_validates_every_change_commit() -> None:
         [r for r in recorded if not r.startswith(builder.CHANGE_COMMIT[:9])],
         [],
     ):
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit), _sanitized_process_git_environment():
             builder.validated_change_commits(bogus)
 
 
@@ -1679,7 +1701,8 @@ def test_guard_cadence_builder_refuses_a_patch_that_does_not_rebuild_the_base(mo
     _require_builder_history()
     builder = _load_builder()
     monkeypatch.setattr(builder, "apply_patch", lambda current, hunks: current + b"#")
-    with pytest.raises(SystemExit, match="reverse line patch does not rebuild the base bytes"):
+    with pytest.raises(SystemExit, match="reverse line patch does not rebuild the base bytes"), \
+            _sanitized_process_git_environment():
         builder.build({"hashes": {}})
     source = (ROOT / "scripts" / "build_guard_cadence_successor.py").read_text(encoding="utf-8")
     assert "assert apply_patch(" not in source
@@ -1689,7 +1712,7 @@ def test_guard_cadence_builder_check_is_fresh() -> None:
     _require_builder_history()
     done = subprocess.run(
         [sys.executable, "-B", str(ROOT / "scripts" / "build_guard_cadence_successor.py"), "--check"],
-        cwd=ROOT, capture_output=True, check=False,
+        cwd=ROOT, capture_output=True, check=False, env=_git_environment(),
     )
     assert done.returncode == 0, done.stdout + done.stderr
     assert done.stdout.decode().strip() == "fresh"
@@ -1706,7 +1729,7 @@ def test_original_q4_source_binding_builder_check_still_passes() -> None:
             pytest.skip("historical source-binding revisions are not present")
     done = subprocess.run(
         [sys.executable, "-B", str(ROOT / "scripts" / "build_q4_source_binding_20261111.py"), "--check"],
-        cwd=ROOT, capture_output=True, check=False,
+        cwd=ROOT, capture_output=True, check=False, env=_git_environment(),
     )
     assert done.returncode == 0, (done.stdout + done.stderr).decode()[-3000:]
 
@@ -1850,6 +1873,11 @@ def _history_free_substitutions(payload: dict) -> list:
         _mutate(payload, ("change", "sealed_carriers", "e4_pl_element.py", "reverse_line_patch"),
                 element["reverse_line_patch"] + [[0, 0, []]]),
         _note_swapped_to(payload, "README.md"),
+        # Codex confirmation P2: a 40-character selector resolving to the base's parent.
+        _mutate(_mutate(payload, ("base", "commit"), "72faf02b1~" + "0" * 29 + "1"),
+                ("base", "tree"), "bf88df590a5233f10d983a8cc80164e3a4e11b6f"),
+        # Codex confirmation P3: a CRLF-rewritten portable prior with a matching patch.
+        _crlf_portable_prior(payload),
         _mutate(payload, ("change", "extra"), True),
     ], [
         _mutate(payload, ("change", "other_changed_sources", "nonlinear_static.py", "prior_lf_git_blob"),
@@ -1921,3 +1949,35 @@ def test_guard_cadence_successor_refuses_history_free_substitutions_at_the_bound
     for mutated in history_free:
         with pytest.raises(AssertionError):
             _assert_successor_bindings(mutated)
+
+
+def _crlf_portable_prior(payload: dict) -> dict:
+    row = payload["change"]["sealed_carriers"]["e4_pl_s3_state.py"]
+    current = _read_checkout(row["live_path"]).replace(b"\r\n", b"\n")
+    lines = current.decode("utf-8").splitlines(keepends=True)
+    for start, end, replacement in reversed(row["reverse_line_patch"]):
+        lines[start:end] = replacement
+    prior_crlf = "".join(lines).encode("utf-8").replace(b"\n", b"\r\n")
+    return _mutate(payload, ("change", "sealed_carriers", "e4_pl_s3_state.py", "reverse_line_patch"),
+                   _canonical_reverse_patch(current, prior_crlf))
+
+
+def test_guard_cadence_builder_tests_ignore_inherited_git_environment(tmp_path, monkeypatch) -> None:
+    """Codex confirmation P2: the builder tests (in process and the --check
+    subprocess) must not follow an inherited GIT_DIR/GIT_WORK_TREE into an
+    unrelated (shallow) clone."""
+
+    recorded = _load_successor()
+    _require_history(recorded["base"]["commit"], recorded["change"]["commit"])
+    origin = tmp_path / "origin"
+    origin.mkdir()
+    _git_at(origin, "init", "-q")
+    _git_at(origin, "commit", "-q", "--allow-empty", "-m", "one")
+    shallow = tmp_path / "shallow"
+    _git_at(tmp_path, "clone", "-q", "--depth", "1", origin.as_uri(), str(shallow))
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("GIT_DIR", str(shallow / ".git"))
+    monkeypatch.setenv("GIT_WORK_TREE", str(shallow))
+    test_guard_cadence_builder_validates_every_change_commit()
+    test_guard_cadence_builder_refuses_a_patch_that_does_not_rebuild_the_base(monkeypatch)
+    test_guard_cadence_builder_check_is_fresh()
