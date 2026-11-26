@@ -271,6 +271,7 @@ def solve_nonlinear_load_stepping(
                     KT_red,
                     MatrixClass.SYMMETRIC_INDEFINITE,
                     signature=f"nonlinear.limit_step:{step_index}:{float(load_factor):.16g}",
+                    options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
                 )
                 q = np.asarray(handle.solve(rhs), dtype=float).reshape(-1)
         except Exception:

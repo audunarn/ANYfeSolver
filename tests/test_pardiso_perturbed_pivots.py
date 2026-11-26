@@ -26,6 +26,10 @@ import anyfesolver.assembly as assembly
 import anyfesolver.linalg as linalg
 from anyfesolver.linalg import AutoSparseSolverBackend, MatrixClass, PyPardisoSolverBackend
 
+# The fake solver solves exactly when its factor is ok (rule A's known-solution
+# check needs a true solve): diag(1, 2, 3) x = ones.
+_DIAG123_SOLUTION = np.ones(3) / np.array([1.0, 2.0, 3.0])
+
 _N = 10_000
 
 
@@ -60,14 +64,21 @@ def _band_matrix(n: int = _N, half_bandwidth: int = 13, shift: float = 0.0) -> s
 
 
 class _PivotReportingFakeSolver:
-    """Minimal PyPardisoSolver stand-in reporting ``iparm[13]`` per factorization."""
+    """Minimal PyPardisoSolver stand-in reporting ``iparm[13]`` per factorization.
 
-    def __init__(self, perturbed_for) -> None:
+    A factorization reported unperturbed (count 0) solves exactly (the
+    known-solution check of every new factorization must pass); a perturbed
+    one "solves" with an enormous answer.
+    """
+
+    def __init__(self, perturbed_for, mtype: int = 11) -> None:
         self.iparm = np.zeros(64, dtype=np.int32)
         self.phase = 0
         self.phases: list[int] = []
         self.freed = False
         self._perturbed_for = perturbed_for
+        self._mtype = int(mtype)
+        self._factor_ok = False
 
     def _check_A(self, matrix):
         return matrix
@@ -92,9 +103,17 @@ class _PivotReportingFakeSolver:
                 count, error = count
             if self.iparm is not None:
                 self.iparm[13] = int(count)
+            self._factor_ok = int(count) == 0 and error is None
             if error is not None:
                 raise error
             return np.zeros_like(rhs)
+        garbage = getattr(self._perturbed_for, "garbage_solve", None)
+        if self._factor_ok and not (garbage is not None and garbage()):
+            stored = sparse.csr_matrix(matrix, dtype=float)
+            full = stored if self._mtype == 11 else (
+                stored + stored.T - sparse.diags(stored.diagonal())
+            )
+            return np.linalg.solve(full.toarray(), np.asarray(rhs, dtype=float))
         # A perturbed factor "solves" with an enormous answer.
         return np.asarray(rhs, dtype=float) * 1.0e16
 
@@ -107,8 +126,7 @@ def _install_fake(monkeypatch, perturbed_for):
     solvers: list[_PivotReportingFakeSolver] = []
 
     def factory(*, mtype: int):
-        del mtype
-        solver = _PivotReportingFakeSolver(perturbed_for)
+        solver = _PivotReportingFakeSolver(perturbed_for, mtype)
         solvers.append(solver)
         return solver
 
@@ -198,7 +216,7 @@ def test_fake_reused_slot_refactorization_is_checked(monkeypatch) -> None:
     assert reused.metadata["pardiso_failure_kind"] == "perturbed_pivots"
     # The retained slot was tried with phase 22 only (no re-analysis retry)
     # and released after the rejection.
-    assert solvers[0].phases == [12, 22]
+    assert solvers[0].phases == [12, 33, 22]  # 33: known-solution check of the accepted phase 12
     assert solvers[0].freed is True
     assert backend.retained_pattern_slots == 0
 
@@ -206,6 +224,101 @@ def test_fake_reused_slot_refactorization_is_checked(monkeypatch) -> None:
     assert again.status == "ok"
     assert again.metadata["pardiso_symbolic_reused"] is False
     assert again.metadata["pardiso_perturbed_pivots"] == {"2": "unsupported"}
+
+
+def _garbage_when(state):
+    """Unperturbed reports (count 0) whose solve is wrong while ``state["garbage"]``."""
+
+    def report(matrix) -> int:
+        del matrix
+        return 0
+
+    report.garbage_solve = lambda: bool(state["garbage"])
+    return report
+
+
+def test_fake_probe_refusal_releases_the_fresh_and_the_reused_slot(monkeypatch) -> None:
+    """Rule A: a factorization failing the known-solution check is never retained."""
+
+    state = {"garbage": True}
+    solvers = _install_fake(monkeypatch, _garbage_when(state))
+    backend = PyPardisoSolverBackend(max_pattern_slots=2)
+    A = sparse.csr_matrix(np.diag([1.0, 2.0, 3.0]))
+    refused = backend.factorize(A, MatrixClass.SYMMETRIC_INDEFINITE)
+    assert refused.status == "failed" and refused._solver is None
+    assert str(refused.failure_reason).startswith(linalg.FORWARD_ERROR_PROBE_EXCEEDED)
+    assert refused.metadata["pardiso_failure_kind"] == linalg.FORWARD_ERROR_PROBE_EXCEEDED
+    assert refused.metadata["pardiso_perturbed_pivots"] == {"-2": 0}
+    assert backend.retained_pattern_slots == 0
+    assert solvers[0].freed and solvers[0].phases == [12, 33]
+    # No mtype fallback after a refusal: one solver only.
+    assert len(solvers) == 1
+
+    state["garbage"] = False
+    accepted = backend.factorize(A, MatrixClass.SYMMETRIC_INDEFINITE)
+    assert accepted.status == "ok" and backend.retained_pattern_slots == 1
+    assert accepted.metadata["forward_error_probe_disposition"] == "PASSED"
+    state["garbage"] = True  # the reused slot (phase 22) now solves wrongly
+    reused = backend.factorize((A * 2.0).tocsr(), MatrixClass.SYMMETRIC_INDEFINITE)
+    assert reused.status == "failed"
+    assert reused.metadata["pardiso_failure_kind"] == linalg.FORWARD_ERROR_PROBE_EXCEEDED
+    assert backend.retained_pattern_slots == 0
+    assert solvers[1].freed and solvers[1].phases == [12, 33, 22, 33]
+
+
+def test_fake_report_mode_keeps_the_factorization(monkeypatch) -> None:
+    state = {"garbage": True}
+    _install_fake(monkeypatch, _garbage_when(state))
+    backend = PyPardisoSolverBackend()
+    handle = backend.factorize(sparse.csr_matrix(np.diag([1.0, 2.0, 3.0])), MatrixClass.GENERAL,
+                               options={"forward_error_probe": "report"})
+    assert handle.status == "ok"
+    assert handle.metadata["forward_error_probe_disposition"] == "EXCEEDED_REPORTED"
+    assert backend.retained_pattern_slots == 1
+
+
+def test_fake_probe_refused_factorization_is_never_served_as_ok_from_the_cache(monkeypatch) -> None:
+    """Rule A with D4/D2: a refused factorization is never reachable as ok, and a
+    stale cached handle is refactorized through the probe (never rebuilt)."""
+
+    state = {"garbage": True}
+    solvers = _install_fake(monkeypatch, _garbage_when(state))
+    backend = PyPardisoSolverBackend(max_pattern_slots=1)
+    A = sparse.csr_matrix(np.diag([1.0, 2.0, 3.0]))
+    cache = linalg.FactorizationCache(name="probe", max_entries=4, backend=backend)
+    refused = cache.factorize(A, MatrixClass.SPD)
+    assert refused.status == "failed" and refused._solver is None
+    assert refused.metadata["pardiso_failure_kind"] == linalg.FORWARD_ERROR_PROBE_EXCEEDED
+    assert backend.retained_pattern_slots == 0 and solvers[-1].freed
+    state["garbage"] = False
+    again = cache.factorize(A, MatrixClass.SPD)
+    assert again.status == "ok" or again is refused
+    assert refused.status == "failed"
+    fresh = backend.factorize(A, MatrixClass.SPD)
+    assert fresh.status == "ok"
+    assert fresh.metadata["forward_error_probe_disposition"] == "PASSED"
+    # Same pattern, other values: ``fresh`` goes stale and raises the typed error.
+    other = backend.factorize((A * 2.0).tocsr(), MatrixClass.SPD)
+    assert other.status == "ok"
+    with pytest.raises(linalg.PardisoStaleHandleError):
+        fresh.solve(np.ones(3))
+    # A stale ok handle refactorizes through the probe: a now-wrong solve is refused.
+    state["garbage"] = True
+    assert backend.factorize(A, MatrixClass.SPD).status == "failed"
+
+
+def test_fake_auto_falls_back_but_forced_fails_closed_on_probe_refusal(monkeypatch) -> None:
+    state = {"garbage": True}
+    _install_fake(monkeypatch, _garbage_when(state))
+    A = sparse.csr_matrix(np.diag([1.0, 2.0, 3.0]))
+    auto = AutoSparseSolverBackend(pypardiso_min_dimension=1, pypardiso_min_nnz=0)
+    fallback = auto.factorize(A, MatrixClass.SPD)
+    assert fallback.backend_name == "scipy_superlu" and fallback.status == "ok"
+    assert fallback.metadata["fallback_failure_kind"] == linalg.FORWARD_ERROR_PROBE_EXCEEDED
+    assert fallback.metadata["forward_error_probe_disposition"] == "PASSED"
+    forced = auto.factorize(A, MatrixClass.SPD, options={"backend": "pypardiso"})
+    assert forced.backend_name == "pypardiso" and forced.status == "failed"
+    assert forced.metadata["pardiso_failure_kind"] == linalg.FORWARD_ERROR_PROBE_EXCEEDED
 
 
 def _warm_auto_backend(max_pattern_slots: int = 2) -> AutoSparseSolverBackend:
@@ -242,7 +355,7 @@ def test_fake_perturbed_phase22_is_not_retried_into_acceptance(monkeypatch, matr
     assert second.metadata["pardiso_failure_kind"] == "perturbed_pivots"
     assert second.metadata["pardiso_perturbed_pivots"] == {mtype: 1}
     assert "pardiso_symbolic_reused" not in second.metadata
-    assert solvers[0].phases == [12, 22]
+    assert solvers[0].phases == [12, 33, 22]  # 33: known-solution check of the accepted phase 12
     # P3: the failed warm solver's native factors are released.
     assert solvers[0].freed is True
     assert backend.retained_pattern_slots == 0
@@ -252,7 +365,7 @@ def test_fake_perturbed_phase22_is_not_retried_into_acceptance(monkeypatch, matr
     with pytest.raises(linalg.PardisoStaleHandleError):
         first.solve(np.ones(3))
     assert first.status == "failed"
-    assert solvers[0].phases == [12, 22] and len(solvers) == 1
+    assert solvers[0].phases == [12, 33, 22] and len(solvers) == 1  # no rebuild after the probe solve
 
     auto = _warm_auto_backend()
     assert auto.factorize(A, matrix_class).backend_name == "pypardiso"
@@ -295,7 +408,7 @@ def test_fake_phase22_error_retry_is_reported_and_failed_retry_is_released(monke
     state["fail22"] = True
     retried = backend.factorize((A * 2.0).tocsr(), MatrixClass.GENERAL)
     assert retried.status == "ok"
-    assert solvers[0].phases == [12, 22, 12]
+    assert solvers[0].phases == [12, 33, 22, 12, 33]  # 33: known-solution checks of accepted factorizations
     # Phase 12 redid the analysis: the symbolic analysis was not reused.
     assert retried.metadata["pardiso_symbolic_reused"] is False
     assert retried.metadata["pardiso_perturbed_pivots"] == {"11": 0}
@@ -352,7 +465,7 @@ def test_r2_native_error_does_not_hide_a_positive_pivot_report(monkeypatch, phas
     assert handle.metadata["pardiso_failure_kind"] == "perturbed_pivots"
     assert handle.metadata["pardiso_perturbed_pivots"] == {"11": 1}
     # No phase 12 retry after the perturbed (raised) phase 22.
-    assert solvers[0].phases == ([12, 22] if phase == 22 else [12])
+    assert solvers[0].phases == ([12, 33, 22] if phase == 22 else [12])
 
 
 def test_r2_native_error_with_perturbation_stops_the_mtype_chain(monkeypatch) -> None:
@@ -391,7 +504,7 @@ def test_r2_non_perturbation_native_error_retry_is_checked(monkeypatch) -> None:
     assert backend.factorize(A, MatrixClass.GENERAL).status == "ok"
     state["armed"] = True
     handle = backend.factorize((A * 2.0).tocsr(), MatrixClass.GENERAL)
-    assert solvers[0].phases == [12, 22, 12]
+    assert solvers[0].phases == [12, 33, 22, 12]  # 33: known-solution check of the accepted phase 12
     assert handle.status == "failed"
     assert handle.metadata["pardiso_failure_kind"] == "perturbed_pivots"
 
@@ -424,20 +537,6 @@ def test_r4_mtype2_failure_text_does_not_claim_perturbed_pivots(monkeypatch) -> 
     # Documented mtypes keep the count wording.
     indefinite = PyPardisoSolverBackend().factorize(A, MatrixClass.SYMMETRIC_INDEFINITE)
     assert "perturbed 1 pivot(s)" in str(indefinite.failure_reason)
-
-
-def test_r4_open_certification_xfails_match_only_the_intended_failure() -> None:
-    """Codex r3 P3: an unrelated exception must FAIL the strict xfails, not XFAIL them."""
-
-    for name in (
-        "test_open_static_certification_of_rounding_singular_band",
-        "test_open_spd_cholesky_accepts_rounding_singular_chain",
-    ):
-        function = globals()[name]
-        marks = [m for m in getattr(function, "pytestmark", []) if m.name == "xfail"]
-        assert len(marks) == 1, name
-        assert marks[0].kwargs.get("strict") is True, name
-        assert marks[0].kwargs.get("raises") is AssertionError, name
 
 
 # --------------------------------------------------------------------------
@@ -527,7 +626,9 @@ def test_b_concurrent_stale_solves_raise_the_same_type(monkeypatch) -> None:
     for thread in threads:
         thread.join(timeout=5.0)
     assert outcomes == [linalg.PardisoStaleHandleError] * 7
-    assert len(solvers) == 1 and 33 not in solvers[0].phases[1:]
+    # Phases: factorize + rule-A probe solve, refactorize + probe; the stale
+    # solves made no native call at all.
+    assert len(solvers) == 1 and solvers[0].phases == [12, 33, 22, 33]
 
 
 def test_b_interrupted_cleanup_cannot_revive_a_stale_handle(monkeypatch) -> None:
@@ -548,12 +649,13 @@ def test_b_interrupted_cleanup_cannot_revive_a_stale_handle(monkeypatch) -> None
 
     monkeypatch.setattr(linalg, "_new_pypardiso_solver", factory)
     built = len(solvers)
+    phases_before = [list(solver.phases) for solver in solvers]  # incl. rule-A probe solves
     for report in (1, 0):  # perturbed, then a clean report a rebuild would accept
         state["report"] = report
         with pytest.raises(linalg.PardisoStaleHandleError):
             first.solve(np.ones(3))
     assert len(solvers) == built
-    assert all(33 not in solver.phases for solver in solvers)
+    assert [solver.phases for solver in solvers] == phases_before  # no native call
 
 
 @pytest.mark.parametrize("report", [0, 1])
@@ -577,7 +679,7 @@ def test_b_interrupted_warm_factorization_retires_its_slot(monkeypatch, report) 
         backend.factorize((A * 2.0).tocsr(), MatrixClass.GENERAL)
     assert raised.value is interrupt  # the original exception, re-raised
     assert any(f"iparm[13]={report}" in note for note in getattr(raised.value, "__notes__", []))
-    assert solvers[0].phases == [12, 22]
+    assert solvers[0].phases == [12, 33, 22]  # 33: rule-A probe of the accepted phase 12
     assert solvers[0].freed is True  # phase -1 ran
     assert backend.retained_pattern_slots == 0  # the slot can never be reused
     with pytest.raises(linalg.PardisoStaleHandleError):
@@ -586,7 +688,7 @@ def test_b_interrupted_warm_factorization_retires_its_slot(monkeypatch, report) 
     third = backend.factorize((A * 3.0).tocsr(), MatrixClass.GENERAL)
     assert third.status == "ok"
     assert third.metadata["pardiso_symbolic_reused"] is False
-    assert len(solvers) == 2 and solvers[1].phases == [12] and solvers[0].phases == [12, 22]
+    assert len(solvers) == 2 and solvers[1].phases == [12, 33] and solvers[0].phases == [12, 33, 22]
 
 
 def test_b_interrupted_phase12_retry_retires_its_slot(monkeypatch) -> None:
@@ -606,7 +708,7 @@ def test_b_interrupted_phase12_retry_retires_its_slot(monkeypatch) -> None:
     state["armed"] = True
     with pytest.raises(KeyboardInterrupt):
         backend.factorize((A * 2.0).tocsr(), MatrixClass.GENERAL)
-    assert solvers[0].phases == [12, 22, 12]
+    assert solvers[0].phases == [12, 33, 22, 12]  # 33: rule-A probe of the accepted phase 12
     assert solvers[0].freed is True
     assert backend.retained_pattern_slots == 0
 
@@ -641,7 +743,7 @@ def test_b_cache_treats_a_stale_handle_as_a_miss(monkeypatch) -> None:
     again = cache.factorize(A, MatrixClass.SYMMETRIC_INDEFINITE)
     assert again is not first and again.status == "ok"
     assert again.metadata["cache_hit"] is False
-    np.testing.assert_array_equal(again.solve(np.ones(3)), np.ones(3) * 1.0e16)
+    np.testing.assert_array_equal(again.solve(np.ones(3)), _DIAG123_SOLUTION)
     diagnostics = cache.diagnostics()
     assert (diagnostics["hits"], diagnostics["misses"], diagnostics["factorization_failures"]) == (1, 2, 0)
     with pytest.raises(linalg.PardisoStaleHandleError):
@@ -667,23 +769,6 @@ def test_b_mtype2_chained_cause_makes_no_count_claim(monkeypatch) -> None:
     while error is not None:
         assert "pivot(s)" not in str(error)
         error = error.__cause__ or error.__context__
-
-
-def test_b_strict_xfails_fail_on_an_unrelated_assertion_inside_the_call(monkeypatch) -> None:
-    """Codex r4 P3: raises=AssertionError let an unrelated AssertionError XFAIL."""
-
-    def unrelated(*args, **kwargs):
-        raise AssertionError("unrelated internal assertion")
-
-    monkeypatch.setattr(assembly, "_solve_reduced_system", unrelated)
-    monkeypatch.setattr(PyPardisoSolverBackend, "factorize", unrelated)
-    for call in (
-        test_minres_inconsistent_singular_system_is_not_converged,
-        lambda: test_open_static_certification_of_rounding_singular_band(200),
-        test_open_spd_cholesky_accepts_rounding_singular_chain,
-    ):
-        with pytest.raises(pytest.fail.Exception, match="unrelated internal assertion"):
-            call()
 
 
 def test_fake_pivot_count_metadata_per_mtype(monkeypatch) -> None:
@@ -790,9 +875,8 @@ def test_real_large_singular_band_rejects_pardiso_and_does_not_try_weaker_mtypes
     assert handle.metadata["fallback_failure_kind"] == "perturbed_pivots"
 
 
-# Open owner decisions (pre-existing certification holes, not perturbed pivots).
-# Strict xfails: they turn into failures as soon as the behaviour changes.  All
-# of them belong to the separate static-solve certification slice.
+# Former open certification holes, closed by the static linear-solve
+# certification slice (rule A: factorization known-solution check).
 
 def _call_under_test(function, *args):
     """Run the call whose outcome a strict xfail asserts on.
@@ -815,40 +899,40 @@ _CERTIFICATION_SLICE = (
 
 
 @requires_pypardiso
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "OPEN: a rounding-singular matrix (band graph Laplacian, constant "
-        "nullspace, inconsistent load) is factorized by SuperLU through an "
-        "O(1e-13) pivot; the normwise backward error (~4e-16) then certifies "
-        "a ~1e16 solution. Same on main below the PARDISO threshold (n=2000)."
-        + _CERTIFICATION_SLICE
-    ),
-)
 @pytest.mark.parametrize("n", [2_000, _N])
-def test_open_static_certification_of_rounding_singular_band(n) -> None:
+def test_static_certification_refuses_rounding_singular_band(n) -> None:
+    """Formerly a strict xfail: SuperLU factorized the band graph Laplacian
+    through an O(1e-13) pivot and the backward error (~4e-16) certified a
+    ~1e16 solution.  Rule A refuses the factorization itself."""
+
     matrix = _band_matrix(n)
-    _q, info = _call_under_test(assembly._solve_reduced_system, matrix, np.ones(n), "direct")
+    q, info = assembly._solve_reduced_system(matrix, np.ones(n), "direct")
     assert info["status"] == "failed"
+    assert str(info["error"]).startswith(linalg.FORWARD_ERROR_PROBE_EXCEEDED)
+    assert info["backend"]["forward_error_probe_disposition"] == "EXCEEDED"
+    assert info["backend"]["forward_error_probe"] > linalg._FORWARD_ERROR_PROBE_LIMIT
+    assert "relative_backward_error_disposition" not in info
+    assert np.all(q == 0.0)
 
 
 @requires_pypardiso
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "OPEN: PARDISO mtype 2 (Cholesky, MatrixClass.SPD) factorizes the "
-        "singular free spring chain through a rounding-level pivot and returns "
-        "|x| ~ 1e16; iparm[13] is not a documented pivot count for mtype 2, so "
-        "no perturbation can be detected there (metadata says 'unsupported')."
-        + _CERTIFICATION_SLICE
-    ),
-)
-def test_open_spd_cholesky_accepts_rounding_singular_chain() -> None:
-    # Only the certification outcome: a correct refusal (by any route) XPASSes.
-    handle = _call_under_test(PyPardisoSolverBackend().factorize, _free_chain(), MatrixClass.SPD)
+def test_spd_cholesky_refuses_rounding_singular_chain() -> None:
+    """Formerly a strict xfail: PARDISO mtype 2 factorized the singular free
+    spring chain through a rounding-level pivot (iparm[13] undocumented for
+    mtype 2).  Rule A refuses it and releases the factorization."""
+
+    backend = PyPardisoSolverBackend()
+    handle = backend.factorize(_free_chain(), MatrixClass.SPD)
     assert handle.status == "failed"
+    assert handle._solver is None
+    assert str(handle.failure_reason).startswith(linalg.FORWARD_ERROR_PROBE_EXCEEDED)
+    assert handle.metadata["pardiso_failure_kind"] == linalg.FORWARD_ERROR_PROBE_EXCEEDED
+    assert handle.metadata["pardiso_mtype"] == 2
+    assert handle.metadata["forward_error_probe"] > linalg._FORWARD_ERROR_PROBE_LIMIT
+    # The refused factorization is not retained in a pattern slot.
+    assert backend.retained_pattern_slots == 0
+    with pytest.raises(RuntimeError):
+        linalg.solve(handle, np.ones(_N))
 
 
 def test_minres_inconsistent_singular_system_is_not_converged() -> None:
@@ -1045,6 +1129,8 @@ def test_b_handle_holder_refactorizes_instead_of_solving_a_stale_handle(monkeypa
     held = EliminatedHandle(Maps(), linalg.factorize_cached(A, MatrixClass.GENERAL))
     original = held.handle
     assert backend.factorize((A * 2.0).tocsr(), MatrixClass.GENERAL).status == "ok"
-    np.testing.assert_array_equal(held.solve(np.ones(3)), np.ones(3) * 1.0e16)
+    np.testing.assert_array_equal(held.solve(np.ones(3)), _DIAG123_SOLUTION)
     assert held.handle is not original and not linalg.factorization_is_stale(held.handle)
-    assert solvers[0].phases == [12, 22, 22, 33]  # refactorized into the slot, then solved
+    # Each accepted factorization is followed by its rule-A probe solve (33):
+    # refactorized into the slot, then solved.
+    assert solvers[0].phases == [12, 33, 22, 33, 22, 33, 33]

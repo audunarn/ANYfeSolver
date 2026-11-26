@@ -1694,6 +1694,8 @@ def _solve_eigenvalue_buckling_under_lease(
                     K_sym.tocsc(),
                     MatrixClass.SPD,
                     cache=elastic_cache,
+                    # Eigen results are judged by the per-mode residuals computed downstream; a shift at or near an eigenvalue is legitimate.
+                    options={"forward_error_probe": "report"},
                 )
                 elastic_inverse, elastic_handle = elastic_lease.operator, elastic_lease.handle
                 with elastic_lease:
@@ -1759,6 +1761,8 @@ def _solve_eigenvalue_buckling_under_lease(
                     shift_matrix,
                     MatrixClass.SYMMETRIC_INDEFINITE,
                     cache=cache,
+                    # Eigen results are judged by the per-mode residuals computed downstream; a shift at or near an eigenvalue is legitimate.
+                    options={"forward_error_probe": "report"},
                 )
                 operator, handle = shift_lease.operator, shift_lease.handle
                 with shift_lease:

@@ -1372,7 +1372,9 @@ def _sparse_eigensolve(
                 if shift is None and use_zero_shift_inverse
                 else MatrixClass.SYMMETRIC_INDEFINITE
             ),
+            # Eigen results are judged by the per-mode residuals computed downstream; a shift at or near an eigenvalue is legitimate.
             cache=cache,
+            options={"forward_error_probe": "report"},
         )
     except RuntimeError as exc:
         factorization_lookup_seconds = float(

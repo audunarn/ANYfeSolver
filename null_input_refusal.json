@@ -1,0 +1,5 @@
+{
+  "null_checkpoint_no_solve": true,
+  "fixture_identity_accepted": true,
+  "scope": "current public-entry null-checkpoint refusal; input-free, no archived fresh run required"
+}
