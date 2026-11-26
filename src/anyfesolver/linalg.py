@@ -201,6 +201,10 @@ class FactorizationHandle:
 # mtypes 2/-2/11); the limit 1e-3 leaves ~360x margin above the ordinary
 # maximum.  Cost: one matvec and one solve per factorization.
 FORWARD_ERROR_PROBE_EXCEEDED = "FORWARD_ERROR_PROBE_EXCEEDED"
+# The probe could not execute (its matvec or raw solve raised an ordinary
+# Exception): the factorization is discarded and a failed handle returned, as
+# for a failed numerical factorization (never an ``ok`` handle, in either mode).
+FORWARD_ERROR_PROBE_FAILED = "FORWARD_ERROR_PROBE_FAILED"
 _FORWARD_ERROR_PROBE_LIMIT = 1.0e-3
 _FORWARD_ERROR_PROBE_SEED = 12345
 _FORWARD_ERROR_PROBE_MODES = ("refuse", "report")
@@ -257,21 +261,46 @@ def _forward_error_probe_index(mask: Any) -> np.ndarray:
     return np.asarray(index, dtype=np.int64)
 
 
-def _forward_error_probe_value(n: int, matvec: Any, raw_solve: Any, index: Optional[np.ndarray]) -> Optional[float]:
-    """kfe = max|x - z| / max|z| over the measured entries; None if non-finite or failed."""
+class _ForwardErrorProbeExecutionError(RuntimeError):
+    """The known-solution probe could not execute (its matvec or solve raised).
+
+    Distinct from a probe that completed with a bad (large or non-finite)
+    value: an execution failure never publishes an ``ok`` handle, in either
+    mode.  The original exception is the ``__cause__``.
+    """
+
+
+def _forward_error_probe_value(
+    n: int,
+    matvec: Any,
+    raw_solve: Any,
+    index: Optional[np.ndarray],
+    solve_dtype: Any = np.float64,
+) -> Optional[float]:
+    """kfe = max|x - z| / max|z| over the measured entries; None if non-finite.
+
+    ``solve_dtype`` is the dtype the raw solve accepts (a single-precision
+    SuperLU factor takes ``float32``); the error is evaluated in double
+    precision.  A matvec or solve that raises an ordinary ``Exception`` is
+    an execution failure (:class:`_ForwardErrorProbeExecutionError`, never a
+    value); an interrupt propagates unchanged.
+    """
 
     z = np.random.default_rng(_FORWARD_ERROR_PROBE_SEED).uniform(1.0, 2.0, int(n))
-    try:
-        with np.errstate(all="ignore"):
+    with np.errstate(all="ignore"):
+        try:
             rhs = np.asarray(matvec(z), dtype=np.float64).reshape(-1)
-            x = np.asarray(raw_solve(rhs), dtype=np.float64).reshape(-1)
-            if x.shape != z.shape:
-                return None
-            if index is not None:
-                x, z = x[index], z[index]
-            value = float(np.max(np.abs(x - z)) / np.max(np.abs(z)))
-    except Exception:
-        return None
+            solved = raw_solve(rhs.astype(solve_dtype, copy=False))
+        except Exception as exc:
+            raise _ForwardErrorProbeExecutionError(
+                f"forward-error probe could not execute ({type(exc).__name__}: {exc})"
+            ) from exc
+        x = np.asarray(solved, dtype=np.float64).reshape(-1)
+        if x.shape != z.shape:
+            return None
+        if index is not None:
+            x, z = x[index], z[index]
+        value = float(np.max(np.abs(x - z)) / np.max(np.abs(z)))
     return value if np.isfinite(value) else None
 
 
@@ -307,19 +336,69 @@ def _forward_error_probe_reason(value: Optional[float], backend: str, *, stage: 
     )
 
 
+def _forward_error_probe_failure_reason(exc: BaseException, backend: str) -> str:
+    return (
+        f"{FORWARD_ERROR_PROBE_FAILED}: {backend} factorization known-solution check "
+        f"could not execute ({exc}); the factorization is discarded"
+    )
+
+
 def _run_forward_error_probe(
-    metadata: Dict[str, Any], options: Mapping[str, Any], n: int, matvec: Any, raw_solve: Any
+    metadata: Dict[str, Any],
+    options: Mapping[str, Any],
+    n: int,
+    matvec: Any,
+    raw_solve: Any,
+    solve_dtype: Any = np.float64,
 ) -> bool:
-    """Validate options, run and record the probe; return whether it refuses."""
+    """Validate options, run and record the probe; return whether it refuses.
+
+    Raises :class:`_ForwardErrorProbeExecutionError` (after recording the
+    ``EXECUTION_FAILED`` disposition) when the probe could not execute.
+    """
 
     mode, index = _forward_error_probe_settings(options, n)
     if int(n) == 0:
         return _record_forward_error_probe(metadata, None, mode, measured=0, skipped=True)
     started = time.perf_counter()
-    value = _forward_error_probe_value(n, matvec, raw_solve, index)
+    try:
+        value = _forward_error_probe_value(n, matvec, raw_solve, index, solve_dtype)
+    except _ForwardErrorProbeExecutionError:
+        metadata["forward_error_probe"] = None
+        metadata["forward_error_probe_limit"] = _FORWARD_ERROR_PROBE_LIMIT
+        metadata["forward_error_probe_mode"] = mode
+        metadata["forward_error_probe_disposition"] = "EXECUTION_FAILED"
+        metadata["forward_error_probe_seconds"] = time.perf_counter() - started
+        raise
     metadata["forward_error_probe_seconds"] = time.perf_counter() - started
     measured = int(n) if index is None else int(index.size)
     return _record_forward_error_probe(metadata, value, mode, measured=measured)
+
+
+def _superlu_solve_dtype(csc: sparse.csc_matrix) -> Any:
+    """The dtype SuperLU's raw solve takes for a factor of ``csc``.
+
+    ``splu`` keeps single precision (an integer matrix is promoted as by
+    ``asfptype``: small integers to ``float32``, others to ``float64``).
+    """
+
+    dtype = np.result_type(csc.dtype, np.float32)
+    return dtype if dtype in (np.float32, np.float64) else np.float64
+
+
+def _probe_matvec(csr: sparse.csr_matrix, prepared: sparse.csr_matrix, mtype: int) -> Any:
+    """A z for the operator PARDISO factorized.
+
+    mtype 11 factorizes ``csr``.  Symmetric mtypes 2/-2 factorize the
+    symmetric operator of the prepared upper triangle; for an input stored
+    as a full symmetric matrix that operator equals ``csr`` and ``csr @ z``
+    is kept (unchanged probe value), otherwise (triangular or unsymmetric
+    storage) the probe uses the symmetric operator itself.
+    """
+
+    if int(mtype) == 11 or (csr != csr.T).nnz == 0:
+        return lambda z: csr @ z
+    return _symmetric_upper_matvec(prepared)
 
 
 def _symmetric_upper_matvec(upper: sparse.csr_matrix) -> Any:
@@ -368,9 +447,27 @@ class SparseSolverBackend:
             )
         factorization_time = time.time() - start
         probe: Dict[str, Any] = {}
-        refused = _run_forward_error_probe(
-            probe, options, int(csc.shape[0]), lambda z: csc @ z, solver.solve
-        )
+        try:
+            refused = _run_forward_error_probe(
+                probe, options, int(csc.shape[0]), lambda z: csc @ z, solver.solve,
+                _superlu_solve_dtype(csc),
+            )
+        except _ForwardErrorProbeExecutionError as exc:
+            # As a failed splu: a typed failed handle, never an ok one.
+            del solver
+            failed = FactorizationHandle(
+                matrix_shape=tuple(int(v) for v in matrix.shape),
+                matrix_class=matrix_class,
+                backend_name=self.name,
+                ordering=ordering,
+                signature=signature,
+                factorization_time=factorization_time,
+                status="failed",
+                failure_reason=_forward_error_probe_failure_reason(exc, self.name),
+                metadata=probe,
+            )
+            failed.metadata["failure_kind"] = FORWARD_ERROR_PROBE_FAILED
+            return failed
         if refused:
             del solver
             failed = FactorizationHandle(
@@ -1389,16 +1486,20 @@ class PyPardisoSolverBackend:
         return wrapper, False, count
 
     @_serialized_pypardiso_call
-    def _discard_wrapper_slot(self, wrapper: _PardisoFactorization) -> None:
-        """Drop and release the pattern slot holding a refused factorization."""
+    def _discard_wrapper_slot(self, wrapper: _PardisoFactorization) -> Optional[BaseException]:
+        """Drop and release the pattern slot holding a refused factorization.
+
+        Returns the ``free_memory`` error (``None`` if freed); the caller
+        passes it through the cleanup precedence rule (:func:`_raise_interrupt`).
+        """
 
         slot = wrapper._slot
         wrapper._slot = None
         if slot is None:
-            return
+            return None
         if slot in self._slots:
             self._slots.remove(slot)
-        slot.release()
+        return slot.release("released after a refused or failed forward-error probe")
 
     @_serialized_pypardiso_call
     def factorize(
@@ -1484,18 +1585,61 @@ class PyPardisoSolverBackend:
             return failed
         factorization_time = time.time() - start
         probe: Dict[str, Any] = {}
+        probe_failure: Optional[_ForwardErrorProbeExecutionError] = None
         try:
             refused = _run_forward_error_probe(
-                probe, options, int(csr.shape[0]), lambda z: csr @ z, wrapper.solve
+                probe, options, int(csr.shape[0]),
+                _probe_matvec(csr, wrapper._matrix, int(used_mtype)), wrapper.solve,
             )
-        except BaseException:
-            self._discard_wrapper_slot(wrapper)
+        except _ForwardErrorProbeExecutionError as exc:
+            # The probe could not execute (e.g. MemoryError or a native
+            # phase-33 error): as for a failed numerical factorization, the
+            # slot is discarded and a typed failed handle returned.  A
+            # cleanup interrupt still reaches the caller.
+            probe_failure = exc
+            _raise_interrupt(
+                self._discard_wrapper_slot(wrapper),
+                "releasing a PARDISO slot after a failed forward-error probe",
+                exc,
+            )
+        except BaseException as exc:
+            # An interrupt during the probe: discard the slot; the cleanup
+            # outcome follows the one precedence rule, the probe's interrupt
+            # being primary.
+            _raise_interrupt(
+                self._discard_wrapper_slot(wrapper),
+                "releasing a PARDISO slot after an interrupted forward-error probe",
+                exc,
+            )
             raise
+        if probe_failure is not None:
+            failed = FactorizationHandle(
+                matrix_shape=tuple(int(v) for v in matrix.shape),
+                matrix_class=matrix_class,
+                backend_name=self.name,
+                ordering="MKL PARDISO",
+                signature=signature,
+                factorization_time=factorization_time,
+                status="failed",
+                failure_reason=_forward_error_probe_failure_reason(probe_failure, self.name),
+                metadata=probe,
+            )
+            failed.metadata["failure_kind"] = FORWARD_ERROR_PROBE_FAILED
+            failed.metadata["pardiso_failure_kind"] = FORWARD_ERROR_PROBE_FAILED
+            failed.metadata["pardiso_mtype"] = used_mtype
+            failed.metadata["pardiso_perturbed_pivots"] = dict(perturbed_pivots)
+            if failure_reasons:
+                failed.metadata["pardiso_fallback_attempts"] = list(failure_reasons)
+            return failed
         if refused:
             # Never retain or reuse the refused factorization: drop and release
             # its pattern slot (the slot generation moves on, so no handle can
-            # bind to it).
-            self._discard_wrapper_slot(wrapper)
+            # bind to it).  A cleanup interrupt reaches the caller (nothing
+            # else propagates here), so Auto never starts a fallback after it.
+            _raise_interrupt(
+                self._discard_wrapper_slot(wrapper),
+                "releasing a PARDISO slot after a refused forward-error probe",
+            )
             failed = FactorizationHandle(
                 matrix_shape=tuple(int(v) for v in matrix.shape),
                 matrix_class=matrix_class,
@@ -1719,6 +1863,19 @@ class AutoSparseSolverBackend:
 DEFAULT_BACKEND = AutoSparseSolverBackend()
 
 
+def _normalized_probe_options(options: Optional[Mapping[str, Any]], n: int) -> Optional[Mapping[str, Any]]:
+    """Validate the probe settings (ValueError) and key a given mode by its plain string."""
+
+    if options is None:
+        return None
+    mode, _index = _forward_error_probe_settings(options, n)
+    if options.get("forward_error_probe") is None:
+        return options
+    made = dict(options)
+    made["forward_error_probe"] = str(mode)
+    return made
+
+
 def _options_signature(options: Optional[Mapping[str, Any]]) -> str:
     made = dict(options or {})
     if made.get("forward_error_probe_mask") is not None:
@@ -1778,6 +1935,9 @@ class FactorizationCache:
         signature: Optional[str] = None,
         options: Optional[Mapping[str, Any]] = None,
     ) -> Tuple[str, str, str, str]:
+        # Validate the probe settings before any lookup: an invalid mode or
+        # mask raises ValueError on a hit exactly as on a miss.
+        options = _normalized_probe_options(options, int(matrix.shape[0]))
         matrix_key = str(signature) if signature is not None else sparse_matrix_signature(matrix)
         return (
             matrix_key,
@@ -2163,9 +2323,10 @@ def solve_many(handle: FactorizationHandle, rhs_matrix: np.ndarray) -> np.ndarra
 def _uncounted_solve(handle: FactorizationHandle, rhs: np.ndarray) -> np.ndarray:
     """A certification solve: same backend and thread policy, no solve counters."""
 
-    _require_solvable(handle)  # typed stale error first, as in solve()
-    if handle.status != "ok" or handle._solver is None:
-        raise RuntimeError(f"Cannot solve with failed factorization: {handle.failure_reason}")
+    # Typed stale error first, as in solve(); "ok" there implies a solver
+    # (``_handle_state``), and a later concurrent invalidation is caught by the
+    # PARDISO wrapper inside the process lock with the same stale type.
+    _require_solvable(handle)
     rhs = np.asarray(rhs, dtype=float)
     policy = _inherited_native_thread_policy(handle.solver_threads, phase="linear_solve")
     if policy is None:
@@ -2193,7 +2354,8 @@ def relative_forward_error_estimates(
     b = s * f).  ``rows`` restricts the measured entries of the correction and
     of ``y`` (for example the displacement block of a nullspace-augmented
     system).  A non-finite value or a failed correction solve gives ``inf``
-    (fail closed).  The solution is never modified.  Limit:
+    (fail closed); a stale PARDISO handle raises
+    :class:`PardisoStaleHandleError` (no correction was measured).  The solution is never modified.  Limit:
     :data:`RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT`.
     """
 
@@ -2239,6 +2401,10 @@ def relative_forward_error_estimates(
                 np.where(c_norm == 0.0, 0.0, np.inf),
             )
             values = np.where(finite, values, np.inf)
+    except PardisoStaleHandleError:
+        # D4: a stale handle is an ownership event, not a measured correction;
+        # it keeps its typed error instead of becoming a threshold failure.
+        raise
     except Exception:
         return failed
     return np.where(np.isfinite(values), values, np.inf).astype(float)

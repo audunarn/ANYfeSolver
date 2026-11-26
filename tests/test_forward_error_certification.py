@@ -474,3 +474,255 @@ def test_buckling_shift_invert_at_eigenvalue_uses_report_mode():
     assert handles
     for handle in handles:
         assert handle.metadata.get("forward_error_probe_mode") == "report"
+
+
+# --------------------------------------------------------------------------
+# Review round 1 (2026-11-26): probe execution, cleanup, stale, operator,
+# dtype and cache-key regressions
+# --------------------------------------------------------------------------
+
+
+def _ordinary_spd(n: int = 400) -> sparse.csr_matrix:
+    return (_band(n, 3) + sparse.eye(n)).tocsr()
+
+
+def _failing_wrapper_solve(monkeypatch, error_type):
+    """The next PARDISO wrapper solve (the probe's raw solve) raises ``error_type``."""
+
+    original = linalg._PardisoFactorization.solve
+    calls = {"armed": True}
+
+    def solve(self, rhs):
+        if calls["armed"]:
+            calls["armed"] = False
+            raise error_type("injected phase-33 failure")
+        return original(self, rhs)
+
+    monkeypatch.setattr(linalg._PardisoFactorization, "solve", solve)
+    return calls
+
+
+@requires_pypardiso
+@pytest.mark.parametrize("mode", ["report", "refuse"])
+@pytest.mark.parametrize("error_type", [MemoryError, RuntimeError])
+@pytest.mark.parametrize("reused", [False, True])
+def test_pardiso_probe_execution_failure_never_publishes_an_ok_handle(
+        monkeypatch, mode, error_type, reused) -> None:
+    """R1 #1: a probe that could not execute is not a bad value: typed failed handle, slot discarded."""
+
+    backend = PyPardisoSolverBackend()
+    matrix = _ordinary_spd()
+    earlier = None
+    if reused:
+        earlier = backend.factorize(matrix, MatrixClass.SPD)
+        assert earlier.status == "ok" and backend.retained_pattern_slots == 1
+        matrix = (matrix * 2.0).tocsr()  # same pattern: the slot is reused
+    _failing_wrapper_solve(monkeypatch, error_type)
+    cache = FactorizationCache(name="probe_failure", max_entries=4, backend=backend)
+    handle = cache.factorize(matrix, MatrixClass.SPD, options={"forward_error_probe": mode})
+    assert handle.status == "failed" and handle._solver is None
+    assert handle.metadata["failure_kind"] == linalg.FORWARD_ERROR_PROBE_FAILED
+    assert handle.metadata["pardiso_failure_kind"] == linalg.FORWARD_ERROR_PROBE_FAILED
+    assert handle.metadata["forward_error_probe_disposition"] == "EXECUTION_FAILED"
+    assert str(handle.failure_reason).startswith(linalg.FORWARD_ERROR_PROBE_FAILED)
+    assert backend.retained_pattern_slots == 0
+    assert cache.diagnostics()["entries"] == 0
+    lease = linalg.lease_handle(handle)
+    assert not lease.pinned
+    if earlier is not None:
+        with pytest.raises(linalg.PardisoStaleHandleError):
+            earlier.solve(np.ones(matrix.shape[0]))
+
+
+@requires_pypardiso
+@pytest.mark.parametrize("mode", ["report", "refuse"])
+@pytest.mark.parametrize("reused", [False, True])
+def test_pardiso_probe_interrupt_propagates_and_discards_the_slot(monkeypatch, mode, reused) -> None:
+    backend = PyPardisoSolverBackend()
+    matrix = _ordinary_spd()
+    if reused:
+        assert backend.factorize(matrix, MatrixClass.SPD).status == "ok"
+        matrix = (matrix * 2.0).tocsr()
+    _failing_wrapper_solve(monkeypatch, KeyboardInterrupt)
+    with pytest.raises(KeyboardInterrupt, match="injected"):
+        backend.factorize(matrix, MatrixClass.SPD, options={"forward_error_probe": mode})
+    assert backend.retained_pattern_slots == 0
+
+
+@pytest.mark.parametrize("mode", ["report", "refuse"])
+@pytest.mark.parametrize("error_type", [MemoryError, RuntimeError])
+def test_superlu_probe_execution_failure_is_a_typed_failed_handle(monkeypatch, mode, error_type) -> None:
+    real_splu = linalg.splu
+
+    class Failing:
+        def __init__(self, factor):
+            self._factor = factor
+
+        def solve(self, rhs):
+            raise error_type("injected solve failure")
+
+    monkeypatch.setattr(linalg, "splu", lambda *a, **k: Failing(real_splu(*a, **k)))
+    handle = SparseSolverBackend().factorize(_ordinary_spd(), MatrixClass.SPD,
+                                             options={"forward_error_probe": mode})
+    assert handle.status == "failed" and handle._solver is None
+    assert handle.metadata["failure_kind"] == linalg.FORWARD_ERROR_PROBE_FAILED
+    assert handle.metadata["forward_error_probe_disposition"] == "EXECUTION_FAILED"
+
+
+def test_superlu_probe_interrupt_propagates(monkeypatch) -> None:
+    real_splu = linalg.splu
+
+    class Interrupted:
+        def __init__(self, factor):
+            self._factor = factor
+
+        def solve(self, rhs):
+            raise KeyboardInterrupt("injected")
+
+    monkeypatch.setattr(linalg, "splu", lambda *a, **k: Interrupted(real_splu(*a, **k)))
+    with pytest.raises(KeyboardInterrupt):
+        SparseSolverBackend().factorize(_ordinary_spd(), MatrixClass.SPD,
+                                        options={"forward_error_probe": "report"})
+
+
+@requires_pypardiso
+def test_probe_refusal_cleanup_interrupt_reaches_the_caller_without_fallback(monkeypatch) -> None:
+    """R1 #2: phase -1 raising KeyboardInterrupt while discarding a refused factorization."""
+
+    real_free = linalg._free_mkl_solver
+
+    def free(solver):
+        error = real_free(solver)
+        return error if error is not None else KeyboardInterrupt("injected phase -1 interrupt")
+
+    monkeypatch.setattr(linalg, "_free_mkl_solver", free)
+    auto = AutoSparseSolverBackend(pypardiso_min_dimension=1, pypardiso_min_nnz=0)
+    fallbacks = []
+    original = auto.scipy_backend.factorize
+    monkeypatch.setattr(auto.scipy_backend, "factorize",
+                        lambda *a, **k: fallbacks.append(1) or original(*a, **k))
+    with pytest.raises(KeyboardInterrupt, match="phase -1"):
+        auto.factorize(_band(400, 3), MatrixClass.SPD)
+    assert fallbacks == []
+    assert auto.pardiso_backend.retained_pattern_slots == 0
+
+
+@requires_pypardiso
+def test_probe_failure_cleanup_interrupt_replaces_the_ordinary_probe_failure(monkeypatch) -> None:
+    real_free = linalg._free_mkl_solver
+    monkeypatch.setattr(linalg, "_free_mkl_solver",
+                        lambda solver: real_free(solver) or SystemExit("injected phase -1 exit"))
+    _failing_wrapper_solve(monkeypatch, MemoryError)
+    auto = AutoSparseSolverBackend(pypardiso_min_dimension=1, pypardiso_min_nnz=0)
+    with pytest.raises(SystemExit, match="phase -1"):
+        auto.factorize(_ordinary_spd(), MatrixClass.SPD, options={"forward_error_probe": "report"})
+
+
+@requires_pypardiso
+def test_probe_interrupt_keeps_primary_over_a_cleanup_interrupt(monkeypatch) -> None:
+    real_free = linalg._free_mkl_solver
+    monkeypatch.setattr(linalg, "_free_mkl_solver",
+                        lambda solver: real_free(solver) or SystemExit("injected phase -1 exit"))
+    _failing_wrapper_solve(monkeypatch, KeyboardInterrupt)
+    with pytest.raises(KeyboardInterrupt, match="injected phase-33") as raised:
+        PyPardisoSolverBackend().factorize(_ordinary_spd(), MatrixClass.SPD)
+    assert any("SystemExit" in note for note in getattr(raised.value, "__notes__", []))
+
+
+@requires_pypardiso
+def test_rule_b_keeps_the_typed_stale_handle_error() -> None:
+    """R1 #3: a handle gone stale before the correction solve is not an inf estimate."""
+
+    backend = PyPardisoSolverBackend()
+    matrix = _ordinary_spd()
+    handle = backend.factorize(matrix, MatrixClass.SPD)
+    rhs = np.ones(matrix.shape[0])
+    x = handle.solve(rhs)
+    assert backend.factorize((matrix * 2.0).tocsr(), MatrixClass.SPD).status == "ok"
+    with pytest.raises(linalg.PardisoStaleHandleError):
+        linalg.relative_forward_error_estimates(matrix, x, rhs, handle=handle)
+    with pytest.raises(linalg.PardisoStaleHandleError):
+        linalg.relative_forward_error_estimate(matrix, x, rhs, handle=handle)
+
+
+@requires_pypardiso
+def test_uncounted_solve_race_after_require_solvable_is_the_stale_type(monkeypatch) -> None:
+    """An invalidation between the state check and the solve keeps the stale type."""
+
+    backend = PyPardisoSolverBackend()
+    matrix = _ordinary_spd()
+    handle = backend.factorize(matrix, MatrixClass.SPD)
+    assert backend.factorize((matrix * 2.0).tocsr(), MatrixClass.SPD).status == "ok"
+    monkeypatch.setattr(linalg, "_require_solvable", lambda _handle: None)
+    with pytest.raises(linalg.PardisoStaleHandleError):
+        linalg._uncounted_solve(handle, np.ones(matrix.shape[0]))
+
+
+@requires_pypardiso
+@pytest.mark.parametrize(("matrix_class", "mtype"), [(MatrixClass.SPD, 2),
+                                                     (MatrixClass.SYMMETRIC_INDEFINITE, -2)])
+@pytest.mark.parametrize("dense", [True, False])
+def test_symmetric_pardiso_probe_uses_the_factorized_operator_for_upper_storage(
+        matrix_class, mtype, dense) -> None:
+    """R1 #4: upper-triangle storage of an SPD matrix is factorized as the symmetric operator."""
+
+    full = sparse.csr_matrix(np.array([[2.0, 1.0], [1.0, 2.0]])) if dense else _ordinary_spd()
+    upper = sparse.triu(full, format="csr")
+    handle = PyPardisoSolverBackend().factorize(upper, matrix_class)
+    assert handle.status == "ok"
+    assert handle.metadata["pardiso_mtype"] == mtype
+    assert handle.metadata["forward_error_probe_disposition"] == "PASSED"
+    assert handle.metadata["forward_error_probe"] < 1.0e-10
+    # The solve answers the symmetric operator (MKL's), as the probe now measures.
+    rhs = np.arange(1.0, full.shape[0] + 1.0)
+    np.testing.assert_allclose(full @ handle.solve(rhs), rhs, rtol=1e-10)
+
+
+@requires_pypardiso
+@pytest.mark.parametrize("matrix_class", [MatrixClass.SPD, MatrixClass.SYMMETRIC_INDEFINITE,
+                                          MatrixClass.GENERAL])
+def test_full_storage_probe_keeps_the_literal_matvec(matrix_class) -> None:
+    """Full symmetric storage: the probe value is exactly that of ``csr @ z`` (unchanged)."""
+
+    matrix = _ordinary_spd()
+    handle = PyPardisoSolverBackend().factorize(matrix, matrix_class)
+    assert handle.status == "ok"
+    z = np.random.default_rng(linalg._FORWARD_ERROR_PROBE_SEED).uniform(1.0, 2.0, matrix.shape[0])
+    x = handle._solver.solve(matrix @ z)
+    assert handle.metadata["forward_error_probe"] == float(np.max(np.abs(x - z)) / np.max(np.abs(z)))
+
+
+def test_float32_superlu_identity_factorization_passes_the_probe() -> None:
+    """R1 #7: the probe's raw-solve input is in the factor's dtype."""
+
+    handle = SparseSolverBackend().factorize(sparse.eye(5, dtype=np.float32, format="csc"), MatrixClass.SPD)
+    assert handle.status == "ok"
+    assert handle.metadata["forward_error_probe_disposition"] == "PASSED"
+    assert handle.metadata["forward_error_probe"] < 1.0e-6
+
+
+@requires_pypardiso
+def test_float32_pardiso_is_unchanged_by_the_probe() -> None:
+    """PyPardiso itself rejects float32 (before any probe), exactly as before rule A."""
+
+    handle = PyPardisoSolverBackend().factorize(sparse.eye(5, dtype=np.float32, format="csr"), MatrixClass.SPD)
+    assert handle.status == "failed"
+    assert "float64" in str(handle.failure_reason)
+    assert "forward_error_probe" not in handle.metadata
+
+
+def test_cache_hit_validates_the_probe_mode() -> None:
+    """R1 #9: a non-string mode raises ValueError on a hit as on a miss."""
+
+    cache = FactorizationCache(name="probe_key", max_entries=4)
+    matrix = _ordinary_spd(50)
+    assert cache.factorize(matrix, MatrixClass.SPD, options={"forward_error_probe": "report"}).status == "ok"
+    with pytest.raises(ValueError, match="forward_error_probe"):
+        cache.factorize(matrix, MatrixClass.SPD, options={"forward_error_probe": np.array("report")})
+    with pytest.raises(ValueError, match="forward_error_probe_mask"):
+        cache.factorize(matrix, MatrixClass.SPD,
+                        options={"forward_error_probe": "report", "forward_error_probe_mask": np.array([0, 99])})
+    assert cache.hits == 0
+    # A numpy string scalar is a str and keys exactly as the plain string (a hit).
+    again = cache.factorize(matrix, MatrixClass.SPD, options={"forward_error_probe": np.str_("report")})
+    assert again.status == "ok" and cache.hits == 1
