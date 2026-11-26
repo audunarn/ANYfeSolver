@@ -1852,3 +1852,94 @@ def test_cutoff_in_double_precision_keeps_the_2x_margin():
     el, mesh = _square_at(0.9999)
     out = recover_shell_axes(el, mesh, np.zeros(24), MATERIAL, _frame_override=_override(_ry(1.0e-9))).axes
     assert set(out.refusals) >= set(FAMILIES), out.refusals
+
+
+# ------------------------------------------------------------- Codex r9 fixes
+def _exact_triangle_conditioning(coords):
+    """Exact G of a triangle from the stored doubles (fractions; sqrt by the
+    exact squares: G**2 = ((reach/shortest + 1) |a||b| / |a x b|)**2 is not
+    rational, so compare G**2 bounds via squared quantities)."""
+
+    from fractions import Fraction
+
+    c = [[Fraction(v) for v in row] for row in coords]
+    a = [c[1][i] - c[0][i] for i in range(3)]
+    b = [c[2][i] - c[0][i] for i in range(3)]
+    e3 = [c[2][i] - c[1][i] for i in range(3)]
+    dot = lambda u, v: sum(x * y for x, y in zip(u, v))  # noqa: E731
+    cross = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]
+    reach = max(abs(v) for row in c for v in row)
+    shortest_sq = min(dot(a, a), dot(b, b), dot(e3, e3))
+    ratio_sq = dot(a, a) * dot(b, b) / dot(cross, cross)
+    return reach, shortest_sq, ratio_sq
+
+
+def test_r9_cutoff_relative_error_and_the_guarantee_reach():
+    """Fix A: the cutoff is evaluated with relative error <= 1e-9 and the tilt
+    guarantee keeps a 2x margin up to G = 2.8e5 (r9 T3 case included)."""
+
+    import decimal
+
+    import anyfesolver.shell_axes_outputs as module
+
+    assert module.GEOMETRY_GUARANTEE_REACH >= module.GEOMETRY_CONDITIONING_LIMIT * (1.0 + 1.0e-9)
+    for g in (module.GEOMETRY_CONDITIONING_LIMIT, module.GEOMETRY_GUARANTEE_REACH):
+        assert 2.0 * (module.GEOMETRY_BOUND + GEOMETRY_ROUNDOFF * g) <= module.RESOLUTION, g
+    z = 2.157056434447613
+    xy = ((0.0, 0.0), (1.3, 0.9), (-1.1, -0.7615214585384616))
+    coords = np.array([(x, y, z) for x, y in xy])
+    reach, shortest_sq, ratio_sq = _exact_triangle_conditioning(coords)
+    decimal.getcontext().prec = 60
+    D = decimal.Decimal
+    exact = (D(reach.numerator) / D(reach.denominator) / (D(shortest_sq.numerator) / D(shortest_sq.denominator)).sqrt() + 1) * (
+        D(ratio_sq.numerator) / D(ratio_sq.denominator)
+    ).sqrt()
+    computed = module._geometry_conditioning(
+        coords, coords[1] - coords[0], coords[2] - coords[0], float(np.linalg.norm(coords[2] - coords[1]))
+    )
+    relative = abs((D(computed) - exact) / exact)
+    assert relative <= D("1e-9"), relative
+    assert float(exact) <= module.GEOMETRY_GUARANTEE_REACH
+    # whichever side it lands on: admitted => a 1e-9 tilt is refused
+    mesh = FEMesh()
+    for i, p in enumerate(coords, start=1):
+        mesh.add_node(i, *[float(v) for v in p])
+    el = ShellElement(1, [1, 2, 3], "steel", thickness=H)
+    try:
+        out = recover_shell_axes(el, mesh, np.zeros(18), MATERIAL, _frame_override=_override(_rx(1.0e-9))).axes
+    except ShellAxesRefusal as exc:
+        assert exc.code == "AXES_GEOMETRY_CONDITIONING"
+    else:
+        assert set(out.refusals) >= set(FAMILIES), out.refusals
+
+
+def test_r9_valid_t6_is_not_refused_by_a_vertex_centre_check():
+    """r9 P2: (0, 0) is a vertex of a triangle, not its centre."""
+
+    mesh = FEMesh()
+    for i, p in enumerate(((0, 0), (1, 0), (0, 1), (0.25000025, 0), (0.5, 0.5), (0, 0.5)), start=1):
+        mesh.add_node(i, float(p[0]), float(p[1]), 0.0)
+    el = ShellElement(1, [1, 2, 3, 4, 5, 6], "steel", thickness=H)
+    loc = [(n.x, n.y, n.z) for n in mesh.nodes.values()]
+    out = recover_shell_axes(el, mesh, np.zeros(36), MATERIAL).axes
+    assert {r.reason for r in out.refusals.values()} <= {"unresolvable_family"}, out.refusals
+    del loc
+
+
+def test_r9_exponent_extremes_get_the_conditioning_code():
+    """r9 P2: sides 2**600 x 1 (underflowing squares) and opposite-sign
+    coordinates near the overflow limit are CONDITIONING refusals."""
+
+    for nodes in (
+        ((0.0, 0.0), (2.0**600, 0.0), (2.0**600, 1.0), (0.0, 1.0)),
+        ((-1.0e308, 0.0), (1.0e308, 0.0), (1.0e308, 1.0), (-1.0e308, 1.0)),
+    ):
+        mesh = FEMesh()
+        for i, (x, y) in enumerate(nodes, start=1):
+            mesh.add_node(i, x, y, 0.0)
+        el = create_shell_element(
+            1, [1, 2, 3, 4], "steel", formulation="e4-pl", thickness=H, reference_normal=[0.0, 0.0, 1.0], director_polarity=1
+        )
+        with pytest.raises(ShellAxesRefusal) as info:
+            recover_shell_axes(el, mesh, np.zeros(24), MATERIAL)
+        assert info.value.code == "AXES_GEOMETRY_CONDITIONING", nodes

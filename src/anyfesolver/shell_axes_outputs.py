@@ -138,11 +138,14 @@ GEOMETRY_ROUNDOFF = 8.0 * EPS
 # margin and the check was per component); outside it the module refuses
 # (AXES_GEOMETRY_CONDITIONING).  Measured: barge5 G <= 5.0e3 (median 5.4e2),
 # solver test fixtures G <= 5.4.
-# The cutoff is evaluated in double precision: an element whose exact G lies
-# within a few ulp of 2.5e5 may fall on either side.  That decides only which
-# side of the stated boundary it lands on; the guarantee keeps its 2x margin
-# there (bound <= 4.5e-10 at G = 2.5e5 (1 + 1e-12)), so it cannot fail open.
+# The cutoff is evaluated in double precision with relative error <= 1e-9 (an
+# element whose exact G lies within that of 2.5e5 may fall on either side;
+# Codex r9 measured 1.1e-12).  That decides only which side of the stated
+# boundary it lands on: the tilt guarantee keeps its 2x margin for every G up
+# to 2.8e5 (bound 1e-13 + 8 eps 2.8e5 = 4.97e-10 <= 0.5e-9), so it cannot fail
+# open.
 GEOMETRY_CONDITIONING_LIMIT = 2.5e5
+GEOMETRY_GUARANTEE_REACH = 2.8e5  # largest G at which the 2x margin still holds
 _FLOAT_TYPES = (float, int, np.float64)
 _INT_TYPES = (int, np.int64)
 # Option P (owner 2026-11-26): plain-object admission by type IDENTITY (never
@@ -495,6 +498,27 @@ def _cross(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     )
 
 
+def _safe_norm(vector: np.ndarray) -> float:
+    """Euclidean norm without overflow or underflow of the squares."""
+
+    largest = float(np.max(np.abs(vector)))
+    if largest == 0.0 or not math.isfinite(largest):
+        return largest
+    scaled = np.asarray(vector, dtype=float) / largest
+    return largest * math.sqrt(float(scaled @ scaled))
+
+
+def _power_of_two_scaled(coords: np.ndarray) -> np.ndarray:
+    """Coordinates times an exact power of two so max|x| is in [0.5, 1): G is
+    scale invariant and differences can no longer overflow (Codex r9)."""
+
+    largest = float(np.max(np.abs(coords)))
+    if not (math.isfinite(largest) and largest > 0.0):
+        raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "node coordinates are zero or not finite")
+    _mantissa, exponent = math.frexp(largest)
+    return np.ldexp(np.asarray(coords, dtype=float), -exponent)
+
+
 def _geometry_conditioning(coords: np.ndarray, a: np.ndarray, b: np.ndarray, *lengths: float) -> float:
     """G = (max|x| / shortest vector + 1) * |a||b| / |a x b| for the two vectors
     a, b whose cross product gives a geometric normal (tangents, diagonals or
@@ -509,10 +533,10 @@ def _geometry_conditioning(coords: np.ndarray, a: np.ndarray, b: np.ndarray, *le
         raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "zero or nonfinite tangent, diagonal or edge")
     a_s = np.asarray(a, dtype=float) / scale
     b_s = np.asarray(b, dtype=float) / scale
-    la = math.sqrt(float(a_s @ a_s))
-    lb = math.sqrt(float(b_s @ b_s))
+    la = _safe_norm(a_s)
+    lb = _safe_norm(b_s)
     cross = _cross(a_s, b_s)
-    area = math.sqrt(float(cross @ cross))
+    area = _safe_norm(cross)
     shortest = min([la, lb, *(float(length) / scale for length in lengths)])
     if not (math.isfinite(shortest) and shortest > 0.0 and math.isfinite(area) and area > 0.0):
         raise ShellAxesRefusal("AXES_GEOMETRY_DEGENERATE", "zero or nonfinite tangent, diagonal or edge")
@@ -534,8 +558,11 @@ def _check_geometry_domain(element: Any, coords: np.ndarray, requested: Optional
     """The declared domain, the same measure for every branch: the largest G
     over the edges (3-node), or the diagonals (4-node) and the shape-function
     tangents at the element's own stations and at any requested
-    ``natural_points`` (4-, 6- and 8-node)."""
+    ``natural_points`` (4-, 6- and 8-node), plus the centre tangents of 4-node
+    quadrilaterals.  Evaluated on power-of-two scaled coordinates (G is scale
+    invariant)."""
 
+    coords = _power_of_two_scaled(coords)
     if len(coords) == 3:
         values = [_geometry_conditioning(coords, coords[1] - coords[0], coords[2] - coords[0],
                                          math.sqrt(float((coords[2] - coords[1]) @ (coords[2] - coords[1]))))]
@@ -543,9 +570,12 @@ def _check_geometry_domain(element: Any, coords: np.ndarray, requested: Optional
         values = []
         if len(coords) == 4:
             values.append(_geometry_conditioning(coords, coords[2] - coords[0], coords[3] - coords[1]))
-        # default stations, the element centre (warped Q4 builds its centre
-        # shear frame there; Codex r8) and any requested natural_points
-        stations = np.concatenate((np.asarray(element.gauss_points, dtype=float), np.zeros((1, 2))))
+        # default stations, the centre of a 4-node quadrilateral (warped Q4
+        # builds its centre shear frame there; Codex r8; for triangles (0, 0) is
+        # a vertex, Codex r9) and any requested natural_points
+        stations = np.asarray(element.gauss_points, dtype=float)
+        if len(coords) == 4:
+            stations = np.concatenate((stations, np.zeros((1, 2))))
         if requested is not None:
             stations = np.concatenate((stations, np.asarray(requested, dtype=float)))
         for xi, eta in stations:
