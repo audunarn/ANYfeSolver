@@ -7666,6 +7666,19 @@ def _make_q4_class_authority_window() -> tuple[Any, Any, Any]:
                     token.refused_guards.append(exact_guard)
             token = token.parent
 
+    def hand_refused_guards(token: Any) -> None:
+        # A refused window's guards stay owed by every enclosing window: if
+        # the refusal is swallowed there, those closes run them again.
+        for exact_guard in tuple(token.validated) + tuple(token.refused_guards):
+            parent = token.parent
+            while parent is not None:
+                for refused in parent.refused_guards:
+                    if refused is exact_guard:
+                        break
+                else:
+                    parent.refused_guards.append(exact_guard)
+                parent = parent.parent
+
     def enclosing_validated(token: Any, exact_guard: Any) -> bool:
         parent = token.parent
         while parent is not None:
@@ -7720,6 +7733,7 @@ def _make_q4_class_authority_window() -> tuple[Any, Any, Any]:
                 exact_guard()
         except BaseException as error:
             mark_refused(token, error)
+            hand_refused_guards(token)
             drop_caches(token)
             raise
         parent = token.parent
@@ -7760,6 +7774,7 @@ def _make_q4_class_authority_window() -> tuple[Any, Any, Any]:
             if token.refusal is not None and refusal_in_chain(token.refusal, error):
                 # The class refusal (possibly wrapped by an assembly lease) is
                 # already leaving: keep it exactly as the per-call guard did.
+                hand_refused_guards(token)
                 drop_caches(token)
                 raise
             try:

@@ -476,6 +476,37 @@ def test_g2_swallowed_nested_refusal_reverted_before_close_is_accepted(
         femesh_probe.clear()
 
 
+def test_g2_swallowed_nested_close_refusal_is_refused_at_the_enclosing_close(
+    femesh_probe,
+) -> None:
+    """Codex re-chain round 2 lead: a nested window whose own close validation
+    refuses (the guard passed on first use there) and whose refusal is caught
+    inside the enclosing window must not let the enclosing window close
+    successfully while the change persists; a doubly nested close refusal
+    caught one level up is owed by every enclosing window too."""
+
+    model, _load = _plate()
+    element = next(iter(model.mesh.elements.values()))
+    with pytest.raises(ValueError, match="qualified Q4 FEMesh class namespace changed"):
+        with _q4._q4_class_authority_window():
+            try:
+                with _q4._q4_class_authority_window():
+                    _q4._require_exact_q4_runtime_authority(element, context="nested")
+                    femesh_probe.set()
+            except ValueError:
+                pass
+    femesh_probe.clear()
+    with pytest.raises(ValueError, match="qualified Q4 FEMesh class namespace changed"):
+        with _q4._q4_class_authority_window():
+            try:
+                with _q4._q4_class_authority_window():
+                    with _q4._q4_class_authority_window():
+                        _q4._require_exact_q4_runtime_authority(element, context="deep")
+                        femesh_probe.set()
+            except ValueError:
+                pass
+
+
 def test_g2_enclosing_refusal_drops_caches_of_nested_only_elements(
     femesh_probe,
 ) -> None:
