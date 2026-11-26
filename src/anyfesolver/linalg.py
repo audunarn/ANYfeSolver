@@ -1589,7 +1589,8 @@ class PyPardisoSolverBackend:
         try:
             refused = _run_forward_error_probe(
                 probe, options, int(csr.shape[0]),
-                _probe_matvec(csr, wrapper._matrix, int(used_mtype)), wrapper.solve,
+                # Built inside the probe: a failure here is an execution failure.
+                lambda z: _probe_matvec(csr, wrapper._matrix, int(used_mtype))(z), wrapper.solve,
             )
         except _ForwardErrorProbeExecutionError as exc:
             # The probe could not execute (e.g. MemoryError or a native
