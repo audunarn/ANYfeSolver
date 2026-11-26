@@ -307,3 +307,115 @@ per-element boundary, and their mechanics dominate.
 - [x] Exact built-in beams on the trusted state check: investigated, fail-open, not adopted
 - [x] Cheaper complete scan: class facts read once per call for Q4/S3 (`solver_speed_scan`)
 - [ ] Runtime-guard performance successor record with an independent reviewer
+
+## Nonlinear guard cadence (owner decisions G2, L1, G1, 2026-11-24)
+
+Trust boundary (owner): NumPy, SciPy, Python builtins, ANYmaterial internals
+and ANYfeSolver's own classes and guard/lease/check machinery are trusted not
+to be replaced at run time.  Hostile data, instance attributes and subclasses
+of elements, models, materials and mappings stay in scope.  Concurrent
+mutation in the middle of a request is out of contract.  The cadence below is
+justified only inside that boundary.
+
+- **G2, Q4 class authority once per window.**  `e4_pl_element` owns a
+  context-local class-authority window (`_q4_class_authority_window`).  Outside
+  a window every Q4 class/namespace check (dependency class namespaces, class
+  identity metadata, class mutable mappings, authority-array metadata) runs on
+  every guarded call as before.  Inside a window each distinct check runs
+  completely on first use and again when the window closes, before the
+  window's result is used.  Windows: one Newton evaluation
+  (`_assemble_nonlinear_system`, the Batch C direct evaluation and plan build),
+  the initial elastic stiffness evaluation of a nonlinear solve, each lease
+  scan over the Q4 elements, and the trusted-operation preflight/exit scans.
+  Every window close, nested or outermost, runs the checks used in that window
+  again before control returns to the code that opened it; a nested window
+  may skip only the first-use check of a guard an enclosing live window has
+  already validated.  An exception leaving a window runs the close checks
+  first: a class change is raised (chained to the original error), so it keeps
+  the per-call guards' precedence; a check that already refused inside the
+  window is not re-run.  The token is revoked before the closing check.
+  Per-element instance, quadrature and epoch checks are unchanged.
+- **L1, lifecycle scan once per step.**  In force control, when no
+  constant-time trusted guard exists (for example pure S3 V2D models), the
+  solver-internal complete lifecycle scans of one step attempt run at step
+  entry (the first internal check of the attempt) and before the step commits
+  (only if a scan was deferred), instead of at every evaluation.  Deferred
+  points still run the lease, numerical and plate-stability checks; if one of
+  them rejects, the lifecycle scan runs first so the complete guard's
+  precedence is kept.  Every caller-controlled observation (status and
+  progress callbacks, untrusted cancellation tokens, external providers) still
+  runs the complete scan immediately.  After the pre-commit scan the step's
+  committed-state, reaction and snapshot observations are deferred as well;
+  they are covered by the step's unconditional complete scan at the
+  support-reaction observation (before the step is recorded or reported), or
+  by the next entry scan or the loop-exit scan.  Per committed step the
+  solver-internal complete scans are therefore exactly the entry and the
+  pre-commit scan.  Other control modes are unchanged.
+- **G1, exact C-speed sweeps.**  The remaining class and instance identity
+  sweeps use `map`/`operator.is_not` over captured tuples with the same order,
+  messages and outcomes (differential tests against verbatim copies).
+
+Caches written under a window (round-1 review inventory).  Nothing produced
+inside a window is served from a reusable cache unless that window's close
+validation passed:
+
+- Nonlinear assembly plan cache (`nonlinear_performance_bootstrap._PLAN_CACHE`):
+  the build is its own window, so its close validation runs before the plan
+  is published; the published plan also registers an eviction with the
+  enclosing window, which runs if that window (or an outer window it is
+  handed to on a successful close) refuses.
+- `nonlinear_performance._PLAN_CACHE` (original getter): replaced by the
+  bootstrap getter on import and keyed by an unhashable `FEModel`; not used.
+- `_activate_nonlinear_state_storage`: the plan comes from the cache above
+  inside a window; the state store and native rotation store are built after
+  that window closed successfully, from the validated plan.
+- Batch C: the reduced plan is built after the plan window closed; the
+  direct evaluation's window closes before its payload is returned; plan
+  buffers and timings are per-call scratch, not reused results.
+- Q4 element caches (`_stiffness_matrix`, `_internal_forces`, `_mass_matrix`,
+  `_nl_cache`, `_qualified_components` and their keys/provenance): every Q4
+  whose guarded call ran in a window is recorded, and a close refusal drops
+  its derived caches with the same invalidation a per-call refusal performs.
+  A first-use refusal happens before the call runs, as the per-call pre-check
+  did, and drops nothing of that call.
+- Assembly execution plans are bound to one per-call lease; the S4 geometric
+  kinematics cache is keyed by coordinate and quadrature bytes.  Neither
+  depends on Q4 class authority.
+
+Persistent changes are refused with the same exception type as before and
+before any result of the affected evaluation or step is returned, cached for
+reuse or committed.  What
+changes: a class change made and reverted inside one window, or a lifecycle
+change made and reverted between two solver-internal points of one step, is no
+longer detected.  Not changed (not approved): final seal replays, frozen V2D
+states, sampling.  Regression tests: `tests/test_nonlinear_guard_cadence.py`;
+record: `docs/reference_cases/qualified_shell_nonlinear_guard_cadence_successor.json`.
+
+Measured warm wall time, minimum of four solves per variant (two interleaved
+rounds of two), 2026-11-25, `nlsuite` cases; every result hash (displacements,
+element states, step records) is identical across all variants:
+
+| Case | base | G1+G2+L1 | without G2 | without L1 | G1 only |
+|---|---|---|---|---|---|
+| q4el 16x16, 4 steps | 4.59 s | 3.66 s | 4.48 s | 3.46 s | 4.04 s |
+| q4pl 16x16, 4 steps | 4.05 s | 3.21 s | 4.12 s | 3.06 s | 3.62 s |
+| q4el 24x24, 8 steps | 12.41 s | 9.73 s | 11.12 s | 8.91 s | 10.49 s |
+| q4pl 12x12, 10 steps | 2.85 s | 2.36 s | 2.77 s | 2.23 s | 2.62 s |
+| trip (S3 V2D) 8x8 | 5.98 s | 5.61 s | 5.45 s | 6.09 s | 5.88 s |
+| tri (S3 V2D) 8x8 | 10.82 s | 10.36 s | 10.33 s | 10.70 s | 10.19 s |
+| mixed Q4+V2D 12x12, 4 steps | 8.82 s | 8.34 s | 8.40 s | 7.83 s | 8.16 s |
+| mixed plastic 12x12, 6 steps | 7.39 s | 6.99 s | 7.00 s | 6.59 s | 6.72 s |
+
+Run-to-run noise is about 5 %.  L1 matters only where the complete lifecycle
+scan is the internal guard (trip: 79 to 40 scans per solve); exact all-Q4
+models already use the constant-time trusted guard.
+
+Round-1 review repair (2026-11-25): nested and exceptional window closes now
+validate, refused plans are never reused, and the post-commit observations are
+deferred (L1).  Result hashes are unchanged (q4el 16x16 u `231fbe76db20e336`,
+q4pl 16x16 u `f39af085eb25a479`, trip 8x8 u `556b4c8fbb0406d2`, tri 8x8 u
+`f5daa0b971e71aa4`).  Warm minimum of three solves after one cold solve:
+q4el 16x16 3.37 s (previous slice commit 3.51 s, base 4.59 s), q4pl 16x16
+3.00 s (3.13 s, base 4.05 s).  Complete Q4 class checks per 6x6 Q4 solve: 424
+(previous slice commit 416, base 1622).  Complete lifecycle scans per trip 8x8
+solve: 23 (previous slice commit 32).

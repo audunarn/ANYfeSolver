@@ -34,6 +34,7 @@ from ._qualified_authority_epoch import make_authority_epoch_manager
 from .e4_pl_element import (
     QualifiedE4PLShellElement as _QualifiedE4PLShellElement,
     _invalidate_q4_guarded_call_caches as _INVALIDATE_Q4_GUARDED_CACHES,
+    _q4_class_authority_window as _Q4_CLASS_AUTHORITY_WINDOW,
     _q4_runtime_epoch_manager as _Q4_RUNTIME_EPOCH_MANAGER,
     _q4_trusted_operation_scope as _Q4_TRUSTED_OPERATION_SCOPE,
     _require_q4_fast_base_authority as _EXACT_Q4_FAST_BASE_AUTHORITY,
@@ -403,6 +404,10 @@ def _bind_qualified_assembly_runtime_lease(
 ) -> Any:
     """Bind one immutable authority generation across a whole assembly call."""
 
+    # G2 (owner 2026-11-24): each lease scan over the Q4 elements validates the
+    # Q4 class/namespace authority once on entry and once on exit instead of
+    # once per element; every per-element check is unchanged.
+    q4_class_window = _Q4_CLASS_AUTHORITY_WINDOW
     cached_accessor_authority = tuple(
         (
             accessor,
@@ -2721,8 +2726,9 @@ def _bind_qualified_assembly_runtime_lease(
             if len(q4_fast_records) != len(q4_elements):
                 if qualified_input_plan is None:
                     qualified_input_plan = qualified_builtin_inputs()
-                for element in q4_elements:
-                    q4_guard(element, context=context)
+                with q4_class_window():
+                    for element in q4_elements:
+                        q4_guard(element, context=context)
             if s3_elements and allow_q4_cached_stiffness:
                 s3_cached_epoch_guard()
                 s3_fast_base_guard()
@@ -2962,8 +2968,9 @@ def _bind_qualified_assembly_runtime_lease(
                                     "qualified Q4 warm assembly authority changed"
                                 )
                 else:
-                    for element in q4_elements:
-                        q4_guard(element, context=context)
+                    with q4_class_window():
+                        for element in q4_elements:
+                            q4_guard(element, context=context)
                 if s3_fast_records:
                     s3_cached_epoch_guard()
                     if final:
