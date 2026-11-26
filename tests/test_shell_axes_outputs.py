@@ -1191,6 +1191,9 @@ def test_r4_right_handed_reversed_normal_is_refused_by_rule_6(branch, field):
         out.require_all()
 
 
+ADMISSION_CODES = {"AXES_ATTRIBUTE_TYPE", "AXES_OBJECT_NOT_PLAIN", "AXES_INSTANCE_SHADOW"}
+
+
 class _SquaresBig(float):
     def __pow__(self, power):
         return 4.0 * float(self) ** power
@@ -1210,18 +1213,18 @@ def test_r4_hostile_scalar_attribute_types_are_refused():
     el.thickness = _SquaresBig(H)
     with pytest.raises(ShellAxesRefusal) as info:
         recover_shell_axes(el, mesh, displacement(loc), MATERIAL)
-    assert info.value.code == "AXES_ATTRIBUTE_TYPE"
+    assert info.value.code in ADMISSION_CODES  # option P refuses it before the scalar check
     el, mesh, loc = build("v2d", "t3", "g")
     el.reference_surface_offset = _EqualsZero(0.125)
     with pytest.raises(ShellAxesRefusal) as info:
         recover_shell_axes(el, mesh, displacement(loc), MATERIAL)
-    assert info.value.code == "AXES_ATTRIBUTE_TYPE"
+    assert info.value.code in ADMISSION_CODES
     for name, value in (("director_polarity", True), ("director_polarity", 2), ("reference_normal", [0.0, 0.0, 1.0])):
         el, mesh, loc = build("e4pl", "q4", "h")
         object.__setattr__(el, name, value)
         with pytest.raises(ShellAxesRefusal) as info:
             recover_shell_axes(el, mesh, displacement(loc), MATERIAL)
-        assert info.value.code == "AXES_ATTRIBUTE_TYPE", name
+        assert info.value.code in ADMISSION_CODES, name
 
 
 def test_r4_v2d_station_check_is_exact_far_from_the_origin():
@@ -1417,3 +1420,98 @@ def test_r5_ill_conditioned_warped_centre_shear_is_not_certified():
     out = recover_shell_axes(el, mesh, u, MATERIAL, _frame_override=rotate_centre).axes
     assert not out.certified["shear"], out.diagnostics.get("shear")
     assert FAMILY_KEYS["shear"] not in out.arrays
+
+
+# --------------------------------------- option P (owner 2026-11-26): r5 repeats
+class _ReversedRows(np.ndarray):
+    def __iter__(self):
+        return iter(np.asarray(self)[::-1])
+
+
+def test_p_instance_shadow_of_class_data_is_refused():
+    """r5 #1: an instance GAUSS_POINTS_2x2 (class data read via self) with a reversed iterator."""
+
+    for sec in ("h", "g"):
+        el, mesh, loc = build("legacy", "q4", sec)
+        el.GAUSS_POINTS_2x2 = np.asarray(ShellElement.GAUSS_POINTS_2x2, dtype=float).view(_ReversedRows)
+        with pytest.raises(ShellAxesRefusal) as info:
+            recover_shell_axes(el, mesh, displacement(loc), MATERIAL)
+        assert info.value.code == "AXES_INSTANCE_SHADOW"
+
+
+def test_p_mesh_instance_callable_is_refused():
+    """r5 #2: an instance mesh.get_node can show the recovery and the module different nodes."""
+
+    el, mesh, loc = build("legacy", "q4", "h")
+    original = mesh.get_node
+    mesh.get_node = lambda node_id: original(node_id)
+    with pytest.raises(ShellAxesRefusal) as info:
+        recover_shell_axes(el, mesh, displacement(loc), MATERIAL)
+    assert info.value.code == "AXES_INSTANCE_SHADOW"
+    el, mesh, loc = build("legacy", "q4", "h")
+    node = mesh.get_node(1)
+    node.coords = lambda: np.zeros(3)
+    with pytest.raises(ShellAxesRefusal) as info:
+        recover_shell_axes(el, mesh, displacement(loc), MATERIAL)
+    assert info.value.code == "AXES_INSTANCE_SHADOW"
+
+
+class _HidingDict(dict):
+    def __iter__(self):
+        return iter(())
+
+    def keys(self):
+        return ()
+
+
+def test_p_dict_subclass_instance_dict_is_refused():
+    """r5 #3: a dict-subclass __dict__ whose iteration hides a method shadow."""
+
+    el, mesh, loc = build("legacy", "q4", "h")
+    rotated = el._local_frame_and_derivatives
+
+    def shadow(coords, d_xi, d_eta):
+        frame, *rest = rotated(coords, d_xi, d_eta)
+        return (frame @ _rz(0.5), *rest)
+
+    hidden = _HidingDict(vars(el))
+    hidden["_local_frame_and_derivatives"] = shadow
+    el.__dict__ = hidden
+    with pytest.raises(ShellAxesRefusal) as info:
+        recover_shell_axes(el, mesh, displacement(loc), MATERIAL)
+    assert info.value.code == "AXES_OBJECT_NOT_PLAIN"
+
+
+class _FloatLookalike(type):
+    def __eq__(cls, other):
+        return other is float or type.__eq__(cls, other)
+
+    __hash__ = type.__hash__
+
+
+class _SpoofedFloat(float, metaclass=_FloatLookalike):
+    def __pow__(self, power):
+        return 4.0 * float(self) ** power
+
+
+def test_p_metaclass_spoofed_scalar_type_is_refused():
+    """r5 #4: type admission by identity, never by equality."""
+
+    assert _SpoofedFloat == float  # the spoof works against an equality check
+    el, mesh, loc = build("legacy", "q4", "h")
+    el.thickness = _SpoofedFloat(H)
+    with pytest.raises(ShellAxesRefusal) as info:
+        recover_shell_axes(el, mesh, displacement(loc), MATERIAL)
+    assert info.value.code in ADMISSION_CODES
+
+
+def test_p_object_and_ragged_natural_points_are_typed_refusals():
+    """r5 #6: object arrays hid complex(0, inf); ragged input must not escape untyped."""
+
+    el, mesh, loc = build("legacy", "q4", "h")
+    u = displacement(loc)
+    hidden = np.array([[np.complex128(complex(0.0, np.inf)), 0.0]], dtype=object)
+    for request in (hidden, [[0.0], [0.0, 0.0]], [[complex(0.0, 1.0), 0.0]], "points", [[True, 0.0]]):
+        with pytest.raises(ShellAxesRefusal) as info:
+            recover_shell_axes(el, mesh, u, MATERIAL, natural_points=request)
+        assert info.value.code == "AXES_STATIONS_NOT_QUALIFIED", request

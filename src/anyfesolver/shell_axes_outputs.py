@@ -75,6 +75,7 @@ from __future__ import annotations
 
 import functools
 import math
+import types
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 
@@ -111,6 +112,11 @@ GEOMETRY_BOUND = 1.0e-13  # rule (6): |n - n_geometry| (measured <= 2.3e-16 on e
 GEOMETRY_ROUNDOFF = 64.0 * EPS
 _FLOAT_TYPES = (float, int, np.float64)
 _INT_TYPES = (int, np.int64)
+# Option P (owner 2026-11-26): plain-object admission by type IDENTITY (never
+# ``==`` or ``in``, which a metaclass can answer).
+_PLAIN_SCALARS = (float, int, bool, str, bytes, type(None), np.float64, np.int64, np.bool_)
+_PLAIN_CONTAINERS = (tuple, list, set, frozenset)
+_PLAIN_BUDGET = 200_000  # values visited per object (measured qualified S3 guard: see the API note)
 
 FAMILY_KEYS = {
     "membrane": "global_membrane_resultant_tensors",
@@ -246,9 +252,10 @@ def _finite(*arrays: Any) -> bool:
 def _numeric(value: Any, what: str) -> np.ndarray:
     """Float array of a recovery value, or a typed refusal (never a bare error)."""
 
-    if np.iscomplexobj(value):
-        raise ShellAxesRefusal("AXES_RECOVERY_MALFORMED", f"{what} is complex")
     try:
+        # inspection inside the typed boundary too (ragged input raises here)
+        if np.iscomplexobj(value):
+            raise ShellAxesRefusal("AXES_RECOVERY_MALFORMED", f"{what} is complex")
         return np.array(value, dtype=float, copy=True)
     except (TypeError, ValueError, OverflowError) as exc:
         raise ShellAxesRefusal("AXES_RECOVERY_MALFORMED", f"{what} is not numeric: {exc}") from None
@@ -279,33 +286,147 @@ def _frame_problem(frames: np.ndarray, bound: float = ORTHONORMAL_BOUND) -> str:
     return ""
 
 
+def _is(kind: type, allowed: Tuple[type, ...]) -> bool:
+    return any(kind is candidate for candidate in allowed)
+
+
 @functools.lru_cache(maxsize=None)
-def _class_method_names(kind: type) -> frozenset:
-    """Names bound to callables (functions, static/class methods) anywhere in
-    the MRO of an admitted class.  Cached per class: A'' trusts the class
-    internals not to be rebound at run time."""
+def _solver_value_types() -> Tuple[type, ...]:
+    """Exact solver-owned classes ordinary elements, meshes and nodes hold as
+    attribute values (measured on ANYfem models); trusted under A'' and
+    admitted by identity without looking inside."""
+
+    from anymaterial import IsotropicMaterial, OrthotropicMaterial
+
+    from .fe_core import DOFManager, FEMesh, _QualifiedMutationEpoch, _QualifiedStateMapping
+    from .shell_sections import GeneralizedShellSection
+
+    # FEMesh and the materials appear inside the qualified recovery guards
+    # (measured on ANYfem barge5 after a solve); admitted by identity only
+    return (
+        _QualifiedMutationEpoch,
+        _QualifiedStateMapping,
+        DOFManager,
+        GeneralizedShellSection,
+        FEMesh,
+        IsotropicMaterial,
+        OrthotropicMaterial,
+    )
+
+
+def _plain_value(value: Any) -> bool:
+    """Plain: exact scalars, exact numeric ndarrays, exact containers of plain
+    values (any depth, iterative, cycle-safe, bounded by ``_PLAIN_BUDGET``), or
+    an exact admitted solver class (not looked into)."""
+
+    solver_types = _solver_value_types()
+    stack = [value]
+    seen = set()
+    visited = 0
+    while stack:
+        item = stack.pop()
+        visited += 1
+        if visited > _PLAIN_BUDGET:
+            return False
+        kind = type(item)
+        if _is(kind, _PLAIN_SCALARS):
+            continue
+        if kind is np.ndarray:
+            if item.dtype.hasobject or item.dtype.kind not in "biuf":
+                return False
+            continue
+        if _is(kind, solver_types):
+            continue
+        if id(item) in seen:
+            continue
+        if _is(kind, _PLAIN_CONTAINERS):
+            seen.add(id(item))
+            stack.extend(item)
+        elif kind is dict:
+            seen.add(id(item))
+            for key, entry in dict.items(item):
+                stack.append(key)
+                stack.append(entry)
+        elif kind is types.MappingProxyType:  # qualified S3 component record (measured)
+            seen.add(id(item))
+            for key in item:
+                stack.append(key)
+                stack.append(item[key])
+        else:
+            return False
+    return True
+
+
+@functools.lru_cache(maxsize=None)
+def _class_attribute_names(kind: type) -> frozenset:
+    """Every name bound in the MRO of an admitted class (data or callable),
+    except the declared dataclass fields of ``kind``: those are instance-owned
+    by declaration and their class value is only the default (measured:
+    FEMesh.element_activity).  Cached per class: A'' trusts the class
+    internals not to be rebound."""
 
     names = set()
     for cls in kind.__mro__:
-        for name, value in vars(cls).items():
-            if callable(value) or isinstance(value, (staticmethod, classmethod)):
-                names.add(name)
+        names.update(vars(cls))
+    fields = vars(kind).get("__dataclass_fields__")
+    if type(fields) is dict:
+        names.difference_update(fields)
     return frozenset(names)
 
 
-def _refuse_method_shadows(element: Any) -> None:
-    """Refuse instance attributes that shadow a class-level method (A'')."""
+def _admit_plain_object(obj: Any, kind: type, what: str) -> Dict[str, Any]:
+    """Option P for one object already admitted by exact type ``kind``.
+
+    The instance dict must be an exact ``dict`` with exact ``str`` keys, no key
+    may name any class attribute (data or method; the attribute lookup would
+    otherwise prefer the instance value), and every value must be plain (exact
+    scalars, exact containers of plain values, exact numeric ndarrays) or an
+    exact solver-owned class.  Returns the instance dict.
+    """
 
     try:
-        own = vars(element)
-    except TypeError:
-        return
-    shadows = _class_method_names(type(element)).intersection(own)
+        own = object.__getattribute__(obj, "__dict__")
+    except AttributeError:
+        raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"{what} has no instance dict") from None
+    if type(own) is not dict:
+        raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"{what} instance dict is {type(own).__name__}, not dict")
+    keys = list(dict.keys(own))
+    if not all(type(key) is str for key in keys):
+        raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"{what} instance dict has a non-str key")
+    shadows = _class_attribute_names(kind).intersection(keys)
     if shadows:
         raise ShellAxesRefusal(
             "AXES_INSTANCE_SHADOW",
-            f"instance attribute(s) {sorted(shadows)!r} shadow {type(element).__name__} methods",
+            f"{what} instance attribute(s) {sorted(shadows)!r} shadow {kind.__name__} class attributes",
         )
+    for key in keys:
+        if not _plain_value(dict.__getitem__(own, key)):
+            raise ShellAxesRefusal(
+                "AXES_OBJECT_NOT_PLAIN",
+                f"{what}.{key} is {type(dict.__getitem__(own, key)).__name__}, not a plain or admitted solver type",
+            )
+    return own
+
+
+def _admit_mesh_and_nodes(element_dict: Mapping[str, Any], mesh: Any) -> None:
+    """Option P for the mesh and the element's own nodes (exact FEMesh / Node)."""
+
+    from .fe_core import FEMesh, Node, _QualifiedStateMapping
+
+    if type(mesh) is not FEMesh:
+        raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"mesh is {type(mesh).__name__}, not FEMesh")
+    mesh_dict = _admit_plain_object(mesh, FEMesh, "mesh")
+    nodes = mesh_dict.get("nodes")
+    if not (type(nodes) is _QualifiedStateMapping or type(nodes) is dict):
+        raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", "mesh.nodes is not the solver node mapping")
+    node_ids = element_dict.get("node_ids")
+    if not (_is(type(node_ids), (tuple, list)) and all(type(n) is int for n in node_ids)):
+        raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", "element node_ids are not exact ints")
+    for node_id in node_ids:
+        node = dict.get(nodes, node_id)
+        if type(node) is not Node:
+            raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"node {node_id} is {type(node).__name__}, not Node")
+        _admit_plain_object(node, Node, f"node {node_id}")
 
 
 def _check_attribute_types(element: Any, names: Tuple[str, ...]) -> None:
@@ -318,13 +439,13 @@ def _check_attribute_types(element: Any, names: Tuple[str, ...]) -> None:
     for name in names:
         value = getattr(element, name)
         if name == "director_polarity":
-            ok = type(value) in _INT_TYPES and value in (1, -1)
+            ok = _is(type(value), _INT_TYPES) and (int(value) == 1 or int(value) == -1)
         elif name == "reference_normal":
             ok = value is None or (
                 type(value) is np.ndarray and value.dtype == np.float64 and value.shape == (3,)
             )
         else:
-            ok = type(value) in _FLOAT_TYPES
+            ok = _is(type(value), _FLOAT_TYPES)
         if not ok:
             raise ShellAxesRefusal(
                 "AXES_ATTRIBUTE_TYPE",
@@ -414,6 +535,21 @@ def _requested_points(natural_points: Any) -> Optional[np.ndarray]:
 
     if natural_points is None:
         return None
+    # option P: validate the uncast request (Codex r5: object arrays hid a complex inf)
+    kind = type(natural_points)
+    if kind is np.ndarray:
+        plain = natural_points.dtype.kind in "iuf" and not natural_points.dtype.hasobject
+    elif _is(kind, (list, tuple)):
+        plain = all(
+            _is(type(row), (list, tuple))
+            and len(row) == 2
+            and all(_is(type(v), (float, int, np.float64, np.int64)) for v in row)
+            for row in natural_points
+        )
+    else:
+        plain = False
+    if not plain:
+        raise ShellAxesRefusal("AXES_STATIONS_NOT_QUALIFIED", "natural_points must be plain real numbers (list/tuple or float ndarray)")
     points = _numeric(natural_points, "natural_points")
     if (
         points.ndim != 2
@@ -517,8 +653,10 @@ def _numbered_conventions() -> Dict[str, str]:
     return {"membrane": "polarity_even", "bending": "numbered_normal", "shear": "numbered_normal"}
 
 
-def _admit(element: Any) -> type:
-    """Exact-type admission, shadow refusal and attribute types, before any other access."""
+def _admit(element: Any, mesh: Any) -> type:
+    """Before any other access: exact element type, option P plain-object
+    admission of the element, the mesh and the element's nodes (owner
+    2026-11-26), then the exact scalar attribute types."""
 
     from .e4_pl_element import QualifiedE4PLShellElement
     from .e4_pl_s3_element import QualifiedE4PLS3ShellElement
@@ -538,7 +676,8 @@ def _admit(element: Any) -> type:
             "AXES_FORMULATION_NOT_QUALIFIED",
             f"no axes adapter for element type {kind.__name__}",
         )
-    _refuse_method_shadows(element)
+    element_dict = _admit_plain_object(element, kind, "element")
+    _admit_mesh_and_nodes(element_dict, mesh)
     _check_attribute_types(element, names[kind])
     return kind
 
@@ -866,7 +1005,7 @@ def recover_shell_axes(
     from .e4_pl_element import QualifiedE4PLShellElement
     from .elements import ShellElement
 
-    kind = _admit(element)
+    kind = _admit(element, mesh)
     requested = _requested_points(natural_points)
     if requested is not None and (
         not (kind is ShellElement or kind is QualifiedE4PLShellElement) or element.shell_section is not None
@@ -921,7 +1060,7 @@ def _derive_shell_axes_from_recovery(
     """
 
     del displacements  # frames depend on the reference geometry only
-    _admit(element)  # before any attribute access (Codex r4: no early lookups)
+    _admit(element, mesh)  # before any attribute access (Codex r4: no early lookups)
     if not isinstance(recovered, Mapping):
         raise ShellAxesRefusal("AXES_RETURN_GLOBAL_REQUIRED", "recovery output is not a mapping")
     surface_keys = [f"global_{label}_{surface}" for surface in _SURFACES for label, _i, _j in _SURFACE_COMPONENTS]
