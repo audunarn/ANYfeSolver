@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import difflib
 import hashlib
 import importlib.util
 import json
@@ -1296,6 +1297,11 @@ OTHER_CHANGED_SOURCES = (
     "nonlinear_static.py",
 )
 CHANGE_COMMIT_TOUCHES = "src/anyfesolver/e4_pl_element.py"
+RECORDED_CHANGE_COMMIT = "1b74926691245c2dd4c4f117b9ef87acc2d0e46c"
+RECORDED_CHANGE_COMMIT_IDS = (
+    "c569bd617", "11eb4531c", "1b7492669", "5c4c8f8ba", "2a5ddf5a3", "631f77eba",
+)
+PERFORMANCE_NOTE = "docs/NONLINEAR_STATIC_GUARD_SPEEDUP.md"
 GIT_ROOT = ROOT
 # Predecessor: the newest link of the Q4 source-binding chain
 # 2026-11-11 -> 2026-11-24 -> 2026-11-25 (pin from
@@ -1310,9 +1316,31 @@ def _read_checkout(relative: str) -> bytes:
     return (ROOT / relative).read_bytes()
 
 
+def _git_environment() -> dict:
+    """Codex P2 (#92 re-review): inherited GIT_* variables (GIT_DIR,
+    GIT_WORK_TREE, ...) must not redirect the checks or the fixtures to
+    another repository; global and system configuration is ignored too."""
+
+    environment = {
+        key: value for key, value in os.environ.items() if not key.upper().startswith("GIT_")
+    }
+    environment.update(
+        {
+            "GIT_ATTR_NOSYSTEM": "1",
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_NO_REPLACE_OBJECTS": "1",
+            "GIT_OPTIONAL_LOCKS": "0",
+            "GIT_TERMINAL_PROMPT": "0",
+        }
+    )
+    return environment
+
+
 def _git(*args: str) -> subprocess.CompletedProcess:
     return subprocess.run(
-        ["git", "-C", str(GIT_ROOT), *args], capture_output=True, check=False
+        ["git", "-c", f"safe.directory={Path(GIT_ROOT).as_posix()}", "-C", str(GIT_ROOT), *args],
+        capture_output=True, check=False, env=_git_environment(),
     )
 
 
@@ -1376,10 +1404,37 @@ def _assert_change_commit(commit) -> bool:
         )
         return False
     assert _git("merge-base", "--is-ancestor", commit, "HEAD").returncode == 0
-    touched = _git("diff", "--name-only", f"{commit}^", commit)
+    touched = _git("diff", "--name-only", "-z", f"{commit}^", commit)
     assert touched.returncode == 0
-    assert CHANGE_COMMIT_TOUCHES in touched.stdout.decode().split()
+    # NUL-separated: a file name containing spaces cannot supply the path.
+    assert CHANGE_COMMIT_TOUCHES in touched.stdout.decode().split("\0")
     return True
+
+
+def _assert_base_blobs(payload: dict) -> bool:
+    """History facts beyond ancestry: each unsealed changed source's prior
+    blob is that file's blob at the base commit.  Deferred like ancestry,
+    only at the explicit GitHub shallow boundary."""
+
+    base = payload["base"]["commit"]
+    if not _history_present(base):
+        assert _is_explicit_github_shallow_boundary(), f"base {base} is not in this repository"
+        return False
+    assert _git("rev-parse", f"{base}^{{tree}}").stdout.decode().strip() == payload["base"]["tree"]
+    for name, row in payload["change"]["other_changed_sources"].items():
+        blob = _git("rev-parse", f"{base}:src/anyfesolver/{name}")
+        assert blob.returncode == 0, name
+        assert blob.stdout.decode().strip() == row["prior_lf_git_blob"], name
+    return True
+
+
+def _canonical_reverse_patch(current: bytes, prior: bytes) -> list:
+    """The builder's reverse_line_patch, recomputed (no history needed)."""
+
+    cur = current.decode("utf-8").splitlines(keepends=True)
+    pri = prior.decode("utf-8").splitlines(keepends=True)
+    matcher = difflib.SequenceMatcher(None, cur, pri, autojunk=False)
+    return [[i1, i2, pri[j1:j2]] for tag, i1, i2, j1, j2 in matcher.get_opcodes() if tag != "equal"]
 
 
 def _identity(data: bytes) -> dict:
@@ -1452,11 +1507,24 @@ def _assert_successor_bindings(payload: dict) -> bool:
         "qualified_recovery_changed": False,
     }
     change = payload["change"]
+    # Codex re-review P3/P2: the pin and the commit list are fixed here, so a
+    # plausible substitute is refused without history (subjects need history
+    # and are checked by the builder).
+    assert set(change) == {"commit", "commits", "other_changed_sources", "scope", "sealed_carriers"}
+    assert change["commit"] == RECORDED_CHANGE_COMMIT
+    assert [entry.split(" ", 1)[0] for entry in change["commits"]] == list(RECORDED_CHANGE_COMMIT_IDS)
+    assert all(type(entry) is str and len(entry.split(" ", 1)) == 2 for entry in change["commits"])
     history_verified = _assert_change_commit(change["commit"])
     assert tuple(sorted(change["sealed_carriers"])) == SEALED_CARRIERS
     for name, row in change["sealed_carriers"].items():
         assert row["live_path"] == f"src/anyfesolver/{name}"
         portable = name in PORTABLE_CARRIERS
+        assert set(row) == (
+            {"current_lf", "live_path", "portable_text", "prior_lf", "reverse_line_patch"}
+            if portable
+            else {"current_lf", "current_raw", "live_path", "portable_text", "prior_lf", "prior_raw",
+                  "reverse_line_patch"}
+        )
         assert row["portable_text"] is portable
         live = _read_checkout(row["live_path"])
         canonical = live.replace(b"\r\n", b"\n")
@@ -1468,6 +1536,7 @@ def _assert_successor_bindings(payload: dict) -> bool:
         for start, end, replacement in reversed(row["reverse_line_patch"]):
             lines[start:end] = replacement
         prior = "".join(lines).encode("utf-8")
+        assert _canonical_reverse_patch(source, prior) == row["reverse_line_patch"]
         if not portable:
             assert _identity(prior) == row["prior_raw"]
         assert _identity(prior.replace(b"\r\n", b"\n")) == row["prior_lf"]
@@ -1497,6 +1566,8 @@ def _assert_successor_bindings(payload: dict) -> bool:
         assert row["live_path"] not in chain
     note = payload["validation"]["performance_note"]
     # Auto-text note: identified by its LF form on every checkout.
+    assert set(note) == {"bytes", "git_blob", "path", "sha256", "text_identity"}
+    assert note["path"] == PERFORMANCE_NOTE
     assert note["text_identity"] == "lf"
     note_data = _read_checkout(note["path"]).replace(b"\r\n", b"\n")
     assert {k: note[k] for k in ("bytes", "git_blob", "sha256")} == _identity(note_data)
@@ -1504,7 +1575,7 @@ def _assert_successor_bindings(payload: dict) -> bool:
     assert payload["review"]["outcome"] in {"PENDING", "ACCEPT"}
     if payload["review"]["outcome"] == "PENDING":
         assert payload["terminal"] == "PENDING_INDEPENDENT_REVIEW"
-    return history_verified
+    return _assert_base_blobs(payload) and history_verified
 
 
 def test_guard_cadence_successor_binds_every_changed_source() -> None:
@@ -1657,15 +1728,18 @@ def test_original_q4_source_binding_builder_check_still_passes() -> None:
         (("owner_decisions", "approved"), ["G2", "L1", "G1", "S2"]),
         (("change", "commit"), "0" * 40),
         (("change", "commit"), "071910d60031beb455ef0fa2328a027d8ba77c3d"),
+        (("change", "commit"), "5c4c8f8ba18fd88b8f9ca90be50abedc3b4559f5"),
+        (("change", "commits"), []),
+        (("change", "sealed_carriers", "e4_pl_s3_state.py", "current_raw"), {}),
+        (("validation", "performance_note", "path"), "README.md"),
         (("validation", "performance_note", "sha256"), "0"),
         (("validation", "performance_note", "text_identity"), "raw"),
         (("change", "other_changed_sources", "nonlinear_performance_bootstrap.py", "current_lf_git_blob"), "0"),
     ),
 )
 def test_guard_cadence_successor_rejects_mutations(path, value) -> None:
-    if path == ("change", "commit"):
-        # A bogus id is indistinguishable from absent history at the shallow boundary.
-        _require_history(_load_successor()["change"]["commit"])
+    # Positive control: the unmutated record passes (or defers at the boundary).
+    _assert_successor_bindings(_load_successor())
     mutated = copy.deepcopy(_load_successor())
     target = mutated
     for key in path[:-1]:
@@ -1678,8 +1752,8 @@ def test_guard_cadence_successor_rejects_mutations(path, value) -> None:
 def _git_at(cwd: Path, *args: str) -> None:
     subprocess.run(
         ["git", "-c", "user.name=t", "-c", "user.email=t@invalid", "-c", "commit.gpgsign=false",
-         "-c", "init.defaultBranch=main", *args],
-        cwd=cwd, capture_output=True, check=True,
+         "-c", "init.defaultBranch=main", "-c", "protocol.file.allow=always", *args],
+        cwd=cwd, capture_output=True, check=True, env=_git_environment(),
     )
 
 
@@ -1737,9 +1811,113 @@ def test_guard_cadence_successor_rows_bind_the_file_their_key_names(name) -> Non
     with another valid row must be refused, so the keyed file is checked."""
 
     payload = _load_successor()
+    _assert_successor_bindings(payload)  # positive control
     rows = payload["change"]["other_changed_sources"]
     donor = next(other for other in OTHER_CHANGED_SOURCES if other != name)
     mutated = copy.deepcopy(payload)
     mutated["change"]["other_changed_sources"][name] = copy.deepcopy(rows[donor])
     with pytest.raises(AssertionError):
         _assert_successor_bindings(mutated)
+
+
+def _mutate(payload: dict, path: tuple, value) -> dict:
+    mutated = copy.deepcopy(payload)
+    target = mutated
+    for key in path[:-1]:
+        target = target[key]
+    target[path[-1]] = value
+    return mutated
+
+
+def _note_swapped_to(payload: dict, relative: str) -> dict:
+    data = _read_checkout(relative).replace(b"\r\n", b"\n")
+    mutated = copy.deepcopy(payload)
+    mutated["validation"]["performance_note"].update(_identity(data), path=relative)
+    return mutated
+
+
+def _history_free_substitutions(payload: dict) -> list:
+    """Codex #92 re-review (c): substitutions that survived depth-1 CI."""
+
+    element = payload["change"]["sealed_carriers"]["e4_pl_element.py"]
+    other = payload["change"]["other_changed_sources"]
+    return [
+        _mutate(payload, ("change", "commit"), "5c4c8f8ba18fd88b8f9ca90be50abedc3b4559f5"),
+        _mutate(payload, ("change", "commits"), []),
+        _mutate(payload, ("change", "commits"), payload["change"]["commits"][:-1]),
+        _mutate(payload, ("change", "sealed_carriers", "e4_pl_s3_state.py", "current_raw"),
+                element["current_raw"]),
+        _mutate(payload, ("change", "sealed_carriers", "e4_pl_element.py", "reverse_line_patch"),
+                element["reverse_line_patch"] + [[0, 0, []]]),
+        _note_swapped_to(payload, "README.md"),
+        _mutate(payload, ("change", "extra"), True),
+    ], [
+        _mutate(payload, ("change", "other_changed_sources", "nonlinear_static.py", "prior_lf_git_blob"),
+                "bogus"),
+        _mutate(payload, ("change", "other_changed_sources", "nonlinear_static.py", "prior_lf_git_blob"),
+                other["matrix_assembly.py"]["prior_lf_git_blob"]),
+    ]
+
+
+def test_guard_cadence_successor_refuses_history_free_substitutions() -> None:
+    """Every substitution Codex found is refused in a full clone; the
+    history-free ones are refused without history too (next test)."""
+
+    payload = _load_successor()
+    _require_history(payload["base"]["commit"], payload["change"]["commit"])
+    assert _assert_successor_bindings(payload) is True  # positive control, full history
+    history_free, history_bound = _history_free_substitutions(payload)
+    for mutated in history_free + history_bound:
+        with pytest.raises(AssertionError):
+            _assert_successor_bindings(mutated)
+
+
+def test_guard_cadence_successor_ignores_inherited_git_environment(tmp_path, monkeypatch) -> None:
+    """Codex #92 re-review (a): GIT_DIR/GIT_WORK_TREE pointing at another
+    (shallow) repository must neither redirect the checks into a skip nor
+    let the fixtures write into that repository."""
+
+    recorded = _load_successor()
+    _require_history(recorded["base"]["commit"], recorded["change"]["commit"])
+    origin = tmp_path / "origin"
+    origin.mkdir()
+    _git_at(origin, "init", "-q")
+    _git_at(origin, "commit", "-q", "--allow-empty", "-m", "one")
+    _git_at(origin, "commit", "-q", "--allow-empty", "-m", "two")
+    shallow = tmp_path / "shallow"
+    _git_at(tmp_path, "clone", "-q", "--depth", "1", origin.as_uri(), str(shallow))
+    before = (origin / ".git" / "HEAD").read_bytes(), sorted(p.name for p in (origin / ".git" / "refs" / "heads").iterdir())
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("GIT_DIR", str(shallow / ".git"))
+    monkeypatch.setenv("GIT_WORK_TREE", str(shallow))
+    assert _assert_successor_bindings(_load_successor()) is True
+    monkeypatch.setenv("GIT_DIR", str(origin / ".git"))
+    monkeypatch.setenv("GIT_WORK_TREE", str(origin))
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    _git_at(scratch, "init", "-q")
+    _git_at(scratch, "commit", "-q", "--allow-empty", "-m", "fixture")
+    log = subprocess.run(["git", "-C", str(origin), "log", "--format=%s"], capture_output=True,
+                         env=_git_environment(), check=True)
+    assert log.stdout.decode().split() == ["two", "one"]
+    assert ((origin / ".git" / "HEAD").read_bytes(),
+            sorted(p.name for p in (origin / ".git" / "refs" / "heads").iterdir())) == before
+
+
+def test_guard_cadence_successor_refuses_history_free_substitutions_at_the_boundary(
+    tmp_path, monkeypatch
+) -> None:
+    origin = tmp_path / "origin"
+    origin.mkdir()
+    _git_at(origin, "init", "-q")
+    _git_at(origin, "commit", "-q", "--allow-empty", "-m", "one")
+    shallow = tmp_path / "shallow"
+    _git_at(tmp_path, "clone", "-q", "--depth", "1", origin.as_uri(), str(shallow))
+    monkeypatch.setattr(sys.modules[__name__], "GIT_ROOT", shallow)
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    payload = _load_successor()
+    assert _assert_successor_bindings(payload) is False  # positive control: deferred
+    history_free, _history_bound = _history_free_substitutions(payload)
+    for mutated in history_free:
+        with pytest.raises(AssertionError):
+            _assert_successor_bindings(mutated)
