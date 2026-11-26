@@ -25,6 +25,11 @@ BUILDER = ROOT / "scripts" / "build_q4_planar_batch_successor.py"
 PREDECESSOR = ROOT / "docs" / "reference_cases" / "qualified_shell_nonlinear_guard_cadence_successor.json"
 PREDECESSOR_SHA256 = "96EB8040773D4E05F33938C333F34BF63372428D0A7EEE5D099867690A88936D"
 RECORDED_BASE_COMMIT = "d4cf5011fea7539b315a37b5de4359591c801ae0"
+# Pinned without history (Codex L4 round 1 P2): a shallow checkout that skips
+# the ancestry checks still refuses a substituted change identity.
+RECORDED_BASE_TREE_LENGTH = 40
+RECORDED_CHANGE_COMMIT = "704536ab0c590f09af99ed53a09d8b74eefda119"
+RECORDED_CHANGE_COMMIT_IDS = ("704536ab0", "84810a7dc")
 SEALED_CARRIERS = ("e4_pl_element.py", "matrix_assembly.py")
 OTHER_CHANGED_SOURCES = ("_q4_planar_batch.py", "assembly.py")
 SHALLOW_BOUNDARY_SKIP = (
@@ -96,6 +101,31 @@ def _guard_cadence_bound() -> dict[str, tuple[bool, dict | str]]:
     return bound
 
 
+def _assert_change_identity(record: dict) -> None:
+    """History-free checks of the recorded change identity."""
+
+    assert record["change"]["commit"] == RECORDED_CHANGE_COMMIT
+    assert [entry.split(" ", 1)[0] for entry in record["change"]["commits"]] == list(
+        RECORDED_CHANGE_COMMIT_IDS
+    )
+    assert all(type(entry) is str and len(entry.split(" ", 1)) == 2 for entry in record["change"]["commits"])
+
+
+@pytest.mark.parametrize("path,value", [
+    (("change", "commit"), "0" * 40),
+    (("change", "commit"), "071910d60031beb455ef0fa2328a027d8ba77c3d"),
+    (("change", "commits"), []),
+    (("change", "commits"), ["704536ab0 Wire the batched Q4 planar numerics into assembly and recovery (L4)"]),
+])
+def test_change_identity_is_refused_without_history(path, value) -> None:
+    """Codex L4 round 1 P2: a substituted change identity is refused even
+    where the ancestry checks are deferred (GitHub shallow checkout)."""
+
+    _assert_change_identity(_record())
+    with pytest.raises(AssertionError):
+        _assert_change_identity(_set(_record(), path, value))
+
+
 def test_record_chains_from_the_pinned_guard_cadence_successor() -> None:
     record = _record()
     raw = PREDECESSOR.read_bytes()
@@ -103,6 +133,8 @@ def test_record_chains_from_the_pinned_guard_cadence_successor() -> None:
     assert record["predecessor"] == {"path": PREDECESSOR.relative_to(ROOT).as_posix(), **_identity(raw)}
     assert record["schema"] == "anysolver.qualified-q4-planar-batch-successor-v1"
     assert record["base"]["commit"] == RECORDED_BASE_COMMIT
+    assert len(record["base"]["tree"]) == RECORDED_BASE_TREE_LENGTH
+    _assert_change_identity(record)
     assert all(value is False for value in record["qualification_boundary"].values())
     assert len(record["qualification_boundary"]) == 8
     assert record["owner_decisions"]["approved"] == ["L4"]

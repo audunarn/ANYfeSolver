@@ -57,6 +57,7 @@ CHANGE_COMMIT_TOUCHES = "src/anyfesolver/e4_pl_element.py"
 # Every commit of this change whose diff touches a sealed carrier.
 CHANGE_COMMITS = (
     "704536ab0 Wire the batched Q4 planar numerics into assembly and recovery (L4)",
+    "84810a7dc Publish batch rows in assembly order and match the per-element backward error",
 )
 QUALIFICATION_BOUNDARY = {
     "default_policy_changed": False,
@@ -367,6 +368,7 @@ def build(evidence: dict) -> dict:
                 "self-check failure or input failure reruns the whole batch through the per-element path",
                 "minimum batch sizes: 96 formation rows, 128 recovery rows; below them the per-element loops run "
                 "unchanged",
+                "batch-formed rows are bound only when the ordered per-element assembly loop reaches them",
             ],
         },
         "owner_decisions": {
