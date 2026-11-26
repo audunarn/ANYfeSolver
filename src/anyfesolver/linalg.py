@@ -221,13 +221,7 @@ def _forward_error_probe_settings(
 ) -> Tuple[str, Optional[np.ndarray]]:
     """Validated (mode, measured index array or None) from factorization options."""
 
-    mode = options.get("forward_error_probe", "refuse")
-    if mode is None:
-        mode = "refuse"
-    if not isinstance(mode, str) or mode not in _FORWARD_ERROR_PROBE_MODES:
-        raise ValueError(
-            f"forward_error_probe must be one of {_FORWARD_ERROR_PROBE_MODES}, got {mode!r}"
-        )
+    mode = _forward_error_probe_mode(options.get("forward_error_probe", "refuse"))
     mask = options.get("forward_error_probe_mask")
     if mask is None:
         return mode, None
@@ -243,6 +237,26 @@ def _forward_error_probe_settings(
     if int(n) > 0 and index.size == 0:
         raise ValueError("forward_error_probe_mask selects no entries")
     return mode, index
+
+
+def _forward_error_probe_mode(raw: Any) -> str:
+    """The built-in literal "refuse" or "report" (None means "refuse").
+
+    A ``str`` subclass is accepted only when its underlying string value
+    equals a literal (compared with ``str.__eq__``, so an overridden
+    ``__eq__``/``__str__`` cannot alias the modes); the literal itself is
+    returned, and that one value keys the cache and drives execution.
+    """
+
+    if raw is None:
+        return "refuse"
+    if isinstance(raw, str):
+        for literal in _FORWARD_ERROR_PROBE_MODES:
+            if str.__eq__(raw, literal) is True:
+                return literal
+    raise ValueError(
+        f"forward_error_probe must be one of {_FORWARD_ERROR_PROBE_MODES}, got {raw!r}"
+    )
 
 
 def _forward_error_probe_index(mask: Any) -> np.ndarray:
@@ -281,27 +295,51 @@ def _forward_error_probe_value(
 
     ``solve_dtype`` is the dtype the raw solve accepts (a single-precision
     SuperLU factor takes ``float32``); the error is evaluated in double
-    precision.  A matvec or solve that raises an ordinary ``Exception`` is
-    an execution failure (:class:`_ForwardErrorProbeExecutionError`, never a
-    value); an interrupt propagates unchanged.
+    precision.  The probe either completes with a value (finite, or ``None``
+    for a non-finite one) or fails to execute: any ordinary ``Exception``
+    anywhere in the measurement (allocating ``z``, the matvec, the raw solve,
+    the temporaries) and any malformed matvec or solve result (not a real
+    floating-point ``ndarray`` of shape ``(n,)``) is an execution failure
+    (:class:`_ForwardErrorProbeExecutionError`, never a value).  An interrupt
+    propagates unchanged.
     """
 
-    z = np.random.default_rng(_FORWARD_ERROR_PROBE_SEED).uniform(1.0, 2.0, int(n))
-    with np.errstate(all="ignore"):
-        try:
-            rhs = np.asarray(matvec(z), dtype=np.float64).reshape(-1)
-            solved = raw_solve(rhs.astype(solve_dtype, copy=False))
-        except Exception as exc:
-            raise _ForwardErrorProbeExecutionError(
-                f"forward-error probe could not execute ({type(exc).__name__}: {exc})"
-            ) from exc
-        x = np.asarray(solved, dtype=np.float64).reshape(-1)
-        if x.shape != z.shape:
-            return None
-        if index is not None:
-            x, z = x[index], z[index]
-        value = float(np.max(np.abs(x - z)) / np.max(np.abs(z)))
+    try:
+        with np.errstate(all="ignore"):
+            z = np.random.default_rng(_FORWARD_ERROR_PROBE_SEED).uniform(1.0, 2.0, int(n))
+            rhs = _probe_vector(matvec(z), int(n), "matvec")
+            solved = _probe_vector(
+                raw_solve(rhs.astype(solve_dtype, copy=False)), int(n), "raw solve"
+            )
+            x = solved.astype(np.float64, copy=False)
+            if index is not None:
+                x, z = x[index], z[index]
+            value = float(np.max(np.abs(x - z)) / np.max(np.abs(z)))
+    except _ForwardErrorProbeExecutionError:
+        raise
+    except Exception as exc:
+        raise _ForwardErrorProbeExecutionError(
+            f"forward-error probe could not execute ({type(exc).__name__}: {exc})"
+        ) from exc
     return value if np.isfinite(value) else None
+
+
+def _probe_vector(result: Any, n: int, stage: str) -> np.ndarray:
+    """``result`` if it is a real floating-point ndarray of shape (n,); else an execution failure."""
+
+    if (
+        not isinstance(result, np.ndarray)
+        or result.dtype.kind != "f"
+        or result.shape != (n,)
+    ):
+        shown = (
+            f"{type(result).__name__} {getattr(result, 'dtype', None)} {getattr(result, 'shape', None)}"
+        )
+        raise _ForwardErrorProbeExecutionError(
+            f"forward-error probe {stage} returned a malformed result "
+            f"({shown}; expected a float ndarray of shape ({n},))"
+        )
+    return result
 
 
 def _record_forward_error_probe(
@@ -362,17 +400,25 @@ def _run_forward_error_probe(
         return _record_forward_error_probe(metadata, None, mode, measured=0, skipped=True)
     started = time.perf_counter()
     try:
-        value = _forward_error_probe_value(n, matvec, raw_solve, index, solve_dtype)
+        try:
+            value = _forward_error_probe_value(n, matvec, raw_solve, index, solve_dtype)
+            metadata["forward_error_probe_seconds"] = time.perf_counter() - started
+            measured = int(n) if index is None else int(index.size)
+            return _record_forward_error_probe(metadata, value, mode, measured=measured)
+        except _ForwardErrorProbeExecutionError:
+            raise
+        except Exception as exc:
+            raise _ForwardErrorProbeExecutionError(
+                f"forward-error probe could not execute ({type(exc).__name__}: {exc})"
+            ) from exc
     except _ForwardErrorProbeExecutionError:
         metadata["forward_error_probe"] = None
         metadata["forward_error_probe_limit"] = _FORWARD_ERROR_PROBE_LIMIT
         metadata["forward_error_probe_mode"] = mode
         metadata["forward_error_probe_disposition"] = "EXECUTION_FAILED"
         metadata["forward_error_probe_seconds"] = time.perf_counter() - started
+        metadata.pop("forward_error_probe_measured_entries", None)
         raise
-    metadata["forward_error_probe_seconds"] = time.perf_counter() - started
-    measured = int(n) if index is None else int(index.size)
-    return _record_forward_error_probe(metadata, value, mode, measured=measured)
 
 
 def _superlu_solve_dtype(csc: sparse.csc_matrix) -> Any:
@@ -387,30 +433,33 @@ def _superlu_solve_dtype(csc: sparse.csc_matrix) -> Any:
 
 
 def _probe_matvec(csr: sparse.csr_matrix, prepared: sparse.csr_matrix, mtype: int) -> Any:
-    """A z for the operator PARDISO factorized.
+    """A z for exactly the operator PARDISO factorized.
 
     mtype 11 factorizes ``csr``.  Symmetric mtypes 2/-2 factorize the
-    symmetric operator of the prepared upper triangle.  For upper-triangle
-    storage (no nonzero stored below the diagonal) the literal ``csr @ z``
-    is a different operator, so the probe uses the symmetric one.  Full
-    storage keeps ``csr @ z`` (unchanged probe value): an assembled
-    stiffness is symmetric only to rounding, and switching it to the
-    symmetric operator moved kfe on 57 of 80 sweep runs (2026-11-26,
-    within 2e-14..8e-6, all far below the limit).
+    symmetric operator of the prepared upper triangle (whatever
+    :func:`_pardiso_prepared_matrix` passed to MKL), for every storage
+    layout of the input: full, upper or partly lower.  MKL ignores any
+    stored lower entry, so the probe ignores it too.  (On full-storage
+    matrices that are symmetric only to rounding the probe value can move
+    at rounding level; it is metadata, not a result.)
     """
 
-    if int(mtype) == 11 or sparse.tril(csr, k=-1).count_nonzero() > 0:
+    if int(mtype) == 11:
         return lambda z: csr @ z
     return _symmetric_upper_matvec(prepared)
 
 
 def _symmetric_upper_matvec(upper: sparse.csr_matrix) -> Any:
-    """A z for a symmetric matrix stored as its upper triangle."""
+    """A z for a symmetric matrix stored as its upper triangle.
 
-    diagonal = upper.diagonal()
+    (U + strict(U)^T) z: the diagonal is counted once, so no intermediate
+    ``2 * diag`` term can overflow where the operator itself is finite.
+    """
+
+    strict_lower = sparse.triu(upper, k=1, format="csr").T.tocsr()
 
     def matvec(z: np.ndarray) -> np.ndarray:
-        return upper @ z + upper.T @ z - diagonal * z
+        return upper @ z + strict_lower @ z
 
     return matvec
 
@@ -1876,7 +1925,9 @@ def _normalized_probe_options(options: Optional[Mapping[str, Any]], n: int) -> O
     if options.get("forward_error_probe") is None:
         return options
     made = dict(options)
-    made["forward_error_probe"] = str(mode)
+    # The built-in literal from validation: the same value keys the cache
+    # and drives execution (never ``str(mode)`` of a subclass).
+    made["forward_error_probe"] = mode
     return made
 
 
@@ -1958,6 +2009,9 @@ class FactorizationCache:
         signature: Optional[str] = None,
         options: Optional[Mapping[str, Any]] = None,
     ) -> FactorizationHandle:
+        # One normalization: the key and the factorization use the same
+        # validated literal mode.
+        options = _normalized_probe_options(options, int(matrix.shape[0]))
         cache_key = self.key(matrix, matrix_class, signature=signature, options=options)
         with self._lock:
             cached = self._handles.get(cache_key)

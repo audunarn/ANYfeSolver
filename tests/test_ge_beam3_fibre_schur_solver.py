@@ -131,3 +131,12 @@ def test_cross_element_resultant_coupling_is_not_silently_dropped():
     a=c.tangent(r,h,0.); start=c.layout.nodal_count
     a[start+6,start+30]=a[start+30,start+6]=1e-20
     with pytest.raises(ValueError,match='element-local'): ResultantSchurSolver(c.layout,a)
+
+
+def test_reduced_newton_tangent_factor_uses_report_mode_and_keeps_one_thread():
+    """R2 #6 (N1): the reduced Schur factor is a Newton tangent (fibre/equilibrium
+    line programs): report mode, its single-thread setting kept."""
+    c,a,r=linearization(); f=ResultantSchurSolver(c.layout,a)
+    assert f._factor.status=='ok'
+    assert f._factor.metadata['forward_error_probe_mode']=='report'
+    assert f._factor.solver_threads==1

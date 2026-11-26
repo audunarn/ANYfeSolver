@@ -727,14 +727,19 @@ def test_symmetric_pardiso_probe_uses_the_factorized_operator_for_upper_storage(
 @requires_pypardiso
 @pytest.mark.parametrize("matrix_class", [MatrixClass.SPD, MatrixClass.SYMMETRIC_INDEFINITE,
                                           MatrixClass.GENERAL])
-def test_full_storage_probe_keeps_the_literal_matvec(matrix_class) -> None:
-    """Full symmetric storage: the probe value is exactly that of ``csr @ z`` (unchanged)."""
+def test_full_storage_probe_measures_the_factorized_operator(matrix_class) -> None:
+    """R2 #3: full storage probes the prepared upper operator (mtypes 2/-2), csr @ z for mtype 11."""
 
     matrix = _ordinary_spd()
     handle = PyPardisoSolverBackend().factorize(matrix, matrix_class)
     assert handle.status == "ok"
     z = np.random.default_rng(linalg._FORWARD_ERROR_PROBE_SEED).uniform(1.0, 2.0, matrix.shape[0])
-    x = handle._solver.solve(matrix @ z)
+    if handle.metadata["pardiso_mtype"] == 11:
+        rhs = matrix @ z
+    else:
+        upper = sparse.triu(matrix, format="csr")
+        rhs = upper @ z + sparse.triu(matrix, k=1, format="csr").T @ z
+    x = handle._solver.solve(rhs)
     assert handle.metadata["forward_error_probe"] == float(np.max(np.abs(x - z)) / np.max(np.abs(z)))
 
 
@@ -826,3 +831,226 @@ def test_shell_b2_reference_buckling_shift_invert_uses_report_mode(monkeypatch) 
         owner.close()
     shifted = [options for matrix_class, options in seen if matrix_class == MatrixClass.GENERAL]
     assert shifted and all(options.get("forward_error_probe") == "report" for options in shifted)
+
+
+# --------------------------------------------------------------------------
+# Review round 2 (2026-11-26): probe operator, complete probe wrapping,
+# float32 Rule B and the literal probe mode
+# --------------------------------------------------------------------------
+
+
+@requires_pypardiso
+@pytest.mark.parametrize("stored", ["one_lower_entry", "differing_lower_value"])
+def test_symmetric_probe_uses_the_prepared_upper_operator_for_any_storage(stored) -> None:
+    """R2 #3: MKL factorizes triu(A) mirrored; a stored lower entry must not switch the probe."""
+
+    if stored == "one_lower_entry":
+        given = np.array([[2.0, 1.0, 0.0], [1.0, 2.0, 1.0], [0.0, 0.0, 2.0]])
+    else:
+        given = np.array([[4.0, 1.0, 0.0], [3.0, 4.0, 1.0], [0.0, 1.0, 4.0]])
+    upper = np.triu(given)
+    factorized = upper + np.triu(given, 1).T  # the operator MKL factorizes
+    handle = PyPardisoSolverBackend().factorize(sparse.csr_matrix(given), MatrixClass.SPD)
+    assert handle.status == "ok", handle.failure_reason
+    assert handle.metadata["pardiso_mtype"] == 2
+    assert handle.metadata["forward_error_probe_disposition"] == "PASSED"
+    assert handle.metadata["forward_error_probe"] < 1.0e-12
+    rhs = np.array([1.0, 2.0, 3.0])
+    np.testing.assert_allclose(factorized @ handle.solve(rhs), rhs, rtol=1e-12)
+
+
+@requires_pypardiso
+def test_symmetric_probe_counts_the_diagonal_once_without_overflow() -> None:
+    """R2 #3: diag(max_float/2) has a finite probe RHS; U z + U^T z - d z overflowed."""
+
+    huge = np.finfo(float).max / 2.0
+    handle = PyPardisoSolverBackend().factorize(sparse.diags([huge] * 3, format="csr"), MatrixClass.SPD)
+    assert handle.status == "ok", handle.failure_reason
+    assert handle.metadata["forward_error_probe_disposition"] == "PASSED"
+    assert handle.metadata["forward_error_probe"] < 1.0e-12
+
+
+def _failing_probe_rng(monkeypatch, error_type=MemoryError):
+    """Allocating the probe's z (the probe seed's generator) raises ``error_type``."""
+
+    original = np.random.default_rng
+
+    def rng(seed=None, *args, **kwargs):
+        if seed == linalg._FORWARD_ERROR_PROBE_SEED:
+            raise error_type("injected z allocation failure")
+        return original(seed, *args, **kwargs)
+
+    monkeypatch.setattr(linalg.np.random, "default_rng", rng)
+
+
+@requires_pypardiso
+@pytest.mark.parametrize("mode", ["report", "refuse"])
+def test_pardiso_probe_z_allocation_failure_is_an_execution_failure(monkeypatch, mode) -> None:
+    """R2 #4: a MemoryError allocating z is a typed failed handle, not a raw exception."""
+
+    backend = PyPardisoSolverBackend()
+    _failing_probe_rng(monkeypatch)
+    handle = backend.factorize(_ordinary_spd(), MatrixClass.SPD, options={"forward_error_probe": mode})
+    assert handle.status == "failed" and handle._solver is None
+    assert handle.metadata["failure_kind"] == linalg.FORWARD_ERROR_PROBE_FAILED
+    assert handle.metadata["forward_error_probe_disposition"] == "EXECUTION_FAILED"
+    assert backend.retained_pattern_slots == 0
+
+
+@pytest.mark.parametrize("mode", ["report", "refuse"])
+def test_superlu_probe_z_allocation_failure_is_an_execution_failure(monkeypatch, mode) -> None:
+    _failing_probe_rng(monkeypatch)
+    handle = SparseSolverBackend().factorize(_ordinary_spd(), MatrixClass.SPD,
+                                             options={"forward_error_probe": mode})
+    assert handle.status == "failed" and handle._solver is None
+    assert handle.metadata["failure_kind"] == linalg.FORWARD_ERROR_PROBE_FAILED
+    assert handle.metadata["forward_error_probe_disposition"] == "EXECUTION_FAILED"
+
+
+def test_superlu_probe_z_allocation_interrupt_propagates(monkeypatch) -> None:
+    _failing_probe_rng(monkeypatch, KeyboardInterrupt)
+    with pytest.raises(KeyboardInterrupt, match="injected"):
+        SparseSolverBackend().factorize(_ordinary_spd(), MatrixClass.SPD)
+
+
+class _MalformedSubtraction(np.ndarray):
+    """A raw-solve result whose ``x - z`` temporary cannot be allocated."""
+
+    def __sub__(self, other):
+        raise MemoryError("injected temporary allocation failure")
+
+
+_MALFORMED_RESULTS = {
+    "short": lambda x: x[:-1],
+    "two_dimensional": lambda x: x[:, None],
+    "list": lambda x: list(x),
+    "complex": lambda x: x.astype(complex),
+    "object": lambda x: x.astype(object),
+    "temporary_memory_error": lambda x: x.view(_MalformedSubtraction),
+}
+
+
+@pytest.mark.parametrize("mode", ["report", "refuse"])
+@pytest.mark.parametrize("kind", sorted(_MALFORMED_RESULTS))
+def test_superlu_malformed_probe_solve_is_an_execution_failure(monkeypatch, mode, kind) -> None:
+    """R2 #4: a malformed raw-solve result never publishes ok (report mode included)."""
+
+    real_splu = linalg.splu
+    corrupt = _MALFORMED_RESULTS[kind]
+
+    class Malformed:
+        def __init__(self, factor):
+            self._factor = factor
+
+        def solve(self, rhs):
+            return corrupt(self._factor.solve(rhs))
+
+    monkeypatch.setattr(linalg, "splu", lambda *a, **k: Malformed(real_splu(*a, **k)))
+    handle = SparseSolverBackend().factorize(_ordinary_spd(50), MatrixClass.SPD,
+                                             options={"forward_error_probe": mode})
+    assert handle.status == "failed" and handle._solver is None
+    assert handle.metadata["failure_kind"] == linalg.FORWARD_ERROR_PROBE_FAILED
+    assert handle.metadata["forward_error_probe_disposition"] == "EXECUTION_FAILED"
+
+
+@requires_pypardiso
+@pytest.mark.parametrize("mode", ["report", "refuse"])
+def test_pardiso_wrong_length_probe_solve_is_an_execution_failure(monkeypatch, mode) -> None:
+    """R2 #4: the PARDISO raw solve returning a wrong-length result: typed failure, slot discarded."""
+
+    backend = PyPardisoSolverBackend()
+    original = linalg._PardisoFactorization.solve
+    monkeypatch.setattr(linalg._PardisoFactorization, "solve",
+                        lambda self, rhs: original(self, rhs)[:-1])
+    handle = backend.factorize(_ordinary_spd(), MatrixClass.SPD, options={"forward_error_probe": mode})
+    assert handle.status == "failed" and handle._solver is None
+    assert handle.metadata["failure_kind"] == linalg.FORWARD_ERROR_PROBE_FAILED
+    assert handle.metadata["forward_error_probe_disposition"] == "EXECUTION_FAILED"
+    assert backend.retained_pattern_slots == 0
+
+
+def test_rule_b_on_a_float32_superlu_identity_fails_closed() -> None:
+    """R2 #5 (pre-existing handle.solve limit, follow-up): Rule B is never ok on such a handle."""
+
+    matrix = sparse.eye(5, dtype=np.float32, format="csc")
+    handle = SparseSolverBackend().factorize(matrix, MatrixClass.SPD)
+    assert handle.status == "ok"  # as on main (round-1 #7)
+    y = np.ones(5)
+    values = linalg.relative_forward_error_estimates(matrix, y, y, handle=handle)
+    assert values.shape == (1,) and np.isinf(values[0])
+    assert not linalg.forward_error_estimate_accepted(
+        linalg.relative_forward_error_estimate(matrix, y, y, handle=handle))
+
+
+class _DisplayedMode(str):
+    """A str subclass whose rendering differs from its value."""
+
+    def __str__(self) -> str:
+        return "ProbeMode.DEFAULT"
+
+    __repr__ = __str__
+
+
+class _AgreeingMode(str):
+    """A str subclass whose ``__eq__`` claims equality with everything."""
+
+    def __eq__(self, other):
+        return True
+
+    __hash__ = str.__hash__
+
+
+def test_probe_mode_subclasses_normalize_to_the_literal_for_key_and_execution() -> None:
+    """R2 #7: report and refuse never alias in the cache; execution uses the same literal."""
+
+    report, refuse = _DisplayedMode("report"), _DisplayedMode("refuse")
+    assert str(report) == str(refuse)
+    cache = FactorizationCache(name="probe_literal", max_entries=4)
+    matrix = _ordinary_spd(50)
+    assert (cache.key(matrix, MatrixClass.SPD, options={"forward_error_probe": report})
+            != cache.key(matrix, MatrixClass.SPD, options={"forward_error_probe": refuse}))
+    assert (cache.key(matrix, MatrixClass.SPD, options={"forward_error_probe": report})
+            == cache.key(matrix, MatrixClass.SPD, options={"forward_error_probe": "report"}))
+    first = cache.factorize(matrix, MatrixClass.SPD, options={"forward_error_probe": report})
+    assert first.status == "ok"
+    assert type(first.metadata["forward_error_probe_mode"]) is str
+    assert first.metadata["forward_error_probe_mode"] == "report"
+    second = cache.factorize(matrix, MatrixClass.SPD, options={"forward_error_probe": refuse})
+    assert second is not first and cache.hits == 0
+    assert second.metadata["forward_error_probe_mode"] == "refuse"
+    third = cache.factorize(matrix, MatrixClass.SPD, options={"forward_error_probe": "report"})
+    assert third is first and cache.hits == 1
+
+
+@pytest.mark.parametrize("raw", [_AgreeingMode("bogus"), _DisplayedMode("Report"), b"report"])
+def test_probe_mode_rejects_values_that_are_not_a_literal(raw) -> None:
+    with pytest.raises(ValueError, match="forward_error_probe"):
+        linalg._forward_error_probe_settings({"forward_error_probe": raw}, 3)
+    with pytest.raises(ValueError, match="forward_error_probe"):
+        SparseSolverBackend().factorize(sparse.eye(3, format="csc"), MatrixClass.SPD,
+                                        options={"forward_error_probe": raw})
+
+
+def test_descriptor_target_shift_invert_uses_report_mode(monkeypatch) -> None:
+    """R2 #6 (decision 2a): the descriptor spectrum's target shift-invert uses report
+    mode; its unshifted metric factor keeps the default."""
+
+    import anyfesolver.algebraic_dynamics as algebraic
+    from test_e4_pl_s3_descriptor_spectrum import _repeated_descriptor
+
+    stiffness, mass = _repeated_descriptor()
+    seen = []
+    original = algebraic.factorize_cached
+
+    def spy(matrix, matrix_class, **kwargs):
+        seen.append((linalg._coerce_matrix_class(matrix_class), dict(kwargs.get("options") or {})))
+        return original(matrix, matrix_class, **kwargs)
+
+    monkeypatch.setattr(algebraic, "factorize_cached", spy)
+    kwargs = dict(num_modes=4, dense_size_limit=1, algebraic_nullity=2, static_condensation_limit=1)
+    spectrum = algebraic.solve_descriptor_spectrum(stiffness, mass, target_shift=2.5, **kwargs)
+    assert spectrum.eigenvalues.size == 4
+    assert seen == [(MatrixClass.SYMMETRIC_INDEFINITE, {"forward_error_probe": "report"})]
+    seen.clear()
+    algebraic.solve_descriptor_spectrum(stiffness, mass, **kwargs)
+    assert seen == [(MatrixClass.SPD, {})]

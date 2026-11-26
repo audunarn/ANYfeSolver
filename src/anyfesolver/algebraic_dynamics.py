@@ -2664,6 +2664,10 @@ def solve_descriptor_spectrum(
                 shifted_original,
                 MatrixClass.SYMMETRIC_INDEFINITE,
                 cache=cache,
+                # Shift-invert (decision 2a): a target at an eigenvalue is
+                # near-singular by design; eigenpairs are judged by the
+                # full-pencil certificate downstream, so Rule A reports only.
+                options={"forward_error_probe": "report"},
             ))
             handle = descriptor_lease.handle
             if handle.status != "ok":
