@@ -844,8 +844,69 @@ def _live_path(recorded: str) -> str:
     return RECORDED_TO_LIVE_PATH[recorded]
 
 
+GUARD_CADENCE_SUCCESSOR = (
+    ROOT / "docs" / "reference_cases" / "qualified_shell_nonlinear_guard_cadence_successor.json"
+)
+
+
+def _guard_cadence_successor() -> dict[str, object]:
+    """Owner-approved guard cadence successor (G2/L1/G1, 2026-11-24): the
+    single recorded successor of the 2026-11-25 delta, the newest chain link.
+
+    Its ``predecessor`` is exactly the pinned 2026-11-25 record bytes.  It
+    binds the exact live bytes of each changed sealed carrier to the bytes the
+    2026-11-25 chain binds: the live bytes must equal ``current_raw`` and the
+    recorded reverse line patch must reproduce ``prior_raw`` exactly.  Every
+    chain reader then runs unchanged on those prior bytes (``_read_live``);
+    mechanics are re-derived from the live bytes separately.
+    """
+
+    raw = GUARD_CADENCE_SUCCESSOR.read_bytes()
+    record = _strict_json(raw)
+    assert raw == _canonical_bytes(record)
+    assert record["schema"] == "anysolver.qualified-shell-nonlinear-guard-cadence-successor-v1"
+    assert all(value is False for value in record["qualification_boundary"].values())
+    predecessor = Q4_SOURCE_BINDING_DELTA2.read_bytes()
+    assert Q4_SOURCE_BINDING_DELTA2_SHA256 is not None
+    assert hashlib.sha256(predecessor).hexdigest().upper() == Q4_SOURCE_BINDING_DELTA2_SHA256
+    assert record["predecessor"] == {
+        "path": Q4_SOURCE_BINDING_DELTA2.relative_to(ROOT).as_posix(),
+        **_identity(predecessor),
+    }
+    for name, row in record["change"]["sealed_carriers"].items():
+        assert row["live_path"] == f"src/anyfesolver/{name}"
+        assert row["portable_text"] is (name in PORTABLE_AUTO_TEXT)
+    return record
+
+
+def _prior_through_guard_cadence_successor(relative: str, live: bytes) -> bytes:
+    for row in _guard_cadence_successor()["change"]["sealed_carriers"].values():
+        if row["live_path"] != relative:
+            continue
+        canonical = _lf(live)
+        assert _identity(canonical) == row["current_lf"]
+        if row["portable_text"]:
+            # Auto-text: identity is the LF form; keep the live physical form.
+            assert "current_raw" not in row and "prior_raw" not in row
+            assert live == canonical or live == canonical.replace(b"\n", b"\r\n")
+            source = canonical
+        else:
+            assert _identity(live) == row["current_raw"]
+            source = live
+        lines = source.decode("utf-8").splitlines(keepends=True)
+        for start, end, replacement in reversed(row["reverse_line_patch"]):
+            lines[start:end] = replacement
+        prior = "".join(lines).encode("utf-8")
+        assert _identity(_lf(prior)) == row["prior_lf"]
+        if row["portable_text"]:
+            return prior if live == canonical else prior.replace(b"\n", b"\r\n")
+        assert _identity(prior) == row["prior_raw"]
+        return prior
+    return live
+
+
 def _read_live(relative: str) -> bytes:
-    return (ROOT / relative).read_bytes()
+    return _prior_through_guard_cadence_successor(relative, (ROOT / relative).read_bytes())
 
 
 _DELTA_LINE = re.compile(rb"[^\n]*\n|[^\n]+\Z")
@@ -1249,6 +1310,52 @@ def test_successor_record_binds_live_source_without_new_acceptance() -> None:
         Q4_SOURCE_BINDING_SUCCESSOR.read_bytes(), _read_bound, actual, authority
     )
     assert record["boundary_flags"]["CI_credit"] is False
+
+
+def test_guard_cadence_successor_keeps_live_q4_mechanics_unchanged() -> None:
+    """The guard cadence change leaves the qualified mechanics closure the
+    newest chain link (2026-11-25) binds intact."""
+
+    _require_pin()
+    _require_delta_pin()
+    _require_delta2_pin()
+    authority = _strict_json(QUALIFICATION_CONTRACT.read_bytes())["candidate"][
+        "qualified_q4_mechanics_authority"
+    ]
+    live = (ROOT / LIVE_ENTRY).read_bytes()
+    prior = _read_live(LIVE_ENTRY)
+    successor = _guard_cadence_successor()
+    row = successor["change"]["sealed_carriers"]["e4_pl_element.py"]
+    assert row["live_path"] == LIVE_ENTRY
+    assert prior != live
+    # The prior bytes are exactly the bytes the 2026-11-25 chain binds.
+    assert LIVE_ENTRY not in _delta2_record()["files"]
+    assert _chain_live_identities()[LIVE_ENTRY] == row["prior_raw"]
+    record = _require_q4_source_binding_delta2(
+        Q4_SOURCE_BINDING_DELTA2.read_bytes(), _read_live, authority
+    )
+    payloads = [
+        _q4_mechanics_authority_payload(
+            _lf(data).decode("utf-8"), set(authority["roots"]),
+            schema=authority["schema"], path=authority["path"],
+            required_symbols=set(authority["symbols"]),
+        )
+        for data in (prior, live)
+    ]
+    assert payloads[0] == payloads[1]
+    mech = record["mechanics"]
+    assert payloads[1]["symbols"] == mech["symbols"]
+    assert _q4_mechanics_aggregate(payloads[1]) == mech["aggregate_sha256"]
+    assert successor["qualification_boundary"]["mechanics_symbols_changed"] is False
+
+
+@pytest.mark.parametrize("suffix", (b"\n# unrecorded\n", b"\r\n"))
+def test_guard_cadence_successor_rejects_unrecorded_live_bytes(suffix: bytes) -> None:
+    live = (ROOT / LIVE_ENTRY).read_bytes()
+    with pytest.raises(AssertionError):
+        _prior_through_guard_cadence_successor(LIVE_ENTRY, live + suffix)
+    with pytest.raises(AssertionError):
+        _prior_through_guard_cadence_successor(LIVE_ENTRY, live.replace(b"\n", b"\r\n"))
 
 
 GAP_PATHS = (

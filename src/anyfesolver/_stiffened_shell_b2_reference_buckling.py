@@ -376,7 +376,8 @@ def solve(owner, request, *, cancellation=None):
             raise _BucklingNumericalFailure("shifted buckling scaling loses nonzero entries")
         safe("buckling before factorization")
         # Pinned for the Arnoldi iteration (other factorizations may run between actions).
-        lease=lease_from(factorize_cached,shifted,MatrixClass.GENERAL)
+        lease=lease_from(factorize_cached,shifted,MatrixClass.GENERAL,
+                         options={"forward_error_probe": "report"})  # Eigen results are judged by the per-mode residuals computed downstream; a shift at or near an eigenvalue is legitimate.
         handle=lease.handle
         if handle.status != "ok": raise _BucklingNumericalFailure("buckling factorization failed: "+str(handle.failure_reason))
         def action(v):

@@ -52,7 +52,10 @@ from .current_state_tangent import (
     _guarded_owned_input_snapshot as _guarded_owned_nonlinear_snapshot,
     require_exact_qualified_component_lifecycle_api as _EXACT_QUALIFIED_LIFECYCLE_GUARD,
 )
-from .e4_pl_element import QualifiedE4PLShellElement as _QualifiedE4PLShellElement
+from .e4_pl_element import (
+    QualifiedE4PLShellElement as _QualifiedE4PLShellElement,
+    _q4_class_authority_window as _Q4_CLASS_AUTHORITY_WINDOW,
+)
 from .e4_pl_s3_element import (
     QualifiedE4PLS3ShellElement as _QualifiedE4PLS3ShellElement,
 )
@@ -1704,20 +1707,25 @@ def _assemble_nonlinear_system(
     """
 
     try:
-        F_int, K_T, states = _assemble_nonlinear_system_unchecked(
-            model,
-            displacements,
-            committed_states,
-            num_layers,
-            tangent=tangent,
-            deleted_element_ids=deleted_element_ids,
-            residual_stiffness_fraction=residual_stiffness_fraction,
-            element_stiffness_scales=element_stiffness_scales,
-            kinematics=kinematics,
-            corotational_tangent=corotational_tangent,
-            require_full_coordinates=require_full_coordinates,
-            stable_shell_rotation=stable_shell_rotation,
-        )
+        # G2 (owner 2026-11-24): one Newton evaluation is one Q4 class-authority
+        # window.  Class/namespace authority is validated completely on first
+        # use and again when the evaluation ends, before its result is used;
+        # per-element instance checks still run on every guarded call.
+        with _Q4_CLASS_AUTHORITY_WINDOW():
+            F_int, K_T, states = _assemble_nonlinear_system_unchecked(
+                model,
+                displacements,
+                committed_states,
+                num_layers,
+                tangent=tangent,
+                deleted_element_ids=deleted_element_ids,
+                residual_stiffness_fraction=residual_stiffness_fraction,
+                element_stiffness_scales=element_stiffness_scales,
+                kinematics=kinematics,
+                corotational_tangent=corotational_tangent,
+                require_full_coordinates=require_full_coordinates,
+                stable_shell_rotation=stable_shell_rotation,
+            )
         from .general_contact.runtime import active_contact_manager
 
         contact_manager = active_contact_manager()
@@ -3427,7 +3435,10 @@ def _activate_nonlinear_state_storage(
         if allow_array_batches:
             from .nonlinear_performance_bootstrap import get_nonlinear_assembly_plan
 
-            plan = get_nonlinear_assembly_plan(model, int(num_layers))
+            # The plan build evaluates every element once: one Q4
+            # class-authority window (G2, owner 2026-11-24).
+            with _Q4_CLASS_AUTHORITY_WINDOW():
+                plan = get_nonlinear_assembly_plan(model, int(num_layers))
             plastic_batches = tuple(
                 batch for batch in plan.shell_batches if batch.has_plasticity
             )
@@ -3652,6 +3663,7 @@ def _equilibrate_initial_fields_candidate(
                     K_red,
                     MatrixClass.GENERAL if general_tangent else MatrixClass.SYMMETRIC_INDEFINITE,
                     signature=f"nonlinear.initial_state:{iteration}",
+                    options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
                 )
                 dq = np.asarray(handle.solve(residual), dtype=float).reshape(-1)
         except Exception:
@@ -4262,6 +4274,7 @@ def _solve_static_displacement_control(
                             sparse.csr_matrix(matrix), MatrixClass.GENERAL,
                             signature=(f"nonlinear.displacement_seed:"
                                        f"{step_index}:{attempt_seed_solves}"),
+                            options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
                         )
                         if getattr(seed_handle, "status", "ok") != "ok":
                             return None
@@ -4455,6 +4468,7 @@ def _solve_static_displacement_control(
                                         f"nonlinear.displacement_control:{step_index}:"
                                         f"{augmentation}:{iteration}"
                                     ),
+                                    options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
                                 )
                                 delta = np.asarray(handle.solve(rhs), dtype=float).reshape(-1)
                         except Exception:
@@ -5776,6 +5790,11 @@ def _solve_static_nonlinear_under_lease(
         # and global authority generation, while the exact lifecycle guard
         # validates whichever owned model is being observed.
         _qualified_runtime_guard(lease_model, context=context)
+        # L1: a complete scan of the leased model covers every internal point
+        # deferred before it in the current step window.
+        window = lifecycle_step_window[0]
+        if window is not None and observed_model is lease_model:
+            window[1] = False
         return result
 
     native_generalized_model = any(
@@ -5889,8 +5908,91 @@ def _solve_static_nonlinear_under_lease(
                 v2d_trusted_guard(context=context)
                 record_nonlinear_solver_event("qualified_guard_trusted")
                 return {}
+            window = lifecycle_step_window[0]
+            if window is not None:
+                if window[0]:
+                    deferred_lifecycle_guard(observed_model, context=context)
+                    window[1] = True
+                    record_nonlinear_solver_event("qualified_guard_step_deferred")
+                    return {}
+                record_nonlinear_solver_event("qualified_guard_complete_scan")
+                result = exact_guard(observed_model, context=context)
+                window[0] = True
+                return result
         record_nonlinear_solver_event("qualified_guard_complete_scan")
         return exact_guard(observed_model, context=context)
+
+    # L1 (owner 2026-11-24): within one force-control step attempt the
+    # solver-internal complete lifecycle scans (``internal_guard`` without a
+    # constant-time trusted path) run at step entry and before the step
+    # commits instead of at every evaluation.  Every caller-controlled
+    # observation (status/progress callbacks, untrusted cancellation tokens,
+    # external providers) still uses ``exact_guard`` immediately.  The lease,
+    # numerical and plate-stability checks of a deferred scan still run; if
+    # one of them rejects, the lifecycle scan runs first so the rejection keeps
+    # the complete guard's precedence.  Window state: [entry scanned, deferred].
+    # After the pre-commit scan the window continues as an already-scanned
+    # post-commit segment: the committed-state, reaction and snapshot
+    # observations of the accepted step are deferred too and are covered by
+    # the step's unconditional complete scan at the support-reaction
+    # observation (``exact_guard``), by the next step's entry scan, or by the
+    # scan at loop exit, whichever comes first.  A complete scan of the leased
+    # model always clears the deferred flag.
+    lifecycle_step_window: List[Any] = [None]
+
+    def deferred_lifecycle_guard(
+        observed_model: "FEModel",
+        *,
+        context: str,
+    ) -> None:
+        try:
+            if stability_control is not None:
+                _plate_stability_authority()
+                from ._plate_stability_continuation import admit
+                if admit(observed_model) != _plate_stability_binding:
+                    raise ValueError("plate_energy admitted model changed during solve")
+            _qualified_runtime_guard(lease_model, context=context)
+        except BaseException:
+            try:
+                raw_exact_guard(observed_model, context=context)
+            except BaseException as lifecycle_error:
+                raise lifecycle_error from None
+            raise
+
+    def open_lifecycle_step_window() -> None:
+        previous = lifecycle_step_window[0]
+        # A deferral still pending from the previous step's post-commit
+        # segment stays pending until the next complete scan.
+        lifecycle_step_window[0] = [
+            False,
+            bool(previous is not None and previous[1]),
+        ]
+
+    def close_lifecycle_step_window(*, context: str) -> None:
+        window = lifecycle_step_window[0]
+        lifecycle_step_window[0] = None
+        if window is not None and window[1]:
+            record_nonlinear_solver_event("qualified_guard_complete_scan")
+            exact_guard(lease_model, context=context)
+
+    def commit_lifecycle_step_window(*, context: str) -> None:
+        close_lifecycle_step_window(context=context)
+        lifecycle_step_window[0] = [True, False]
+
+    class _LifecycleStepScope:
+        """Close the step window on loop exit; drop it on an exception."""
+
+        def __enter__(self) -> None:
+            return None
+
+        def __exit__(self, exc_type: Any, _exc: Any, _tb: Any) -> bool:
+            if exc_type is not None:
+                lifecycle_step_window[0] = None
+                return False
+            close_lifecycle_step_window(
+                context="nonlinear static force step window exit"
+            )
+            return False
 
     def cancellation_checkpoint(stage: str, *, context: str) -> Dict[str, Any]:
         """Run one cancellation checkpoint, then the matching lifecycle guard.
@@ -6301,8 +6403,10 @@ def _solve_static_nonlinear_under_lease(
 
     # The constraint transformation only depends on supports/MPCs; the
     # elastic stiffness is assembled once to build it (and warms the element
-    # caches used by the nonlinear kernels).
-    K0, stiffness_info = assemble_stiffness_matrix(model)
+    # caches used by the nonlinear kernels).  This initial elastic evaluation
+    # is one Q4 class-authority window (G2, owner 2026-11-24).
+    with _Q4_CLASS_AUTHORITY_WINDOW():
+        K0, stiffness_info = assemble_stiffness_matrix(model)
     exact_guard(model, context="nonlinear static stiffness assembly")
     stage_vectors: List[np.ndarray] = []
     stage_infos: List[Dict[str, Any]] = []
@@ -7703,6 +7807,7 @@ def _solve_static_nonlinear_under_lease(
                         f"nonlinear.static_newton:{lam:.16g}:{path_factor:.16g}:"
                         f"{augmentation}:{iteration}"
                     ),
+                    options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
                 )
             if handle.status != "ok":
                 detail = (
@@ -8185,8 +8290,9 @@ def _solve_static_nonlinear_under_lease(
     reaction_force_reassembly_count = 0
 
     assembly_threads = None if resource_config is None else resource_config.assembly_threads
-    with numba_thread_scope(assembly_threads):
+    with numba_thread_scope(assembly_threads), _LifecycleStepScope():
         while lam < target_load_factor - 1.0e-12:
+            open_lifecycle_step_window()
             cancellation_checkpoint(
                 f"nonlinear_static.force.step:{step_index + 1}",
                 context="nonlinear static force step cancellation",
@@ -8465,6 +8571,9 @@ def _solve_static_nonlinear_under_lease(
                             contact_manager.set_path_factor(lam)
                         raise
 
+                commit_lifecycle_step_window(
+                    context="nonlinear static step pre-commit"
+                )
                 q = q_new
                 lam = lam_trial
                 committed_states = _commit_nonlinear_state_candidate(

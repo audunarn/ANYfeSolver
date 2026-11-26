@@ -513,7 +513,9 @@ def _constrained_gap_response(manager, displacement, tangent, transform,
     # factorization, eviction or release in between).
     try:
         pinned = lease_from(factorize, matrix, MatrixClass.GENERAL,
-                            signature="contact:pressure_response")
+                            signature="contact:pressure_response",
+                            options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
+                            )
     except PardisoStaleHandleError as exc:
         # Both pin attempts went stale under a concurrent invalidation: the
         # optional pivot reports a response failure, it does not abort.

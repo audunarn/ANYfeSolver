@@ -563,6 +563,7 @@ def solve_increment(*, model, manager, settings, q, reactions, nodal_forces,
                     delta = np.asarray(factorize(
                         matrix, MatrixClass.GENERAL,
                         signature=f"contact_path:{step}:semismooth:{iteration}:pivot:{pivot}",
+                        options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
                     ).solve(rhs)).reshape(-1)
                 else:
                     parts = block_response.direction(

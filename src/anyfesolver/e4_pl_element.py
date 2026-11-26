@@ -29,7 +29,8 @@ import warnings
 import weakref
 from contextlib import contextmanager
 from contextvars import ContextVar
-from operator import is_ as _operator_is, itemgetter
+from itertools import repeat as _itertools_repeat
+from operator import is_ as _operator_is, is_not as _operator_is_not, itemgetter
 from types import FunctionType as _FunctionType, MappingProxyType, ModuleType
 from typing import Any, Callable, Dict, Mapping, NamedTuple, Optional, Sequence
 
@@ -7517,11 +7518,12 @@ def _make_q4_trusted_operation_scope() -> tuple[Any, Any]:
     @contextmanager
     def operation(elements: Sequence[Any]) -> Any:
         owned = tuple(elements)
-        for element in owned:
-            _require_exact_q4_runtime_authority(
-                element,
-                context="qualified Q4 trusted operation preflight",
-            )
+        with _q4_class_authority_window():
+            for element in owned:
+                _require_exact_q4_runtime_authority(
+                    element,
+                    context="qualified Q4 trusted operation preflight",
+                )
         generation = manager.capture_generation()
         records = {
             id(element): (element, object.__getattribute__(element, "__dict__"))
@@ -7539,21 +7541,22 @@ def _make_q4_trusted_operation_scope() -> tuple[Any, Any]:
             active.reset(marker)
             try:
                 manager.require_generation(generation)
-                for element in owned:
-                    _require_exact_q4_runtime_authority(
-                        element,
-                        context="qualified Q4 trusted operation output",
-                    )
-                    record = records.get(id(element))
-                    if (
-                        record is None
-                        or record[0] is not element
-                        or record[1]
-                        is not object.__getattribute__(element, "__dict__")
-                    ):
-                        raise ValueError(
-                            "qualified Q4 trusted operation identity changed"
+                with _q4_class_authority_window():
+                    for element in owned:
+                        _require_exact_q4_runtime_authority(
+                            element,
+                            context="qualified Q4 trusted operation output",
                         )
+                        record = records.get(id(element))
+                        if (
+                            record is None
+                            or record[0] is not element
+                            or record[1]
+                            is not object.__getattribute__(element, "__dict__")
+                        ):
+                            raise ValueError(
+                                "qualified Q4 trusted operation identity changed"
+                            )
             except BaseException:
                 for element in owned:
                     _invalidate_q4_guarded_call_caches(element)
@@ -7581,6 +7584,252 @@ def _make_q4_trusted_operation_scope() -> tuple[Any, Any]:
     _q4_trusted_operation_scope,
     _q4_trusted_operation_accepts,
 ) = _make_q4_trusted_operation_scope()
+
+
+def _make_q4_class_authority_window() -> tuple[Any, Any, Any]:
+    """Create the context-local class-authority cadence window (owner G2).
+
+    Outside a window every exact class/namespace guard runs completely on
+    every call, exactly as before.  Inside a window each distinct guard runs
+    completely on its first use and is then accepted for the rest of that
+    window.  Every window close - nested or outermost, normal or exceptional -
+    runs every guard used in that window completely again before control
+    returns to the code that opened it; a nested window may only skip the
+    first-use check of a guard that an enclosing live window has already
+    validated.  A window is one Newton evaluation, plan build, K0 assembly,
+    lease scan or trusted-operation preflight/exit.  Per-element instance,
+    quadrature and epoch checks are unaffected.
+
+    Close refusal: the class-authority error is raised (chained to an
+    exception that was already leaving the window, so a class change keeps
+    the precedence of the per-call guards) and every Q4 element whose guarded
+    call ran inside the refused window has its derived caches dropped, as a
+    per-call refusal would have done.  A guard that already refused inside the
+    window is not re-run when its error leaves the window: that error is the
+    window's error.  If code inside the window swallows such a refusal, the
+    guard is run again at every enclosing close it passed through, and a
+    nested window's successful close hands its tracked elements to the
+    enclosing window together with its evictions.
+    Reusable caches written under a window either validate before they
+    publish (their own nested window) or register an eviction with
+    ``on_refusal``: it runs if the innermost live window, or any enclosing
+    window it is handed to on a successful close, refuses.
+
+    Trust boundary: ANYfeSolver's own classes and guard machinery and the
+    trusted numerical dependencies are not replaced while a window is open,
+    and concurrent mutation during a request is out of contract.  A class
+    change made and reverted inside one window is therefore not detected;
+    a persistent one is refused at the window boundary.  The token is
+    closure-owned and revoked before the closing validation, so a context
+    copied inside the window cannot keep it.
+    """
+
+    active: ContextVar[Any] = ContextVar(
+        "qualified_q4_class_authority_window", default=None
+    )
+
+    class Token:
+        __slots__ = (
+            "validated", "live", "parent", "elements", "refusal", "evictions",
+            "refused_guards",
+        )
+
+        def __init__(self, parent: Any) -> None:
+            # Guards used in this window: validated on first use (or by a live
+            # enclosing window) and validated again when this window closes.
+            self.validated: list[Any] = []
+            self.live = True
+            self.parent = parent
+            # Q4 elements whose guarded calls ran here (derived caches to drop
+            # on a close refusal).
+            self.elements: dict[int, Any] = {}
+            self.refusal: Any = None
+            # Cache evictions to run if this window (or, after a successful
+            # close, its parent) refuses.
+            self.evictions: list[Any] = []
+            # Guards that refused on first use here or in a nested window.  If
+            # caller-visible code swallows that refusal, every window it
+            # passed through runs the guard again when it closes.
+            self.refused_guards: list[Any] = []
+
+    def mark_refused(
+        token: Any, error: BaseException, exact_guard: Any = None
+    ) -> None:
+        while token is not None:
+            if token.refusal is None:
+                token.refusal = error
+            if exact_guard is not None:
+                for refused in token.refused_guards:
+                    if refused is exact_guard:
+                        break
+                else:
+                    token.refused_guards.append(exact_guard)
+            token = token.parent
+
+    def hand_refused_guards(token: Any) -> None:
+        # A refused window's guards stay owed by every enclosing window: if
+        # the refusal is swallowed there, those closes run them again.
+        for exact_guard in tuple(token.validated) + tuple(token.refused_guards):
+            parent = token.parent
+            while parent is not None:
+                for refused in parent.refused_guards:
+                    if refused is exact_guard:
+                        break
+                else:
+                    parent.refused_guards.append(exact_guard)
+                parent = parent.parent
+
+    def enclosing_validated(token: Any, exact_guard: Any) -> bool:
+        parent = token.parent
+        while parent is not None:
+            if parent.live:
+                for accepted in parent.validated:
+                    if accepted is exact_guard:
+                        return True
+            parent = parent.parent
+        return False
+
+    def require(exact_guard: Any, element: Any = None) -> None:
+        token = active.get()
+        if type(token) is Token and token.live:
+            for accepted in token.validated:
+                if accepted is exact_guard:
+                    break
+            else:
+                if not enclosing_validated(token, exact_guard):
+                    try:
+                        exact_guard()
+                    except BaseException as error:
+                        # Refused on first use, before this call ran: the same
+                        # point and error as the per-call guard.
+                        mark_refused(token, error, exact_guard)
+                        raise
+                token.validated.append(exact_guard)
+            if element is not None:
+                token.elements[id(element)] = element
+            return
+        exact_guard()
+
+    def drop_caches(token: Any) -> None:
+        elements = tuple(token.elements.values())
+        token.elements.clear()
+        evictions = tuple(token.evictions)
+        token.evictions.clear()
+        for element in elements:
+            _invalidate_q4_guarded_call_caches(element)
+        for eviction in evictions:
+            eviction()
+
+    def on_refusal(eviction: Any) -> None:
+        token = active.get()
+        if type(token) is Token and token.live:
+            token.evictions.append(eviction)
+
+    def validate(token: Any) -> None:
+        try:
+            for exact_guard in tuple(token.validated):
+                exact_guard()
+            for exact_guard in tuple(token.refused_guards):
+                exact_guard()
+        except BaseException as error:
+            mark_refused(token, error)
+            hand_refused_guards(token)
+            drop_caches(token)
+            raise
+        parent = token.parent
+        if parent is not None and parent.live:
+            for exact_guard in token.validated:
+                for accepted in parent.validated:
+                    if accepted is exact_guard:
+                        break
+                else:
+                    parent.validated.append(exact_guard)
+            parent.evictions.extend(token.evictions)
+            # The parent's close refusal must also drop the derived caches of
+            # elements whose guarded calls ran only in this nested window.
+            parent.elements.update(token.elements)
+        token.evictions.clear()
+        token.elements.clear()
+
+    def refusal_in_chain(refusal: BaseException, error: BaseException) -> bool:
+        seen: set[int] = set()
+        current: Any = error
+        while current is not None and id(current) not in seen:
+            if current is refusal:
+                return True
+            seen.add(id(current))
+            current = current.__cause__ or current.__context__
+        return False
+
+    @contextmanager
+    def window() -> Any:
+        outer = active.get()
+        token = Token(outer if type(outer) is Token and outer.live else None)
+        marker = active.set(token)
+        try:
+            yield
+        except BaseException as error:
+            token.live = False
+            active.reset(marker)
+            if token.refusal is not None and refusal_in_chain(token.refusal, error):
+                # The class refusal (possibly wrapped by an assembly lease) is
+                # already leaving: keep it exactly as the per-call guard did.
+                hand_refused_guards(token)
+                drop_caches(token)
+                raise
+            try:
+                validate(token)
+            except BaseException as refusal:
+                raise refusal from error
+            raise
+        token.live = False
+        active.reset(marker)
+        validate(token)
+
+    return window, require, on_refusal
+
+
+(
+    _q4_class_authority_window,
+    _require_q4_class_authority_in_window,
+    _q4_class_authority_on_refusal,
+) = _make_q4_class_authority_window()
+
+
+_q4_identity_sweep_missing = object()
+
+
+def _q4_identity_entries_changed(
+    namespace: Any,
+    names: tuple[str, ...],
+    expected_values: tuple[Any, ...],
+    _missing: Any = _q4_identity_sweep_missing,
+    _is_not: Any = _operator_is_not,
+    _repeat: Any = _itertools_repeat,
+) -> bool:
+    """Exact C-speed form of the guarded identity sweep (owner G1).
+
+    Equivalent to ``any(name not in namespace or namespace[name] is not
+    expected for name, expected in zip(names, expected_values))`` for an exact
+    ``dict`` or class ``mappingproxy``: the private sentinel is never an
+    expected value, the sweep keeps the same order and stops at the first
+    changed entry.
+    """
+
+    return any(
+        map(_is_not, map(namespace.get, names, _repeat(_missing)), expected_values)
+    )
+
+
+def _q4_all_exact_type(
+    values: Any,
+    expected_type: type[Any],
+    _is: Any = _operator_is,
+    _repeat: Any = _itertools_repeat,
+) -> bool:
+    """Exact C-speed form of ``all(type(value) is expected_type ...)``."""
+
+    return all(map(_is, map(type, values), _repeat(expected_type)))
 
 
 def _invalidate_q4_guarded_call_caches(element: Any) -> None:
@@ -7840,24 +8089,53 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
                 + ", ".join(sorted(set(changed)))
             )
 
+    # G1: the same sweeps in the same order with the same messages, with the
+    # per-entry identity comparisons run by C iterators over captured tuples.
+    entries_changed = _q4_identity_entries_changed
+    all_exact_type = _q4_all_exact_type
+    operator_is_not = _operator_is_not
+    namespace_sweeps = tuple(
+        (
+            owner,
+            tuple(expected_namespace),
+            tuple(expected_namespace.values()),
+            len(expected_namespace),
+            metadata[2],
+        )
+        for (owner, expected_namespace), metadata in zip(
+            dependency_namespaces, dependency_class_metadata
+        )
+    )
+    mapping_sweeps = tuple(
+        (
+            label,
+            mapping,
+            tuple(name for name, _expected in expected_items),
+            tuple(expected for _name, expected in expected_items),
+            len(expected_items),
+        )
+        for label, mapping, expected_items in class_mutable_mappings
+    )
+
     def formulation_class_guard() -> None:
         for (
             owner,
-            expected_namespace,
-        ), metadata in zip(dependency_namespaces, dependency_class_metadata):
+            expected_names,
+            expected_values,
+            expected_count,
+            owner_name,
+        ) in namespace_sweeps:
             actual_namespace = type.__getattribute__(owner, "__dict__")
             if (
                 len(actual_namespace)
                 - int(ignored_dependency_class_cache_name in actual_namespace)
-                != len(expected_namespace)
-                or any(
-                    name not in actual_namespace
-                    or actual_namespace[name] is not expected
-                    for name, expected in expected_namespace.items()
+                != expected_count
+                or entries_changed(
+                    actual_namespace, expected_names, expected_values
                 )
             ):
                 raise ValueError(
-                    f"qualified Q4 {metadata[2]} class namespace changed"
+                    f"qualified Q4 {owner_name} class namespace changed"
                 )
         for (
             owner,
@@ -7875,25 +8153,23 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
                 or actual_name != expected_name
                 or type(actual_bases) is not tuple
                 or len(actual_bases) != len(expected_bases)
-                or any(
-                    actual_base is not expected_base
-                    for actual_base, expected_base in zip(
-                        actual_bases, expected_bases
-                    )
-                )
+                or any(map(operator_is_not, actual_bases, expected_bases))
             ):
                 raise ValueError(
                     f"qualified Q4 {expected_name} class identity changed"
                 )
-        for label, mapping, expected_items in class_mutable_mappings:
+        for (
+            label,
+            mapping,
+            expected_names,
+            expected_values,
+            expected_count,
+        ) in mapping_sweeps:
             if (
                 type(mapping) is not dict
-                or not all(type(key) is str for key in mapping)
-                or len(mapping) != len(expected_items)
-                or any(
-                    name not in mapping or mapping[name] is not expected
-                    for name, expected in expected_items
-                )
+                or not all_exact_type(mapping, str)
+                or len(mapping) != expected_count
+                or entries_changed(mapping, expected_names, expected_values)
             ):
                 raise ValueError(
                     f"qualified Q4 {label} mutable class authority changed"
@@ -7914,10 +8190,28 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
             runtime_epoch_guard
         )
 
-    def runtime_guard() -> None:
+    class_window_require = _require_q4_class_authority_in_window
+
+    def runtime_guard(element: Any = None) -> None:
         numerical_module_guard(context=f"qualified Q4 {method.__name__}")
         runtime_epoch_guard()
-        formulation_class_guard()
+        # G2: complete on every call outside a window; once per evaluation or
+        # lease window (and again when the window closes) inside one.  The
+        # element is recorded so a close refusal drops its derived caches.
+        class_window_require(formulation_class_guard, element)
+
+    expected_topology_names = (
+        "reduced_integration",
+        "_is_3node",
+        "_is_4node",
+        "_is_6node",
+        "_is_8node",
+        "_is_triangular",
+        "_is_quadrilateral",
+    )
+    expected_topology_values = (False, False, True, False, False, False, True)
+    exact_dict_get = dict.get
+    repeat_value = _itertools_repeat
 
     def instance_guard(self: Any) -> None:
         if type(self) is not expected_class:
@@ -7925,7 +8219,7 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
         namespace = object.__getattribute__(self, "__dict__")
         if type(namespace) is not dict:
             raise ValueError("qualified Q4 instance namespace is incompatible")
-        if not all(type(name) is str for name in namespace):
+        if not all_exact_type(namespace, str):
             raise ValueError("qualified Q4 instance keys must be exact strings")
         shadowed = class_data_names.intersection(namespace)
         if shadowed:
@@ -7933,7 +8227,7 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
                 "qualified Q4 class authority has instance shadows: "
                 + ", ".join(sorted(shadowed))
             )
-        if any(callable(value) for value in namespace.values()):
+        if any(map(callable, namespace.values())):
             raise ValueError(
                 "qualified Q4 instance contains a callable authority override"
             )
@@ -7944,7 +8238,7 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
             type(element_id) is not int
             or type(node_ids) is not tuple
             or len(node_ids) != 4
-            or not all(type(node_id) is int for node_id in node_ids)
+            or not all_exact_type(node_ids, int)
             or len(set(node_ids)) != 4
             or type(material_name) is not str
             or _static_mro_attribute(type(self), "element_id") is not None
@@ -7956,18 +8250,12 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
             raise ValueError(
                 "qualified Q4 instance connectivity/material authority is incompatible"
             )
-        expected_topology = {
-            "reduced_integration": False,
-            "_is_3node": False,
-            "_is_4node": True,
-            "_is_6node": False,
-            "_is_8node": False,
-            "_is_triangular": False,
-            "_is_quadrilateral": True,
-        }
         if any(
-            dict.get(namespace, name) is not expected
-            for name, expected in expected_topology.items()
+            map(
+                operator_is_not,
+                map(exact_dict_get, repeat_value(namespace), expected_topology_names),
+                expected_topology_values,
+            )
         ):
             raise ValueError(
                 "qualified Q4 fixed topology authority is incompatible"
@@ -8005,7 +8293,7 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
 
     def boundary_guard(self: Any, *, context: str) -> None:
         del context
-        runtime_guard()
+        runtime_guard(self)
         instance_guard(self)
         quadrature_guard(self)
 
@@ -8018,7 +8306,7 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
                 f"{method.__name__} does not accept a caller-supplied runtime guard"
             )
         if method.__name__ == "__init__":
-            runtime_guard()
+            runtime_guard(self)
             call_generation = runtime_manager.capture_generation()
             completed = False
             try:
@@ -8027,7 +8315,7 @@ def _bind_q4_exact_quadrature_boundary(method: Any) -> Any:
                 return result
             finally:
                 try:
-                    runtime_guard()
+                    runtime_guard(self)
                     runtime_manager.require_generation(call_generation)
                     if completed:
                         instance_guard(self)

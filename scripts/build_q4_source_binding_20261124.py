@@ -15,6 +15,12 @@ as a delta on top of that predecessor, without rewriting it:
 * per-module AST symbol deltas and the live qualified-Q4 mechanics closure
   are recorded and recomputable.
 
+The "live" bytes this record binds are the working-tree bytes rebuilt through
+the later links of the chain (the guard cadence successor, then the
+2026-11-25 delta; ``read_bound`` in the 2026-11-11 collector), each link
+authenticated by its pinned identity, so this collector keeps checking the
+bytes it was generated for.
+
 The change bound by this record is the owner-decided warped-Q4 drilling floor
 (spot-check finding 1, option C).  The record grants no CI, scientific or
 physical acceptance, claims no reviewer approval and must be independently
@@ -159,7 +165,7 @@ def build() -> tuple[dict[str, Any], list[str]]:
     files: dict[str, Any] = {}
     for path, bound in sorted(predecessor_bound_files(predecessor).items()):
         base = git_blob_at(BASE_REVISION, path)
-        live = (ROOT / path).read_bytes()
+        live = _prev.read_bound(problems, path, "20261124")
         if base is None:
             problems.append(f"{path}: absent at base revision {BASE_REVISION}")
             continue
@@ -188,7 +194,7 @@ def build() -> tuple[dict[str, Any], list[str]]:
     contract = strict_json((ROOT / CONTRACT).read_bytes())
     authority = contract["candidate"]["qualified_q4_mechanics_authority"]
     roots, required = set(authority["roots"]), set(authority["symbols"])
-    live_entry = lf((ROOT / ENTRY).read_bytes()).decode("utf-8")
+    live_entry = lf(_prev.read_bound(problems, ENTRY, "20261124")).decode("utf-8")
     live_closure = closure_payload(live_entry, roots, required, authority["schema"], authority["path"])
     old_symbols = predecessor["mechanics"]["symbols"]
     live_imports = internal_imports(live_entry, sorted(live_closure["symbols"]))

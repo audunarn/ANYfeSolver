@@ -260,6 +260,8 @@ def iter_linear_batches(
     """
     from .assembly import (_backward_error, _LINEAR_STATIC_BACKWARD_ERROR_LIMIT,
         _compute_constraint_force_diagnostics_under_lease)
+    from .linalg import (FORWARD_ERROR_ESTIMATE_EXCEEDED, RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT,
+        relative_forward_error_estimates)
     from .matrix_assembly import _assemble_load_matrix_annotated, LoadMatrixCaseError, assemble_load_vector
     from .recovery import recover_stress_result, filter_reactions
     from .recovery_batches import (_run_with_qualified_recovery_runtime_lease,
@@ -577,11 +579,21 @@ def iter_linear_batches(
                 # Only fix roundoff in the displacement gauge. Never project
                 # any physical component out of the effective load.
                 q -= operator.rigid_modes @ (operator.rigid_modes.T @ q)
+            # Rule B per case, in the factorized variables (the displacement
+            # block of an augmented operator), after the permitted inertia-relief
+            # gauge cleanup (q is a view of solved): a raw gauge drift is reported
+            # by backend_gauge_error, not refused.
+            certification_start = _time.perf_counter()
+            forward_errors = np.zeros(len(block)) if operator.handle is None else (
+                relative_forward_error_estimates(operator.matrix, solved, solve_rhs,
+                    handle=operator.handle, scaling=operator.scaling, rows=slice(0, rhs.shape[0])))
+            forward_error_seconds = _time.perf_counter() - certification_start
+            phase_start += forward_error_seconds  # reported under certification
             values = output.reconstruct(q)
             need_full = recovery.include_stresses or recovery.include_reactions or recovery.include_displacements
             full = np.asarray(constraint.T @ q + constraint.u0[:, None]) if need_full else None
             phases["output_reconstruction"] = _time.perf_counter() - phase_start
-            phases["certification"] = 0.0
+            phases["certification"] = forward_error_seconds
             phases["recovery"] = 0.0
             certified = []
             for j, case in enumerate(block):
@@ -595,10 +607,22 @@ def iter_linear_batches(
                             "input_index": indices[j],
                             "relative_backward_error": error if np.isfinite(error) else None,
                             "relative_backward_error_disposition": "LIMIT_EXCEEDED" if np.isfinite(error) else "NONFINITE_OR_OVERFLOW"})
+                forward_error = float(forward_errors[j])
+                if not (np.isfinite(forward_error) and forward_error <= RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT):
+                    raise StaticBatchError("static case exceeded the relative forward-error estimate limit",
+                        diagnostics={"case_id": case.case_id,
+                            "status": "numerical_failure", "stage": "elastic certification",
+                            "input_index": indices[j], "relative_backward_error": error,
+                            "relative_backward_error_disposition": FORWARD_ERROR_ESTIMATE_EXCEEDED,
+                            "relative_forward_error_estimate": forward_error if np.isfinite(forward_error) else None,
+                            "relative_forward_error_estimate_limit": RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT})
                 info = {"status": "converged", "case_id": case.case_id,
                     "input_index": indices[j], "relative_backward_error": error,
                     "relative_backward_error_limit": _LINEAR_STATIC_BACKWARD_ERROR_LIMIT,
-                    "relative_backward_error_disposition": "CERTIFIED", "load": load_info["columns"][j],
+                    "relative_backward_error_disposition": "CERTIFIED",
+                    "relative_forward_error_estimate": forward_error,
+                    "relative_forward_error_estimate_limit": RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT,
+                    "load": load_info["columns"][j],
                     "backend": {} if operator.handle is None else operator.handle.diagnostics(),
                     **deepcopy(operator.info), **compatibility[j]}
                 if inertia_relief:

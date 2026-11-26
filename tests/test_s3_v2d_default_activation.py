@@ -189,8 +189,75 @@ def test_runtime_guard_successor_rejects_identity_mutations(
         _assert_runtime_guard_successor_bindings(mutated)
 
 
+GUARD_CADENCE_SUCCESSOR = (
+    ROOT
+    / "docs"
+    / "reference_cases"
+    / "qualified_shell_nonlinear_guard_cadence_successor.json"
+)
+
+
+def _identity(data: bytes) -> dict[str, object]:
+    return {
+        "bytes": len(data),
+        "git_blob": hashlib.sha1(f"blob {len(data)}\0".encode("ascii") + data).hexdigest(),
+        "sha256": hashlib.sha256(data).hexdigest().upper(),
+    }
+
+
+def _bound_source_bytes(path: Path) -> bytes:
+    """Bytes the 2026-11-24 delta binds as live: the live bytes, or for a
+    carrier changed by the guard cadence successor (G2/L1/G1, owner
+    2026-11-24) the exactly reproduced prior bytes.
+
+    The successor chains from the pinned 2026-11-25 delta, which must not
+    change the file (otherwise this reader fails closed).  The live bytes must
+    equal the successor's recorded current identity and its reverse line
+    patch must reproduce the recorded prior identity.
+    """
+
+    live = path.read_bytes()
+    raw = GUARD_CADENCE_SUCCESSOR.read_bytes()
+    record = json.loads(raw, object_pairs_hook=_strict_object)
+    assert raw == (
+        json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n"
+    ).encode("utf-8")
+    assert record["schema"] == (
+        "anysolver.qualified-shell-nonlinear-guard-cadence-successor-v1"
+    )
+    assert all(value is False for value in record["qualification_boundary"].values())
+    delta2_raw = Q4_SOURCE_BINDING_DELTA2.read_bytes()
+    assert hashlib.sha256(delta2_raw).hexdigest().upper() == _adopted_successor_pin(
+        "Q4_SOURCE_BINDING_DELTA2_SHA256"
+    )
+    assert record["predecessor"] == {
+        "path": Q4_SOURCE_BINDING_DELTA2.relative_to(ROOT).as_posix(),
+        **_identity(delta2_raw),
+    }
+    relative = path.relative_to(ROOT).as_posix()
+    delta2 = json.loads(delta2_raw, object_pairs_hook=_strict_object)
+    assert relative not in delta2["files"]
+    for row in record["change"]["sealed_carriers"].values():
+        if row["live_path"] != relative:
+            continue
+        canonical = live.replace(b"\r\n", b"\n")
+        assert _identity(canonical) == row["current_lf"]
+        source = canonical if row["portable_text"] else live
+        if not row["portable_text"]:
+            assert _identity(live) == row["current_raw"]
+        lines = source.decode("utf-8").splitlines(keepends=True)
+        for start, end, replacement in reversed(row["reverse_line_patch"]):
+            lines[start:end] = replacement
+        prior = "".join(lines).encode("utf-8")
+        assert _identity(prior.replace(b"\r\n", b"\n")) == row["prior_lf"]
+        if not row["portable_text"]:
+            assert _identity(prior) == row["prior_raw"]
+        return prior
+    return live
+
+
 def _git_blob(path: Path) -> str:
-    data = path.read_bytes().replace(b"\r\n", b"\n")
+    data = _bound_source_bytes(path).replace(b"\r\n", b"\n")
     return hashlib.sha1(f"blob {len(data)}\0".encode("ascii") + data).hexdigest()
 
 
@@ -199,6 +266,9 @@ Q4_SOURCE_BINDING_SUCCESSOR = (
 )
 Q4_SOURCE_BINDING_DELTA = (
     ROOT / "docs" / "reference_cases" / "e4_pl_source_binding_20261124.json"
+)
+Q4_SOURCE_BINDING_DELTA2 = (
+    ROOT / "docs" / "reference_cases" / "e4_pl_source_binding_20261125.json"
 )
 MANIFEST_TEST = ROOT / "tests" / "test_e4_pl_s3_mixed_mesh_manifest.py"
 

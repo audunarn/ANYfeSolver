@@ -47,7 +47,18 @@ from .exact_beam_batch import (
     exact_beam_recovery_batch as _exact_beam_recovery_batch,
     exact_beam_recovery_candidate as _exact_beam_recovery_candidate,
 )
-from .linalg import CleanupScope, FactorizationCache, MatrixClass, factorize, factorize_cached
+from .linalg import (
+    FORWARD_ERROR_ESTIMATE_EXCEEDED,
+    RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT,
+    CleanupScope,
+    FactorizationCache,
+    MatrixClass,
+    factorize,
+    factorize_cached,
+    forward_error_estimate_accepted,
+    relative_forward_error_estimate,
+    relative_forward_error_estimates,
+)
 from .matrix_assembly import (
     assemble_load_matrix,
     assemble_mass_matrix as _canonical_assemble_mass_matrix,
@@ -659,6 +670,38 @@ def _backward_error(
     return float(np.max(values)) if values.size else 0.0
 
 
+def _forward_error_estimate_fields(value: float) -> Dict[str, Any]:
+    """Rule B report fields (the value is None when non-finite)."""
+
+    return {
+        "relative_forward_error_estimate": value if np.isfinite(value) else None,
+        "relative_forward_error_estimate_limit": RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT,
+    }
+
+
+def _forward_error_column_fields(values: np.ndarray) -> Dict[str, Any]:
+    """Rule B per input column: estimates (None when non-finite) and failing columns."""
+
+    values = np.asarray(values, dtype=float).reshape(-1)
+    return {
+        "relative_forward_error_estimates": [
+            float(v) if np.isfinite(v) else None for v in values
+        ],
+        "relative_forward_error_failed_columns": [
+            int(j) for j, v in enumerate(values) if not forward_error_estimate_accepted(float(v))
+        ],
+    }
+
+
+def _forward_error_estimate_message(route: str) -> str:
+    return (
+        f"{FORWARD_ERROR_ESTIMATE_EXCEEDED}: {route} exceeded the relative "
+        "forward-error estimate limit (one refinement correction "
+        "max|A^-1 r|/max|x|); the system is (rounding-)singular or numerically "
+        "unresolved"
+    )
+
+
 def _scaled_norm_parts(x: np.ndarray) -> Tuple[float, float]:
     """Return ``(m, n)`` with ``|x|_2 = m * n``, ``m = max|x_i|`` and ``n`` in ``[1, sqrt(len)]``.
 
@@ -862,7 +905,8 @@ def _solve_reduced_system(
                     "backend": handle.diagnostics(),
                     "equilibration": equilibration_info,
                 }
-            q = scaling * handle.solve(scaled_rhs)
+            scaled_q = handle.solve(scaled_rhs)
+            q = scaling * scaled_q
             backward_error = _backward_error(K_red, q, F_red)
             if (
                 not np.isfinite(backward_error)
@@ -891,6 +935,23 @@ def _solve_reduced_system(
                         _LINEAR_STATIC_BACKWARD_ERROR_LIMIT
                     ),
                 }
+            # Rule B: one refinement correction in the factorized variables.
+            forward_error = relative_forward_error_estimate(
+                equilibrated, scaled_q, scaled_rhs, handle=handle
+            )
+            if not forward_error_estimate_accepted(forward_error):
+                return q, {
+                    "status": "failed",
+                    "error": _forward_error_estimate_message("linear static solve"),
+                    "backend": handle.diagnostics(),
+                    "equilibration": equilibration_info,
+                    "relative_backward_error": backward_error,
+                    "relative_backward_error_disposition": FORWARD_ERROR_ESTIMATE_EXCEEDED,
+                    "relative_backward_error_limit": (
+                        _LINEAR_STATIC_BACKWARD_ERROR_LIMIT
+                    ),
+                    **_forward_error_estimate_fields(forward_error),
+                }
             return q, {
                 "status": "converged",
                 "backend": handle.diagnostics(),
@@ -900,6 +961,7 @@ def _solve_reduced_system(
                 "relative_backward_error_limit": (
                     _LINEAR_STATIC_BACKWARD_ERROR_LIMIT
                 ),
+                **_forward_error_estimate_fields(forward_error),
             }
         except Exception as exc:
             return np.zeros(K_red.shape[0]), {"status": "failed", "error": str(exc)}
@@ -920,6 +982,12 @@ def _solve_reduced_system(
         return _verify_iterative_residual(K_red, F_red, q, info, rtol, atol)
 
     raise ValueError(f"Unknown solver type: {solver_type}")
+
+
+def nullspace_augmented_factorization_options(n_displacement: int) -> Dict[str, Any]:
+    """Factorization options of a [[K, Q], [Q^T, 0]] operator (Rule A mask)."""
+
+    return {"forward_error_probe_mask": np.arange(int(n_displacement), dtype=np.int64)}
 
 
 def _solve_nullspace_augmented_system(
@@ -972,7 +1040,10 @@ def _solve_nullspace_augmented_system(
         )
 
     try:
-        handle = (factorize(augmented, MatrixClass.SYMMETRIC_INDEFINITE)
+        # Rule A on the displacement block only: the r rigid-body multipliers
+        # alone reach kfe ~6e-4 at 2,000 beam elements (block: ~1.7e-8).
+        handle = (factorize(augmented, MatrixClass.SYMMETRIC_INDEFINITE,
+                            options=nullspace_augmented_factorization_options(n))
                   if prepared_operator is None else prepared_operator.handle)
         if handle.status != "ok":
             return np.zeros(n), {
@@ -1007,6 +1078,23 @@ def _solve_nullspace_augmented_system(
     multipliers = solution[n:]
     residual = np.asarray(K_red @ q + Q @ multipliers - F_red, dtype=float).reshape(-1)
     gauge = np.asarray(Q.T @ q, dtype=float).reshape(-1)
+    # Rule B on the displacement block (the multipliers are discarded).
+    forward_error = relative_forward_error_estimate(
+        augmented, solution, rhs, handle=handle, rows=slice(0, n)
+    )
+    if not forward_error_estimate_accepted(forward_error):
+        return q, {
+            "status": "failed",
+            "error": _forward_error_estimate_message("nullspace-augmented static solve"),
+            "method": "rigid_body_nullspace_augmented",
+            "nullspace_rank": r,
+            "rigid_body_load_components": load_components.tolist(),
+            "relative_rigid_body_load_imbalance": relative_imbalance,
+            "augmented_residual_norm": float(np.linalg.norm(residual)),
+            "relative_forward_error_estimate_disposition": FORWARD_ERROR_ESTIMATE_EXCEEDED,
+            **_forward_error_estimate_fields(forward_error),
+            "backend": handle.diagnostics(),
+        }
 
     return q, {
         "status": "converged",
@@ -1018,6 +1106,7 @@ def _solve_nullspace_augmented_system(
         "relative_rigid_body_load_imbalance": relative_imbalance,
         "augmented_residual_norm": float(np.linalg.norm(residual)),
         "gauge_residual_norm": float(np.linalg.norm(gauge)),
+        **_forward_error_estimate_fields(forward_error),
         "warnings": warnings,
         "backend": handle.diagnostics(),
     }
@@ -1366,22 +1455,43 @@ def solve_linear_many(
         ).to_dict()
         return displacement, info
     scaled_rhs = scaling[:, None] * F_red
-    q_matrix = scaling[:, None] * handle.solve_many(scaled_rhs)
+    scaled_q_matrix = handle.solve_many(scaled_rhs)
+    q_matrix = scaling[:, None] * scaled_q_matrix
     backward_error = _backward_error(K_red, q_matrix, F_red)
     cancellation_safe_point(cancellation_token, "linear_static_many.after_solve")
+    # Rule B per input column (load case); the route decision uses the maximum.
+    forward_errors = (
+        relative_forward_error_estimates(equilibrated, scaled_q_matrix, scaled_rhs, handle=handle)
+        if np.isfinite(backward_error) and backward_error <= _LINEAR_STATIC_BACKWARD_ERROR_LIMIT
+        else None
+    )
+    forward_error = (
+        float("inf") if forward_errors is None
+        else float(np.max(forward_errors)) if forward_errors.size else 0.0
+    )
+    forward_error_failed = (
+        np.isfinite(backward_error)
+        and backward_error <= _LINEAR_STATIC_BACKWARD_ERROR_LIMIT
+        and not forward_error_estimate_accepted(forward_error)
+    )
     if (
         not np.isfinite(backward_error)
         or backward_error > _LINEAR_STATIC_BACKWARD_ERROR_LIMIT
+        or forward_error_failed
     ):
         backward_error_disposition = (
-            "NONFINITE_OR_OVERFLOW"
+            FORWARD_ERROR_ESTIMATE_EXCEEDED
+            if forward_error_failed
+            else "NONFINITE_OR_OVERFLOW"
             if not np.isfinite(backward_error)
             else "LIMIT_EXCEEDED"
         )
         info = {
             "status": "failed",
             "error": (
-                "linear static many solve exceeded the certified relative "
+                _forward_error_estimate_message("linear static many solve")
+                if forward_error_failed
+                else "linear static many solve exceeded the certified relative "
                 "backward-error limit"
             ),
             "assembly": assembly_info,
@@ -1396,6 +1506,8 @@ def solve_linear_many(
             ),
             "relative_backward_error_disposition": backward_error_disposition,
             "relative_backward_error_limit": _LINEAR_STATIC_BACKWARD_ERROR_LIMIT,
+            **(_forward_error_estimate_fields(forward_error) if forward_error_failed else {}),
+            **(_forward_error_column_fields(forward_errors) if forward_error_failed else {}),
             "solve_time": time.time() - start,
             "thread_policy": thread_policy_diagnostics(resource_config),
         }
@@ -1437,6 +1549,8 @@ def solve_linear_many(
         "relative_backward_error": backward_error,
         "relative_backward_error_disposition": "CERTIFIED",
         "relative_backward_error_limit": _LINEAR_STATIC_BACKWARD_ERROR_LIMIT,
+        **_forward_error_estimate_fields(forward_error),
+        **_forward_error_column_fields(forward_errors),
         "solve_time": time.time() - start,
         "num_result_cases": len(load_cases),
         "thread_policy": thread_policy_diagnostics(resource_config),

@@ -170,7 +170,8 @@ def _attempt(model, source, elements, n, free, nodal, maps, metric, store, total
             return dict(accepted=False, reason='ITERATION_LIMIT', iterations=iteration)
         column = arc._parameter_column(model, elements, store, trial, n, nodal)
         observe('before_corrector', iteration)
-        handle = factorize(arc._bordered(matrix, column, free, row), MatrixClass.GENERAL)
+        handle = factorize(arc._bordered(matrix, column, free, row), MatrixClass.GENERAL,
+                           options={'forward_error_probe': 'report'})  # N1: tangent/iterative solve, outer residual test accepts
         delta = np.asarray(handle.solve(-np.r_[force[free], gap]), dtype=float).reshape(-1)
         if not np.isfinite(delta).all(): raise ValueError('nonfinite adaptive corrector')
         for cut in range(source.max_backtracks+1):

@@ -129,6 +129,7 @@ def prepare_frozen_block_response(*, kqq: sparse.spmatrix,
     rhs[q_size:, 1:] = 0.0
     response = np.asarray(factorize(
         structural_control, MatrixClass.GENERAL, signature=signature,
+        options={"forward_error_probe": "report"},  # N1: tangent/iterative solve, outer residual test accepts
     ).solve_many(rhs))
     base = response[:, 0].copy()
     force_response = response[:, 1:].copy()

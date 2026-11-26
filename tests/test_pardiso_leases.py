@@ -32,6 +32,10 @@ from test_pardiso_perturbed_pivots import (
     requires_pypardiso,
 )
 
+# The fake solver solves exactly when its factor is ok (rule A's known-solution
+# check needs a true solve): diag(1, 2, 3) x = ones.
+_DIAG123_SOLUTION = np.ones(3) / np.array([1.0, 2.0, 3.0])
+
 
 def _counts() -> dict:
     return linalg.backend_operation_counts()
@@ -370,7 +374,10 @@ def test_unconflicted_lease_takes_the_unleased_path(monkeypatch) -> None:
     leased = phases(True)
     assert leased[1] is unleased[1] is True
     assert leased[0][1] == unleased[0][1]
-    assert leased[0][0] == [12, 33, 22]  # the extra solve under the lease only
+    # Each factorization is followed by its rule-A probe solve (33); the lease
+    # adds only its own solve.
+    assert unleased[0][0] == [12, 33, 22, 33]
+    assert leased[0][0] == [12, 33, 33, 22, 33]
     assert _delta(before, "pardiso_lease_conflicts") == 0
 
 
@@ -476,11 +483,11 @@ def test_release_during_a_lease_detaches_and_frees_once_at_lease_end(monkeypatch
     assert frees[id(solvers[1])] == 1 and frees[id(solvers[0])] == 0
     with pytest.raises(linalg.PardisoStaleHandleError):
         other.solve(np.ones(4))
-    np.testing.assert_array_equal(lease.handle.solve(np.ones(3)), np.ones(3) * 1.0e16)
+    np.testing.assert_array_equal(lease.handle.solve(np.ones(3)), _DIAG123_SOLUTION)
     # A same-pattern factorization never matches the detached slot.
     fresh = backend.factorize((A * 2.0).tocsr(), MatrixClass.SPD)
     assert fresh.metadata["pardiso_symbolic_reused"] is False
-    assert solvers[0].phases == [12, 33]
+    assert solvers[0].phases == [12, 33, 33]  # rule-A probe solve, then the held solve
     lease.close()
     lease.close()  # idempotent
     assert frees[id(solvers[0])] == 1
@@ -653,9 +660,40 @@ def test_refused_newcomer_is_not_leasable_and_leaves_the_leased_slot_intact(monk
         assert cache.diagnostics()["entries"] == 1  # not cached
         assert frees[id(solvers[1])] == 1  # the refused instance is freed
         assert held.handle.status == "ok"
-        np.testing.assert_array_equal(held.handle.solve(np.ones(3)), np.ones(3) * 1.0e16)
-        assert solvers[0].phases == [12, 33]
+        np.testing.assert_array_equal(held.handle.solve(np.ones(3)), _DIAG123_SOLUTION)
+        assert solvers[0].phases == [12, 33, 33]  # rule-A probe solve, then the held solve
     assert frees[id(solvers[0])] == 1  # detached by the conflict, freed at lease end
+    assert _leased(backend) == 0
+
+
+def test_probe_refused_newcomer_is_not_leasable_and_leaves_the_leased_slot_intact(monkeypatch) -> None:
+    """8 with rule A: a newcomer refused by the known-solution check is never
+    leased, cached or retained, and the pinned slot keeps solving correctly."""
+
+    state = {"garbage": False}
+
+    def report(matrix) -> int:
+        del matrix
+        return 0
+
+    report.garbage_solve = lambda: bool(state["garbage"])
+    solvers, frees = _counting_frees(monkeypatch, report)
+    backend = PyPardisoSolverBackend(max_pattern_slots=2)
+    cache = linalg.FactorizationCache(name="lease_probe_refused", backend=backend)
+    A = sparse.csr_matrix(np.diag([1.0, 2.0, 3.0]))
+    with linalg.leased_factorization(A, MatrixClass.GENERAL, cache=cache) as held:
+        state["garbage"] = True  # every solve is now wrong: the newcomer's probe fails
+        refused = linalg.leased_factorization((A * 2.0).tocsr(), MatrixClass.GENERAL, cache=cache)
+        assert refused.handle.status == "failed" and not refused.pinned
+        assert refused.handle.metadata["pardiso_failure_kind"] == linalg.FORWARD_ERROR_PROBE_EXCEEDED
+        assert refused.handle._solver is None
+        assert cache.diagnostics()["entries"] == 1  # not cached
+        assert frees[id(solvers[1])] == 1  # the refused instance is freed
+        state["garbage"] = False
+        assert held.handle.status == "ok"
+        np.testing.assert_array_equal(held.handle.solve(np.ones(3)), _DIAG123_SOLUTION)
+        assert solvers[0].phases == [12, 33, 33]  # never refactorized by the newcomer
+    assert frees[id(solvers[0])] == 1
     assert _leased(backend) == 0
 
 
@@ -816,7 +854,7 @@ def test_concurrent_invalidation_never_switches_a_pardiso_factorization_to_super
     state["armed"] = 1
     with linalg.leased_factorization(A, MatrixClass.GENERAL, backend=auto, options=options) as lease:
         assert lease.pinned and lease.handle.backend_name == "pypardiso"
-        np.testing.assert_array_equal(lease.handle.solve(np.ones(3)), np.ones(3) * 1.0e16)
+        np.testing.assert_array_equal(lease.handle.solve(np.ones(3)), _DIAG123_SOLUTION)
 
     # A cache treats the stale result as a miss, never as a failure or an entry.
     cache = linalg.FactorizationCache(name="lease_race", backend=auto)

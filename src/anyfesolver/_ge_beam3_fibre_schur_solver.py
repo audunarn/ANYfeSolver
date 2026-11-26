@@ -83,7 +83,8 @@ class ResultantSchurSolver:
         self.identity=sha(dict(policy=POLICY,layout=self._capture,matrix=self.matrix,
                                geometry=g,blocks=self.blocks,reduced=self.reduced))
         self._factor=factorize(sparse.csc_matrix(self.reduced),MatrixClass.GENERAL,
-            backend=SparseSolverBackend(),signature=self.identity,options={'solver_threads':1})
+            backend=SparseSolverBackend(),signature=self.identity,
+            options={'solver_threads':1,'forward_error_probe':'report'})  # N1: tangent/iterative solve, outer residual test accepts
         if self._factor.status!='ok': raise ValueError('native reduced matrix factorization failed: '+str(self._factor.failure_reason))
         if monotonic()-started>60.: raise RuntimeError('native Schur factorization deadline')
         self._sealed=True; self.guard()

@@ -232,7 +232,8 @@ def solve_displacement_program(model,program,*,checkpoint=None,stop_after=None,c
                 augmented = _bordered(matrix,column,free,local_control)
                 rhs = -np.r_[force[free],candidate[control]-target]
                 safe('native_displacement.before_factorization')
-                handle = factorize(augmented,MatrixClass.GENERAL,signature=f'native_displacement:{identity}:{index}:{iteration}')
+                handle = factorize(augmented,MatrixClass.GENERAL,signature=f'native_displacement:{identity}:{index}:{iteration}',
+                    options={'forward_error_probe': 'report'})  # N1: tangent/iterative solve, outer residual test accepts
                 increment = np.asarray(handle.solve(rhs),dtype=float).reshape(-1)
                 if not np.isfinite(increment).all(): raise ValueError('nonfinite control increment')
                 safe('native_displacement.after_factorization')
