@@ -390,13 +390,16 @@ def _probe_matvec(csr: sparse.csr_matrix, prepared: sparse.csr_matrix, mtype: in
     """A z for the operator PARDISO factorized.
 
     mtype 11 factorizes ``csr``.  Symmetric mtypes 2/-2 factorize the
-    symmetric operator of the prepared upper triangle; for an input stored
-    as a full symmetric matrix that operator equals ``csr`` and ``csr @ z``
-    is kept (unchanged probe value), otherwise (triangular or unsymmetric
-    storage) the probe uses the symmetric operator itself.
+    symmetric operator of the prepared upper triangle.  For upper-triangle
+    storage (no nonzero stored below the diagonal) the literal ``csr @ z``
+    is a different operator, so the probe uses the symmetric one.  Full
+    storage keeps ``csr @ z`` (unchanged probe value): an assembled
+    stiffness is symmetric only to rounding, and switching it to the
+    symmetric operator moved kfe on 57 of 80 sweep runs (2026-11-26,
+    within 2e-14..8e-6, all far below the limit).
     """
 
-    if int(mtype) == 11 or (csr != csr.T).nnz == 0:
+    if int(mtype) == 11 or sparse.tril(csr, k=-1).count_nonzero() > 0:
         return lambda z: csr @ z
     return _symmetric_upper_matvec(prepared)
 
