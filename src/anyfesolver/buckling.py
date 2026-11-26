@@ -38,7 +38,7 @@ from .current_state_tangent import (
 from .element_capabilities import require_model_element_capabilities
 from .e4_pl_element import QualifiedE4PLShellElement
 from .e4_pl_s3_element import QualifiedE4PLS3ShellElement
-from .linalg import FactorizationCache, MatrixClass, cached_inverse_operator
+from .linalg import FactorizationCache, MatrixClass, leased_inverse_operator
 from .matrix_assembly import (
     _assemble_geometric_stiffness_matrix_under_lease,
     _pack_owned_geometric_states,
@@ -1690,25 +1690,27 @@ def _solve_eigenvalue_buckling_under_lease(
                     )
                 )
                 factor_started = time.perf_counter()
-                elastic_inverse, elastic_handle = cached_inverse_operator(
+                elastic_lease = leased_inverse_operator(
                     K_sym.tocsc(),
                     MatrixClass.SPD,
                     cache=elastic_cache,
                 )
-                phase_timings["factorization"] = float(
-                    time.perf_counter() - factor_started
-                )
-                exact_guard(
-                    model,
-                    context="solve_eigenvalue_buckling elastic factorization",
-                )
-                _, eigenvectors = sparse_linalg.eigsh(
-                    KG_sym.tocsc(),
-                    k=k,
-                    M=K_sym.tocsc(),
-                    Minv=elastic_inverse,
-                    which="LA",
-                )
+                elastic_inverse, elastic_handle = elastic_lease.operator, elastic_lease.handle
+                with elastic_lease:
+                    phase_timings["factorization"] = float(
+                        time.perf_counter() - factor_started
+                    )
+                    exact_guard(
+                        model,
+                        context="solve_eigenvalue_buckling elastic factorization",
+                    )
+                    _, eigenvectors = sparse_linalg.eigsh(
+                        KG_sym.tocsc(),
+                        k=k,
+                        M=K_sym.tocsc(),
+                        Minv=elastic_inverse,
+                        which="LA",
+                    )
                 elastic_inverse_diagnostics = {
                     "elastic_inverse": True,
                     "elastic_inverse_factorization": elastic_handle.diagnostics(),
@@ -1753,26 +1755,28 @@ def _solve_eigenvalue_buckling_under_lease(
                     )
                 )
                 factor_started = time.perf_counter()
-                operator, handle = cached_inverse_operator(
+                shift_lease = leased_inverse_operator(
                     shift_matrix,
                     MatrixClass.SYMMETRIC_INDEFINITE,
                     cache=cache,
                 )
-                phase_timings["factorization"] = float(
-                    time.perf_counter() - factor_started
-                )
-                exact_guard(
-                    model,
-                    context="solve_eigenvalue_buckling shift factorization",
-                )
-                _, eigenvectors = sparse_linalg.eigsh(
-                    KG_sym.tocsc(),
-                    k=k,
-                    M=K_sym.tocsc(),
-                    sigma=sigma,
-                    which="LM",
-                    OPinv=operator,
-                )
+                operator, handle = shift_lease.operator, shift_lease.handle
+                with shift_lease:
+                    phase_timings["factorization"] = float(
+                        time.perf_counter() - factor_started
+                    )
+                    exact_guard(
+                        model,
+                        context="solve_eigenvalue_buckling shift factorization",
+                    )
+                    _, eigenvectors = sparse_linalg.eigsh(
+                        KG_sym.tocsc(),
+                        k=k,
+                        M=K_sym.tocsc(),
+                        sigma=sigma,
+                        which="LM",
+                        OPinv=operator,
+                    )
                 shift_invert_diagnostics = {
                     "shift_invert": True,
                     "shift_inverse_sigma": float(sigma),

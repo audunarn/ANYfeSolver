@@ -36,7 +36,7 @@ from .element_capabilities import ElementCapabilityError, require_model_element_
 from .e4_pl_s3_state import (
     require_exact_numpy_runtime_authority as _EXACT_NUMERICAL_RUNTIME_GUARD,
 )
-from .linalg import MatrixClass, factorize
+from .linalg import CleanupScope, MatrixClass, factorize, lease_from
 from .boundary import LoadCase
 from .matrix_assembly import (
     _run_with_qualified_assembly_runtime_lease,
@@ -2144,6 +2144,9 @@ def _solve_transient_newmark_under_lease(
     factorization_reused = False
     cached_dt = None
     cached_solver = None
+    # The effective operator is solved across progress callbacks and other
+    # factorizations: pin it with a lease (closed on refresh and on exit).
+    # (lease_scope holds it; ended at the scope's exit with the propagating error.)
     cached_solver_diagnostics: Dict[str, Any] = {}
 
     alpha_h, beta, gamma = integration_parameters
@@ -2184,78 +2187,57 @@ def _solve_transient_newmark_under_lease(
         descriptor_algebraic_load_norm_max = float(
             np.linalg.norm(descriptor_previous_load)
         )
-    for step_index in range(1, len(times)):
-        cancellation_safe_point(
-            cancellation_token,
-            f"transient.step:{step_index}",
-        )
-        reference_authority_guard(model)
-        dt = float(times[step_index] - times[step_index - 1])
-        # Consistent step size: interior steps (and a nominally uniform end, within 8 ulp) integrate
-        # with the nominal config.dt; only a genuinely shortened last step uses its true remainder.
-        # A last step shortened by less than 8 ulp(t) integrates with the nominal dt, so the final
-        # time advance is off by at most 8 ulp(t).  The effective-matrix factorization is reused only
-        # when dt is bitwise equal to the cached dt, so matrix, right-hand side and state update
-        # always share one dt.
-        final_step_index = len(times) - 1
-        nominal_end = float(final_step_index) * float(config.dt)
-        end_time = float(config.t_end)
-        nominal_roundoff = 8.0 * max(
-            math.ulp(end_time),
-            math.ulp(nominal_end),
-            float(final_step_index) * math.ulp(float(config.dt)),
-        )
-        nominal_uniform_end = abs(end_time - nominal_end) <= nominal_roundoff
-        if step_index < final_step_index or nominal_uniform_end:
-            dt = float(config.dt)
-        else:
-            dt = end_time - float(final_step_index - 1) * float(config.dt)
-        if dt <= 0.0:
-            continue
-        a0 = 1.0 / (beta * dt**2)
-        a1 = gamma / (beta * dt)
-        a2 = 1.0 / (beta * dt)
-        a3 = 1.0 / (2.0 * beta) - 1.0
-        a4 = gamma / beta - 1.0
-        a5 = dt * (gamma / (2.0 * beta) - 1.0)
-        if (
-            cached_solver is None
-            or cached_dt is None
-            or dt != cached_dt
-        ):
-            if descriptor_reduction is not None:
-                stiffness_coefficient = one_plus_alpha * (
-                    1.0 + a1 * float(config.rayleigh_beta)
-                )
-                mass_coefficient = a0 + one_plus_alpha * a1 * float(
-                    config.rayleigh_alpha
-                )
-                K_eff = descriptor_reduction.effective_block_matrix(
-                    stiffness_coefficient=stiffness_coefficient,
-                    mass_coefficient=mass_coefficient,
-                )
-                effective_certificate = certify_descriptor_effective_operator(
-                    K_eff,
-                    dense_size_limit=512,
-                )
-                effective_certificate.update(
-                    {
-                        "dt": dt,
-                        "stiffness_coefficient": stiffness_coefficient,
-                        "mass_coefficient": mass_coefficient,
-                    }
-                )
-                descriptor_effective_certificates.append(effective_certificate)
-                factorization_signature = (
-                    f"transient.effective.descriptor:{dt:.16g}"
-                )
+    with CleanupScope() as lease_scope:
+        for step_index in range(1, len(times)):
+            cancellation_safe_point(
+                cancellation_token,
+                f"transient.step:{step_index}",
+            )
+            reference_authority_guard(model)
+            dt = float(times[step_index] - times[step_index - 1])
+            # Consistent step size: interior steps (and a nominally uniform end, within 8 ulp) integrate
+            # with the nominal config.dt; only a genuinely shortened last step uses its true remainder.
+            # A last step shortened by less than 8 ulp(t) integrates with the nominal dt, so the final
+            # time advance is off by at most 8 ulp(t).  The effective-matrix factorization is reused only
+            # when dt is bitwise equal to the cached dt, so matrix, right-hand side and state update
+            # always share one dt.
+            final_step_index = len(times) - 1
+            nominal_end = float(final_step_index) * float(config.dt)
+            end_time = float(config.t_end)
+            nominal_roundoff = 8.0 * max(
+                math.ulp(end_time),
+                math.ulp(nominal_end),
+                float(final_step_index) * math.ulp(float(config.dt)),
+            )
+            nominal_uniform_end = abs(end_time - nominal_end) <= nominal_roundoff
+            if step_index < final_step_index or nominal_uniform_end:
+                dt = float(config.dt)
             else:
-                K_eff = (
-                    one_plus_alpha * K_red
-                    + a0 * M_red
-                    + one_plus_alpha * a1 * C_red
-                ).tocsr()
-                if descriptor_guarded:
+                dt = end_time - float(final_step_index - 1) * float(config.dt)
+            if dt <= 0.0:
+                continue
+            a0 = 1.0 / (beta * dt**2)
+            a1 = gamma / (beta * dt)
+            a2 = 1.0 / (beta * dt)
+            a3 = 1.0 / (2.0 * beta) - 1.0
+            a4 = gamma / beta - 1.0
+            a5 = dt * (gamma / (2.0 * beta) - 1.0)
+            if (
+                cached_solver is None
+                or cached_dt is None
+                or dt != cached_dt
+            ):
+                if descriptor_reduction is not None:
+                    stiffness_coefficient = one_plus_alpha * (
+                        1.0 + a1 * float(config.rayleigh_beta)
+                    )
+                    mass_coefficient = a0 + one_plus_alpha * a1 * float(
+                        config.rayleigh_alpha
+                    )
+                    K_eff = descriptor_reduction.effective_block_matrix(
+                        stiffness_coefficient=stiffness_coefficient,
+                        mass_coefficient=mass_coefficient,
+                    )
                     effective_certificate = certify_descriptor_effective_operator(
                         K_eff,
                         dense_size_limit=512,
@@ -2263,290 +2245,314 @@ def _solve_transient_newmark_under_lease(
                     effective_certificate.update(
                         {
                             "dt": dt,
-                            "stiffness_coefficient": one_plus_alpha
-                            * (1.0 + a1 * float(config.rayleigh_beta)),
-                            "mass_coefficient": a0
-                            + one_plus_alpha
-                            * a1
-                            * float(config.rayleigh_alpha),
+                            "stiffness_coefficient": stiffness_coefficient,
+                            "mass_coefficient": mass_coefficient,
                         }
                     )
-                    descriptor_effective_certificates.append(
-                        effective_certificate
-                    )
+                    descriptor_effective_certificates.append(effective_certificate)
                     factorization_signature = (
-                        f"transient.effective.descriptor_constrained:{dt:.16g}"
+                        f"transient.effective.descriptor:{dt:.16g}"
                     )
                 else:
-                    factorization_signature = f"transient.effective:{dt:.16g}"
-            try:
-                cached_solver = factorize(
-                    K_eff,
-                    (
-                        MatrixClass.SPD
-                        if descriptor_guarded
-                        else MatrixClass.SYMMETRIC_INDEFINITE
-                    ),
-                    signature=factorization_signature,
+                    K_eff = (
+                        one_plus_alpha * K_red
+                        + a0 * M_red
+                        + one_plus_alpha * a1 * C_red
+                    ).tocsr()
+                    if descriptor_guarded:
+                        effective_certificate = certify_descriptor_effective_operator(
+                            K_eff,
+                            dense_size_limit=512,
+                        )
+                        effective_certificate.update(
+                            {
+                                "dt": dt,
+                                "stiffness_coefficient": one_plus_alpha
+                                * (1.0 + a1 * float(config.rayleigh_beta)),
+                                "mass_coefficient": a0
+                                + one_plus_alpha
+                                * a1
+                                * float(config.rayleigh_alpha),
+                            }
+                        )
+                        descriptor_effective_certificates.append(
+                            effective_certificate
+                        )
+                        factorization_signature = (
+                            f"transient.effective.descriptor_constrained:{dt:.16g}"
+                        )
+                    else:
+                        factorization_signature = f"transient.effective:{dt:.16g}"
+                lease_scope.release()
+                try:
+                    cached_lease = lease_scope.hold(lease_from(factorize,
+                        K_eff,
+                        (
+                            MatrixClass.SPD
+                            if descriptor_guarded
+                            else MatrixClass.SYMMETRIC_INDEFINITE
+                        ),
+                        signature=factorization_signature,
+                    ))
+                    cached_solver = cached_lease.handle
+                    if (
+                        descriptor_guarded
+                        and cached_solver.status != "ok"
+                    ):
+                        raise AlgebraicDynamicsError(
+                            "descriptor effective operator factorization failed"
+                        )
+                    cached_solver_diagnostics = cached_solver.diagnostics()
+                    if descriptor_guarded:
+                        cached_solver_diagnostics["coordinate_system"] = (
+                            "CERTIFIED_PHYSICAL_ALGEBRAIC_PARTITION"
+                            if descriptor_reduction is not None
+                            else "CONSTRAINT_ELIMINATED_ALGEBRAIC_COORDINATES"
+                        )
+                except Exception as exc:
+                    if descriptor_guarded:
+                        raise AlgebraicDynamicsError(
+                            "descriptor effective operator failed its SPD factorization"
+                        ) from exc
+                    cached_solver = None
+                    cached_solver_diagnostics = {"failure_reason": "effective_stiffness_factorization_failed"}
+                cached_dt = dt
+                factorization_count += 1
+
+            load_next = full_load_at(float(times[step_index]))
+            impulse += 0.5 * (load_prev + load_next) * dt
+            load_prev = load_next
+            F_red = reduced_load_at(float(times[step_index]))
+            rhs = (
+                one_plus_alpha * F_red
+                - alpha_h * F_red_prev
+                + M_red @ (a0 * q_red + a2 * v_red + a3 * a_red)
+                + one_plus_alpha * (C_red @ (a1 * q_red + a4 * v_red + a5 * a_red))
+            )
+            if alpha_h != 0.0:
+                rhs += alpha_h * (K_red @ q_red) + alpha_h * (C_red @ v_red)
+            descriptor_partition_next: Optional[np.ndarray] = None
+            if cached_solver is not None:
+                effective_rhs = (
+                    descriptor_reduction.effective_rhs(rhs)
+                    if descriptor_reduction is not None
+                    else rhs
                 )
-                if (
-                    descriptor_guarded
-                    and cached_solver.status != "ok"
+                try:
+                    effective_solution = np.asarray(
+                        cached_solver.solve(effective_rhs), dtype=float
+                    ).reshape(-1)
+                except Exception as exc:
+                    if descriptor_guarded:
+                        raise AlgebraicDynamicsError(
+                            "descriptor effective operator solve failed"
+                        ) from exc
+                    raise
+                if descriptor_guarded and (
+                    effective_solution.shape != (K_eff.shape[0],)
+                    or np.any(~np.isfinite(effective_solution))
                 ):
                     raise AlgebraicDynamicsError(
-                        "descriptor effective operator factorization failed"
+                        "descriptor effective operator solve returned an invalid result"
                     )
-                cached_solver_diagnostics = cached_solver.diagnostics()
-                if descriptor_guarded:
-                    cached_solver_diagnostics["coordinate_system"] = (
-                        "CERTIFIED_PHYSICAL_ALGEBRAIC_PARTITION"
-                        if descriptor_reduction is not None
-                        else "CONSTRAINT_ELIMINATED_ALGEBRAIC_COORDINATES"
+                if descriptor_reduction is not None:
+                    descriptor_partition_next = effective_solution.copy()
+                    q_next = descriptor_reduction.reconstruct_partition_state(
+                        effective_solution[: descriptor_reduction.physical_dimension],
+                        effective_solution[descriptor_reduction.physical_dimension :],
                     )
-            except Exception as exc:
+                else:
+                    q_next = effective_solution
+                factorization_reused = True
+            else:
                 if descriptor_guarded:
                     raise AlgebraicDynamicsError(
-                        "descriptor effective operator failed its SPD factorization"
-                    ) from exc
-                cached_solver = None
-                cached_solver_diagnostics = {"failure_reason": "effective_stiffness_factorization_failed"}
-            cached_dt = dt
-            factorization_count += 1
-
-        load_next = full_load_at(float(times[step_index]))
-        impulse += 0.5 * (load_prev + load_next) * dt
-        load_prev = load_next
-        F_red = reduced_load_at(float(times[step_index]))
-        rhs = (
-            one_plus_alpha * F_red
-            - alpha_h * F_red_prev
-            + M_red @ (a0 * q_red + a2 * v_red + a3 * a_red)
-            + one_plus_alpha * (C_red @ (a1 * q_red + a4 * v_red + a5 * a_red))
-        )
-        if alpha_h != 0.0:
-            rhs += alpha_h * (K_red @ q_red) + alpha_h * (C_red @ v_red)
-        descriptor_partition_next: Optional[np.ndarray] = None
-        if cached_solver is not None:
-            effective_rhs = (
-                descriptor_reduction.effective_rhs(rhs)
-                if descriptor_reduction is not None
-                else rhs
-            )
-            try:
-                effective_solution = np.asarray(
-                    cached_solver.solve(effective_rhs), dtype=float
-                ).reshape(-1)
-            except Exception as exc:
-                if descriptor_guarded:
-                    raise AlgebraicDynamicsError(
-                        "descriptor effective operator solve failed"
-                    ) from exc
-                raise
-            if descriptor_guarded and (
-                effective_solution.shape != (K_eff.shape[0],)
-                or np.any(~np.isfinite(effective_solution))
-            ):
-                raise AlgebraicDynamicsError(
-                    "descriptor effective operator solve returned an invalid result"
+                        "descriptor effective operator has no certified solver"
+                    )
+                fallback_handle = factorize(
+                    (one_plus_alpha * K_red + a0 * M_red + one_plus_alpha * a1 * C_red).tocsr(),
+                    MatrixClass.GENERAL,
+                    signature=f"transient.effective.fallback:{dt:.16g}:{step_index}",
+                )
+                q_next = np.asarray(fallback_handle.solve(rhs), dtype=float).reshape(-1)
+                cached_solver_diagnostics = fallback_handle.diagnostics()
+            solve_count += 1
+            if descriptor_reduction is not None:
+                assert descriptor_partition_next is not None
+                assert descriptor_partition_displacement is not None
+                assert descriptor_partition_velocity is not None
+                assert descriptor_partition_acceleration is not None
+                damping_time = float(config.rayleigh_beta)
+                if damping_time == 0.0:
+                    current_equilibrium = (
+                        descriptor_reduction.algebraic_load_equilibrium(F_red)
+                    )
+                    physical_q = descriptor_partition_next[
+                        : descriptor_reduction.physical_dimension
+                    ]
+                    descriptor_partition_next[
+                        descriptor_reduction.physical_dimension :
+                    ] = descriptor_reduction.partition_coordinate_from_k_orthogonal(
+                        physical_q,
+                        current_equilibrium,
+                    )
+                descriptor_partition_a_next = (
+                    a0
+                    * (
+                        descriptor_partition_next
+                        - descriptor_partition_displacement
+                    )
+                    - a2 * descriptor_partition_velocity
+                    - a3 * descriptor_partition_acceleration
+                )
+                descriptor_partition_v_next = (
+                    descriptor_partition_velocity
+                    + dt
+                    * (
+                        (1.0 - gamma) * descriptor_partition_acceleration
+                        + gamma * descriptor_partition_a_next
+                    )
+                )
+                q_next = descriptor_reduction.reconstruct_partition_state(
+                    descriptor_partition_next[
+                        : descriptor_reduction.physical_dimension
+                    ],
+                    descriptor_partition_next[
+                        descriptor_reduction.physical_dimension :
+                    ],
+                )
+                v_next = descriptor_reduction.reconstruct_partition_state(
+                    descriptor_partition_v_next[
+                        : descriptor_reduction.physical_dimension
+                    ],
+                    descriptor_partition_v_next[
+                        descriptor_reduction.physical_dimension :
+                    ],
+                )
+                a_next = descriptor_reduction.reconstruct_partition_state(
+                    descriptor_partition_a_next[
+                        : descriptor_reduction.physical_dimension
+                    ],
+                    descriptor_partition_a_next[
+                        descriptor_reduction.physical_dimension :
+                    ],
+                )
+                descriptor_partition_displacement = descriptor_partition_next
+                descriptor_partition_velocity = descriptor_partition_v_next
+                descriptor_partition_acceleration = descriptor_partition_a_next
+            else:
+                a_next = a0 * (q_next - q_red) - a2 * v_red - a3 * a_red
+                v_next = v_red + dt * (
+                    (1.0 - gamma) * a_red + gamma * a_next
                 )
             if descriptor_reduction is not None:
-                descriptor_partition_next = effective_solution.copy()
-                q_next = descriptor_reduction.reconstruct_partition_state(
-                    effective_solution[: descriptor_reduction.physical_dimension],
-                    effective_solution[descriptor_reduction.physical_dimension :],
+                current_static_residual = np.asarray(
+                    C_red @ v_next + K_red @ q_next - F_red,
+                    dtype=float,
+                ).reshape(-1)
+                previous_static_residual = np.asarray(
+                    C_red @ v_red + K_red @ q_red - F_red_prev,
+                    dtype=float,
+                ).reshape(-1)
+                dae_residual = np.asarray(M_red @ a_next, dtype=float).reshape(-1)
+                dae_residual += one_plus_alpha * current_static_residual
+                dae_residual -= alpha_h * previous_static_residual
+                assert descriptor_abs_mass is not None
+                assert descriptor_abs_damping is not None
+                assert descriptor_abs_stiffness is not None
+                assert descriptor_abs_basis_transpose is not None
+                dae_scale = np.asarray(
+                    descriptor_abs_mass @ np.abs(a_next)
+                    + abs(one_plus_alpha)
+                    * (
+                        descriptor_abs_damping @ np.abs(v_next)
+                        + descriptor_abs_stiffness @ np.abs(q_next)
+                        + np.abs(F_red)
+                    )
+                    + abs(alpha_h)
+                    * (
+                        descriptor_abs_damping @ np.abs(v_red)
+                        + descriptor_abs_stiffness @ np.abs(q_red)
+                        + np.abs(F_red_prev)
+                    ),
+                    dtype=float,
+                ).reshape(-1)
+                dae_relative = float(
+                    np.linalg.norm(dae_residual)
+                    / max(np.linalg.norm(dae_scale), 1.0)
                 )
-            else:
-                q_next = effective_solution
-            factorization_reused = True
-        else:
-            if descriptor_guarded:
-                raise AlgebraicDynamicsError(
-                    "descriptor effective operator has no certified solver"
+                algebraic_residual = np.asarray(
+                    descriptor_reduction.basis.T
+                    @ (K_red @ q_next + C_red @ v_next - F_red),
+                    dtype=float,
+                ).reshape(-1)
+                algebraic_scale = np.asarray(
+                    descriptor_abs_basis_transpose
+                    @ (
+                        descriptor_abs_stiffness @ np.abs(q_next)
+                        + descriptor_abs_damping @ np.abs(v_next)
+                        + np.abs(F_red)
+                    ),
+                    dtype=float,
+                ).reshape(-1)
+                algebraic_relative = float(
+                    np.linalg.norm(algebraic_residual)
+                    / max(np.linalg.norm(algebraic_scale), 1.0)
                 )
-            fallback_handle = factorize(
-                (one_plus_alpha * K_red + a0 * M_red + one_plus_alpha * a1 * C_red).tocsr(),
-                MatrixClass.GENERAL,
-                signature=f"transient.effective.fallback:{dt:.16g}:{step_index}",
-            )
-            q_next = np.asarray(fallback_handle.solve(rhs), dtype=float).reshape(-1)
-            cached_solver_diagnostics = fallback_handle.diagnostics()
-        solve_count += 1
-        if descriptor_reduction is not None:
-            assert descriptor_partition_next is not None
-            assert descriptor_partition_displacement is not None
-            assert descriptor_partition_velocity is not None
-            assert descriptor_partition_acceleration is not None
-            damping_time = float(config.rayleigh_beta)
-            if damping_time == 0.0:
-                current_equilibrium = (
-                    descriptor_reduction.algebraic_load_equilibrium(F_red)
+                descriptor_max_dae_residual = max(
+                    descriptor_max_dae_residual, dae_relative
                 )
-                physical_q = descriptor_partition_next[
-                    : descriptor_reduction.physical_dimension
-                ]
-                descriptor_partition_next[
-                    descriptor_reduction.physical_dimension :
-                ] = descriptor_reduction.partition_coordinate_from_k_orthogonal(
-                    physical_q,
-                    current_equilibrium,
+                descriptor_max_algebraic_residual = max(
+                    descriptor_max_algebraic_residual, algebraic_relative
                 )
-            descriptor_partition_a_next = (
-                a0
-                * (
-                    descriptor_partition_next
-                    - descriptor_partition_displacement
+                descriptor_external_work += 0.5 * float(
+                    (F_red_prev + F_red) @ (q_next - q_red)
                 )
-                - a2 * descriptor_partition_velocity
-                - a3 * descriptor_partition_acceleration
-            )
-            descriptor_partition_v_next = (
-                descriptor_partition_velocity
-                + dt
-                * (
-                    (1.0 - gamma) * descriptor_partition_acceleration
-                    + gamma * descriptor_partition_a_next
+                algebraic_coordinate = (
+                    descriptor_reduction.algebraic_partition_coordinate(q_next)
                 )
-            )
-            q_next = descriptor_reduction.reconstruct_partition_state(
-                descriptor_partition_next[
-                    : descriptor_reduction.physical_dimension
-                ],
-                descriptor_partition_next[
-                    descriptor_reduction.physical_dimension :
-                ],
-            )
-            v_next = descriptor_reduction.reconstruct_partition_state(
-                descriptor_partition_v_next[
-                    : descriptor_reduction.physical_dimension
-                ],
-                descriptor_partition_v_next[
-                    descriptor_reduction.physical_dimension :
-                ],
-            )
-            a_next = descriptor_reduction.reconstruct_partition_state(
-                descriptor_partition_a_next[
-                    : descriptor_reduction.physical_dimension
-                ],
-                descriptor_partition_a_next[
-                    descriptor_reduction.physical_dimension :
-                ],
-            )
-            descriptor_partition_displacement = descriptor_partition_next
-            descriptor_partition_velocity = descriptor_partition_v_next
-            descriptor_partition_acceleration = descriptor_partition_a_next
-        else:
-            a_next = a0 * (q_next - q_red) - a2 * v_red - a3 * a_red
-            v_next = v_red + dt * (
-                (1.0 - gamma) * a_red + gamma * a_next
-            )
-        if descriptor_reduction is not None:
-            current_static_residual = np.asarray(
-                C_red @ v_next + K_red @ q_next - F_red,
-                dtype=float,
-            ).reshape(-1)
-            previous_static_residual = np.asarray(
-                C_red @ v_red + K_red @ q_red - F_red_prev,
-                dtype=float,
-            ).reshape(-1)
-            dae_residual = np.asarray(M_red @ a_next, dtype=float).reshape(-1)
-            dae_residual += one_plus_alpha * current_static_residual
-            dae_residual -= alpha_h * previous_static_residual
-            assert descriptor_abs_mass is not None
-            assert descriptor_abs_damping is not None
-            assert descriptor_abs_stiffness is not None
-            assert descriptor_abs_basis_transpose is not None
-            dae_scale = np.asarray(
-                descriptor_abs_mass @ np.abs(a_next)
-                + abs(one_plus_alpha)
-                * (
-                    descriptor_abs_damping @ np.abs(v_next)
-                    + descriptor_abs_stiffness @ np.abs(q_next)
-                    + np.abs(F_red)
+                algebraic_load = np.asarray(
+                    descriptor_reduction.basis.T @ F_red,
+                    dtype=float,
+                ).reshape(-1)
+                assert descriptor_previous_coordinate is not None
+                assert descriptor_previous_load is not None
+                descriptor_algebraic_external_work += 0.5 * float(
+                    (descriptor_previous_load + algebraic_load)
+                    @ (algebraic_coordinate - descriptor_previous_coordinate)
                 )
-                + abs(alpha_h)
-                * (
-                    descriptor_abs_damping @ np.abs(v_red)
-                    + descriptor_abs_stiffness @ np.abs(q_red)
-                    + np.abs(F_red_prev)
-                ),
-                dtype=float,
-            ).reshape(-1)
-            dae_relative = float(
-                np.linalg.norm(dae_residual)
-                / max(np.linalg.norm(dae_scale), 1.0)
-            )
-            algebraic_residual = np.asarray(
-                descriptor_reduction.basis.T
-                @ (K_red @ q_next + C_red @ v_next - F_red),
-                dtype=float,
-            ).reshape(-1)
-            algebraic_scale = np.asarray(
-                descriptor_abs_basis_transpose
-                @ (
-                    descriptor_abs_stiffness @ np.abs(q_next)
-                    + descriptor_abs_damping @ np.abs(v_next)
-                    + np.abs(F_red)
-                ),
-                dtype=float,
-            ).reshape(-1)
-            algebraic_relative = float(
-                np.linalg.norm(algebraic_residual)
-                / max(np.linalg.norm(algebraic_scale), 1.0)
-            )
-            descriptor_max_dae_residual = max(
-                descriptor_max_dae_residual, dae_relative
-            )
-            descriptor_max_algebraic_residual = max(
-                descriptor_max_algebraic_residual, algebraic_relative
-            )
-            descriptor_external_work += 0.5 * float(
-                (F_red_prev + F_red) @ (q_next - q_red)
-            )
-            algebraic_coordinate = (
-                descriptor_reduction.algebraic_partition_coordinate(q_next)
-            )
-            algebraic_load = np.asarray(
-                descriptor_reduction.basis.T @ F_red,
-                dtype=float,
-            ).reshape(-1)
-            assert descriptor_previous_coordinate is not None
-            assert descriptor_previous_load is not None
-            descriptor_algebraic_external_work += 0.5 * float(
-                (descriptor_previous_load + algebraic_load)
-                @ (algebraic_coordinate - descriptor_previous_coordinate)
-            )
-            descriptor_previous_coordinate = algebraic_coordinate
-            descriptor_previous_load = algebraic_load
-            descriptor_algebraic_load_norm_max = max(
-                descriptor_algebraic_load_norm_max,
-                float(np.linalg.norm(algebraic_load)),
-            )
-            if (
-                not np.isfinite(dae_relative)
-                or not np.isfinite(algebraic_relative)
-                or dae_relative > 2.0e-8
-                or algebraic_relative > 2.0e-9
-            ):
-                raise AlgebraicDynamicsError(
-                    "descriptor transient state failed the DAE residual gate"
+                descriptor_previous_coordinate = algebraic_coordinate
+                descriptor_previous_load = algebraic_load
+                descriptor_algebraic_load_norm_max = max(
+                    descriptor_algebraic_load_norm_max,
+                    float(np.linalg.norm(algebraic_load)),
                 )
-        q_red, v_red, a_red = q_next, v_next, a_next
-        F_red_prev = F_red
+                if (
+                    not np.isfinite(dae_relative)
+                    or not np.isfinite(algebraic_relative)
+                    or dae_relative > 2.0e-8
+                    or algebraic_relative > 2.0e-9
+                ):
+                    raise AlgebraicDynamicsError(
+                        "descriptor transient state failed the DAE residual gate"
+                    )
+            q_red, v_red, a_red = q_next, v_next, a_next
+            F_red_prev = F_red
 
-        if step_index % int(config.save_every) == 0 or step_index == len(times) - 1:
-            save_state(float(times[step_index]), q_red, v_red, a_red)
-        emit_progress(
-            progress_callback,
-            "transient_step",
-            "transient.integration",
-            completed=step_index,
-            total=max(len(times) - 1, 0),
-            step_index=int(step_index),
-            time_s=float(times[step_index]),
-            saved=bool(step_index % int(config.save_every) == 0 or step_index == len(times) - 1),
-        )
-        if progress_callback is not None:
-            reference_authority_guard(model)
+            if step_index % int(config.save_every) == 0 or step_index == len(times) - 1:
+                save_state(float(times[step_index]), q_red, v_red, a_red)
+            emit_progress(
+                progress_callback,
+                "transient_step",
+                "transient.integration",
+                completed=step_index,
+                total=max(len(times) - 1, 0),
+                step_index=int(step_index),
+                time_s=float(times[step_index]),
+                saved=bool(step_index % int(config.save_every) == 0 or step_index == len(times) - 1),
+            )
+            if progress_callback is not None:
+                reference_authority_guard(model)
 
     impulse_resultant = load_vector_resultant(model, impulse)
     total_energy = np.asarray(energy_kinetic, dtype=float) + np.asarray(energy_strain, dtype=float)

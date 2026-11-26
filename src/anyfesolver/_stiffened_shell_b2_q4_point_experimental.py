@@ -21,7 +21,7 @@ from ._b2_physical_linear_definition import (
     PROFILE_ID, CompiledPhysicalB2Member, PhysicalB2Member,
 )
 from .fe_core import FEModel
-from .linalg import MatrixClass, factorize_cached
+from .linalg import MatrixClass, factorize_cached, refactorize_if_stale
 from ._stiffened_shell_b2_q4_panel_experimental import (
     _checked_affine_projection, _NumericalFailure as _AffineProjectionFailure,
 )
@@ -143,6 +143,9 @@ class ExperimentalB2Q4PointAnalysis:
         self._ku0 = np.asarray(K @ u0).reshape(-1)
         self._cu0 = np.asarray(C @ u0).reshape(-1)
         self._handle = handle
+        # A stale PARDISO handle is never rebuilt: keep the operator to
+        # refactorize it (SuperLU handles never become stale).
+        self._kkt = kkt if handle.backend_name == "pypardiso" else None
         self._closed = False
 
     @property
@@ -160,6 +163,9 @@ class ExperimentalB2Q4PointAnalysis:
             raise ValueError("finite 36-coordinate Q4/B2 load required")
         try:
             rhs = np.r_[self._project(applied-self._ku0), -self._cu0]
+            if self._kkt is not None:
+                self._handle = refactorize_if_stale(
+                    self._handle, self._kkt, MatrixClass.SYMMETRIC_INDEFINITE)
             answer = np.asarray(self._handle.solve(rhs), dtype=float)
         except (_NumericalFailure, RuntimeError) as exc:
             return ExperimentalB2Q4PointResult(

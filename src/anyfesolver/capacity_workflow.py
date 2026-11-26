@@ -285,11 +285,16 @@ def run_nonlinear_capacity_workflow(
             "prescribed displacement/rotation"
         )
     from .analysis_session import AnalysisSession
+    from .linalg import CleanupScope
 
     owns_session = session is None
     base_session = session or AnalysisSession(model)
     session_diagnostics: Dict[str, Any] = {}
-    try:
+    # Closed at the scope exit with the exception actually propagating
+    # as primary (linalg.CleanupScope).
+    with CleanupScope() as cleanup:
+        if owns_session:
+            cleanup.callback(base_session.close, "capacity analysis session cleanup")
         static_displacements, static_info = solve_linear(
             model,
             reference_load_case,
@@ -314,9 +319,6 @@ def run_nonlinear_capacity_workflow(
         if not buckling.modes:
             raise RuntimeError(f"Buckling solve returned no usable modes: {buckling.solver_status}")
         session_diagnostics = base_session.diagnostics()
-    finally:
-        if owns_session:
-            base_session.close()
 
     mesh_adequacy = evaluate_mode_mesh_adequacy(
         model,

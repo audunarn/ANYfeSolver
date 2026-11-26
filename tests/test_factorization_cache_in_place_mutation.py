@@ -6,6 +6,13 @@ pattern slot moved on, the stale-handle rebuild factorized the *edited* values
 and a cache hit for the original matrix returned the edited matrix's solution
 with status ``ok``.  (Explicit signatures are caller-owned revision stamps and
 stay trusted; see ``FactorizationCache``.)
+
+Under the D2 slot contract (merged 2026-11-25) a stale PARDISO handle is never
+rebuilt: it raises :class:`~anyfesolver.linalg.PardisoStaleHandleError`, a
+stale cache entry is a miss, and a holder that keeps solving one factorization
+pins it with a lease.  The value assertions are unchanged; the PARDISO cases
+assert the typed stale error where main rebuilt, and hold leases where main
+relied on the rebuild.
 """
 
 from __future__ import annotations
@@ -44,7 +51,10 @@ def test_cache_hit_after_in_place_edit_solves_the_original_matrix(backend_type, 
 
     fresh = cache.factorize(sparse.csr_matrix(np.diag([1.0, 2.0, 3.0])), matrix_class)
     assert fresh.status == "ok"
-    assert fresh.metadata["cache_hit"] is True
+    # SuperLU: a hit.  PARDISO (D2): the edited matrix refactorized the shared
+    # slot, so the original entry is stale and the lookup is a miss that
+    # factorizes the original values again (never the edited ones).
+    assert fresh.metadata["cache_hit"] is (backend_type is linalg.SparseSolverBackend)
     np.testing.assert_allclose(fresh.solve(np.ones(3)), _EXPECTED, rtol=1e-14)
 
 
@@ -52,12 +62,25 @@ def test_cache_hit_after_in_place_edit_solves_the_original_matrix(backend_type, 
 def test_pardiso_handle_owns_its_matrix_values():
     backend = linalg.PyPardisoSolverBackend(max_pattern_slots=1)
     A = sparse.csr_matrix(np.diag([1.0, 2.0, 3.0]))
-    first = backend.factorize(A, linalg.MatrixClass.GENERAL)
-    A.data *= 4.0
-    # Same pattern: the slot refactorizes the edited values, so ``first`` is stale
-    # and must rebuild from its own snapshot, not from the caller's arrays.
-    backend.factorize(A, linalg.MatrixClass.GENERAL)
-    np.testing.assert_allclose(first.solve(np.ones(3)), _EXPECTED, rtol=1e-14)
+    try:
+        first = backend.factorize(A, linalg.MatrixClass.GENERAL)
+        with linalg.lease_handle(first):
+            A.data *= 4.0
+            # Same pattern: the leased slot is never refactorized (a new slot
+            # takes the edited values), and the holder solves its own values.
+            backend.factorize(A, linalg.MatrixClass.GENERAL)
+            np.testing.assert_allclose(first.solve(np.ones(3)), _EXPECTED, rtol=1e-14)
+        # Unleased and stale: never rebuilt, neither from its snapshot nor
+        # from the caller's arrays.
+        with pytest.raises(linalg.PardisoStaleHandleError):
+            first.solve(np.ones(3))
+        second = backend.factorize(A, linalg.MatrixClass.GENERAL)
+        A.data *= 0.5
+        backend.factorize(A, linalg.MatrixClass.GENERAL)
+        with pytest.raises(linalg.PardisoStaleHandleError):
+            second.solve(np.ones(3))
+    finally:
+        backend.release_pattern_slots()
 
 
 def _indefinite():
@@ -73,11 +96,13 @@ def test_live_handle_keeps_solving_its_own_values_after_edit_and_replacement(bac
     original = A.copy()
     rhs = np.array([1.0, -2.0, 0.5])
     expected = np.linalg.solve(original.toarray(), rhs)
-    first = linalg.factorize(A, matrix_class, backend=backend)
-    np.testing.assert_allclose(first.solve(rhs), expected, rtol=1e-13)
-    A.data *= -2.5
-    linalg.factorize(A, matrix_class, backend=backend)  # same pattern, new values
-    np.testing.assert_allclose(first.solve(rhs), expected, rtol=1e-13)
+    # A live holder pins its factorization (D2; a no-op lease for SuperLU).
+    with linalg.leased_factorization(A, matrix_class, backend=backend) as lease:
+        first = lease.handle
+        np.testing.assert_allclose(first.solve(rhs), expected, rtol=1e-13)
+        A.data *= -2.5
+        linalg.factorize(A, matrix_class, backend=backend)  # same pattern, new values
+        np.testing.assert_allclose(first.solve(rhs), expected, rtol=1e-13)
 
 
 @pytest.mark.parametrize("backend_type", _backends())
@@ -100,8 +125,18 @@ def test_cached_inverse_operator_after_in_place_edit(backend_type):
     rhs = np.array([1.0, -2.0, 0.5])
     expected = np.linalg.solve(A.toarray(), rhs)
     cache = linalg.FactorizationCache(backend=backend_type())
-    operator, _handle = linalg.cached_inverse_operator(A, "general", cache=cache)
-    A.data *= 3.0
-    edited_operator, _ = linalg.cached_inverse_operator(A, "general", cache=cache)
-    np.testing.assert_allclose(operator.matvec(rhs), expected, rtol=1e-13)
-    np.testing.assert_allclose(edited_operator.matvec(rhs), expected / 3.0, rtol=1e-13)
+    # The first operator is held across the second factorization: leased (D2).
+    with linalg.leased_inverse_operator(A, "general", cache=cache) as lease:
+        operator = lease.operator
+        A.data *= 3.0
+        edited_operator, _ = linalg.cached_inverse_operator(A, "general", cache=cache)
+        np.testing.assert_allclose(operator.matvec(rhs), expected, rtol=1e-13)
+        np.testing.assert_allclose(edited_operator.matvec(rhs), expected / 3.0, rtol=1e-13)
+    if backend_type is linalg.PyPardisoSolverBackend:
+        # Unleased, the same sequence leaves the first handle stale (typed error).
+        first, handle = linalg.cached_inverse_operator(_indefinite(), "general", cache=cache)
+        B = _indefinite()
+        B.data *= 5.0
+        linalg.cached_inverse_operator(B, "general", cache=cache)
+        with pytest.raises(linalg.PardisoStaleHandleError):
+            first.matvec(rhs)

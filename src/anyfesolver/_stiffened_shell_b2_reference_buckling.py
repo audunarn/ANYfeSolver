@@ -332,7 +332,7 @@ def compile_geometric(owner, request, preload, safe_point=lambda stage: None):
 
 def solve(owner, request, *, cancellation=None):
     from .control import CancellationToken,SolveCancelled
-    from .linalg import factorize_cached,MatrixClass
+    from .linalg import factorize_cached,MatrixClass,lease_from
     from ._stiffened_shell_b2_q4_panel_experimental import _scaled_point_kkt,_modal_scaled_residual
     physical=type(request) is B2PhysicalFootprintBucklingRequest
     if type(request) not in (B2ReferenceBucklingRequest,B2PhysicalFootprintBucklingRequest): raise ValueError("typed physical B2 reference-buckling request required")
@@ -375,7 +375,9 @@ def solve(owner, request, *, cancellation=None):
             np.any((raw_shifted.data!=0.)&(shifted.data==0.))):
             raise _BucklingNumericalFailure("shifted buckling scaling loses nonzero entries")
         safe("buckling before factorization")
-        handle=factorize_cached(shifted,MatrixClass.GENERAL)
+        # Pinned for the Arnoldi iteration (other factorizations may run between actions).
+        lease=lease_from(factorize_cached,shifted,MatrixClass.GENERAL)
+        handle=lease.handle
         if handle.status != "ok": raise _BucklingNumericalFailure("buckling factorization failed: "+str(handle.failure_reason))
         def action(v):
             safe("buckling iteration")
@@ -388,7 +390,8 @@ def solve(owner, request, *, cancellation=None):
                 raise
             if not np.isfinite(answer).all(): raise _BucklingNumericalFailure("nonfinite buckling inverse action")
             return answer
-        eigvalues,vectors=eigs(LinearOperator(a.shape,matvec=action,dtype=float),k=request.count,which="LM",v0=np.sin(np.arange(a.shape[0])+.23),tol=1e-11,maxiter=request.max_iterations)
+        with lease:
+            eigvalues,vectors=eigs(LinearOperator(a.shape,matvec=action,dtype=float),k=request.count,which="LM",v0=np.sin(np.arange(a.shape[0])+.23),tol=1e-11,maxiter=request.max_iterations)
         modes=[]
         for mu,y in zip(eigvalues,vectors.T):
             if not np.isfinite(mu) or abs(mu.imag)>1e-9*abs(mu.real) or mu.real == 0. or np.linalg.norm(y.imag)>1e-9*np.linalg.norm(y.real): raise _BucklingNumericalFailure("unresolved buckling pair")

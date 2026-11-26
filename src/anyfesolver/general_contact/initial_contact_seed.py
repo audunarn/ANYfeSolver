@@ -32,7 +32,7 @@ import time
 import numpy as np
 from scipy import sparse
 
-from anyfesolver.linalg import MatrixClass, factorize
+from anyfesolver.linalg import MatrixClass, factorize, lease_from
 
 from .core import (_INITIAL_CONTACT_SEED_REVISION,
                    _INITIAL_CONTACT_SEED_GLOBALIZATION_REVISION)
@@ -258,46 +258,50 @@ def propose_linearized_kkt_seed(*, kqq, kqz, gap_q, control_reactions,
     ), format="csr")
     diagnostics["constrained_operator_dofs"] = int(size + len(constraint))
     try:
-        handle = factorize(operator, MatrixClass.GENERAL,
+        # Leased: solved for several right-hand sides (pinned against any
+        # concurrent factorization, eviction or release in between).
+        lease = lease_from(factorize, operator, MatrixClass.GENERAL,
                            signature=f"{signature}:constrained")
     except Exception as exc:
         diagnostics["detail"] = f"{type(exc).__name__}: {exc}"[:200]
         return InitialContactSeedRefusal("constrained_factorization_failed",
                                         diagnostics)
-    if handle.status != "ok":
-        diagnostics["detail"] = str(handle.failure_reason)[:200]
-        return InitialContactSeedRefusal("constrained_factorization_failed",
-                                        diagnostics)
-    diagnostics["constrained_factorizations"] = 1
+    with lease:
+        handle = lease.handle
+        if handle.status != "ok":
+            diagnostics["detail"] = str(handle.failure_reason)[:200]
+            return InitialContactSeedRefusal("constrained_factorization_failed",
+                                            diagnostics)
+        diagnostics["constrained_factorizations"] = 1
 
-    def solve_columns(rhs):
-        solved = np.asarray(handle.solve(np.asarray(rhs, dtype=float)),
-                            dtype=float).reshape(-1, len(rhs[0]))
-        backward = np.asarray(operator @ solved - np.asarray(rhs, dtype=float))
-        error = float(np.max(np.abs(backward), initial=0.0))
-        reference = float(np.max(np.abs(np.asarray(rhs, dtype=float)),
-                                initial=0.0))
-        return solved, error/max(1.0, reference)
+        def solve_columns(rhs):
+            solved = np.asarray(handle.solve(np.asarray(rhs, dtype=float)),
+                                dtype=float).reshape(-1, len(rhs[0]))
+            backward = np.asarray(operator @ solved - np.asarray(rhs, dtype=float))
+            error = float(np.max(np.abs(backward), initial=0.0))
+            reference = float(np.max(np.abs(np.asarray(rhs, dtype=float)),
+                                    initial=0.0))
+            return solved, error/max(1.0, reference)
 
-    free_rhs = np.zeros((size + len(constraint), 1))
-    free_rhs[:size, 0] = residual
-    free_rhs[size:, 0] = constraint
-    try:
-        free, free_error = solve_columns(free_rhs)
-    except Exception as exc:
-        diagnostics["detail"] = f"{type(exc).__name__}: {exc}"[:200]
-        return InitialContactSeedRefusal("constrained_solve_failed",
-                                        diagnostics)
-    pressure_rhs = np.zeros((size + len(constraint), supported_modes))
-    pressure_rhs[:size, :] = (-np.asarray(
-        kqz.todense() if sparse.issparse(kqz) else kqz, dtype=float))[:, supported]
-    try:
-        pressure, pressure_error = solve_columns(pressure_rhs)
-    except Exception as exc:
-        diagnostics["detail"] = f"{type(exc).__name__}: {exc}"[:200]
-        return InitialContactSeedRefusal("constrained_solve_failed",
-                                        diagnostics)
-    diagnostics["constrained_solves"] = 1 + supported_modes
+        free_rhs = np.zeros((size + len(constraint), 1))
+        free_rhs[:size, 0] = residual
+        free_rhs[size:, 0] = constraint
+        try:
+            free, free_error = solve_columns(free_rhs)
+        except Exception as exc:
+            diagnostics["detail"] = f"{type(exc).__name__}: {exc}"[:200]
+            return InitialContactSeedRefusal("constrained_solve_failed",
+                                            diagnostics)
+        pressure_rhs = np.zeros((size + len(constraint), supported_modes))
+        pressure_rhs[:size, :] = (-np.asarray(
+            kqz.todense() if sparse.issparse(kqz) else kqz, dtype=float))[:, supported]
+        try:
+            pressure, pressure_error = solve_columns(pressure_rhs)
+        except Exception as exc:
+            diagnostics["detail"] = f"{type(exc).__name__}: {exc}"[:200]
+            return InitialContactSeedRefusal("constrained_solve_failed",
+                                            diagnostics)
+        diagnostics["constrained_solves"] = 1 + supported_modes
     backward = max(free_error, pressure_error)
     diagnostics["constrained_backward_error"] = backward
     if not np.all(np.isfinite(free)) or not np.all(np.isfinite(pressure)):

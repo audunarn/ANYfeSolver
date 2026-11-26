@@ -50,7 +50,7 @@ from .fracture import (
     state_equivalent_plastic_strain,
     state_rtcl_increment,
 )
-from .linalg import MatrixClass, factorize
+from .linalg import CleanupScope, MatrixClass, factorize, lease_from
 from .impact_performance import ImpactTangentReuseController
 from .materials import beam_material_properties, material_symmetry, shell_characteristic_modulus
 from .matrix_assembly import assemble_load_vector, assemble_mass_matrix, assemble_stiffness_matrix
@@ -2850,698 +2850,702 @@ def _solve_transient_sphere_impact_nonlinear(
     # Newton budget on every step of a difficult (yielding/limit-point) phase.
     distress_halvings = 0
     preemptive_substep_count = 0
-    while segments:
-        cancellation_safe_point(
-            cancellation_token,
-            "sphere_impact.nonlinear.segment",
-        )
-        step_index, segment_start, sub_time, needs_travel_check = segments.pop(0)
-        dt = float(sub_time - segment_start)
-        if dt <= 0.0:
-            continue
-        if needs_travel_check:
-            predicted_travel = max(float(np.linalg.norm(sphere_velocity)) * dt, float(sphere.speed) * dt)
-            n_travel = int(np.ceil(predicted_travel / travel_scale))
-            if distress_halvings > 0:
-                n_travel = max(n_travel, 2 ** distress_halvings)
-            n_travel = min(max(n_travel, 1), int(config.max_event_substeps))
-            if n_travel > 1:
-                pieces: List[Tuple[int, float, float, bool]] = []
-                piece_start = float(segment_start)
-                for piece in range(1, n_travel + 1):
-                    piece_end = float(sub_time) if piece == n_travel else float(segment_start) + piece * dt / n_travel
-                    pieces.append((step_index, piece_start, piece_end, False))
-                    piece_start = piece_end
-                segments[:0] = pieces
-                event_substep_count += n_travel - 1
-                if distress_halvings > 0:
-                    preemptive_substep_count += n_travel - 1
-                continue
-        total_substep_count += 1
-        pre_state = (
-            q_red.copy(),
-            v_red.copy(),
-            a_red.copy(),
-            sphere_position.copy(),
-            sphere_velocity.copy(),
-            sphere_acceleration.copy(),
-            committed_states,
-            set(deleted_element_ids),
-            dict(plastic_damage_states),
-            dict(damage_scale_by_element),
-            load_prev.copy(),
-            load_prev_red.copy(),
-            sphere_force_prev.copy(),
-            F_int_prev.copy(),
-            F_int_prev_red.copy(),
-        )
-        if sub_time - dt < sphere.t_start <= sub_time and np.linalg.norm(sphere_velocity) == 0.0:
-            sphere_velocity = sphere.travel_velocity.copy()
-        a0 = 1.0 / (beta * dt**2)
-        a1 = gamma / (beta * dt)
-        a2 = 1.0 / (beta * dt)
-        a3 = 1.0 / (2.0 * beta) - 1.0
-        a4 = gamma / beta - 1.0
-        a5 = dt * (gamma / (2.0 * beta) - 1.0)
-        tangent_reuse.begin_substep(dt, damage_scale_by_element, deleted_element_ids)
-        q_trial = q_red.copy()
-        contact_load = np.zeros(total_dofs, dtype=float)
-        sphere_force = np.zeros(3, dtype=float)
-        records: Tuple[SphereContactRecord, ...] = tuple()
-        last_contact_work: Optional[ContactWorkBuffer] = None
-        converged = False
-        residual_norm = float("inf")
-        displacement_increment = float("inf")
-        residual_energy_increment = float("inf")
-        contact_change = float("inf")
-        reference = 1.0
-        contact_scale = 1.0
-        trial_states: Mapping[int, Any] = committed_states
-        q_next = q_red.copy()
-        v_next = v_red.copy()
-        a_next = a_red.copy()
-        sphere_x_next = sphere_position.copy()
-        sphere_v_next = sphere_velocity.copy()
-        sphere_a_next = sphere_acceleration.copy()
-        factor_diagnostics: Dict[str, Any] = {}
-        convergence_reason = "standard"
-        max_newton_corrections = int(nl.max_iterations)
-        from ._impact_coupling import ImpactCoupledIteration, numerical_contact_jacobian
-        coupled_iteration = ImpactCoupledIteration() if coupling_method == "anderson" else None
-        coupled_signature = None
-        sphere_x_pred = sphere_position + dt * sphere_velocity + dt**2 * (0.5 - beta) * sphere_acceleration
-        sphere_v_pred = sphere_velocity + dt * (1.0 - gamma) * sphere_acceleration
-        sphere_x_iterate = sphere_x_pred.copy()
-        for iteration in range(1, max_newton_corrections + 2):
+    with tangent_reuse:  # ends a reusable tangent's lease on every exit
+        while segments:
             cancellation_safe_point(
                 cancellation_token,
-                f"sphere_impact.nonlinear.time:{sub_time:.16g}.iteration:{iteration}",
+                "sphere_impact.nonlinear.segment",
             )
-            if status_callback:
-                status_callback(f"\r  Time {sub_time:.4f} s, Iteration {iteration}: Res {residual_norm:.2e}")
-            full_u = reconstruct_full_solution(T, q_trial, u0)
-            refresh_tangent, refresh_reasons = tangent_reuse.refresh_decision()
-            if contact_newton_active:
-                refresh_tangent = True
-                refresh_reasons = tuple(refresh_reasons) + ("coupled_contact_jacobian",)
-            if impact_reduced_assembly.active:
-                F_int_red, K_T_red, trial_states = impact_reduced_assembly.assemble(
-                    full_u,
-                    committed_states,
-                    tangent=refresh_tangent,
+            step_index, segment_start, sub_time, needs_travel_check = segments.pop(0)
+            dt = float(sub_time - segment_start)
+            if dt <= 0.0:
+                continue
+            if needs_travel_check:
+                predicted_travel = max(float(np.linalg.norm(sphere_velocity)) * dt, float(sphere.speed) * dt)
+                n_travel = int(np.ceil(predicted_travel / travel_scale))
+                if distress_halvings > 0:
+                    n_travel = max(n_travel, 2 ** distress_halvings)
+                n_travel = min(max(n_travel, 1), int(config.max_event_substeps))
+                if n_travel > 1:
+                    pieces: List[Tuple[int, float, float, bool]] = []
+                    piece_start = float(segment_start)
+                    for piece in range(1, n_travel + 1):
+                        piece_end = float(sub_time) if piece == n_travel else float(segment_start) + piece * dt / n_travel
+                        pieces.append((step_index, piece_start, piece_end, False))
+                        piece_start = piece_end
+                    segments[:0] = pieces
+                    event_substep_count += n_travel - 1
+                    if distress_halvings > 0:
+                        preemptive_substep_count += n_travel - 1
+                    continue
+            total_substep_count += 1
+            pre_state = (
+                q_red.copy(),
+                v_red.copy(),
+                a_red.copy(),
+                sphere_position.copy(),
+                sphere_velocity.copy(),
+                sphere_acceleration.copy(),
+                committed_states,
+                set(deleted_element_ids),
+                dict(plastic_damage_states),
+                dict(damage_scale_by_element),
+                load_prev.copy(),
+                load_prev_red.copy(),
+                sphere_force_prev.copy(),
+                F_int_prev.copy(),
+                F_int_prev_red.copy(),
+            )
+            if sub_time - dt < sphere.t_start <= sub_time and np.linalg.norm(sphere_velocity) == 0.0:
+                sphere_velocity = sphere.travel_velocity.copy()
+            a0 = 1.0 / (beta * dt**2)
+            a1 = gamma / (beta * dt)
+            a2 = 1.0 / (beta * dt)
+            a3 = 1.0 / (2.0 * beta) - 1.0
+            a4 = gamma / beta - 1.0
+            a5 = dt * (gamma / (2.0 * beta) - 1.0)
+            tangent_reuse.begin_substep(dt, damage_scale_by_element, deleted_element_ids)
+            q_trial = q_red.copy()
+            contact_load = np.zeros(total_dofs, dtype=float)
+            sphere_force = np.zeros(3, dtype=float)
+            records: Tuple[SphereContactRecord, ...] = tuple()
+            last_contact_work: Optional[ContactWorkBuffer] = None
+            converged = False
+            residual_norm = float("inf")
+            displacement_increment = float("inf")
+            residual_energy_increment = float("inf")
+            contact_change = float("inf")
+            reference = 1.0
+            contact_scale = 1.0
+            trial_states: Mapping[int, Any] = committed_states
+            q_next = q_red.copy()
+            v_next = v_red.copy()
+            a_next = a_red.copy()
+            sphere_x_next = sphere_position.copy()
+            sphere_v_next = sphere_velocity.copy()
+            sphere_a_next = sphere_acceleration.copy()
+            factor_diagnostics: Dict[str, Any] = {}
+            convergence_reason = "standard"
+            max_newton_corrections = int(nl.max_iterations)
+            from ._impact_coupling import ImpactCoupledIteration, numerical_contact_jacobian
+            coupled_iteration = ImpactCoupledIteration() if coupling_method == "anderson" else None
+            coupled_signature = None
+            sphere_x_pred = sphere_position + dt * sphere_velocity + dt**2 * (0.5 - beta) * sphere_acceleration
+            sphere_v_pred = sphere_velocity + dt * (1.0 - gamma) * sphere_acceleration
+            sphere_x_iterate = sphere_x_pred.copy()
+            for iteration in range(1, max_newton_corrections + 2):
+                cancellation_safe_point(
+                    cancellation_token,
+                    f"sphere_impact.nonlinear.time:{sub_time:.16g}.iteration:{iteration}",
                 )
-                F_int = None
-                K_T = None
-            else:
-                F_int, K_T, trial_states = assemble_nonlinear(
-                    full_u,
-                    committed_states,
-                    tangent=refresh_tangent,
-                    scales=damage_scale_by_element,
-                )
-                F_int_red = None
-                K_T_red = None
-            a_trial = a0 * (q_trial - q_red) - a2 * v_red - a3 * a_red
-            v_trial = v_red + dt * ((1.0 - gamma) * a_red + gamma * a_trial)
-            if impact_reduced_assembly.active:
-                contact_load_red = np.asarray(T.T @ contact_load, dtype=float).reshape(-1)
-                external_load_red = base_load_red + contact_load_red
-                if alpha_h != 0.0:
-                    weighted_force_red = (
-                        one_plus_alpha * (external_load_red - F_int_red)
-                        - alpha_h * (load_prev_red - F_int_prev_red)
-                    )
-                    residual = (
-                        weighted_force_red
-                        - one_plus_alpha * (C_red @ v_trial)
-                        + alpha_h * (C_red @ v_red)
-                        - M_red @ a_trial
-                    )
-                else:
-                    residual = (
-                        external_load_red
-                        - F_int_red
-                        - C_red @ v_trial
-                        - M_red @ a_trial
-                    )
-                reference = max(
-                    float(np.linalg.norm(external_load_red)),
-                    float(np.linalg.norm(F_int_red)),
-                    1.0,
-                )
-            else:
-                if alpha_h != 0.0:
-                    weighted_force = one_plus_alpha * (base_load + contact_load - F_int) - alpha_h * (load_prev - F_int_prev)
-                    residual = (
-                        np.asarray(T.T @ weighted_force, dtype=float).reshape(-1)
-                        - one_plus_alpha * (C_red @ v_trial)
-                        + alpha_h * (C_red @ v_red)
-                        - M_red @ a_trial
-                    )
-                else:
-                    residual = np.asarray(T.T @ (base_load + contact_load - F_int), dtype=float).reshape(-1) - C_red @ v_trial - M_red @ a_trial
-                reference = max(float(np.linalg.norm(np.asarray(T.T @ (base_load + contact_load), dtype=float))), float(np.linalg.norm(np.asarray(T.T @ F_int, dtype=float))), 1.0)
-            residual_norm = float(np.linalg.norm(residual))
-            trial_refresh_reasons = tangent_reuse.assess_trial_state(residual_norm, trial_states)
-            if not refresh_tangent and trial_refresh_reasons:
-                # A force-only trial exposed a stall or a material-state
-                # transition.  Reassemble the tangent at the same iterate so
-                # the invalidation takes effect before solving the correction.
+                if status_callback:
+                    status_callback(f"\r  Time {sub_time:.4f} s, Iteration {iteration}: Res {residual_norm:.2e}")
+                full_u = reconstruct_full_solution(T, q_trial, u0)
+                refresh_tangent, refresh_reasons = tangent_reuse.refresh_decision()
+                if contact_newton_active:
+                    refresh_tangent = True
+                    refresh_reasons = tuple(refresh_reasons) + ("coupled_contact_jacobian",)
                 if impact_reduced_assembly.active:
                     F_int_red, K_T_red, trial_states = impact_reduced_assembly.assemble(
                         full_u,
                         committed_states,
-                        tangent=True,
+                        tangent=refresh_tangent,
                     )
+                    F_int = None
+                    K_T = None
                 else:
                     F_int, K_T, trial_states = assemble_nonlinear(
                         full_u,
                         committed_states,
-                        tangent=True,
+                        tangent=refresh_tangent,
                         scales=damage_scale_by_element,
                     )
-                refresh_tangent = True
-                refresh_reasons = tuple(sorted(set(refresh_reasons).union(trial_refresh_reasons)))
-            elif refresh_tangent and trial_refresh_reasons:
-                refresh_reasons = tuple(sorted(set(refresh_reasons).union(trial_refresh_reasons)))
-
-            # Convergence belongs to the configuration that was just
-            # assembled.  The previous implementation tested the residual
-            # at ``q_trial`` only after advancing to ``q_next``, then stored
-            # the old trial material state while accepting the new
-            # displacement.  Apart from corrupting path-dependent history,
-            # that is incompatible with solver-owned multiplicative nodal
-            # rotations, whose commit is bound to the exact accepted global
-            # vector.  Use the previous correction/contact changes as the
-            # fixed-point measures and accept only this evaluated iterate.
-            displacement_limit = float(nl.displacement_tolerance) * max(
-                float(np.linalg.norm(q_trial)), 1.0
-            )
-            residual_limit = float(nl.residual_tolerance) * reference
-            force_limit = max(
-                float(nl.contact_force_tolerance) * contact_scale,
-                float(config.force_tolerance),
-            )
-            completed_corrections = iteration - 1
-            standard_converged = (
-                completed_corrections > 0
-                and residual_norm <= residual_limit
-                and displacement_increment <= displacement_limit
-                and contact_change <= force_limit
-            )
-            contact_stall_converged = (
-                completed_corrections >= max(3, int(nl.max_iterations) // 2)
-                and residual_norm <= 1.0e-2 * reference
-                and displacement_increment
-                <= max(10.0 * displacement_limit, 1.0e-6)
-                and contact_change
-                <= max(
-                    5.0e-3 * contact_scale,
-                    10.0 * float(config.force_tolerance),
-                )
-            )
-            stagnation_converged = (
-                float(nl.stagnation_energy_tolerance) > 0.0
-                and completed_corrections >= 5
-                and displacement_increment <= displacement_limit
-                and contact_change <= force_limit
-                and residual_energy_increment
-                <= float(nl.stagnation_energy_tolerance)
-                * impact_energy_reference
-            )
-            if standard_converged or contact_stall_converged or stagnation_converged:
-                converged = True
-                q_next = q_trial.copy()
-                v_next = np.asarray(v_trial, dtype=float).copy()
-                a_next = np.asarray(a_trial, dtype=float).copy()
-                # The accepted acceleration is conjugate to the contact
-                # force evaluated at the accepted sphere configuration.
-                if not coupled_active:
-                    sphere_a_next = np.asarray(
-                        sphere_force / float(sphere.mass), dtype=float
-                    ).copy()
-                if standard_converged:
-                    convergence_reason = "standard"
-                elif contact_stall_converged:
-                    convergence_reason = "contact_stall"
-                else:
-                    convergence_reason = "stagnation_energy"
-                iteration_counts.append(completed_corrections)
-                if completed_corrections <= max(4, int(nl.max_iterations) // 3):
-                    distress_halvings = max(distress_halvings - 1, 0)
-                elif completed_corrections >= int(nl.max_iterations) - 2:
-                    distress_halvings = min(distress_halvings + 1, 2)
-                break
-            if completed_corrections >= max_newton_corrections:
-                # The final response evaluation is a confirmation only; the
-                # configured limit counts Newton corrections, not a hidden
-                # unevaluated candidate beyond that limit.
-                break
-            use_contact_newton = contact_newton_active and iteration > 1
-            sphere_delta = None
-            try:
-                if refresh_tangent:
-                    if impact_reduced_assembly.active:
-                        if descriptor_reduction is not None:
-                            raise AlgebraicDynamicsError(
-                                "nonlinear impact direct reduction cannot bypass "
-                                "declared algebraic coordinates"
-                            )
-                        K_eff = (one_plus_alpha * K_T_red + a0 * M_red + one_plus_alpha * a1 * C_red).tocsr()
-                    else:
-                        K_tangent_red = (T.T @ K_T @ T).tocsr()
-                        K_eff = (
-                            one_plus_alpha * K_tangent_red
-                            + a0 * M_red
-                            + one_plus_alpha * a1 * C_red
-                        ).tocsr()
-                        if descriptor_reduction is not None:
-                            assert descriptor_basis is not None
-                            current_descriptor_reduction = (
-                                build_algebraic_static_reduction(
-                                    K_tangent_red,
-                                    M_red,
-                                    descriptor_basis.reduced_basis,
-                                    dense_size_limit=512,
-                                )
-                            )
-                            if not np.array_equal(
-                                current_descriptor_reduction.physical_rows,
-                                descriptor_reduction.physical_rows,
-                            ):
-                                raise AlgebraicDynamicsError(
-                                    "nonlinear impact algebraic partition changed "
-                                    "during Newton iteration"
-                                )
-                            assert descriptor_partition_operator is not None
-                            K_eff = (
-                                descriptor_partition_operator.T
-                                @ K_eff
-                                @ descriptor_partition_operator
-                            ).tocsr()
-                    if use_contact_newton:
-                        def evaluate_contact_coordinates(coordinates):
-                            nonlocal contact_jacobian_evaluation_count
-                            q_probe, x_probe = coordinates[:-3], coordinates[-3:]
-                            a_probe = a0 * (q_probe - q_red) - a2 * v_red - a3 * a_red
-                            v_probe = v_red + dt * ((1.0 - gamma) * a_red + gamma * a_probe)
-                            sphere_v_probe = sphere_v_pred + a1 * (x_probe - sphere_x_pred)
-                            # Fresh scratch storage: probes never alter the actual
-                            # iterate's work buffer, sticky IDs or material trial.
-                            work = _assemble_sphere_contact_work_buffer(
-                                model, sphere, config, x_probe, sphere_v_probe,
-                                structural_displacement=reconstruct_full_solution(T, q_probe, u0),
-                                structural_velocity=np.asarray(T @ v_probe, dtype=float).reshape(-1),
-                                deleted_element_ids=tuple(deleted_element_ids),
-                                contact_scale_by_element=damage_scale_by_element,
-                                preferred_element_ids=sticky_contact_ids,
-                            )
-                            contact_jacobian_evaluation_count += 1
-                            return np.concatenate((np.asarray(T.T @ work.load).reshape(-1), work.sphere_force))
-                        contact_jacobian = numerical_contact_jacobian(
-                            evaluate_contact_coordinates,
-                            np.concatenate((q_trial, sphere_x_iterate)), float(sphere.radius),
-                            safe_point=lambda: cancellation_safe_point(
-                                cancellation_token, "sphere_impact.nonlinear.contact_jacobian"),
+                    F_int_red = None
+                    K_T_red = None
+                a_trial = a0 * (q_trial - q_red) - a2 * v_red - a3 * a_red
+                v_trial = v_red + dt * ((1.0 - gamma) * a_red + gamma * a_trial)
+                if impact_reduced_assembly.active:
+                    contact_load_red = np.asarray(T.T @ contact_load, dtype=float).reshape(-1)
+                    external_load_red = base_load_red + contact_load_red
+                    if alpha_h != 0.0:
+                        weighted_force_red = (
+                            one_plus_alpha * (external_load_red - F_int_red)
+                            - alpha_h * (load_prev_red - F_int_prev_red)
                         )
-                        n_q = q_trial.size
-                        # Negative derivative of the two physical residuals.
-                        contact_jacobian[:n_q, :] *= one_plus_alpha
-                        base_operator = sparse.block_diag((K_eff, float(sphere.mass) * a0 * sparse.eye(3)))
-                        K_eff = (base_operator - sparse.csr_matrix(contact_jacobian)).tocsr()
-                    tangent_reuse.record_tangent_assembly(refresh_reasons)
-                    handle = factorize(
-                        K_eff,
-                        MatrixClass.GENERAL if use_contact_newton else MatrixClass.SYMMETRIC_INDEFINITE,
-                        signature=(
-                            f"sphere_impact.nl.effective:{dt:.16g}:{iteration}:"
-                            f"descriptor={descriptor_reduction is not None}"
+                        residual = (
+                            weighted_force_red
+                            - one_plus_alpha * (C_red @ v_trial)
+                            + alpha_h * (C_red @ v_red)
+                            - M_red @ a_trial
+                        )
+                    else:
+                        residual = (
+                            external_load_red
+                            - F_int_red
+                            - C_red @ v_trial
+                            - M_red @ a_trial
+                        )
+                    reference = max(
+                        float(np.linalg.norm(external_load_red)),
+                        float(np.linalg.norm(F_int_red)),
+                        1.0,
+                    )
+                else:
+                    if alpha_h != 0.0:
+                        weighted_force = one_plus_alpha * (base_load + contact_load - F_int) - alpha_h * (load_prev - F_int_prev)
+                        residual = (
+                            np.asarray(T.T @ weighted_force, dtype=float).reshape(-1)
+                            - one_plus_alpha * (C_red @ v_trial)
+                            + alpha_h * (C_red @ v_red)
+                            - M_red @ a_trial
+                        )
+                    else:
+                        residual = np.asarray(T.T @ (base_load + contact_load - F_int), dtype=float).reshape(-1) - C_red @ v_trial - M_red @ a_trial
+                    reference = max(float(np.linalg.norm(np.asarray(T.T @ (base_load + contact_load), dtype=float))), float(np.linalg.norm(np.asarray(T.T @ F_int, dtype=float))), 1.0)
+                residual_norm = float(np.linalg.norm(residual))
+                trial_refresh_reasons = tangent_reuse.assess_trial_state(residual_norm, trial_states)
+                if not refresh_tangent and trial_refresh_reasons:
+                    # A force-only trial exposed a stall or a material-state
+                    # transition.  Reassemble the tangent at the same iterate so
+                    # the invalidation takes effect before solving the correction.
+                    if impact_reduced_assembly.active:
+                        F_int_red, K_T_red, trial_states = impact_reduced_assembly.assemble(
+                            full_u,
+                            committed_states,
+                            tangent=True,
+                        )
+                    else:
+                        F_int, K_T, trial_states = assemble_nonlinear(
+                            full_u,
+                            committed_states,
+                            tangent=True,
+                            scales=damage_scale_by_element,
+                        )
+                    refresh_tangent = True
+                    refresh_reasons = tuple(sorted(set(refresh_reasons).union(trial_refresh_reasons)))
+                elif refresh_tangent and trial_refresh_reasons:
+                    refresh_reasons = tuple(sorted(set(refresh_reasons).union(trial_refresh_reasons)))
+
+                # Convergence belongs to the configuration that was just
+                # assembled.  The previous implementation tested the residual
+                # at ``q_trial`` only after advancing to ``q_next``, then stored
+                # the old trial material state while accepting the new
+                # displacement.  Apart from corrupting path-dependent history,
+                # that is incompatible with solver-owned multiplicative nodal
+                # rotations, whose commit is bound to the exact accepted global
+                # vector.  Use the previous correction/contact changes as the
+                # fixed-point measures and accept only this evaluated iterate.
+                displacement_limit = float(nl.displacement_tolerance) * max(
+                    float(np.linalg.norm(q_trial)), 1.0
+                )
+                residual_limit = float(nl.residual_tolerance) * reference
+                force_limit = max(
+                    float(nl.contact_force_tolerance) * contact_scale,
+                    float(config.force_tolerance),
+                )
+                completed_corrections = iteration - 1
+                standard_converged = (
+                    completed_corrections > 0
+                    and residual_norm <= residual_limit
+                    and displacement_increment <= displacement_limit
+                    and contact_change <= force_limit
+                )
+                contact_stall_converged = (
+                    completed_corrections >= max(3, int(nl.max_iterations) // 2)
+                    and residual_norm <= 1.0e-2 * reference
+                    and displacement_increment
+                    <= max(10.0 * displacement_limit, 1.0e-6)
+                    and contact_change
+                    <= max(
+                        5.0e-3 * contact_scale,
+                        10.0 * float(config.force_tolerance),
+                    )
+                )
+                stagnation_converged = (
+                    float(nl.stagnation_energy_tolerance) > 0.0
+                    and completed_corrections >= 5
+                    and displacement_increment <= displacement_limit
+                    and contact_change <= force_limit
+                    and residual_energy_increment
+                    <= float(nl.stagnation_energy_tolerance)
+                    * impact_energy_reference
+                )
+                if standard_converged or contact_stall_converged or stagnation_converged:
+                    converged = True
+                    q_next = q_trial.copy()
+                    v_next = np.asarray(v_trial, dtype=float).copy()
+                    a_next = np.asarray(a_trial, dtype=float).copy()
+                    # The accepted acceleration is conjugate to the contact
+                    # force evaluated at the accepted sphere configuration.
+                    if not coupled_active:
+                        sphere_a_next = np.asarray(
+                            sphere_force / float(sphere.mass), dtype=float
+                        ).copy()
+                    if standard_converged:
+                        convergence_reason = "standard"
+                    elif contact_stall_converged:
+                        convergence_reason = "contact_stall"
+                    else:
+                        convergence_reason = "stagnation_energy"
+                    iteration_counts.append(completed_corrections)
+                    if completed_corrections <= max(4, int(nl.max_iterations) // 3):
+                        distress_halvings = max(distress_halvings - 1, 0)
+                    elif completed_corrections >= int(nl.max_iterations) - 2:
+                        distress_halvings = min(distress_halvings + 1, 2)
+                    break
+                if completed_corrections >= max_newton_corrections:
+                    # The final response evaluation is a confirmation only; the
+                    # configured limit counts Newton corrections, not a hidden
+                    # unevaluated candidate beyond that limit.
+                    break
+                use_contact_newton = contact_newton_active and iteration > 1
+                sphere_delta = None
+                try:
+                    if refresh_tangent:
+                        if impact_reduced_assembly.active:
+                            if descriptor_reduction is not None:
+                                raise AlgebraicDynamicsError(
+                                    "nonlinear impact direct reduction cannot bypass "
+                                    "declared algebraic coordinates"
+                                )
+                            K_eff = (one_plus_alpha * K_T_red + a0 * M_red + one_plus_alpha * a1 * C_red).tocsr()
+                        else:
+                            K_tangent_red = (T.T @ K_T @ T).tocsr()
+                            K_eff = (
+                                one_plus_alpha * K_tangent_red
+                                + a0 * M_red
+                                + one_plus_alpha * a1 * C_red
+                            ).tocsr()
+                            if descriptor_reduction is not None:
+                                assert descriptor_basis is not None
+                                current_descriptor_reduction = (
+                                    build_algebraic_static_reduction(
+                                        K_tangent_red,
+                                        M_red,
+                                        descriptor_basis.reduced_basis,
+                                        dense_size_limit=512,
+                                    )
+                                )
+                                if not np.array_equal(
+                                    current_descriptor_reduction.physical_rows,
+                                    descriptor_reduction.physical_rows,
+                                ):
+                                    raise AlgebraicDynamicsError(
+                                        "nonlinear impact algebraic partition changed "
+                                        "during Newton iteration"
+                                    )
+                                assert descriptor_partition_operator is not None
+                                K_eff = (
+                                    descriptor_partition_operator.T
+                                    @ K_eff
+                                    @ descriptor_partition_operator
+                                ).tocsr()
+                        if use_contact_newton:
+                            def evaluate_contact_coordinates(coordinates):
+                                nonlocal contact_jacobian_evaluation_count
+                                q_probe, x_probe = coordinates[:-3], coordinates[-3:]
+                                a_probe = a0 * (q_probe - q_red) - a2 * v_red - a3 * a_red
+                                v_probe = v_red + dt * ((1.0 - gamma) * a_red + gamma * a_probe)
+                                sphere_v_probe = sphere_v_pred + a1 * (x_probe - sphere_x_pred)
+                                # Fresh scratch storage: probes never alter the actual
+                                # iterate's work buffer, sticky IDs or material trial.
+                                work = _assemble_sphere_contact_work_buffer(
+                                    model, sphere, config, x_probe, sphere_v_probe,
+                                    structural_displacement=reconstruct_full_solution(T, q_probe, u0),
+                                    structural_velocity=np.asarray(T @ v_probe, dtype=float).reshape(-1),
+                                    deleted_element_ids=tuple(deleted_element_ids),
+                                    contact_scale_by_element=damage_scale_by_element,
+                                    preferred_element_ids=sticky_contact_ids,
+                                )
+                                contact_jacobian_evaluation_count += 1
+                                return np.concatenate((np.asarray(T.T @ work.load).reshape(-1), work.sphere_force))
+                            contact_jacobian = numerical_contact_jacobian(
+                                evaluate_contact_coordinates,
+                                np.concatenate((q_trial, sphere_x_iterate)), float(sphere.radius),
+                                safe_point=lambda: cancellation_safe_point(
+                                    cancellation_token, "sphere_impact.nonlinear.contact_jacobian"),
+                            )
+                            n_q = q_trial.size
+                            # Negative derivative of the two physical residuals.
+                            contact_jacobian[:n_q, :] *= one_plus_alpha
+                            base_operator = sparse.block_diag((K_eff, float(sphere.mass) * a0 * sparse.eye(3)))
+                            K_eff = (base_operator - sparse.csr_matrix(contact_jacobian)).tocsr()
+                        tangent_reuse.record_tangent_assembly(refresh_reasons)
+                        # Reused across iterations and status callbacks: pinned
+                        # while reusable (ImpactTangentReuseController.factorize).
+                        handle = tangent_reuse.factorize(
+                            factorize,
+                            K_eff,
+                            MatrixClass.GENERAL if use_contact_newton else MatrixClass.SYMMETRIC_INDEFINITE,
+                            signature=(
+                                f"sphere_impact.nl.effective:{dt:.16g}:{iteration}:"
+                                f"descriptor={descriptor_reduction is not None}"
+                            ),
+                        )
+                    else:
+                        handle = tangent_reuse.cached_handle
+                        if handle is None:  # defensive; refresh_decision guards this
+                            raise RuntimeError("impact tangent reuse cache is unexpectedly empty")
+                    factor_diagnostics = handle.diagnostics()
+                    solve_rhs = (
+                        descriptor_reduction.effective_rhs(residual)
+                        if descriptor_reduction is not None
+                        else residual
+                    )
+                    if use_contact_newton:
+                        solve_rhs = np.concatenate((solve_rhs,
+                            sphere_force - float(sphere.mass) * a0 * (sphere_x_iterate - sphere_x_pred)))
+                    solved_delta = np.asarray(
+                        handle.solve(solve_rhs), dtype=float
+                    ).reshape(-1)
+                    if use_contact_newton:
+                        sphere_delta = solved_delta[-3:]
+                        solved_delta = solved_delta[:-3]
+                    delta = (
+                        descriptor_reduction.reconstruct_partition_state(
+                            solved_delta[: descriptor_reduction.physical_dimension],
+                            solved_delta[descriptor_reduction.physical_dimension :],
+                        )
+                        if descriptor_reduction is not None
+                        else solved_delta
+                    )
+                    if refresh_tangent:
+                        tangent_reuse.record_factorization(handle)
+                        factorization_count += 1
+                    else:
+                        tangent_reuse.record_reuse()
+                    solve_count += 1
+                except SolveCancelled:
+                    raise
+                except Exception:
+                    status = "nonlinear_tangent_failed"
+                    stop_reason = "nonlinear_tangent_factorization_failed"
+                    break
+                if np.any(~np.isfinite(delta)) or (sphere_delta is not None and np.any(~np.isfinite(sphere_delta))):
+                    status = "nonlinear_iteration_failed"
+                    stop_reason = "nonfinite_nonlinear_increment"
+                    break
+                factor = 1.0
+                if bool(nl.line_search):
+                    factor = 1.0
+                    while factor > float(nl.min_line_search_factor) and float(np.linalg.norm(factor * delta)) > 10.0 * max(float(np.linalg.norm(q_trial)), 1.0):
+                        factor *= 0.5
+                tangent_reuse.observe_line_search(factor)
+                q_next = q_trial + factor * delta
+                sphere_a_next = sphere_force / float(sphere.mass)
+                sphere_x_next = sphere_x_pred + beta * dt**2 * sphere_a_next
+                if sphere_delta is not None:
+                    sphere_x_next = sphere_x_iterate + factor * sphere_delta
+                sphere_v_next = sphere_v_pred + gamma * dt * sphere_a_next
+                displacement_increment = float(np.linalg.norm(factor * delta))
+                residual_energy_increment = abs(float(np.dot(factor * delta, residual)))
+                if coupled_iteration is not None:
+                    # The first map uses the legacy zero contact-load initialization,
+                    # not a physical residual at x_pred: never store its secant.
+                    if iteration > 1:
+                        previous_safeguards = coupled_iteration.globalization_count
+                        coupled_next = coupled_iteration.update(
+                            np.concatenate((q_trial, sphere_x_iterate)),
+                            np.concatenate((q_next, sphere_x_next)),
+                            signature=tuple(zip(last_contact_work.active_element_ids,
+                                                last_contact_work.active_classifications)),
+                        )
+                        coupled_safeguard_count += coupled_iteration.globalization_count - previous_safeguards
+                        if not np.all(np.isfinite(coupled_next)):
+                            status = "nonlinear_iteration_failed"
+                            stop_reason = "nonfinite_nonlinear_increment"
+                            break
+                        q_next = coupled_next[:-3]
+                        sphere_x_next = coupled_next[-3:]
+                    actual_delta = q_next - q_trial
+                    # A tiny extrapolated update must never make a physical Newton
+                    # correction pass a displacement/energy stagnation criterion.
+                    displacement_increment = max(displacement_increment, float(np.linalg.norm(actual_delta)))
+                    residual_energy_increment = max(residual_energy_increment, abs(float(np.dot(actual_delta, residual))))
+                if coupled_active:
+                    sphere_a_next = a0 * (sphere_x_next - sphere_x_pred)
+                    sphere_v_next = sphere_v_pred + gamma * dt * sphere_a_next
+                    sphere_x_iterate = sphere_x_next.copy()
+                a_next = a0 * (q_next - q_red) - a2 * v_red - a3 * a_red
+                v_next = v_red + dt * ((1.0 - gamma) * a_red + gamma * a_next)
+                full_u_next = reconstruct_full_solution(T, q_next, u0)
+                full_v_next = np.asarray(T @ v_next, dtype=float).reshape(-1)
+                try:
+                    if native_contact_state:
+                        # The internal response above owns a trial for ``q_trial``;
+                        # contact is evaluated at ``q_next``.  Replace it with an
+                        # exact q_next candidate before resolving the native
+                        # directors.  This candidate is contact-only and is always
+                        # discarded; the next Newton residual re-evaluates q_next and
+                        # owns the sole candidate that may be committed.
+                        begin_state_evaluation(
+                            committed_states,
+                            model=model,
+                            displacements=full_u_next,
+                        )
+                    last_contact_work = _assemble_sphere_contact_work_buffer(
+                        model,
+                        sphere,
+                        config,
+                        sphere_x_next,
+                        sphere_v_next,
+                        structural_displacement=full_u_next,
+                        structural_velocity=full_v_next,
+                        deleted_element_ids=tuple(deleted_element_ids),
+                        contact_scale_by_element=damage_scale_by_element,
+                        preferred_element_ids=sticky_contact_ids,
+                        work_buffer=contact_work_buffer,
+                        native_rotation_context=(
+                            committed_states if native_contact_state else None
                         ),
                     )
-                else:
-                    handle = tangent_reuse.cached_handle
-                    if handle is None:  # defensive; refresh_decision guards this
-                        raise RuntimeError("impact tangent reuse cache is unexpectedly empty")
-                factor_diagnostics = handle.diagnostics()
-                solve_rhs = (
-                    descriptor_reduction.effective_rhs(residual)
-                    if descriptor_reduction is not None
-                    else residual
-                )
-                if use_contact_newton:
-                    solve_rhs = np.concatenate((solve_rhs,
-                        sphere_force - float(sphere.mass) * a0 * (sphere_x_iterate - sphere_x_pred)))
-                solved_delta = np.asarray(
-                    handle.solve(solve_rhs), dtype=float
-                ).reshape(-1)
-                if use_contact_newton:
-                    sphere_delta = solved_delta[-3:]
-                    solved_delta = solved_delta[:-3]
-                delta = (
-                    descriptor_reduction.reconstruct_partition_state(
-                        solved_delta[: descriptor_reduction.physical_dimension],
-                        solved_delta[descriptor_reduction.physical_dimension :],
+                finally:
+                    if native_contact_state:
+                        discard_active_state_candidate(committed_states)
+                if last_contact_work.selected_indices.size:
+                    sticky_contact_ids = last_contact_work.active_element_ids
+                contact_scale = max(float(np.linalg.norm(last_contact_work.sphere_force)), 1.0)
+                contact_change = float(np.linalg.norm(last_contact_work.sphere_force -
+                    (float(sphere.mass) * sphere_a_next if coupled_active else sphere_force)))
+                if coupled_iteration is not None:
+                    next_signature = tuple(zip(last_contact_work.active_element_ids, last_contact_work.active_classifications))
+                    if next_signature and coupled_signature and next_signature != coupled_signature:
+                        coupled_iteration = ImpactCoupledIteration()
+                    if next_signature:
+                        coupled_signature = next_signature
+                np.copyto(contact_load, last_contact_work.load)
+                np.copyto(sphere_force, last_contact_work.sphere_force)
+                tangent_reuse.observe_contact_signature(
+                    tuple(
+                        zip(
+                            last_contact_work.active_element_ids,
+                            last_contact_work.active_classifications,
+                        )
                     )
-                    if descriptor_reduction is not None
-                    else solved_delta
                 )
-                if refresh_tangent:
-                    tangent_reuse.record_factorization(handle)
-                    factorization_count += 1
-                else:
-                    tangent_reuse.record_reuse()
-                solve_count += 1
-            except SolveCancelled:
-                raise
-            except Exception:
-                status = "nonlinear_tangent_failed"
-                stop_reason = "nonlinear_tangent_factorization_failed"
-                break
-            if np.any(~np.isfinite(delta)) or (sphere_delta is not None and np.any(~np.isfinite(sphere_delta))):
-                status = "nonlinear_iteration_failed"
-                stop_reason = "nonfinite_nonlinear_increment"
-                break
-            factor = 1.0
-            if bool(nl.line_search):
-                factor = 1.0
-                while factor > float(nl.min_line_search_factor) and float(np.linalg.norm(factor * delta)) > 10.0 * max(float(np.linalg.norm(q_trial)), 1.0):
-                    factor *= 0.5
-            tangent_reuse.observe_line_search(factor)
-            q_next = q_trial + factor * delta
-            sphere_a_next = sphere_force / float(sphere.mass)
-            sphere_x_next = sphere_x_pred + beta * dt**2 * sphere_a_next
-            if sphere_delta is not None:
-                sphere_x_next = sphere_x_iterate + factor * sphere_delta
-            sphere_v_next = sphere_v_pred + gamma * dt * sphere_a_next
-            displacement_increment = float(np.linalg.norm(factor * delta))
-            residual_energy_increment = abs(float(np.dot(factor * delta, residual)))
-            if coupled_iteration is not None:
-                # The first map uses the legacy zero contact-load initialization,
-                # not a physical residual at x_pred: never store its secant.
-                if iteration > 1:
-                    previous_safeguards = coupled_iteration.globalization_count
-                    coupled_next = coupled_iteration.update(
-                        np.concatenate((q_trial, sphere_x_iterate)),
-                        np.concatenate((q_next, sphere_x_next)),
-                        signature=tuple(zip(last_contact_work.active_element_ids,
-                                            last_contact_work.active_classifications)),
-                    )
-                    coupled_safeguard_count += coupled_iteration.globalization_count - previous_safeguards
-                    if not np.all(np.isfinite(coupled_next)):
-                        status = "nonlinear_iteration_failed"
-                        stop_reason = "nonfinite_nonlinear_increment"
-                        break
-                    q_next = coupled_next[:-3]
-                    sphere_x_next = coupled_next[-3:]
-                actual_delta = q_next - q_trial
-                # A tiny extrapolated update must never make a physical Newton
-                # correction pass a displacement/energy stagnation criterion.
-                displacement_increment = max(displacement_increment, float(np.linalg.norm(actual_delta)))
-                residual_energy_increment = max(residual_energy_increment, abs(float(np.dot(actual_delta, residual))))
-            if coupled_active:
-                sphere_a_next = a0 * (sphere_x_next - sphere_x_pred)
-                sphere_v_next = sphere_v_pred + gamma * dt * sphere_a_next
-                sphere_x_iterate = sphere_x_next.copy()
-            a_next = a0 * (q_next - q_red) - a2 * v_red - a3 * a_red
-            v_next = v_red + dt * ((1.0 - gamma) * a_red + gamma * a_next)
-            full_u_next = reconstruct_full_solution(T, q_next, u0)
-            full_v_next = np.asarray(T @ v_next, dtype=float).reshape(-1)
-            try:
-                if native_contact_state:
-                    # The internal response above owns a trial for ``q_trial``;
-                    # contact is evaluated at ``q_next``.  Replace it with an
-                    # exact q_next candidate before resolving the native
-                    # directors.  This candidate is contact-only and is always
-                    # discarded; the next Newton residual re-evaluates q_next and
-                    # owns the sole candidate that may be committed.
-                    begin_state_evaluation(
-                        committed_states,
-                        model=model,
-                        displacements=full_u_next,
-                    )
-                last_contact_work = _assemble_sphere_contact_work_buffer(
-                    model,
-                    sphere,
-                    config,
-                    sphere_x_next,
-                    sphere_v_next,
-                    structural_displacement=full_u_next,
-                    structural_velocity=full_v_next,
-                    deleted_element_ids=tuple(deleted_element_ids),
-                    contact_scale_by_element=damage_scale_by_element,
-                    preferred_element_ids=sticky_contact_ids,
-                    work_buffer=contact_work_buffer,
-                    native_rotation_context=(
-                        committed_states if native_contact_state else None
-                    ),
+                q_trial = q_next
+            if last_contact_work is not None:
+                records = last_contact_work.materialize_records(
+                    SphereContactRecord,
+                    contact_geometry.node_ids,
                 )
-            finally:
-                if native_contact_state:
+            if not converged:
+                if status in {"nonlinear_tangent_failed", "nonlinear_iteration_failed"}:
+                    pass
+                elif cutback_count < int(nl.max_cutbacks) and dt * 0.5 >= float(nl.min_dt):
                     discard_active_state_candidate(committed_states)
-            if last_contact_work.selected_indices.size:
-                sticky_contact_ids = last_contact_work.active_element_ids
-            contact_scale = max(float(np.linalg.norm(last_contact_work.sphere_force)), 1.0)
-            contact_change = float(np.linalg.norm(last_contact_work.sphere_force -
-                (float(sphere.mass) * sphere_a_next if coupled_active else sphere_force)))
-            if coupled_iteration is not None:
-                next_signature = tuple(zip(last_contact_work.active_element_ids, last_contact_work.active_classifications))
-                if next_signature and coupled_signature and next_signature != coupled_signature:
-                    coupled_iteration = ImpactCoupledIteration()
-                if next_signature:
-                    coupled_signature = next_signature
-            np.copyto(contact_load, last_contact_work.load)
-            np.copyto(sphere_force, last_contact_work.sphere_force)
-            tangent_reuse.observe_contact_signature(
-                tuple(
-                    zip(
-                        last_contact_work.active_element_ids,
-                        last_contact_work.active_classifications,
+                    (
+                        q_red,
+                        v_red,
+                        a_red,
+                        sphere_position,
+                        sphere_velocity,
+                        sphere_acceleration,
+                        committed_states,
+                        deleted_element_ids,
+                        plastic_damage_states,
+                        damage_scale_by_element,
+                        load_prev,
+                        load_prev_red,
+                        sphere_force_prev,
+                        F_int_prev,
+                        F_int_prev_red,
+                    ) = pre_state
+                    midpoint = 0.5 * (float(segment_start) + float(sub_time))
+                    segments.insert(0, (step_index, midpoint, float(sub_time), False))
+                    segments.insert(0, (step_index, float(segment_start), midpoint, False))
+                    cutback_count += 1
+                    event_substep_count += 1
+                    distress_halvings = min(distress_halvings + 1, 2)
+                    step_diagnostics.append(
+                        {
+                            "step_index": int(step_index),
+                            "time": float(sub_time),
+                            "dt": float(dt),
+                            "status": "nonlinear_cutback_retry",
+                            "residual_norm": float(residual_norm),
+                            "effective_residual_tolerance": float(nl.residual_tolerance) * float(reference),
+                            "displacement_increment": float(displacement_increment),
+                            "contact_force_change": float(contact_change),
+                            "effective_force_tolerance": max(float(nl.contact_force_tolerance) * float(contact_scale), float(config.force_tolerance)),
+                        }
                     )
-                )
-            )
-            q_trial = q_next
-        if last_contact_work is not None:
-            records = last_contact_work.materialize_records(
-                SphereContactRecord,
-                contact_geometry.node_ids,
-            )
-        if not converged:
-            if status in {"nonlinear_tangent_failed", "nonlinear_iteration_failed"}:
-                pass
-            elif cutback_count < int(nl.max_cutbacks) and dt * 0.5 >= float(nl.min_dt):
-                discard_active_state_candidate(committed_states)
-                (
-                    q_red,
-                    v_red,
-                    a_red,
-                    sphere_position,
-                    sphere_velocity,
-                    sphere_acceleration,
-                    committed_states,
-                    deleted_element_ids,
-                    plastic_damage_states,
-                    damage_scale_by_element,
-                    load_prev,
-                    load_prev_red,
-                    sphere_force_prev,
-                    F_int_prev,
-                    F_int_prev_red,
-                ) = pre_state
-                midpoint = 0.5 * (float(segment_start) + float(sub_time))
-                segments.insert(0, (step_index, midpoint, float(sub_time), False))
-                segments.insert(0, (step_index, float(segment_start), midpoint, False))
-                cutback_count += 1
-                event_substep_count += 1
-                distress_halvings = min(distress_halvings + 1, 2)
-                step_diagnostics.append(
-                    {
+                    nonlinear_failure_summary = dict(step_diagnostics[-1])
+                    nonlinear_failure_summary["suggestion"] = (
+                        "The nonlinear contact/plasticity iteration recovered by cutting the time step. "
+                        "If failures persist, reduce dt/penalty, allow more cutbacks, or loosen the nonlinear contact tolerance."
+                    )
+                    continue
+                else:
+                    status = "nonlinear_iteration_failed"
+                    stop_reason = "maximum_iterations_or_cutbacks_reached"
+                    active_ids = [int(record.element_id) for record in records]
+                    # Residual decomposition at the failed iterate: which physics
+                    # carries the unconverged force imbalance.  Essential for
+                    # diagnosing stagnation (tiny displacement increments with a
+                    # stuck residual) versus genuine divergence.
+                    decomposition: Dict[str, float] = {}
+                    try:
+                        full_u_fail = reconstruct_full_solution(T, q_trial, u0)
+                        if impact_reduced_assembly.active:
+                            F_int_fail_red, _K_unused, _states_unused = impact_reduced_assembly.assemble(
+                                full_u_fail,
+                                committed_states,
+                                tangent=False,
+                            )
+                        else:
+                            F_int_fail, _K_unused, _states_unused = assemble_nonlinear(
+                                full_u_fail, committed_states, tangent=False, scales=damage_scale_by_element
+                            )
+                            F_int_fail_red = np.asarray(T.T @ F_int_fail, dtype=float).reshape(-1)
+                        a_fail = a0 * (q_trial - q_red) - a2 * v_red - a3 * a_red
+                        v_fail = v_red + dt * ((1.0 - gamma) * a_red + gamma * a_fail)
+                        decomposition = {
+                            "residual_contact_norm": float(np.linalg.norm(np.asarray(T.T @ contact_load, dtype=float))),
+                            "residual_base_load_norm": float(np.linalg.norm(np.asarray(T.T @ base_load, dtype=float))),
+                            "residual_internal_norm": float(np.linalg.norm(F_int_fail_red)),
+                            "residual_damping_norm": float(np.linalg.norm(C_red @ v_fail)),
+                            "residual_inertia_norm": float(np.linalg.norm(M_red @ a_fail)),
+                        }
+                    except Exception:
+                        decomposition = {}
+                    nonlinear_failure_summary = {
                         "step_index": int(step_index),
                         "time": float(sub_time),
                         "dt": float(dt),
-                        "status": "nonlinear_cutback_retry",
+                        "status": str(status),
+                        "stop_reason": str(stop_reason),
+                        "iterations": int(nl.max_iterations),
+                        "cutbacks": int(cutback_count),
                         "residual_norm": float(residual_norm),
                         "effective_residual_tolerance": float(nl.residual_tolerance) * float(reference),
                         "displacement_increment": float(displacement_increment),
+                        "residual_energy_increment": float(residual_energy_increment),
+                        "impact_energy_reference": float(impact_energy_reference),
                         "contact_force_change": float(contact_change),
                         "effective_force_tolerance": max(float(nl.contact_force_tolerance) * float(contact_scale), float(config.force_tolerance)),
+                        "active_element_ids": active_ids,
+                        "max_penetration": float(max((record.penetration for record in records), default=0.0)),
+                        **decomposition,
+                        "suggestion": (
+                            "The nonlinear impact solve exhausted its time-step cutbacks. "
+                            "Use a smaller manual dt, increase NL cutbacks, reduce contact penalty/target penetration stiffness, "
+                            "or run the linear collision path first to confirm the contact setup."
+                        ),
                     }
+                if not iteration_counts:
+                    iteration_counts.append(int(nl.max_iterations))
+                discard_active_state_candidate(committed_states)
+                break
+
+            accepted_full_u = reconstruct_full_solution(T, q_next, u0)
+            try:
+                committed_states = commit_state_candidate(
+                    committed_states,
+                    trial_states,
+                    accepted_full_displacement=accepted_full_u,
+                    model=model,
                 )
-                nonlinear_failure_summary = dict(step_diagnostics[-1])
-                nonlinear_failure_summary["suggestion"] = (
-                    "The nonlinear contact/plasticity iteration recovered by cutting the time step. "
-                    "If failures persist, reduce dt/penalty, allow more cutbacks, or loosen the nonlinear contact tolerance."
-                )
-                continue
+            except BaseException:
+                discard_active_state_candidate(committed_states)
+                raise
+            contact_norm = float(np.linalg.norm(sphere_force))
+            if contact_norm > 0.0:
+                contact_step_count += 1
+                active_contact_duration += dt
+                separation_elapsed = 0.0
+            elif contact_step_count > 0 and separation_stop_time > 0.0:
+                separation_elapsed += dt
+            if records:
+                max_penetration = max(max_penetration, max(float(record.penetration) for record in records))
+                peak_contact_force = max(peak_contact_force, max(float(record.normal_force) for record in records))
+            impulse += 0.5 * (load_prev + base_load + contact_load) * dt
+            sphere_impulse += 0.5 * (sphere_force_prev + sphere_force) * dt
+            load_prev = base_load + contact_load
+            load_prev_red = np.asarray(T.T @ load_prev, dtype=float).reshape(-1)
+            if impact_reduced_assembly.active:
+                # The reduced plan owns a persistent force buffer, so retain an
+                # accepted-step copy for HHT history and internal work.
+                F_int_prev_red = np.asarray(F_int_red, dtype=float).copy()
             else:
-                status = "nonlinear_iteration_failed"
-                stop_reason = "maximum_iterations_or_cutbacks_reached"
-                active_ids = [int(record.element_id) for record in records]
-                # Residual decomposition at the failed iterate: which physics
-                # carries the unconverged force imbalance.  Essential for
-                # diagnosing stagnation (tiny displacement increments with a
-                # stuck residual) versus genuine divergence.
-                decomposition: Dict[str, float] = {}
-                try:
-                    full_u_fail = reconstruct_full_solution(T, q_trial, u0)
-                    if impact_reduced_assembly.active:
-                        F_int_fail_red, _K_unused, _states_unused = impact_reduced_assembly.assemble(
-                            full_u_fail,
-                            committed_states,
-                            tangent=False,
+                F_int_prev = F_int
+                F_int_prev_red = np.asarray(T.T @ F_int_prev, dtype=float).reshape(-1)
+            sphere_force_prev = sphere_force.copy()
+            q_red, v_red, a_red = q_next, v_next, a_next
+            sphere_position, sphere_velocity, sphere_acceleration = sphere_x_next, sphere_v_next, sphere_a_next
+            new_damage_records, damage_changed, max_damage_util = _plastic_impact_damage_update(
+                model,
+                committed_states,
+                plastic_damage_config,
+                deleted_element_ids,
+                plastic_damage_states,
+                step_index=int(step_index),
+                time_value=float(sub_time),
+            )
+            if new_damage_records:
+                plastic_damage_records.extend(new_damage_records)
+                damage_deleted_element_ids.update(record.element_id for record in new_damage_records)
+            if plastic_damage_config is not None:
+                damage_scale_by_element = {
+                    int(element_id): float(state.get("scale", 1.0) or 1.0)
+                    for element_id, state in plastic_damage_states.items()
+                    if float(state.get("scale", 1.0) or 1.0) < 1.0
+                }
+                for element_id in deleted_element_ids:
+                    damage_scale_by_element[int(element_id)] = float(plastic_damage_config.residual_stiffness_fraction)
+                if damage_changed:
+                    filtered_base = filtered_load_case_for_deleted_elements(base_load_case, deleted_element_ids)
+                    base_load, base_load_info = assemble_load_vector(model, filtered_base)
+                    base_load_red = np.asarray(T.T @ base_load, dtype=float).reshape(-1)
+                    _K_scaled, M_scaled, linear_matrix_terms, damage_matrix_plan = (
+                        _assemble_damaged_linear_matrices_with_gate(
+                            model,
+                            damage_scale_by_element,
+                            damage_matrix_gate,
+                            opportunity_index=int(step_index),
+                            cached_terms=linear_matrix_terms,
+                            plan=damage_matrix_plan,
                         )
-                    else:
-                        F_int_fail, _K_unused, _states_unused = assemble_nonlinear(
-                            full_u_fail, committed_states, tangent=False, scales=damage_scale_by_element
-                        )
-                        F_int_fail_red = np.asarray(T.T @ F_int_fail, dtype=float).reshape(-1)
-                    a_fail = a0 * (q_trial - q_red) - a2 * v_red - a3 * a_red
-                    v_fail = v_red + dt * ((1.0 - gamma) * a_red + gamma * a_fail)
-                    decomposition = {
-                        "residual_contact_norm": float(np.linalg.norm(np.asarray(T.T @ contact_load, dtype=float))),
-                        "residual_base_load_norm": float(np.linalg.norm(np.asarray(T.T @ base_load, dtype=float))),
-                        "residual_internal_norm": float(np.linalg.norm(F_int_fail_red)),
-                        "residual_damping_norm": float(np.linalg.norm(C_red @ v_fail)),
-                        "residual_inertia_norm": float(np.linalg.norm(M_red @ a_fail)),
-                    }
-                except Exception:
-                    decomposition = {}
-                nonlinear_failure_summary = {
+                    )
+                    M_red = (T.T @ M_scaled @ T).tocsr()
+                    C_red = (transient_config.rayleigh_alpha * M_red + transient_config.rayleigh_beta * K_red0).tocsr()
+                    scoped_total = sum(
+                        1
+                        for element in model.mesh.elements.values()
+                        if element_fracture_category(element) in set(plastic_damage_config.element_scope)
+                    )
+                    if len(deleted_element_ids) / max(scoped_total, 1) > float(plastic_damage_config.max_deleted_fraction) + 1.0e-12:
+                        status = "max_deleted_fraction_reached"
+                        stop_reason = "plastic_impact_damage_max_deleted_fraction_reached"
+            state_summary = _nonlinear_state_summary(committed_states)
+            step_diagnostics.append(
+                {
                     "step_index": int(step_index),
                     "time": float(sub_time),
                     "dt": float(dt),
-                    "status": str(status),
-                    "stop_reason": str(stop_reason),
-                    "iterations": int(nl.max_iterations),
-                    "cutbacks": int(cutback_count),
+                    "status": "converged",
+                    "iterations": int(iteration_counts[-1]),
                     "residual_norm": float(residual_norm),
-                    "effective_residual_tolerance": float(nl.residual_tolerance) * float(reference),
                     "displacement_increment": float(displacement_increment),
-                    "residual_energy_increment": float(residual_energy_increment),
-                    "impact_energy_reference": float(impact_energy_reference),
                     "contact_force_change": float(contact_change),
-                    "effective_force_tolerance": max(float(nl.contact_force_tolerance) * float(contact_scale), float(config.force_tolerance)),
-                    "active_element_ids": active_ids,
+                    "convergence_reason": str(convergence_reason),
+                    "active_element_ids": [int(record.element_id) for record in records],
                     "max_penetration": float(max((record.penetration for record in records), default=0.0)),
-                    **decomposition,
-                    "suggestion": (
-                        "The nonlinear impact solve exhausted its time-step cutbacks. "
-                        "Use a smaller manual dt, increase NL cutbacks, reduce contact penalty/target penetration stiffness, "
-                        "or run the linear collision path first to confirm the contact setup."
-                    ),
+                    "max_equivalent_plastic_strain": float(state_summary.get("max_equivalent_plastic_strain", 0.0) or 0.0),
+                    "max_damage_utilization": float(max_damage_util),
                 }
-            if not iteration_counts:
-                iteration_counts.append(int(nl.max_iterations))
-            discard_active_state_candidate(committed_states)
-            break
-
-        accepted_full_u = reconstruct_full_solution(T, q_next, u0)
-        try:
-            committed_states = commit_state_candidate(
-                committed_states,
-                trial_states,
-                accepted_full_displacement=accepted_full_u,
-                model=model,
             )
-        except BaseException:
-            discard_active_state_candidate(committed_states)
-            raise
-        contact_norm = float(np.linalg.norm(sphere_force))
-        if contact_norm > 0.0:
-            contact_step_count += 1
-            active_contact_duration += dt
-            separation_elapsed = 0.0
-        elif contact_step_count > 0 and separation_stop_time > 0.0:
-            separation_elapsed += dt
-        if records:
-            max_penetration = max(max_penetration, max(float(record.penetration) for record in records))
-            peak_contact_force = max(peak_contact_force, max(float(record.normal_force) for record in records))
-        impulse += 0.5 * (load_prev + base_load + contact_load) * dt
-        sphere_impulse += 0.5 * (sphere_force_prev + sphere_force) * dt
-        load_prev = base_load + contact_load
-        load_prev_red = np.asarray(T.T @ load_prev, dtype=float).reshape(-1)
-        if impact_reduced_assembly.active:
-            # The reduced plan owns a persistent force buffer, so retain an
-            # accepted-step copy for HHT history and internal work.
-            F_int_prev_red = np.asarray(F_int_red, dtype=float).copy()
-        else:
-            F_int_prev = F_int
-            F_int_prev_red = np.asarray(T.T @ F_int_prev, dtype=float).reshape(-1)
-        sphere_force_prev = sphere_force.copy()
-        q_red, v_red, a_red = q_next, v_next, a_next
-        sphere_position, sphere_velocity, sphere_acceleration = sphere_x_next, sphere_v_next, sphere_a_next
-        new_damage_records, damage_changed, max_damage_util = _plastic_impact_damage_update(
-            model,
-            committed_states,
-            plastic_damage_config,
-            deleted_element_ids,
-            plastic_damage_states,
-            step_index=int(step_index),
-            time_value=float(sub_time),
-        )
-        if new_damage_records:
-            plastic_damage_records.extend(new_damage_records)
-            damage_deleted_element_ids.update(record.element_id for record in new_damage_records)
-        if plastic_damage_config is not None:
-            damage_scale_by_element = {
-                int(element_id): float(state.get("scale", 1.0) or 1.0)
-                for element_id, state in plastic_damage_states.items()
-                if float(state.get("scale", 1.0) or 1.0) < 1.0
-            }
-            for element_id in deleted_element_ids:
-                damage_scale_by_element[int(element_id)] = float(plastic_damage_config.residual_stiffness_fraction)
-            if damage_changed:
-                filtered_base = filtered_load_case_for_deleted_elements(base_load_case, deleted_element_ids)
-                base_load, base_load_info = assemble_load_vector(model, filtered_base)
-                base_load_red = np.asarray(T.T @ base_load, dtype=float).reshape(-1)
-                _K_scaled, M_scaled, linear_matrix_terms, damage_matrix_plan = (
-                    _assemble_damaged_linear_matrices_with_gate(
-                        model,
-                        damage_scale_by_element,
-                        damage_matrix_gate,
-                        opportunity_index=int(step_index),
-                        cached_terms=linear_matrix_terms,
-                        plan=damage_matrix_plan,
-                    )
-                )
-                M_red = (T.T @ M_scaled @ T).tocsr()
-                C_red = (transient_config.rayleigh_alpha * M_red + transient_config.rayleigh_beta * K_red0).tocsr()
-                scoped_total = sum(
-                    1
-                    for element in model.mesh.elements.values()
-                    if element_fracture_category(element) in set(plastic_damage_config.element_scope)
-                )
-                if len(deleted_element_ids) / max(scoped_total, 1) > float(plastic_damage_config.max_deleted_fraction) + 1.0e-12:
-                    status = "max_deleted_fraction_reached"
-                    stop_reason = "plastic_impact_damage_max_deleted_fraction_reached"
-        state_summary = _nonlinear_state_summary(committed_states)
-        step_diagnostics.append(
-            {
-                "step_index": int(step_index),
-                "time": float(sub_time),
-                "dt": float(dt),
-                "status": "converged",
-                "iterations": int(iteration_counts[-1]),
-                "residual_norm": float(residual_norm),
-                "displacement_increment": float(displacement_increment),
-                "contact_force_change": float(contact_change),
-                "convergence_reason": str(convergence_reason),
-                "active_element_ids": [int(record.element_id) for record in records],
-                "max_penetration": float(max((record.penetration for record in records), default=0.0)),
-                "max_equivalent_plastic_strain": float(state_summary.get("max_equivalent_plastic_strain", 0.0) or 0.0),
-                "max_damage_utilization": float(max_damage_util),
-            }
-        )
-        step_complete = float(sub_time) >= float(times[step_index]) - 1.0e-12 * max(abs(float(times[step_index])), 1.0)
-        if step_complete and (step_index % int(transient_config.save_every) == 0 or step_index == len(times) - 1):
-            save_state(sub_time, q_red, v_red, a_red, sphere_position, sphere_velocity, sphere_acceleration, sphere_force, records, state_summary=state_summary)
-            pending_save = None
-        else:
-            pending_save = (float(sub_time), sphere_force.copy(), records)
-        if status == "max_deleted_fraction_reached":
-            break
-        if status == "completed" and contact_step_count > 0 and separation_stop_time > 0.0 and separation_elapsed >= separation_stop_time:
-            stop_reason = "completed_after_contact_separation"
-            break
+            step_complete = float(sub_time) >= float(times[step_index]) - 1.0e-12 * max(abs(float(times[step_index])), 1.0)
+            if step_complete and (step_index % int(transient_config.save_every) == 0 or step_index == len(times) - 1):
+                save_state(sub_time, q_red, v_red, a_red, sphere_position, sphere_velocity, sphere_acceleration, sphere_force, records, state_summary=state_summary)
+                pending_save = None
+            else:
+                pending_save = (float(sub_time), sphere_force.copy(), records)
+            if status == "max_deleted_fraction_reached":
+                break
+            if status == "completed" and contact_step_count > 0 and separation_stop_time > 0.0 and separation_elapsed >= separation_stop_time:
+                stop_reason = "completed_after_contact_separation"
+                break
 
     if pending_save is not None:
         save_state(
@@ -4001,6 +4005,9 @@ def solve_transient_sphere_impact(
     solve_count = 0
     cached_dt = None
     cached_solver = None
+    # The effective operator is solved across contact iterations, callbacks
+    # and other factorizations: pin it with a lease (closed on refresh/exit).
+    # The effective tangent's lease lives in cached_lease_scope (ended at its exit).
     cached_solver_diagnostics: Dict[str, Any] = {}
     status = "completed"
     stop_reason = "completed"
@@ -4045,342 +4052,350 @@ def solve_transient_sphere_impact(
     # post-separation stay fast.
     contact_period_dt = 0.2 * np.sqrt(float(sphere.mass) / max(float(config.penalty_stiffness), 1.0e-30))
     contact_active_last_step = bool(initial_records)
-    for step_index in range(1, len(times)):
-        cancellation_safe_point(
-            cancellation_token,
-            f"sphere_impact.linear.step:{step_index}",
-        )
-        target_time = float(times[step_index])
-        dt_total = float(times[step_index] - times[step_index - 1])
-        if dt_total <= 0.0:
-            continue
-        # Consistent step size (same rule as solve_transient_newmark): nominal dt on interior steps
-        # and on a nominally uniform end (within 8 ulp); only a genuinely shortened last step uses
-        # its true remainder, and then the factor is rebuilt because dt differs bitwise.
-        final_index = len(times) - 1
-        nominal_end = float(final_index) * float(transient_config.dt)
-        roundoff = 8.0 * max(
-            math.ulp(float(transient_config.t_end)), math.ulp(nominal_end),
-            float(final_index) * math.ulp(float(transient_config.dt)),
-        )
-        if step_index < final_index or abs(float(transient_config.t_end) - nominal_end) <= roundoff:
-            dt_total = float(transient_config.dt)
-        else:
-            dt_total = float(transient_config.t_end) - float(final_index - 1) * float(transient_config.dt)
-        travel_scale = max(float(sphere.radius) * float(config.max_sphere_travel_fraction), 1.0e-12)
-        predicted_travel = max(float(np.linalg.norm(sphere_velocity)) * dt_total, float(sphere.speed) * dt_total)
-        n_travel = max(int(np.ceil(predicted_travel / travel_scale)), 1)
-        n_contact = int(np.ceil(dt_total / contact_period_dt)) if contact_active_last_step and contact_period_dt > 0.0 else 1
-        n_substeps = min(max(n_travel, n_contact, 1), int(config.max_event_substeps))
-        contact_active_this_step = False
-        total_substep_count += n_substeps
-        if n_substeps > 1:
-            event_substep_count += n_substeps - 1
-        last_records: Tuple[SphereContactRecord, ...] = tuple()
-        last_sphere_force = np.zeros(3, dtype=float)
-        last_step_diag: Dict[str, Any] = {}
-        for substep in range(n_substeps):
+    with CleanupScope() as cached_lease_scope:
+        for step_index in range(1, len(times)):
             cancellation_safe_point(
                 cancellation_token,
-                f"sphere_impact.linear.step:{step_index}.substep:{substep + 1}",
+                f"sphere_impact.linear.step:{step_index}",
             )
-            # Clock (launch window, saved/record times, durations) comes from the ``times`` grid so
-            # adjacent windows tile it and never pass t_end; nominal dt only drives integration.
-            clock_total = float(times[step_index]) - float(times[step_index - 1])
-            sub_start = float(times[step_index - 1]) + substep * clock_total / n_substeps
-            sub_time = float(times[step_index]) if substep == n_substeps - 1 else float(times[step_index - 1]) + (substep + 1) * clock_total / n_substeps
-            clock_dt = sub_time - sub_start
-            dt = dt_total / n_substeps
-            if sub_start < sphere.t_start <= sub_time and np.linalg.norm(sphere_velocity) == 0.0:
-                sphere_velocity = sphere.travel_velocity.copy()
-            a0 = 1.0 / (beta * dt**2)
-            a1 = gamma / (beta * dt)
-            a2 = 1.0 / (beta * dt)
-            a3 = 1.0 / (2.0 * beta) - 1.0
-            a4 = gamma / beta - 1.0
-            a5 = dt * (gamma / (2.0 * beta) - 1.0)
-            # reuse the factor only for a bitwise-equal dt (matrix, RHS and update share one dt)
-            refactor = cached_solver is None or cached_dt is None or dt != cached_dt
-            if refactor:
-                K_eff = (one_plus_alpha * K_red + a0 * M_red + one_plus_alpha * a1 * C_red).tocsr()
-                cached_solver = factorize(K_eff, MatrixClass.SYMMETRIC_INDEFINITE, signature=f"sphere_impact.effective:{dt:.16g}")
-                cached_solver_diagnostics = cached_solver.diagnostics()
-                cached_dt = dt
-                factorization_count += 1
-
-            sphere_x_pred = sphere_position + dt * sphere_velocity + dt**2 * (0.5 - beta) * sphere_acceleration
-            sphere_v_pred = sphere_velocity + dt * (1.0 - gamma) * sphere_acceleration
-            contact_load = np.zeros(total_dofs, dtype=float)
-            sphere_force = np.zeros(3, dtype=float)
-            records: Tuple[SphereContactRecord, ...] = tuple()
-            converged = False
-            q_next = q_red.copy()
-            v_next = v_red.copy()
-            a_next = a_red.copy()
-            sphere_x_next = sphere_x_pred.copy()
-            sphere_v_next = sphere_v_pred.copy()
-            sphere_a_next = np.zeros(3, dtype=float)
-            force_change = 0.0
-            penetration_change = 0.0
-            use_aitken = str(config.contact_relaxation) == "aitken"
-            relaxation = 1.0
-            fixed_point_residual_prev: Optional[np.ndarray] = None
-            for iteration in range(1, int(config.max_contact_iterations) + 1):
+            target_time = float(times[step_index])
+            dt_total = float(times[step_index] - times[step_index - 1])
+            if dt_total <= 0.0:
+                continue
+            # Consistent step size (same rule as solve_transient_newmark): nominal dt on interior steps
+            # and on a nominally uniform end (within 8 ulp); only a genuinely shortened last step uses
+            # its true remainder, and then the factor is rebuilt because dt differs bitwise.
+            final_index = len(times) - 1
+            nominal_end = float(final_index) * float(transient_config.dt)
+            roundoff = 8.0 * max(
+                math.ulp(float(transient_config.t_end)), math.ulp(nominal_end),
+                float(final_index) * math.ulp(float(transient_config.dt)),
+            )
+            if step_index < final_index or abs(float(transient_config.t_end) - nominal_end) <= roundoff:
+                dt_total = float(transient_config.dt)
+            else:
+                dt_total = float(transient_config.t_end) - float(final_index - 1) * float(transient_config.dt)
+            travel_scale = max(float(sphere.radius) * float(config.max_sphere_travel_fraction), 1.0e-12)
+            predicted_travel = max(float(np.linalg.norm(sphere_velocity)) * dt_total, float(sphere.speed) * dt_total)
+            n_travel = max(int(np.ceil(predicted_travel / travel_scale)), 1)
+            n_contact = int(np.ceil(dt_total / contact_period_dt)) if contact_active_last_step and contact_period_dt > 0.0 else 1
+            n_substeps = min(max(n_travel, n_contact, 1), int(config.max_event_substeps))
+            contact_active_this_step = False
+            total_substep_count += n_substeps
+            if n_substeps > 1:
+                event_substep_count += n_substeps - 1
+            last_records: Tuple[SphereContactRecord, ...] = tuple()
+            last_sphere_force = np.zeros(3, dtype=float)
+            last_step_diag: Dict[str, Any] = {}
+            for substep in range(n_substeps):
                 cancellation_safe_point(
                     cancellation_token,
-                    f"sphere_impact.linear.step:{step_index}.substep:{substep + 1}.iteration:{iteration}",
+                    f"sphere_impact.linear.step:{step_index}.substep:{substep + 1}",
                 )
-                load_next = base_load + contact_load
-                F_red = _reduced_load(T, K, u0, load_next)
-                rhs = (
-                    one_plus_alpha * F_red
-                    - alpha_h * F_red_prev
-                    + M_red @ (a0 * q_red + a2 * v_red + a3 * a_red)
-                    + one_plus_alpha * (C_red @ (a1 * q_red + a4 * v_red + a5 * a_red))
-                )
-                if alpha_h != 0.0:
-                    rhs += alpha_h * (K_red @ q_red) + alpha_h * (C_red @ v_red)
-                q_next = np.asarray(cached_solver.solve(rhs), dtype=float).reshape(-1)
-                solve_count += 1
-                a_next = a0 * (q_next - q_red) - a2 * v_red - a3 * a_red
-                v_next = v_red + dt * ((1.0 - gamma) * a_red + gamma * a_next)
-                sphere_a_next = sphere_force / float(sphere.mass)
-                sphere_x_next = sphere_x_pred + beta * dt**2 * sphere_a_next
-                sphere_v_next = sphere_v_pred + gamma * dt * sphere_a_next
-                full_u = reconstruct_full_solution(T, q_next, u0)
-                full_v = np.asarray(T @ v_next, dtype=float).reshape(-1)
-                # Linear impact fracture and capacity damage consume public
-                # records below.  Keep eager materialization on this path;
-                # only the nonlinear state-driven loop uses lazy records.
-                new_contact_load, new_sphere_force, new_records = assemble_sphere_contact_load_vector(
-                    model,
-                    sphere,
-                    config,
-                    sphere_x_next,
-                    sphere_v_next,
-                    structural_displacement=full_u,
-                    structural_velocity=full_v,
-                    deleted_element_ids=tuple(deleted_element_ids),
-                    contact_scale_by_element=damage_scale_by_element,
-                    preferred_element_ids=sticky_contact_ids,
-                )
-                if new_records:
-                    sticky_contact_ids = tuple(int(record.element_id) for record in new_records)
-                force_change = float(np.linalg.norm(new_sphere_force - sphere_force))
-                penetration_change = abs(
-                    (max((record.penetration for record in new_records), default=0.0))
-                    - (max((record.penetration for record in records), default=0.0))
-                )
-                scale = max(float(np.linalg.norm(new_sphere_force)), 1.0)
-                fixed_point_residual = new_sphere_force - sphere_force
-                if use_aitken and fixed_point_residual_prev is not None:
-                    residual_difference = fixed_point_residual - fixed_point_residual_prev
-                    denominator = float(residual_difference @ residual_difference)
-                    if denominator > 1.0e-30:
-                        relaxation = -relaxation * float(fixed_point_residual_prev @ residual_difference) / denominator
-                        relaxation = float(min(max(relaxation, 1.0e-4), 1.5))
+                # Clock (launch window, saved/record times, durations) comes from the ``times`` grid so
+                # adjacent windows tile it and never pass t_end; nominal dt only drives integration.
+                clock_total = float(times[step_index]) - float(times[step_index - 1])
+                sub_start = float(times[step_index - 1]) + substep * clock_total / n_substeps
+                sub_time = float(times[step_index]) if substep == n_substeps - 1 else float(times[step_index - 1]) + (substep + 1) * clock_total / n_substeps
+                clock_dt = sub_time - sub_start
+                dt = dt_total / n_substeps
+                if sub_start < sphere.t_start <= sub_time and np.linalg.norm(sphere_velocity) == 0.0:
+                    sphere_velocity = sphere.travel_velocity.copy()
+                a0 = 1.0 / (beta * dt**2)
+                a1 = gamma / (beta * dt)
+                a2 = 1.0 / (beta * dt)
+                a3 = 1.0 / (2.0 * beta) - 1.0
+                a4 = gamma / beta - 1.0
+                a5 = dt * (gamma / (2.0 * beta) - 1.0)
+                # reuse the factor only for a bitwise-equal dt (matrix, RHS and update share one dt)
+                refactor = cached_solver is None or cached_dt is None or dt != cached_dt
+                if refactor:
+                    K_eff = (one_plus_alpha * K_red + a0 * M_red + one_plus_alpha * a1 * C_red).tocsr()
+                    # End the previous lease first: an unconflicted refresh
+                    # then takes exactly the unleased slot path.
+                    cached_lease_scope.release()
+                    cached_solver = cached_lease_scope.hold(
+                        lease_from(factorize, K_eff, MatrixClass.SYMMETRIC_INDEFINITE, signature=f"sphere_impact.effective:{dt:.16g}")
+                    ).handle
+                    cached_solver_diagnostics = cached_solver.diagnostics()
+                    cached_dt = dt
+                    factorization_count += 1
+
+                sphere_x_pred = sphere_position + dt * sphere_velocity + dt**2 * (0.5 - beta) * sphere_acceleration
+                sphere_v_pred = sphere_velocity + dt * (1.0 - gamma) * sphere_acceleration
+                contact_load = np.zeros(total_dofs, dtype=float)
+                sphere_force = np.zeros(3, dtype=float)
+                records: Tuple[SphereContactRecord, ...] = tuple()
+                converged = False
+                q_next = q_red.copy()
+                v_next = v_red.copy()
+                a_next = a_red.copy()
+                sphere_x_next = sphere_x_pred.copy()
+                sphere_v_next = sphere_v_pred.copy()
+                sphere_a_next = np.zeros(3, dtype=float)
+                force_change = 0.0
+                penetration_change = 0.0
+                use_aitken = str(config.contact_relaxation) == "aitken"
+                relaxation = 1.0
+                fixed_point_residual_prev: Optional[np.ndarray] = None
+                for iteration in range(1, int(config.max_contact_iterations) + 1):
+                    cancellation_safe_point(
+                        cancellation_token,
+                        f"sphere_impact.linear.step:{step_index}.substep:{substep + 1}.iteration:{iteration}",
+                    )
+                    load_next = base_load + contact_load
+                    F_red = _reduced_load(T, K, u0, load_next)
+                    rhs = (
+                        one_plus_alpha * F_red
+                        - alpha_h * F_red_prev
+                        + M_red @ (a0 * q_red + a2 * v_red + a3 * a_red)
+                        + one_plus_alpha * (C_red @ (a1 * q_red + a4 * v_red + a5 * a_red))
+                    )
+                    if alpha_h != 0.0:
+                        rhs += alpha_h * (K_red @ q_red) + alpha_h * (C_red @ v_red)
+                    q_next = np.asarray(cached_solver.solve(rhs), dtype=float).reshape(-1)
+                    solve_count += 1
+                    a_next = a0 * (q_next - q_red) - a2 * v_red - a3 * a_red
+                    v_next = v_red + dt * ((1.0 - gamma) * a_red + gamma * a_next)
+                    sphere_a_next = sphere_force / float(sphere.mass)
+                    sphere_x_next = sphere_x_pred + beta * dt**2 * sphere_a_next
+                    sphere_v_next = sphere_v_pred + gamma * dt * sphere_a_next
+                    full_u = reconstruct_full_solution(T, q_next, u0)
+                    full_v = np.asarray(T @ v_next, dtype=float).reshape(-1)
+                    # Linear impact fracture and capacity damage consume public
+                    # records below.  Keep eager materialization on this path;
+                    # only the nonlinear state-driven loop uses lazy records.
+                    new_contact_load, new_sphere_force, new_records = assemble_sphere_contact_load_vector(
+                        model,
+                        sphere,
+                        config,
+                        sphere_x_next,
+                        sphere_v_next,
+                        structural_displacement=full_u,
+                        structural_velocity=full_v,
+                        deleted_element_ids=tuple(deleted_element_ids),
+                        contact_scale_by_element=damage_scale_by_element,
+                        preferred_element_ids=sticky_contact_ids,
+                    )
+                    if new_records:
+                        sticky_contact_ids = tuple(int(record.element_id) for record in new_records)
+                    force_change = float(np.linalg.norm(new_sphere_force - sphere_force))
+                    penetration_change = abs(
+                        (max((record.penetration for record in new_records), default=0.0))
+                        - (max((record.penetration for record in records), default=0.0))
+                    )
+                    scale = max(float(np.linalg.norm(new_sphere_force)), 1.0)
+                    fixed_point_residual = new_sphere_force - sphere_force
+                    if use_aitken and fixed_point_residual_prev is not None:
+                        residual_difference = fixed_point_residual - fixed_point_residual_prev
+                        denominator = float(residual_difference @ residual_difference)
+                        if denominator > 1.0e-30:
+                            relaxation = -relaxation * float(fixed_point_residual_prev @ residual_difference) / denominator
+                            relaxation = float(min(max(relaxation, 1.0e-4), 1.5))
+                        else:
+                            relaxation = 1.0
+                    fixed_point_residual_prev = fixed_point_residual.copy()
+                    if use_aitken and relaxation != 1.0:
+                        contact_load = contact_load + relaxation * (new_contact_load - contact_load)
+                        sphere_force = sphere_force + relaxation * (new_sphere_force - sphere_force)
+                        records = new_records
                     else:
-                        relaxation = 1.0
-                fixed_point_residual_prev = fixed_point_residual.copy()
-                if use_aitken and relaxation != 1.0:
-                    contact_load = contact_load + relaxation * (new_contact_load - contact_load)
-                    sphere_force = sphere_force + relaxation * (new_sphere_force - sphere_force)
-                    records = new_records
-                else:
-                    contact_load, sphere_force, records = new_contact_load, new_sphere_force, new_records
-                if force_change <= config.force_tolerance * scale and penetration_change <= config.penetration_tolerance:
-                    converged = True
-                    iteration_counts.append(iteration)
-                    break
-            if not converged:
-                status = "contact_iteration_failed"
-                stop_reason = "contact_iteration_failed"
-                iteration_counts.append(int(config.max_contact_iterations))
+                        contact_load, sphere_force, records = new_contact_load, new_sphere_force, new_records
+                    if force_change <= config.force_tolerance * scale and penetration_change <= config.penetration_tolerance:
+                        converged = True
+                        iteration_counts.append(iteration)
+                        break
+                if not converged:
+                    status = "contact_iteration_failed"
+                    stop_reason = "contact_iteration_failed"
+                    iteration_counts.append(int(config.max_contact_iterations))
 
-            contact_norm = float(np.linalg.norm(sphere_force))
-            if contact_norm > 0.0:
-                contact_step_count += 1
-                active_contact_duration += clock_dt
-                separation_elapsed = 0.0
-                contact_active_this_step = True
-            elif contact_step_count > 0 and separation_stop_time > 0.0:
-                separation_elapsed += clock_dt
-            if records:
-                max_penetration = max(max_penetration, max(float(record.penetration) for record in records))
-                peak_contact_force = max(peak_contact_force, max(float(record.normal_force) for record in records))
-            load_next = base_load + contact_load
-            impulse += 0.5 * (load_prev + load_next) * clock_dt
-            sphere_impulse += 0.5 * (sphere_force_prev + sphere_force) * clock_dt
-            load_prev = load_next
-            F_red_prev = F_red
-            sphere_force_prev = sphere_force.copy()
-            q_red, v_red, a_red = q_next, v_next, a_next
-            sphere_position, sphere_velocity, sphere_acceleration = sphere_x_next, sphere_v_next, sphere_a_next
-            last_records = records
-            last_sphere_force = sphere_force.copy()
-            last_step_diag = {
-                "step_index": int(step_index),
-                "substep_index": int(substep),
-                "time": float(sub_time),
-                "contact_iterations": int(iteration_counts[-1]),
-                "contact_relaxation_factor": float(relaxation),
-                "force_change_norm": float(force_change),
-                "penetration_change": float(penetration_change),
-                "active_element_ids": [int(record.element_id) for record in records],
-                "max_penetration": float(max((record.penetration for record in records), default=0.0)),
-                "status": "converged" if converged else "contact_iteration_failed",
-            }
-            if fracture_config is not None and records and status != "contact_iteration_failed":
-                new_fracture_records, substep_utilization = _detect_impact_fracture_records(
-                    model,
-                    records,
-                    fracture_config,
-                    sphere,
-                    tuple(deleted_element_ids),
-                    step_index=int(step_index),
-                    time_value=float(sub_time),
-                )
-                max_fracture_utilization = max(max_fracture_utilization, substep_utilization)
-                if new_fracture_records:
-                    fracture_records.extend(new_fracture_records)
-                    deleted_element_ids.update(record.element_id for record in new_fracture_records)
-                    fracture_deleted_element_ids.update(record.element_id for record in new_fracture_records)
-                    filtered_base = filtered_load_case_for_deleted_elements(base_load_case, deleted_element_ids)
-                    base_load, base_load_info = assemble_load_vector(model, filtered_base)
-                    fracture_scales = {int(element_id): float(scale) for element_id, scale in damage_scale_by_element.items()}
-                    for element_id in deleted_element_ids:
-                        fracture_scales[int(element_id)] = min(
-                            fracture_scales.get(int(element_id), 1.0),
-                            float(fracture_config.residual_stiffness_fraction),
-                        )
-                    K, M, linear_matrix_terms, damage_matrix_plan = (
-                        _assemble_damaged_linear_matrices_with_gate(
-                            model,
-                            fracture_scales,
-                            damage_matrix_gate,
-                            opportunity_index=int(step_index),
-                            cached_terms=linear_matrix_terms,
-                            plan=damage_matrix_plan,
-                        )
+                contact_norm = float(np.linalg.norm(sphere_force))
+                if contact_norm > 0.0:
+                    contact_step_count += 1
+                    active_contact_duration += clock_dt
+                    separation_elapsed = 0.0
+                    contact_active_this_step = True
+                elif contact_step_count > 0 and separation_stop_time > 0.0:
+                    separation_elapsed += clock_dt
+                if records:
+                    max_penetration = max(max_penetration, max(float(record.penetration) for record in records))
+                    peak_contact_force = max(peak_contact_force, max(float(record.normal_force) for record in records))
+                load_next = base_load + contact_load
+                impulse += 0.5 * (load_prev + load_next) * clock_dt
+                sphere_impulse += 0.5 * (sphere_force_prev + sphere_force) * clock_dt
+                load_prev = load_next
+                F_red_prev = F_red
+                sphere_force_prev = sphere_force.copy()
+                q_red, v_red, a_red = q_next, v_next, a_next
+                sphere_position, sphere_velocity, sphere_acceleration = sphere_x_next, sphere_v_next, sphere_a_next
+                last_records = records
+                last_sphere_force = sphere_force.copy()
+                last_step_diag = {
+                    "step_index": int(step_index),
+                    "substep_index": int(substep),
+                    "time": float(sub_time),
+                    "contact_iterations": int(iteration_counts[-1]),
+                    "contact_relaxation_factor": float(relaxation),
+                    "force_change_norm": float(force_change),
+                    "penetration_change": float(penetration_change),
+                    "active_element_ids": [int(record.element_id) for record in records],
+                    "max_penetration": float(max((record.penetration for record in records), default=0.0)),
+                    "status": "converged" if converged else "contact_iteration_failed",
+                }
+                if fracture_config is not None and records and status != "contact_iteration_failed":
+                    new_fracture_records, substep_utilization = _detect_impact_fracture_records(
+                        model,
+                        records,
+                        fracture_config,
+                        sphere,
+                        tuple(deleted_element_ids),
+                        step_index=int(step_index),
+                        time_value=float(sub_time),
                     )
-                    eroded_matrix_rebuild_count += 1
-                    K_red = (T.T @ K @ T).tocsr()
-                    M_red = (T.T @ M @ T).tocsr()
-                    C_red = (transient_config.rayleigh_alpha * M_red + transient_config.rayleigh_beta * K_red).tocsr()
-                    cached_solver = None
-                    cached_dt = None
-                    mass_handle = factorize(
-                        M_red,
-                        MatrixClass.SYMMETRIC_SEMIDEFINITE,
-                        signature=f"sphere_impact.fracture_mass:{len(deleted_element_ids)}",
-                    )
-                    current_red_load = _reduced_load(T, K, u0, base_load + contact_load)
-                    F_red_prev = current_red_load
-                    a_red = np.asarray(mass_handle.solve(current_red_load - C_red @ v_red - K_red @ q_red), dtype=float).reshape(-1)
-                    scoped_total = _contact_erodible_element_count(model)
-                    deleted_fraction = len(deleted_element_ids) / max(scoped_total, 1)
-                    last_step_diag["fracture_new_deleted_element_ids"] = [record.element_id for record in new_fracture_records]
-                    last_step_diag["fracture_deleted_fraction"] = float(deleted_fraction)
-                    last_step_diag["fracture_max_utilization"] = float(max_fracture_utilization)
-                    if deleted_fraction > fracture_config.max_deleted_fraction + 1.0e-12:
-                        status = "max_deleted_fraction_reached"
-                        stop_reason = "impact_fracture_max_deleted_fraction_reached"
-                        if not fracture_limit_warning_emitted:
-                            warnings.append("IMPACT_FRACTURE002: maximum deleted contact-target fraction reached; transient stopped at last eroded state.")
-                            fracture_limit_warning_emitted = True
-            if damage_config is not None and records and status not in {"contact_iteration_failed", "max_deleted_fraction_reached"}:
-                new_damage_deletions, substep_damage_utilization, damage_diags, damage_changed = _update_impact_damage_states(
-                    model,
-                    records,
-                    damage_config,
-                    sphere,
-                    impact_damage_states,
-                    tuple(deleted_element_ids),
-                    step_index=int(step_index),
-                    time_value=float(sub_time),
-                    dt=float(clock_dt),
-                )
-                max_damage_utilization = max(max_damage_utilization, substep_damage_utilization)
-                if damage_diags:
-                    damage_state_update_count += len(damage_diags)
-                if damage_diags:
-                    last_step_diag["impact_damage"] = list(damage_diags)
-                    last_step_diag["impact_damage_max_utilization"] = float(max_damage_utilization)
-                if new_damage_deletions:
-                    damage_records.extend(new_damage_deletions)
-                    deleted_element_ids.update(record.element_id for record in new_damage_deletions)
-                    damage_deleted_element_ids.update(record.element_id for record in new_damage_deletions)
-                    for deleted_id in deleted_element_ids:
-                        state = impact_damage_states.setdefault(int(deleted_id), {})
-                        state["damage"] = max(float(state.get("damage", 0.0)), float(damage_config.delete_at))
-                        state["scale"] = float(damage_config.residual_stiffness_fraction)
-                    last_step_diag["impact_damage_new_deleted_element_ids"] = [record.element_id for record in new_damage_deletions]
-                    if not damage_deletion_warning_emitted:
-                        warnings.append("IMPACT_DAMAGE002: one or more shell elements were eroded by impact damage.")
-                        damage_deletion_warning_emitted = True
-                    damage_changed = True
-                if damage_changed:
-                    damage_scale_by_element = {
-                        int(element_id): _impact_damage_scale(float(state.get("damage", 0.0)), damage_config)
-                        for element_id, state in impact_damage_states.items()
-                    }
-                    for element_id in deleted_element_ids:
-                        damage_scale_by_element[int(element_id)] = min(
-                            damage_scale_by_element.get(int(element_id), 1.0),
-                            float(damage_config.residual_stiffness_fraction),
-                        )
-                    filtered_base = filtered_load_case_for_deleted_elements(base_load_case, deleted_element_ids)
-                    base_load, base_load_info = assemble_load_vector(model, filtered_base)
-                    K, M, linear_matrix_terms, damage_matrix_plan = (
-                        _assemble_damaged_linear_matrices_with_gate(
-                            model,
-                            damage_scale_by_element,
-                            damage_matrix_gate,
-                            opportunity_index=int(step_index),
-                            cached_terms=linear_matrix_terms,
-                            plan=damage_matrix_plan,
-                        )
-                    )
-                    eroded_matrix_rebuild_count += 1
-                    K_red = (T.T @ K @ T).tocsr()
-                    M_red = (T.T @ M @ T).tocsr()
-                    C_red = (transient_config.rayleigh_alpha * M_red + transient_config.rayleigh_beta * K_red).tocsr()
-                    cached_solver = None
-                    cached_dt = None
-                    mass_handle = factorize(
-                        M_red,
-                        MatrixClass.SYMMETRIC_SEMIDEFINITE,
-                        signature=f"sphere_impact.damage_mass:{len(damage_scale_by_element)}:{len(deleted_element_ids)}",
-                    )
-                    current_red_load = _reduced_load(T, K, u0, base_load + contact_load)
-                    F_red_prev = current_red_load
-                    a_red = np.asarray(mass_handle.solve(current_red_load - C_red @ v_red - K_red @ q_red), dtype=float).reshape(-1)
-                    scoped_total = sum(1 for element in model.mesh.elements.values() if element_fracture_category(element) == "shell")
-                    deleted_fraction = len(deleted_element_ids) / max(scoped_total, 1)
-                    last_step_diag["impact_damage_deleted_fraction"] = float(deleted_fraction)
-                    if deleted_fraction > float(damage_config.max_deleted_fraction) + 1.0e-12:
-                        status = "max_deleted_fraction_reached"
-                        stop_reason = "impact_damage_max_deleted_fraction_reached"
-                        if not damage_limit_warning_emitted:
-                            warnings.append(
-                                "IMPACT_DAMAGE003: maximum configured shell damage deletion fraction reached; "
-                                "transient stopped at last eroded state."
+                    max_fracture_utilization = max(max_fracture_utilization, substep_utilization)
+                    if new_fracture_records:
+                        fracture_records.extend(new_fracture_records)
+                        deleted_element_ids.update(record.element_id for record in new_fracture_records)
+                        fracture_deleted_element_ids.update(record.element_id for record in new_fracture_records)
+                        filtered_base = filtered_load_case_for_deleted_elements(base_load_case, deleted_element_ids)
+                        base_load, base_load_info = assemble_load_vector(model, filtered_base)
+                        fracture_scales = {int(element_id): float(scale) for element_id, scale in damage_scale_by_element.items()}
+                        for element_id in deleted_element_ids:
+                            fracture_scales[int(element_id)] = min(
+                                fracture_scales.get(int(element_id), 1.0),
+                                float(fracture_config.residual_stiffness_fraction),
                             )
-                            damage_limit_warning_emitted = True
-            step_diagnostics.append(last_step_diag)
-            if status in {"contact_iteration_failed", "max_deleted_fraction_reached"}:
-                break
-            if status == "completed" and contact_step_count > 0 and separation_stop_time > 0.0 and separation_elapsed >= separation_stop_time:
-                stop_reason = "completed_after_contact_separation"
-                stop_after_separation = True
-                break
+                        K, M, linear_matrix_terms, damage_matrix_plan = (
+                            _assemble_damaged_linear_matrices_with_gate(
+                                model,
+                                fracture_scales,
+                                damage_matrix_gate,
+                                opportunity_index=int(step_index),
+                                cached_terms=linear_matrix_terms,
+                                plan=damage_matrix_plan,
+                            )
+                        )
+                        eroded_matrix_rebuild_count += 1
+                        K_red = (T.T @ K @ T).tocsr()
+                        M_red = (T.T @ M @ T).tocsr()
+                        C_red = (transient_config.rayleigh_alpha * M_red + transient_config.rayleigh_beta * K_red).tocsr()
+                        cached_solver = None
+                        cached_lease_scope.release()
+                        cached_dt = None
+                        mass_handle = factorize(
+                            M_red,
+                            MatrixClass.SYMMETRIC_SEMIDEFINITE,
+                            signature=f"sphere_impact.fracture_mass:{len(deleted_element_ids)}",
+                        )
+                        current_red_load = _reduced_load(T, K, u0, base_load + contact_load)
+                        F_red_prev = current_red_load
+                        a_red = np.asarray(mass_handle.solve(current_red_load - C_red @ v_red - K_red @ q_red), dtype=float).reshape(-1)
+                        scoped_total = _contact_erodible_element_count(model)
+                        deleted_fraction = len(deleted_element_ids) / max(scoped_total, 1)
+                        last_step_diag["fracture_new_deleted_element_ids"] = [record.element_id for record in new_fracture_records]
+                        last_step_diag["fracture_deleted_fraction"] = float(deleted_fraction)
+                        last_step_diag["fracture_max_utilization"] = float(max_fracture_utilization)
+                        if deleted_fraction > fracture_config.max_deleted_fraction + 1.0e-12:
+                            status = "max_deleted_fraction_reached"
+                            stop_reason = "impact_fracture_max_deleted_fraction_reached"
+                            if not fracture_limit_warning_emitted:
+                                warnings.append("IMPACT_FRACTURE002: maximum deleted contact-target fraction reached; transient stopped at last eroded state.")
+                                fracture_limit_warning_emitted = True
+                if damage_config is not None and records and status not in {"contact_iteration_failed", "max_deleted_fraction_reached"}:
+                    new_damage_deletions, substep_damage_utilization, damage_diags, damage_changed = _update_impact_damage_states(
+                        model,
+                        records,
+                        damage_config,
+                        sphere,
+                        impact_damage_states,
+                        tuple(deleted_element_ids),
+                        step_index=int(step_index),
+                        time_value=float(sub_time),
+                        dt=float(clock_dt),
+                    )
+                    max_damage_utilization = max(max_damage_utilization, substep_damage_utilization)
+                    if damage_diags:
+                        damage_state_update_count += len(damage_diags)
+                    if damage_diags:
+                        last_step_diag["impact_damage"] = list(damage_diags)
+                        last_step_diag["impact_damage_max_utilization"] = float(max_damage_utilization)
+                    if new_damage_deletions:
+                        damage_records.extend(new_damage_deletions)
+                        deleted_element_ids.update(record.element_id for record in new_damage_deletions)
+                        damage_deleted_element_ids.update(record.element_id for record in new_damage_deletions)
+                        for deleted_id in deleted_element_ids:
+                            state = impact_damage_states.setdefault(int(deleted_id), {})
+                            state["damage"] = max(float(state.get("damage", 0.0)), float(damage_config.delete_at))
+                            state["scale"] = float(damage_config.residual_stiffness_fraction)
+                        last_step_diag["impact_damage_new_deleted_element_ids"] = [record.element_id for record in new_damage_deletions]
+                        if not damage_deletion_warning_emitted:
+                            warnings.append("IMPACT_DAMAGE002: one or more shell elements were eroded by impact damage.")
+                            damage_deletion_warning_emitted = True
+                        damage_changed = True
+                    if damage_changed:
+                        damage_scale_by_element = {
+                            int(element_id): _impact_damage_scale(float(state.get("damage", 0.0)), damage_config)
+                            for element_id, state in impact_damage_states.items()
+                        }
+                        for element_id in deleted_element_ids:
+                            damage_scale_by_element[int(element_id)] = min(
+                                damage_scale_by_element.get(int(element_id), 1.0),
+                                float(damage_config.residual_stiffness_fraction),
+                            )
+                        filtered_base = filtered_load_case_for_deleted_elements(base_load_case, deleted_element_ids)
+                        base_load, base_load_info = assemble_load_vector(model, filtered_base)
+                        K, M, linear_matrix_terms, damage_matrix_plan = (
+                            _assemble_damaged_linear_matrices_with_gate(
+                                model,
+                                damage_scale_by_element,
+                                damage_matrix_gate,
+                                opportunity_index=int(step_index),
+                                cached_terms=linear_matrix_terms,
+                                plan=damage_matrix_plan,
+                            )
+                        )
+                        eroded_matrix_rebuild_count += 1
+                        K_red = (T.T @ K @ T).tocsr()
+                        M_red = (T.T @ M @ T).tocsr()
+                        C_red = (transient_config.rayleigh_alpha * M_red + transient_config.rayleigh_beta * K_red).tocsr()
+                        cached_solver = None
+                        cached_lease_scope.release()
+                        cached_dt = None
+                        mass_handle = factorize(
+                            M_red,
+                            MatrixClass.SYMMETRIC_SEMIDEFINITE,
+                            signature=f"sphere_impact.damage_mass:{len(damage_scale_by_element)}:{len(deleted_element_ids)}",
+                        )
+                        current_red_load = _reduced_load(T, K, u0, base_load + contact_load)
+                        F_red_prev = current_red_load
+                        a_red = np.asarray(mass_handle.solve(current_red_load - C_red @ v_red - K_red @ q_red), dtype=float).reshape(-1)
+                        scoped_total = sum(1 for element in model.mesh.elements.values() if element_fracture_category(element) == "shell")
+                        deleted_fraction = len(deleted_element_ids) / max(scoped_total, 1)
+                        last_step_diag["impact_damage_deleted_fraction"] = float(deleted_fraction)
+                        if deleted_fraction > float(damage_config.max_deleted_fraction) + 1.0e-12:
+                            status = "max_deleted_fraction_reached"
+                            stop_reason = "impact_damage_max_deleted_fraction_reached"
+                            if not damage_limit_warning_emitted:
+                                warnings.append(
+                                    "IMPACT_DAMAGE003: maximum configured shell damage deletion fraction reached; "
+                                    "transient stopped at last eroded state."
+                                )
+                                damage_limit_warning_emitted = True
+                step_diagnostics.append(last_step_diag)
+                if status in {"contact_iteration_failed", "max_deleted_fraction_reached"}:
+                    break
+                if status == "completed" and contact_step_count > 0 and separation_stop_time > 0.0 and separation_elapsed >= separation_stop_time:
+                    stop_reason = "completed_after_contact_separation"
+                    stop_after_separation = True
+                    break
 
-        contact_active_last_step = contact_active_this_step
-        save_time = float(last_step_diag.get("time", target_time)) if last_step_diag else target_time
-        if step_index % int(transient_config.save_every) == 0 or step_index == len(times) - 1 or stop_after_separation:
-            save_state(save_time, q_red, v_red, a_red, sphere_position, sphere_velocity, sphere_acceleration, last_sphere_force, last_records)
-        if status in {"contact_iteration_failed", "max_deleted_fraction_reached"} or stop_after_separation:
-            break
+            contact_active_last_step = contact_active_this_step
+            save_time = float(last_step_diag.get("time", target_time)) if last_step_diag else target_time
+            if step_index % int(transient_config.save_every) == 0 or step_index == len(times) - 1 or stop_after_separation:
+                save_state(save_time, q_red, v_red, a_red, sphere_position, sphere_velocity, sphere_acceleration, last_sphere_force, last_records)
+            if status in {"contact_iteration_failed", "max_deleted_fraction_reached"} or stop_after_separation:
+                break
 
     if contact_step_count == 0 and status == "completed":
         status = "no_contact"

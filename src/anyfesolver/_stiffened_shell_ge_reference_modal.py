@@ -13,7 +13,7 @@ from scipy import sparse
 from scipy.sparse.linalg import LinearOperator, eigs, ArpackError
 
 from .control import CancellationToken, SolveCancelled, cancellation_safe_point
-from .linalg import MatrixClass, factorize_cached
+from .linalg import MatrixClass, factorize_cached, lease_from
 from ._native_reference_modal import _owned
 from ._ge_beam3_p5_centered.mass import reference_kinetic_factors
 from ._stiffened_shell_physical_q4_mass import physical_mass
@@ -469,7 +469,9 @@ def solve(owner, request, *, cancellation_token=None):
             if not free: return vector
             return vector-rigid["scaled"]@(rigid["scaled"].T@(Bs@vector))
         check("before_factorization")
-        handle = factorize_cached((As-sigma*Bs).tocsc(), MatrixClass.GENERAL)
+        # Pinned for the Arnoldi iteration (other factorizations may run between actions).
+        lease = lease_from(factorize_cached, (As-sigma*Bs).tocsc(), MatrixClass.GENERAL)
+        handle = lease.handle
         if handle.status != "ok":
             raise _ModalFailure("reference modal factorization failed: "+str(handle.failure_reason))
         def action(vector):
@@ -485,9 +487,10 @@ def solve(owner, request, *, cancellation_token=None):
                 raise _ModalFailure("finite reference modal inverse action required")
             check("iteration_complete")
             return project(answer)
-        values, vectors = eigs(LinearOperator(A.shape, matvec=action, dtype=float),
-            k=request.count, which="LM", tol=1e-10, maxiter=request.max_iterations,
-            v0=np.linspace(1., 2., A.shape[0]))
+        with lease:
+            values, vectors = eigs(LinearOperator(A.shape, matvec=action, dtype=float),
+                k=request.count, which="LM", tol=1e-10, maxiter=request.max_iterations,
+                v0=np.linspace(1., 2., A.shape[0]))
         raw = tuple(map(complex, values))
         check("after_iteration")
         abs_A, abs_B = abs(A), abs(B)

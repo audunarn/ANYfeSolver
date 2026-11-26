@@ -16,7 +16,7 @@ from scipy import sparse
 
 from anyfesolver.assembly import build_constraint_transformation
 from anyfesolver.control import CancellationToken, SolveCancelled, cancellation_safe_point
-from anyfesolver.linalg import MatrixClass, factorize
+from anyfesolver.linalg import MatrixClass, factorize, lease_from
 from anyfesolver.matrix_assembly import (
     _run_with_qualified_assembly_runtime_lease,
     assemble_stiffness_matrix,
@@ -379,31 +379,35 @@ def _elastic_displacement_force_predictor(stiffness, transform, row,
         (sparse.csr_matrix(rows), sparse.csr_matrix((controls, controls))),
     ), format="csr")
     try:
-        solve = factorize(
-            saddle, MatrixClass.GENERAL,
+        # Leased: solved once per waypoint (pinned against any concurrent
+        # factorization, eviction or release in between).
+        lease = lease_from(
+            factorize, saddle, MatrixClass.GENERAL,
             signature="contact_path:elastic_displacement_force_predictor",
-        ).solve
+        )
     except Exception as exc:
         raise ValueError("contact-free displacement force predictor is unavailable") from exc
-    maximum_reaction = 0.0
-    for waypoint in targets:
-        rhs = np.zeros(coordinates+controls)
-        rhs[-controls:] = waypoint
-        try:
-            response = np.asarray(solve(rhs)).reshape(-1)
-        except Exception as exc:
-            raise ValueError("contact-free displacement force predictor is unavailable") from exc
-        residual = np.asarray(saddle @ response - rhs).reshape(-1)
-        scale = abs(saddle) @ abs(response) + abs(rhs)
-        reactions = response[-controls:]
-        if (not np.all(np.isfinite(response))
-                or np.any(abs(residual) > 1e-12 + 1e-9*scale)
-                or not np.all(np.isfinite(reactions))):
+    with lease:
+        solve = lease.handle.solve
+        maximum_reaction = 0.0
+        for waypoint in targets:
+            rhs = np.zeros(coordinates+controls)
+            rhs[-controls:] = waypoint
+            try:
+                response = np.asarray(solve(rhs)).reshape(-1)
+            except Exception as exc:
+                raise ValueError("contact-free displacement force predictor is unavailable") from exc
+            residual = np.asarray(saddle @ response - rhs).reshape(-1)
+            scale = abs(saddle) @ abs(response) + abs(rhs)
+            reactions = response[-controls:]
+            if (not np.all(np.isfinite(response))
+                    or np.any(abs(residual) > 1e-12 + 1e-9*scale)
+                    or not np.all(np.isfinite(reactions))):
+                raise ValueError("contact-free displacement force predictor is unresolved")
+            maximum_reaction = max(maximum_reaction,
+                                   float(np.sum(np.abs(reactions))))
+        if maximum_reaction <= 0.0 and not allow_zero:
             raise ValueError("contact-free displacement force predictor is unresolved")
-        maximum_reaction = max(maximum_reaction,
-                               float(np.sum(np.abs(reactions))))
-    if maximum_reaction <= 0.0 and not allow_zero:
-        raise ValueError("contact-free displacement force predictor is unresolved")
     return maximum_reaction
 
 

@@ -12,7 +12,12 @@ import numpy as np
 from scipy import sparse
 from scipy.linalg import null_space
 
-from anyfesolver.linalg import MatrixClass, factorize
+from anyfesolver.linalg import (
+    MatrixClass,
+    PardisoStaleHandleError,
+    factorize,
+    lease_from,
+)
 
 from .augmentation import ActiveSetPivot, propose_active_set_pivot
 from .overlap import PlanarFace
@@ -504,23 +509,34 @@ def _constrained_gap_response(manager, displacement, tangent, transform,
     ], format="csr")
     right = np.vstack((-force_derivative,
                        np.zeros((len(rows), len(active)))))
-    factor = factorize(matrix, MatrixClass.GENERAL,
-                       signature="contact:pressure_response")
-    if factor.status != "ok":
-        if diagnostics is not None:
-            diagnostics["schur_response_failure"] = (
-                factor.failure_reason or factor.status
-            )
-        return None
+    # Leased: solved once per active column (pinned against any concurrent
+    # factorization, eviction or release in between).
     try:
-        response = np.column_stack([
-            np.asarray(factor.solve(right[:, column])).reshape(-1)[:transform.shape[1]]
-            for column in range(len(active))
-        ])
-    except RuntimeError as exc:
+        pinned = lease_from(factorize, matrix, MatrixClass.GENERAL,
+                            signature="contact:pressure_response")
+    except PardisoStaleHandleError as exc:
+        # Both pin attempts went stale under a concurrent invalidation: the
+        # optional pivot reports a response failure, it does not abort.
         if diagnostics is not None:
             diagnostics["schur_response_failure"] = str(exc)[:240]
         return None
+    with pinned as lease:
+        factor = lease.handle
+        if factor.status != "ok":
+            if diagnostics is not None:
+                diagnostics["schur_response_failure"] = (
+                    factor.failure_reason or factor.status
+                )
+            return None
+        try:
+            response = np.column_stack([
+                np.asarray(factor.solve(right[:, column])).reshape(-1)[:transform.shape[1]]
+                for column in range(len(active))
+            ])
+        except RuntimeError as exc:
+            if diagnostics is not None:
+                diagnostics["schur_response_failure"] = str(exc)[:240]
+            return None
     schur = gap_reduced @ response
     return schur if np.all(np.isfinite(schur)) else None
 

@@ -958,18 +958,20 @@ def _check_reconstruction(model: Any, u: np.ndarray, session: Any = None) -> np.
     """
 
     from .analysis_session import AnalysisSession
+    from .linalg import CleanupScope
 
     owned = session is None
     active = AnalysisSession(model) if owned else session
-    try:
+    # Closed at the scope exit with the exception actually propagating
+    # as primary (linalg.CleanupScope).
+    with CleanupScope() as cleanup:
+        if owned:
+            cleanup.callback(active.close, "analysis session cleanup")
         active._require_model(model)
         plan = active.constraint_plan()
         t = sparse.csr_matrix(plan.T)
         independent = np.asarray(plan.independent_dofs, dtype=int)
         u0 = np.asarray(plan.u0, dtype=float)
-    finally:
-        if owned:
-            active.close()
     q = u[independent]
     rebuilt = t @ q + u0
     discrepancy = np.abs(rebuilt - u)
@@ -1235,6 +1237,7 @@ def estimate_static_error_allowance(
     """
 
     from .analysis_session import AnalysisSession
+    from .linalg import CleanupScope
     from .matrix_assembly import assemble_load_vector
 
     threshold = _control(inconclusive_threshold, "inconclusive_threshold", positive=True)
@@ -1243,7 +1246,11 @@ def estimate_static_error_allowance(
     load = _finite(load, "ALLOWANCE_NONFINITE", "load vector").reshape(-1)
     owned = session is None
     active = AnalysisSession(model) if owned else session
-    try:
+    # Closed at the scope exit with the exception actually propagating
+    # as primary (linalg.CleanupScope).
+    with CleanupScope() as cleanup:
+        if owned:
+            cleanup.callback(active.close, "analysis session cleanup")
         active._require_model(model)
         discrepancy = _check_reconstruction(model, u, active)
         plan = active.static_operator_plan()
@@ -1272,9 +1279,6 @@ def estimate_static_error_allowance(
         n = scaled.shape[0]
         inverse = LinearOperator((n, n), matvec=handle.solve, rmatvec=handle.solve, dtype=float)
         kappa = norm * float(onenormest(inverse))
-    finally:
-        if owned:
-            active.close()
     dq = scale * kappa * eta * float(np.max(np.abs(y)))
     du = np.asarray(abs(t) @ dq, dtype=float).reshape(-1) + discrepancy
     if not (np.isfinite(eta) and np.isfinite(kappa) and np.all(np.isfinite(du))):

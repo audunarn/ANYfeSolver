@@ -43,7 +43,7 @@ import numpy as np
 from scipy import sparse
 
 from .analysis_session import _immutable_array, _immutable_csr
-from .linalg import AutoSparseSolverBackend, FactorizationCache, MatrixClass, factorize_cached
+from .linalg import AutoSparseSolverBackend, FactorizationCache, MatrixClass, close_propagating, factorize_cached
 from .prepared_static_loads import (
     PreparedStaticCapabilityError,
     PreparedStaticError,
@@ -517,14 +517,14 @@ class PreparedStaticEvaluator:
             raise RuntimeError("PreparedStaticEvaluator is closed")
         return self
 
-    def __exit__(self, _exc_type, _exc, _traceback) -> None:
-        self.close()
+    def __exit__(self, _exc_type, exc, _traceback) -> None:
+        # Released with the exception actually propagating as primary.
+        close_propagating(self.close, exc, "closing a prepared static evaluator")
 
     def close(self) -> None:
         with self._lock:
             if self._closed:
                 return
-            self._finalizer()
             self._operator_handle = None
             if self._envelope is not None:
                 self._envelope.plan = None
@@ -533,6 +533,8 @@ class PreparedStaticEvaluator:
             self._operator_scaling = np.zeros(0)
             self._closed = True
             self._count("close_count")
+            # Released last: an interrupt here leaves the evaluator closed.
+            self._finalizer()
 
     @property
     def closed(self) -> bool:

@@ -32,6 +32,7 @@ from .e4_pl_s3_element import (
     _s3_trusted_operation_scope as _S3_TRUSTED_OPERATION_SCOPE,
 )
 from .analysis_session import AnalysisSession as _backend_AnalysisSession
+from .linalg import CleanupScope
 from .arc_length import ArcLengthControl as _backend_arc_length_control
 from .arc_length import solve_static_arc_length as _backend_solve_static_arc_length
 from .assembly import compute_stresses as _backend_compute_stresses
@@ -490,13 +491,16 @@ class RuntimeAnalysisContext:
             self._structural_revisions = self._revision_tuple(model)
 
     def _invalidate_locked(self) -> None:
-        if self._session is not None:
-            self._session.close()
+        # Detach first: if closing the session raises (an interrupt while its
+        # lease ends), the context no longer references the closed session.
+        session = self._session
         self._key = None
         self._model = None
         self._session = None
         self._structural_revisions = None
         self._invalidations += 1
+        if session is not None:
+            session.close()
 
     def invalidate(self) -> None:
         with self._lock:
@@ -519,8 +523,10 @@ class RuntimeAnalysisContext:
         with self._lock:
             if self._closed:
                 return
-            self._invalidate_locked()
+            # Terminal before native cleanup: an interrupt inside the session close
+            # must not leave a context its owner closed able to build new sessions.
             self._closed = True
+            self._invalidate_locked()
 
     release = close
 
@@ -529,8 +535,10 @@ class RuntimeAnalysisContext:
             raise RuntimeError("RuntimeAnalysisContext is closed")
         return self
 
-    def __exit__(self, _exc_type, _exc, _traceback) -> None:
-        self.close()
+    def __exit__(self, _exc_type, exc, _traceback) -> None:
+        from .linalg import close_propagating
+
+        close_propagating(self.close, exc, "closing a runtime analysis context")
 
 
 def _positive(value: float, fallback: float) -> float:
@@ -8568,6 +8576,36 @@ def run_production_fem(
 ) -> LightweightFEMResult:
     """Run the production FE mesh backend for normalized generated geometry."""
 
+    # Known, accepted P3s (D2 closing check, owner 2026-11-25): the owned session
+    # stays alive through result preparation (mesh/mode visualisation) and its
+    # cleanup time falls outside the reported "total"; the linear-failure exits
+    # close it directly and again via this scope (close() is idempotent; the first
+    # call does not use the scope's precedence).  Memory/timing only, no results.
+    # An owned AnalysisSession (and its PARDISO lease) is registered in this
+    # scope at creation and closed at exit, with the exception actually
+    # propagating as primary, whatever phase (stress recovery, prestress
+    # recovery, buckling) raises (linalg.CleanupScope).
+    with CleanupScope() as session_cleanup:
+        return _run_production_fem(
+            geometry,
+            config,
+            status_callback,
+            imported_fem_model,
+            precomputed_generated_geometry,
+            analysis_context,
+            session_cleanup,
+        )
+
+
+def _run_production_fem(
+    geometry: NormalizedGeometry,
+    config: LightweightFEMConfig,
+    status_callback: StatusCallback | None,
+    imported_fem_model: object | None,
+    precomputed_generated_geometry: GeneratedGeometry | None,
+    analysis_context: RuntimeAnalysisContext | None,
+    session_cleanup: CleanupScope,
+) -> LightweightFEMResult:
     runtime_started = time.perf_counter()
     phase_timings: dict[str, float] = {}
     recovery_evaluations = 0
@@ -8977,6 +9015,9 @@ def run_production_fem(
             # assembled once.  Nonlinear/capacity paths remain deliberately
             # excluded because they can change the live state.
             analysis_session = _backend_AnalysisSession(model)
+            session_cleanup.callback(
+                analysis_session.close, "closing the runtime analysis session"
+            )
         displacements, solver_info = _backend_solve_linear(
             model,
             load_case,
@@ -9446,7 +9487,6 @@ def run_production_fem(
                 "Reused one analysis session across linear prestress and "
                 "eigenvalue buckling."
             )
-            analysis_session.close()
             analysis_session = None
     phase_timings["buckling"] = float(time.perf_counter() - buckling_started)
     if capacity_workflow_result is None:
