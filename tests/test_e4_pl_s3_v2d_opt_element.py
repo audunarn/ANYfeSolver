@@ -96,8 +96,10 @@ def test_round_trip_exact_class_and_default_untouched():
     bad["extra"] = 1
     with pytest.raises(ValueError):
         OPT.from_dict(bad)
-    with pytest.raises(ValueError):  # non-unit normal is refused at first use
-        OPT(9, [1, 2, 3], "mat", thickness=0.1, reference_normal=(0.0, 0.0, 2.0))._validate_configuration()
+    bad = el.to_dict()
+    bad["reference_normal"] = [0.0, 0.0, 2.0]
+    with pytest.raises(ValueError):  # a non-unit serialized normal is refused
+        OPT.from_dict(bad)
 
 
 def test_stiffness_rank_symmetry_and_rigid_body_modes_on_a_tilted_triangle():
