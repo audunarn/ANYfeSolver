@@ -2854,10 +2854,14 @@ def node_mapping_reads_are_builtin(nodes: Any) -> bool:
     ``get``.  Nothing here executes code outside this package.
     """
 
+    from .boundary import _mapping_reads_are_builtin
+
+    # The package's own check first: exact type, exact-str instance keys (a
+    # non-str key could run its ``__eq__`` in the lookups below), no ``get``.
+    if not _mapping_reads_are_builtin(nodes):
+        return False
     if type(nodes) is dict:
         return True
-    if type(nodes) is not _QualifiedStateMapping:
-        return False
     current = _scope_class_machinery(_QualifiedStateMapping, ("get",))
     if any(now is not then for now, then in zip(current, _NODE_MAPPING_SNAPSHOT)):
         return False

@@ -603,14 +603,20 @@ def _input_guard_runs(call):
     """(guard ran after every conversion and capability read, result)."""
 
     events = []
+    owner = "_compute_stresses_under_lease"
 
     def profiler(frame, event, arg):
+        # Only events of the recovery body itself: conversions and capability
+        # reads in preflight or inside elements do not count.
         if event == "call":
+            caller = frame.f_back
+            if caller is None or caller.f_code.co_name != owner:
+                return
             if frame.f_locals.get("stage") == _INPUT_STAGE:
                 events.append("guard")
             elif frame.f_code.co_name == "require_model_element_capabilities":
                 events.append("capabilities")
-        elif event == "c_call" and arg is np.asarray:
+        elif event == "c_call" and arg is np.asarray and frame.f_code.co_name == owner:
             events.append("asarray")
 
     previous = sys.getprofile()
@@ -622,9 +628,13 @@ def _input_guard_runs(call):
     if "guard" not in events:
         return False, result
     first_guard = events.index("guard")
-    risky = [k for k, e in enumerate(events) if e in ("asarray", "capabilities")]
-    # The complete guard must follow the conversion/capability reads of this call.
-    assert risky and first_guard > min(risky), events
+    # The body's first np.asarray is the displacement conversion (later ones
+    # convert per-element DOF maps inside the loop, after the guard).  The
+    # complete guard must follow it and every capability read.
+    conversion = events.index("asarray")
+    capabilities = [k for k, e in enumerate(events) if e == "capabilities"]
+    assert first_guard > conversion, events
+    assert all(first_guard > k for k in capabilities), events
     return True, result
 
 
@@ -686,3 +696,35 @@ def test_v2d_recovery_check_requires_builtin_node_mapping_reads(monkeypatch):
         )
         assert not _v2d_recovery_providers_are_builtin(model)
     assert _v2d_recovery_providers_are_builtin(model)
+
+
+def test_node_mapping_check_rejects_non_str_instance_keys():
+    """Codex round 3: a non-str key colliding with "get" must not be consulted."""
+
+    from anyfesolver.e4_pl_s3_v2d_element import node_mapping_reads_are_builtin
+
+    model, _element_ids = _triangle_plate(2, quads_every=3)
+    nodes = model.mesh.nodes
+    calls = []
+
+    class _CollidingKey:
+        def __hash__(self):
+            return hash("get")
+
+        def __eq__(self, other):
+            calls.append(other)
+            return False
+
+    namespace = object.__getattribute__(nodes, "__dict__")
+    assert node_mapping_reads_are_builtin(nodes)
+    namespace[_CollidingKey()] = None
+    # Inserting may itself compare against a key shared by instance dicts of
+    # the class; only calls made by the check count.
+    calls.clear()
+    try:
+        assert not node_mapping_reads_are_builtin(nodes)
+        assert not calls
+    finally:
+        for key in [k for k in namespace if type(k) is _CollidingKey]:
+            del namespace[key]
+    assert node_mapping_reads_are_builtin(nodes)
