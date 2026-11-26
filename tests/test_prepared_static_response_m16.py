@@ -161,3 +161,64 @@ def test_development_fixtures_under_frozen_criteria():
     for summary in assessment.development_fixtures():
         print('M16 development summary:', json.dumps(summary, default=float))
         assert summary['failure_count'] == 0, summary
+
+
+
+
+class _CountingSolver:
+    """Wraps the operator factor; ``corrupt`` lists the solve calls (1-based) to corrupt."""
+
+    def __init__(self, solver, corrupt=()):
+        self.solver, self.corrupt, self.calls = solver, tuple(corrupt), 0
+
+    def solve(self, rhs):
+        self.calls += 1
+        answer = self.solver.solve(rhs)
+        return answer + 1.0 if self.calls in self.corrupt else answer
+
+
+def test_reconstructed_case_failing_rule_b_takes_the_certified_canonical_fallback():
+    """R1 #6: a cancelling combination of library columns whose reconstruction fails
+    Rule B takes the documented canonical per-column fallback; the fallback
+    result is itself certified (backward error and Rule B) before publication."""
+
+    patterns = {'p': _case(1, 3.).load_case, 'q': _case(2, 3.).load_case}
+    case = PatternCase('cancel', {'p': 1., 'q': -0.5})  # a cancelling combination
+    with prepare_static_response_evaluator(_bar(), patterns, recovery_config=STRESS, **LIBRARY) as owner:
+        expected = next(owner.iter_batches([_case(3, 1.5)])).displacements
+        handle = owner._operator_handle
+        # Solve 1 is the Rule B correction at the reconstruction decision: it
+        # measures a failure.  Then the canonical solve and its own Rule B.
+        counting = _CountingSolver(handle._solver, corrupt=(1,))
+        handle._solver = counting
+        before = dict(owner.diagnostics()['source_response'])
+        try:
+            batch = next(owner.iter_batches([case]))
+        finally:
+            handle._solver = counting.solver
+        info = owner.diagnostics()['source_response']
+    assert counting.calls == 3
+    assert info['forward_error_fallback_cases'] - before['forward_error_fallback_cases'] == 1
+    assert info['certification_fallback_cases'] - before['certification_fallback_cases'] == 1
+    assert info['reconstructed_cases'] == before['reconstructed_cases']
+    result = batch.case_results[0]
+    solver = result['solver_info']
+    assert solver['source_response']['stress_execution'] == 'canonical_fallback'
+    assert solver['relative_backward_error_disposition'] == 'CERTIFIED'
+    assert solver['relative_forward_error_estimate'] <= 1e-3
+    np.testing.assert_allclose(batch.displacements, expected, rtol=1e-12, atol=0.0)
+
+
+def test_reconstructed_cases_need_one_rule_b_solve_per_block():
+    with prepare_static_response_evaluator(_bar(), {'p': _case(1, 3).load_case}, recovery_config=STRESS, **LIBRARY) as owner:
+        handle = owner._operator_handle
+        counting = _CountingSolver(handle._solver)
+        handle._solver = counting
+        try:
+            batch = next(owner.iter_batches([PatternCase('a', {'p': 2.}), PatternCase('b', {'p': -1.})]))
+        finally:
+            handle._solver = counting.solver
+    assert counting.calls == 1  # the decision's estimate is reported, not measured twice
+    for result in batch.case_results:
+        assert result['solver_info']['source_response']['stress_execution'] == 'certified_library'
+        assert result['solver_info']['relative_forward_error_estimate'] <= 1e-3

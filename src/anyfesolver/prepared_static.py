@@ -915,12 +915,7 @@ class PreparedStaticEvaluator:
                     self._backward_error)
                 # Rule B per case, in the factorized variables (the displacement
                 # block of an augmented operator).
-                forward_errors = (
-                    np.zeros(len(block)) if self._operator_handle is None
-                    else relative_forward_error_estimates(
-                        self._operator_matrix, solved, solve_rhs, handle=self._operator_handle,
-                        scaling=self._operator_scaling, rows=slice(0, rhs.shape[0]))
-                )
+                forward_errors = self._block_forward_errors(solved, solve_rhs, rhs.shape[0])
                 for j, (case_id, _case_time, _owned) in enumerate(block):
                     error = (
                         _certified_backward_error(self._operator_matrix, solved[:, j], solve_rhs[:, j],
@@ -1101,6 +1096,15 @@ class PreparedStaticEvaluator:
 
     def _load_vector(self, snapshot, owned):
         return evaluate_load_vector(snapshot.load_maps, owned)
+
+    def _block_forward_errors(self, solved, solve_rhs, n):
+        """Rule B per case column (factorized variables, displacement rows ``:n``)."""
+
+        if self._operator_handle is None:
+            return np.zeros(solved.shape[1])
+        return relative_forward_error_estimates(
+            self._operator_matrix, solved, solve_rhs, handle=self._operator_handle,
+            scaling=self._operator_scaling, rows=slice(0, n))
 
     def _solve_block(self, solve_rhs, block):
         return (np.zeros_like(solve_rhs) if self._operator_handle is None else

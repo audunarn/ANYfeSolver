@@ -271,7 +271,9 @@ class PreparedStaticResponseEvaluator(PreparedStaticEvaluator):
                                      element_library_probes=0, vectorized_stress_cases=0,
                                      compiled_load_cases=0, native_load_cases=0,
                                      compiled_disagreement_cases=0, pattern_canonical_solves=0,
-                                     native_load_scope_blocks=0, compiled_load_scope_blocks=0)
+                                     native_load_scope_blocks=0, compiled_load_scope_blocks=0,
+                                     forward_error_fallback_cases=0)
+        self._reconstructed_forward_errors = {}
         preparation_started = _preparation_clock_ns()
         super().__init__(model, **kwargs)
         self._preparation_timings['snapshot_operator_seconds'] = (_preparation_clock_ns()-preparation_started)/1e9
@@ -838,6 +840,7 @@ class PreparedStaticResponseEvaluator(PreparedStaticEvaluator):
 
     def _solve_block(self, solve_rhs, block):
         library = self._stress_execution != 'canonical'
+        self._reconstructed_forward_errors = {}
         if not library and (self._envelope is not None or self._recovery.include_stresses):
             self._reconstructed_block = [False]*len(block)
             made = np.empty_like(solve_rhs)
@@ -857,6 +860,7 @@ class PreparedStaticResponseEvaluator(PreparedStaticEvaluator):
             return made
         made = np.empty_like(solve_rhs)
         self._reconstructed_block = []
+        self._reconstructed_forward_errors = {}
         # M31b: the operator norm data is computed at the first certification and
         # again after any canonical solve in between.
         certification_norm = None
@@ -878,19 +882,51 @@ class PreparedStaticResponseEvaluator(PreparedStaticEvaluator):
                     reconstruct = False
                     self._response_counts['certification_fallback_cases'] += 1
             if not reconstruct:
-                made[:,j:j+1] = super()._solve_block(solve_rhs[:,j:j+1],())
+                self._canonical_column(made,solve_rhs,j,packet,library)
                 certification_norm = None
-                if type(packet) is _PatternPacket and self._envelope is not None:
-                    key = 'canonical_envelope_cases'
-                elif type(packet) is _PatternPacket and library:
-                    key = 'pattern_canonical_solves'
-                else:
-                    key = 'direct_cases'
-                self._response_counts[key] += 1
-            else:
-                self._response_counts['reconstructed_cases'] += 1
             self._reconstructed_block.append(reconstruct)
+        # Rule B while the per-column fallback decision is still open: a
+        # reconstructed column (a combination of library columns can cancel)
+        # that fails it takes the canonical solve, which the parent evaluator
+        # certifies (backward error and Rule B) before publication.
+        reconstructed = [j for j,flag in enumerate(self._reconstructed_block) if flag]
+        if reconstructed:
+            n = self._snapshot.reduced_stiffness.shape[0]
+            estimates = self._block_forward_errors(made[:,reconstructed],solve_rhs[:,reconstructed],n)
+            for j,value in zip(reconstructed,estimates):
+                if np.isfinite(value) and value <= RELATIVE_FORWARD_ERROR_ESTIMATE_LIMIT:
+                    self._response_counts['reconstructed_cases'] += 1
+                    self._reconstructed_forward_errors[j] = float(value)
+                    continue
+                self._reconstructed_block[j] = False
+                self._response_counts['certification_fallback_cases'] += 1
+                self._response_counts['forward_error_fallback_cases'] += 1
+                self._canonical_column(made,solve_rhs,j,block[j][2],library)
         return made
+
+    def _canonical_column(self,made,solve_rhs,j,packet,library):
+        made[:,j:j+1] = PreparedStaticEvaluator._solve_block(self,solve_rhs[:,j:j+1],())
+        if type(packet) is _PatternPacket and self._envelope is not None:
+            key = 'canonical_envelope_cases'
+        elif type(packet) is _PatternPacket and library:
+            key = 'pattern_canonical_solves'
+        else:
+            key = 'direct_cases'
+        self._response_counts[key] += 1
+
+    def _block_forward_errors(self,solved,solve_rhs,n):
+        # Reconstructed columns were measured at the fallback decision (the
+        # same estimate); the others (canonical solves) are measured here.
+        known, self._reconstructed_forward_errors = self._reconstructed_forward_errors, {}
+        if not known:
+            return super()._block_forward_errors(solved,solve_rhs,n)
+        values = np.empty(solved.shape[1])
+        rest = [j for j in range(solved.shape[1]) if j not in known]
+        if rest:
+            values[rest] = super()._block_forward_errors(solved[:,rest],solve_rhs[:,rest],n)
+        for j,value in known.items():
+            values[j] = value
+        return values
 
     def _recover_block(self,snapshot,full,loads,recovery,labels,certified,envelope,block):
         if self._stress_execution == 'certified_vectorized' and self._vector is not None and (
