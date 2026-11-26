@@ -600,11 +600,18 @@ _INPUT_STAGE = "stress-recovery input observation"
 
 
 def _input_guard_runs(call):
-    seen = []
+    """(guard ran after every conversion and capability read, result)."""
+
+    events = []
 
     def profiler(frame, event, arg):
-        if event == "call" and frame.f_locals.get("stage") == _INPUT_STAGE:
-            seen.append(frame.f_code.co_name)
+        if event == "call":
+            if frame.f_locals.get("stage") == _INPUT_STAGE:
+                events.append("guard")
+            elif frame.f_code.co_name == "require_model_element_capabilities":
+                events.append("capabilities")
+        elif event == "c_call" and arg is np.asarray:
+            events.append("asarray")
 
     previous = sys.getprofile()
     sys.setprofile(profiler)
@@ -612,7 +619,13 @@ def _input_guard_runs(call):
         result = call()
     finally:
         sys.setprofile(previous)
-    return bool(seen), result
+    if "guard" not in events:
+        return False, result
+    first_guard = events.index("guard")
+    risky = [k for k, e in enumerate(events) if e in ("asarray", "capabilities")]
+    # The complete guard must follow the conversion/capability reads of this call.
+    assert risky and first_guard > min(risky), events
+    return True, result
 
 
 def test_float64_displacements_need_no_input_guard_but_a_cast_does():
@@ -633,7 +646,22 @@ def test_global_recovery_capability_check_is_followed_by_a_complete_guard():
     assert guarded and stresses
 
 
-def test_v2d_recovery_check_requires_builtin_node_mapping_reads():
+def test_a_return_global_flag_is_read_by_identity_for_the_fast_path():
+    model, element_ids = _triangle_plate(2, quads_every=3)
+    u, _info = solve_linear(model, _pressure(element_ids))
+
+    class _Flag:
+        def __bool__(self):
+            return False
+
+    # Not exactly ``False``: the fast path must not trust its ``__bool__``, so
+    # the complete guard follows (recovery itself still reads the flag).
+    guarded, stresses = _input_guard_runs(lambda: compute_stresses(model, u, return_global=_Flag()))
+    assert guarded and stresses
+
+
+def test_v2d_recovery_check_requires_builtin_node_mapping_reads(monkeypatch):
+    from anyfesolver.fe_core import _QualifiedStateMapping
     from anyfesolver.recovery_batches import _v2d_recovery_providers_are_builtin
 
     model, _element_ids = _triangle_plate(2, quads_every=3)
@@ -645,4 +673,16 @@ def test_v2d_recovery_check_requires_builtin_node_mapping_reads():
         assert not _v2d_recovery_providers_are_builtin(model)
     finally:
         object.__delattr__(nodes, "get")
+    assert _v2d_recovery_providers_are_builtin(model)
+    with monkeypatch.context() as patch:
+        patch.setattr(_QualifiedStateMapping, "get", None, raising=False)
+        assert not _v2d_recovery_providers_are_builtin(model)
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            _QualifiedStateMapping,
+            "__getattribute__",
+            lambda self, name: object.__getattribute__(self, name),
+            raising=False,
+        )
+        assert not _v2d_recovery_providers_are_builtin(model)
     assert _v2d_recovery_providers_are_builtin(model)

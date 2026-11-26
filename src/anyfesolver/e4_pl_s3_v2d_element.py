@@ -2842,3 +2842,24 @@ def _capture_scope_census_snapshot() -> Dict[int, Tuple[type, Tuple[Any, ...]]]:
 
 _SCOPE_CENSUS_SNAPSHOT = _capture_scope_census_snapshot()
 _SCOPE_MAPPING_SNAPSHOT = _scope_class_machinery(_QualifiedStateMapping, ("values",))
+_NODE_MAPPING_SNAPSHOT = _scope_class_machinery(_QualifiedStateMapping, ("get",))
+
+
+def node_mapping_reads_are_builtin(nodes: Any) -> bool:
+    """True when ``nodes.get`` is ``dict.get`` through unchanged attribute machinery.
+
+    A plain ``dict``, or the package's state mapping whose MRO,
+    ``__getattribute__``, ``__getattr__``, ``__class__``, metaclass and ``get``
+    match their import-time snapshot, with no instance attribute shadowing
+    ``get``.  Nothing here executes code outside this package.
+    """
+
+    if type(nodes) is dict:
+        return True
+    if type(nodes) is not _QualifiedStateMapping:
+        return False
+    current = _scope_class_machinery(_QualifiedStateMapping, ("get",))
+    if any(now is not then for now, then in zip(current, _NODE_MAPPING_SNAPSHOT)):
+        return False
+    namespace = object.__getattribute__(nodes, "__dict__")
+    return type(namespace) is dict and "get" not in namespace

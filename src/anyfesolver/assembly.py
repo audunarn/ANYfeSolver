@@ -1863,7 +1863,9 @@ def _compute_stresses_under_lease(
     # followed by one.  Only an exact float64 ndarray is converted without
     # arithmetic (``np.asarray`` returns it as is).
     inputs_are_plain = (
-        not return_global
+        # ``is False``: a caller object's ``__bool__`` must not be consulted here
+        # (it is read again below and could answer differently).
+        return_global is False
         and type(displacements) is np.ndarray
         and displacements.dtype == np.float64
         and type(displacements.dtype) is type(np.dtype(np.float64))
