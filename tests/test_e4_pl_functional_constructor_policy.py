@@ -360,6 +360,13 @@ def test_functional_lane_direct_shell_calls_are_non_q4_or_explicit_refusal() -> 
             ): 1,
             ("tests/test_qualified_q4_assembly_authority.py", "_model"): 1,
             ("tests/test_spectral_validation_preparation.py", "_q4"): 1,
+            # D2-1 axes after the ordinary recovery: qualified Q4 cylinder
+            # (solve + recovery caches) and a gate-only huge-node-id probe.
+            ("tests/test_shell_axes_solver_caches.py", "_mixed_cylinder"): 1,
+            (
+                "tests/test_shell_axes_solver_caches.py",
+                "test_huge_node_ids_are_admitted_when_present_and_refused_typed_when_missing",
+            ): 1,
         }
     )
     expected_qualified_q4.update({

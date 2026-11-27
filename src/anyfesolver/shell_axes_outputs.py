@@ -37,12 +37,30 @@ Contract (owner 2026-11-26, option 1).  Trust boundary A'' with one
 narrowing for this opt-in module: customising the Python object model INSIDE
 solver-owned values (instance overrides in a section, mapping, material or
 activity object; custom mapping or key behaviour; metaclass tricks) is out of
-contract.  As defence in depth the module still admits, by type identity and
-before any other access, only exact element / FEMesh / Node objects with an
+contract.  Process-global hooks the host installs (audit, profile and trace
+hooks) are host code, not data, and outside this boundary (2026-11-27).
+Mid-request changes are out of contract (A''): ``admit_shell_axes`` and
+``recover_shell_axes`` assume no concurrent mutation of the element, the mesh
+and its nodes during the call.  Under such mutation they never admit an
+unchecked value, but a finaliser or weak-reference callback of a value
+released by the call may run (as it could with the #94 code).
+As defence in depth the module still admits, by type identity and before
+any other access, only exact element / FEMesh / Node objects with an
 exact ``dict`` instance dict, ``str`` keys, no instance attribute naming a
 class attribute (declared dataclass fields excepted) and plain values (exact
 scalars, containers, numeric ndarrays, or exact solver-owned classes, which
-are not looked into); custom subclasses of these objects are refused.  The
+are not looked into); custom subclasses of these objects are refused.  Three
+solver-owned caches the solve and the ordinary stress recovery leave behind are admitted
+only under their own key on their owner type (2026-11-27): the batch plan
+``FEMesh._recovery_batch_plan`` (exact ``RecoveryBatchPlan``, not looked into;
+the axes recovery never reads it), the qualified S3 stiffness plan
+``FEMesh._qualified_s3_reference_stiffness_plan`` (exact
+``PreparedReferenceS3Components``, not looked into, never read here; owner
+2026-11-27) and the V2D capture subscriptions
+``_qualified_v2d_lease_epochs`` on a V2D element (an exact ``list`` of exact
+callback-free ``weakref.ref``, never dereferenced).
+``admit_shell_axes(element, mesh)`` runs this gate alone; it is the first step
+of ``recover_shell_axes``.  The
 scalar attributes both the recovery and this module read must be exact types
 (``float``/``int``/``numpy.float64``; polarity ``int`` +-1; reference normal a
 float64 ndarray of shape (3,) or None).
@@ -93,8 +111,10 @@ own global family tensors are the reference.
 from __future__ import annotations
 
 import functools
+import gc
 import math
 import types
+import weakref
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 
@@ -108,6 +128,7 @@ __all__ = [
     "ShellAxesOutputs",
     "ShellAxesRecovery",
     "ShellAxesRefusal",
+    "admit_shell_axes",
     "recover_shell_axes",
 ]
 
@@ -326,6 +347,28 @@ def _frame_problem(frames: np.ndarray, bound: float = ORTHONORMAL_BOUND) -> str:
     return ""
 
 
+_TYPE_NAME = type.__dict__["__name__"]  # the C slot of ``type``; no metaclass lookup
+
+
+def _type_name(kind: type) -> str:
+    """``kind.__name__`` for a refusal text without running a metaclass
+    ``__getattribute__`` or ``__name__`` override (Codex r2 of 2026-11-27).
+    A class may carry a ``str`` subclass as its name, whose ``__format__``
+    would run in the refusal f-string; only an exact ``str`` is used (r3)."""
+
+    name = _TYPE_NAME.__get__(kind, type)
+    return name if type(name) is str else "<type with a non-str name>"
+
+
+def _id_text(value: Any) -> str:
+    """An exact int id for a refusal text; very large ids exceed Python's
+    int-to-str digit limit, so they are described by size (Codex r2/r3)."""
+
+    if -(10**18) < value < 10**18:
+        return str(int(value))
+    return f"<int of {int(value).bit_length()} bits>"
+
+
 def _is(kind: type, allowed: Tuple[type, ...]) -> bool:
     return any(kind is candidate for candidate in allowed)
 
@@ -353,6 +396,57 @@ def _solver_value_types() -> Tuple[type, ...]:
         IsotropicMaterial,
         OrthotropicMaterial,
         ElementActivity,  # FEModel.set_element_activity attaches it to the mesh
+    )
+
+
+def _admit_recovery_batch_plan(value: Any) -> bool:
+    from .recovery_batches import RecoveryBatchPlan
+
+    return type(value) is RecoveryBatchPlan
+
+
+def _admit_s3_stiffness_plan(value: Any) -> bool:
+    from .s3_reference_batch import PreparedReferenceS3Components
+
+    return type(value) is PreparedReferenceS3Components
+
+
+def _admit_v2d_lease_epochs(value: Any) -> bool:
+    """What ``_subscribe_v2d_lease_epoch`` stores: an exact list of exact
+    callback-free ``weakref.ref``.  The references are never dereferenced: a
+    temporary strong reference to the referent could, on release, run weak
+    reference callbacks registered elsewhere (Codex r1).  The referents are
+    ignored; nothing in this module reads them."""
+
+    if type(value) is not list:
+        return False
+    items = list.copy(value)  # one snapshot; the solver appends under its own lock
+    if len(items) > _PLAIN_BUDGET:
+        return False
+    for item in items:
+        if type(item) is not weakref.ReferenceType or item.__callback__ is not None:
+            return False
+    return True
+
+
+@functools.lru_cache(maxsize=None)
+def _solver_cache_admitters() -> Mapping[Tuple[type, str], Callable[[Any], bool]]:
+    """Solver-owned caches the solve and the ordinary stress recovery attach
+    (measured 2026-11-27 after ``solve_linear`` + ``recover_stress_result`` on
+    legacy Q4/Q8, e4-pl Q4, qualified S3 and V2D models; the S3 stiffness plan
+    after a repeated assembly on qualified S3 shells), admitted only under
+    their own key on their exact owner type.  Everything else keeps the plain
+    rule."""
+
+    from .e4_pl_s3_v2d_element import _V2D_LEASE_EPOCHS_KEY, NativeParityE4PLS3V2DShellElement
+    from .fe_core import FEMesh
+
+    return types.MappingProxyType(
+        {
+            (FEMesh, "_recovery_batch_plan"): _admit_recovery_batch_plan,
+            (FEMesh, "_qualified_s3_reference_stiffness_plan"): _admit_s3_stiffness_plan,
+            (NativeParityE4PLS3V2DShellElement, _V2D_LEASE_EPOCHS_KEY): _admit_v2d_lease_epochs,
+        }
     )
 
 
@@ -390,10 +484,22 @@ def _plain_value(value: Any) -> bool:
                 stack.append(key)
                 stack.append(entry)
         elif kind is types.MappingProxyType:  # qualified S3 component record (measured)
+            # read the backing mapping through the C traversal, never through
+            # the proxy: a proxy over a Python mapping would dispatch to its
+            # __iter__/__getitem__ (Codex r2 of 2026-11-27); only exact dict
+            # audit hooks see this call; they are host-installed process code,
+            # outside the A'' data boundary (as are profile/trace hooks), but a
+            # denial must still end in a refusal (Codex r3/r4 of 2026-11-27)
+            try:
+                backing = gc.get_referents(item)
+            except Exception:
+                return False
+            if type(backing) is not list or len(backing) != 1 or type(backing[0]) is not dict:
+                return False
             seen.add(id(item))
-            for key in item:
+            for key, entry in dict.items(backing[0]):
                 stack.append(key)
-                stack.append(item[key])
+                stack.append(entry)
         else:
             return False
     return True
@@ -431,21 +537,28 @@ def _admit_plain_object(obj: Any, kind: type, what: str) -> Dict[str, Any]:
     except AttributeError:
         raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"{what} has no instance dict") from None
     if type(own) is not dict:
-        raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"{what} instance dict is {type(own).__name__}, not dict")
-    keys = list(dict.keys(own))
+        raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"{what} instance dict is {_type_name(type(own))}, not dict")
+    # one snapshot of the pairs: a concurrent cache clear (another thread)
+    # must not turn a later lookup into a KeyError (Codex r4 of 2026-11-27)
+    pairs = list(dict.items(own))
+    keys = [key for key, _value in pairs]
     if not all(type(key) is str for key in keys):
         raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"{what} instance dict has a non-str key")
     shadows = _class_attribute_names(kind).intersection(keys)
     if shadows:
         raise ShellAxesRefusal(
             "AXES_INSTANCE_SHADOW",
-            f"{what} instance attribute(s) {sorted(shadows)!r} shadow {kind.__name__} class attributes",
+            f"{what} instance attribute(s) {sorted(shadows)!r} shadow {_type_name(kind)} class attributes",
         )
-    for key in keys:
-        if not _plain_value(dict.__getitem__(own, key)):
+    admitters = _solver_cache_admitters()
+    for key, value in pairs:
+        admit_cache = admitters.get((kind, key))
+        if admit_cache is not None and admit_cache(value):
+            continue
+        if not _plain_value(value):
             raise ShellAxesRefusal(
                 "AXES_OBJECT_NOT_PLAIN",
-                f"{what}.{key} is {type(dict.__getitem__(own, key)).__name__}, not a plain or admitted solver type",
+                f"{what}.{key} is {_type_name(type(value))}, not a plain or admitted solver type",
             )
     return own
 
@@ -456,7 +569,7 @@ def _admit_mesh_and_nodes(element_dict: Mapping[str, Any], mesh: Any) -> None:
     from .fe_core import FEMesh, Node, _QualifiedStateMapping
 
     if type(mesh) is not FEMesh:
-        raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"mesh is {type(mesh).__name__}, not FEMesh")
+        raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"mesh is {_type_name(type(mesh))}, not FEMesh")
     mesh_dict = _admit_plain_object(mesh, FEMesh, "mesh")
     nodes = mesh_dict.get("nodes")
     if not (type(nodes) is _QualifiedStateMapping or type(nodes) is dict):
@@ -467,8 +580,8 @@ def _admit_mesh_and_nodes(element_dict: Mapping[str, Any], mesh: Any) -> None:
     for node_id in node_ids:
         node = dict.get(nodes, node_id)
         if type(node) is not Node:
-            raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"node {node_id} is {type(node).__name__}, not Node")
-        _admit_plain_object(node, Node, f"node {node_id}")
+            raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"node {_id_text(node_id)} is {_type_name(type(node))}, not Node")
+        _admit_plain_object(node, Node, f"node {_id_text(node_id)}")
 
 
 def _check_attribute_types(element: Any, names: Tuple[str, ...]) -> None:
@@ -479,7 +592,10 @@ def _check_attribute_types(element: Any, names: Tuple[str, ...]) -> None:
     """
 
     for name in names:
-        value = getattr(element, name)
+        try:
+            value = getattr(element, name)  # exact admitted class: trusted lookup
+        except AttributeError:
+            raise ShellAxesRefusal("AXES_ATTRIBUTE_TYPE", f"{name} is missing") from None
         if name == "director_polarity":
             ok = _is(type(value), _INT_TYPES) and (int(value) == 1 or int(value) == -1)
         elif name == "reference_normal":
@@ -491,7 +607,7 @@ def _check_attribute_types(element: Any, names: Tuple[str, ...]) -> None:
         if not ok:
             raise ShellAxesRefusal(
                 "AXES_ATTRIBUTE_TYPE",
-                f"{name} is {type(value).__name__}; an exact built-in type is required",
+                f"{name} is {_type_name(type(value))}; an exact built-in type is required",
             )
 
 
@@ -827,10 +943,17 @@ def _numbered_conventions() -> Dict[str, str]:
     return {"membrane": "polarity_even", "bending": "numbered_normal", "shear": "numbered_normal"}
 
 
-def _admit(element: Any, mesh: Any) -> type:
-    """Before any other access: exact element type, option P plain-object
-    admission of the element, the mesh and the element's nodes (owner
-    2026-11-26), then the exact scalar attribute types."""
+def admit_shell_axes(element: Any, mesh: Any) -> type:
+    """The module's pre-recovery admission gate, alone (public, 2026-11-27).
+
+    Exactly the first step of ``recover_shell_axes`` (the same function, not a
+    copy): exact element type, option P plain-object admission of the element,
+    the mesh and the element's nodes (owner 2026-11-26), then the exact scalar
+    attribute types.  Runs no element code and reads nothing else.  Raises
+    ``ShellAxesRefusal`` (the code ``recover_shell_axes`` would raise for this
+    gate); returns the admitted element class.  Passing it does not promise
+    that the later steps (natural points, geometry domain, recovery) succeed.
+    """
 
     from .e4_pl_element import QualifiedE4PLShellElement
     from .e4_pl_s3_element import QualifiedE4PLS3ShellElement
@@ -848,12 +971,15 @@ def _admit(element: Any, mesh: Any) -> type:
     if not any(kind is admitted for admitted in names):
         raise ShellAxesRefusal(
             "AXES_FORMULATION_NOT_QUALIFIED",
-            f"no axes adapter for element type {kind.__name__}",
+            f"no axes adapter for element type {_type_name(kind)}",
         )
     element_dict = _admit_plain_object(element, kind, "element")
     _admit_mesh_and_nodes(element_dict, mesh)
     _check_attribute_types(element, names[kind])
     return kind
+
+
+_admit = admit_shell_axes  # the private name callers used before it was public
 
 
 def _resolve_branch(element, mesh, material, recovered, override, requested) -> _Branch:
@@ -1185,7 +1311,7 @@ def recover_shell_axes(
     from .e4_pl_element import QualifiedE4PLShellElement
     from .elements import ShellElement
 
-    kind = _admit(element, mesh)
+    kind = admit_shell_axes(element, mesh)
     requested = _requested_points(natural_points)
     if requested is not None and (
         not (kind is ShellElement or kind is QualifiedE4PLShellElement) or element.shell_section is not None
@@ -1249,7 +1375,7 @@ def _derive_shell_axes_from_recovery(
     """
 
     del displacements  # frames depend on the reference geometry only
-    _admit(element, mesh)  # before any attribute access (Codex r4: no early lookups)
+    admit_shell_axes(element, mesh)  # before any attribute access (Codex r4: no early lookups)
     if not isinstance(recovered, Mapping):
         raise ShellAxesRefusal("AXES_RETURN_GLOBAL_REQUIRED", "recovery output is not a mapping")
     surface_keys = [f"global_{label}_{surface}" for surface in _SURFACES for label, _i, _j in _SURFACE_COMPONENTS]
