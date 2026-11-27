@@ -364,17 +364,25 @@ def test_od13_cancel_during_the_worker_terminates_it_and_leaves_no_process():
 
 
 def test_od13_cancel_mid_svd_is_prompt():
-    """A cancellation 1 s into a 2000 x 2000 worker SVD refuses within a few seconds; no process remains."""
+    """A cancellation while the 2000 x 2000 worker SVD runs refuses within a few seconds; no process remains.
+
+    The cancel fires at the first poll that sees the worker process alive, not after a fixed wall time: a
+    fast runner can finish the whole SVD inside a fixed delay, and the test then fails with DID NOT RAISE
+    without exercising the cancellation at all (the flake seen on #95 and #96 CI)."""
+    if sys.platform != 'win32':
+        pytest.skip('process inspection uses the Windows Toolhelp API')
     A = _matrix(2000, seed=2)
-    seen, started = [], time.monotonic()
+    seen, fired = [], []
 
     def cancel():
-        if time.monotonic() - started > 1.0:
-            seen.extend(_descendants(os.getpid()))
+        workers = _descendants(os.getpid())
+        if workers:
+            seen.extend(workers)
+            fired.append(time.monotonic())
             raise cc._refuse('COUPLED_CANCELLED', None, 'test cancellation')
     with pytest.raises(cc.CoupledSolveError) as info:
         cc._certify_solve_matrix(sparse.csr_matrix(A), cancel=cancel)
-    elapsed = time.monotonic() - started
+    elapsed = time.monotonic() - fired[0]
     assert info.value.code == 'COUPLED_CANCELLED'
     assert seen and _all_gone(seen), seen
     assert elapsed < 10.0, elapsed
