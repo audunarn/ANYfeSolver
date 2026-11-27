@@ -157,6 +157,9 @@ _SHIPPED_SHELL_CLASSES = (
     "StrictFlatLinearE4PLS3V2BShellElement",
     "StrictFlatLinearE4PLS3V2CShellElement",
     "NativeParityE4PLS3V2DShellElement",
+    # Linear-only opt-in OPT triangle: refuses nonlinear response and restart/checkpoint state
+    # (typed errors); it inherits the standard drilling hook, which the loop below admits.
+    "NativeParityE4PLS3V2DOptShellElement",
 )
 
 
