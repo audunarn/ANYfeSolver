@@ -42,7 +42,15 @@ before any other access, only exact element / FEMesh / Node objects with an
 exact ``dict`` instance dict, ``str`` keys, no instance attribute naming a
 class attribute (declared dataclass fields excepted) and plain values (exact
 scalars, containers, numeric ndarrays, or exact solver-owned classes, which
-are not looked into); custom subclasses of these objects are refused.  The
+are not looked into); custom subclasses of these objects are refused.  Two
+solver-owned caches the ordinary stress recovery leaves behind are admitted
+only under their own key on their owner type (2026-11-27): the batch plan
+``FEMesh._recovery_batch_plan`` (exact ``RecoveryBatchPlan``, not looked into;
+the axes recovery never reads it) and the V2D capture subscriptions
+``_qualified_v2d_lease_epochs`` on a V2D element (an exact ``list`` of exact
+``weakref.ref`` whose referent is dead or an exact ``_V2DLeaseEpoch``).
+``admit_shell_axes(element, mesh)`` runs this gate alone; it is the first step
+of ``recover_shell_axes``.  The
 scalar attributes both the recovery and this module read must be exact types
 (``float``/``int``/``numpy.float64``; polarity ``int`` +-1; reference normal a
 float64 ndarray of shape (3,) or None).
@@ -95,6 +103,7 @@ from __future__ import annotations
 import functools
 import math
 import types
+import weakref
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 
@@ -108,6 +117,7 @@ __all__ = [
     "ShellAxesOutputs",
     "ShellAxesRecovery",
     "ShellAxesRefusal",
+    "admit_shell_axes",
     "recover_shell_axes",
 ]
 
@@ -356,6 +366,47 @@ def _solver_value_types() -> Tuple[type, ...]:
     )
 
 
+def _admit_recovery_batch_plan(value: Any) -> bool:
+    from .recovery_batches import RecoveryBatchPlan
+
+    return type(value) is RecoveryBatchPlan
+
+
+def _admit_v2d_lease_epochs(value: Any) -> bool:
+    from .e4_pl_s3_v2d_element import _V2DLeaseEpoch
+
+    if type(value) is not list:
+        return False
+    items = list.copy(value)  # one snapshot; the solver appends under its own lock
+    if len(items) > _PLAIN_BUDGET:
+        return False
+    for item in items:
+        if type(item) is not weakref.ReferenceType:
+            return False
+        referent = item()  # exact built-in weak reference: runs no Python code
+        if referent is not None and type(referent) is not _V2DLeaseEpoch:
+            return False
+    return True
+
+
+@functools.lru_cache(maxsize=None)
+def _solver_cache_admitters() -> Mapping[Tuple[type, str], Callable[[Any], bool]]:
+    """Solver-owned caches the ordinary stress recovery attaches (measured
+    2026-11-27 after ``solve_linear`` + ``recover_stress_result`` on legacy
+    Q4/Q8, e4-pl Q4, qualified S3 and V2D models), admitted only under their
+    own key on their exact owner type.  Everything else keeps the plain rule."""
+
+    from .e4_pl_s3_v2d_element import _V2D_LEASE_EPOCHS_KEY, NativeParityE4PLS3V2DShellElement
+    from .fe_core import FEMesh
+
+    return types.MappingProxyType(
+        {
+            (FEMesh, "_recovery_batch_plan"): _admit_recovery_batch_plan,
+            (NativeParityE4PLS3V2DShellElement, _V2D_LEASE_EPOCHS_KEY): _admit_v2d_lease_epochs,
+        }
+    )
+
+
 def _plain_value(value: Any) -> bool:
     """Plain: exact scalars, exact numeric ndarrays, exact containers of plain
     values (any depth, iterative, cycle-safe, bounded by ``_PLAIN_BUDGET``), or
@@ -441,8 +492,13 @@ def _admit_plain_object(obj: Any, kind: type, what: str) -> Dict[str, Any]:
             "AXES_INSTANCE_SHADOW",
             f"{what} instance attribute(s) {sorted(shadows)!r} shadow {kind.__name__} class attributes",
         )
+    admitters = _solver_cache_admitters()
     for key in keys:
-        if not _plain_value(dict.__getitem__(own, key)):
+        value = dict.__getitem__(own, key)
+        admit_cache = admitters.get((kind, key))
+        if admit_cache is not None and admit_cache(value):
+            continue
+        if not _plain_value(value):
             raise ShellAxesRefusal(
                 "AXES_OBJECT_NOT_PLAIN",
                 f"{what}.{key} is {type(dict.__getitem__(own, key)).__name__}, not a plain or admitted solver type",
@@ -827,10 +883,17 @@ def _numbered_conventions() -> Dict[str, str]:
     return {"membrane": "polarity_even", "bending": "numbered_normal", "shear": "numbered_normal"}
 
 
-def _admit(element: Any, mesh: Any) -> type:
-    """Before any other access: exact element type, option P plain-object
-    admission of the element, the mesh and the element's nodes (owner
-    2026-11-26), then the exact scalar attribute types."""
+def admit_shell_axes(element: Any, mesh: Any) -> type:
+    """The module's pre-recovery admission gate, alone (public, 2026-11-27).
+
+    Exactly the first step of ``recover_shell_axes`` (the same function, not a
+    copy): exact element type, option P plain-object admission of the element,
+    the mesh and the element's nodes (owner 2026-11-26), then the exact scalar
+    attribute types.  Runs no element code and reads nothing else.  Raises
+    ``ShellAxesRefusal`` (the code ``recover_shell_axes`` would raise for this
+    gate); returns the admitted element class.  Passing it does not promise
+    that the later steps (natural points, geometry domain, recovery) succeed.
+    """
 
     from .e4_pl_element import QualifiedE4PLShellElement
     from .e4_pl_s3_element import QualifiedE4PLS3ShellElement
@@ -854,6 +917,9 @@ def _admit(element: Any, mesh: Any) -> type:
     _admit_mesh_and_nodes(element_dict, mesh)
     _check_attribute_types(element, names[kind])
     return kind
+
+
+_admit = admit_shell_axes  # the private name callers used before it was public
 
 
 def _resolve_branch(element, mesh, material, recovered, override, requested) -> _Branch:
@@ -1185,7 +1251,7 @@ def recover_shell_axes(
     from .e4_pl_element import QualifiedE4PLShellElement
     from .elements import ShellElement
 
-    kind = _admit(element, mesh)
+    kind = admit_shell_axes(element, mesh)
     requested = _requested_points(natural_points)
     if requested is not None and (
         not (kind is ShellElement or kind is QualifiedE4PLShellElement) or element.shell_section is not None
@@ -1249,7 +1315,7 @@ def _derive_shell_axes_from_recovery(
     """
 
     del displacements  # frames depend on the reference geometry only
-    _admit(element, mesh)  # before any attribute access (Codex r4: no early lookups)
+    admit_shell_axes(element, mesh)  # before any attribute access (Codex r4: no early lookups)
     if not isinstance(recovered, Mapping):
         raise ShellAxesRefusal("AXES_RETURN_GLOBAL_REQUIRED", "recovery output is not a mapping")
     surface_keys = [f"global_{label}_{surface}" for surface in _SURFACES for label, _i, _j in _SURFACE_COMPONENTS]
