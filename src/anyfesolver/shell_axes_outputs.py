@@ -101,6 +101,7 @@ own global family tensors are the reference.
 from __future__ import annotations
 
 import functools
+import gc
 import math
 import types
 import weakref
@@ -162,6 +163,7 @@ GEOMETRY_CONDITIONING_LIMIT = 2.5e5
 GEOMETRY_GUARANTEE_REACH = 2.8e5  # largest G at which the 2x margin still holds
 _FLOAT_TYPES = (float, int, np.float64)
 _INT_TYPES = (int, np.int64)
+_ID_LIMIT = 2**63
 # Option P (owner 2026-11-26): plain-object admission by type IDENTITY (never
 # ``==`` or ``in``, which a metaclass can answer).
 _PLAIN_SCALARS = (float, int, bool, str, bytes, type(None), np.float64, np.float32, np.int64, np.int32, np.bool_)
@@ -336,6 +338,16 @@ def _frame_problem(frames: np.ndarray, bound: float = ORTHONORMAL_BOUND) -> str:
     return ""
 
 
+_TYPE_NAME = type.__dict__["__name__"]  # the C slot of ``type``; no metaclass lookup
+
+
+def _type_name(kind: type) -> str:
+    """``kind.__name__`` for a refusal text without running a metaclass
+    ``__getattribute__`` or ``__name__`` override (Codex r2 of 2026-11-27)."""
+
+    return _TYPE_NAME.__get__(kind, type)
+
+
 def _is(kind: type, allowed: Tuple[type, ...]) -> bool:
     return any(kind is candidate for candidate in allowed)
 
@@ -442,10 +454,16 @@ def _plain_value(value: Any) -> bool:
                 stack.append(key)
                 stack.append(entry)
         elif kind is types.MappingProxyType:  # qualified S3 component record (measured)
+            # read the backing mapping through the C traversal, never through
+            # the proxy: a proxy over a Python mapping would dispatch to its
+            # __iter__/__getitem__ (Codex r2 of 2026-11-27); only exact dict
+            backing = gc.get_referents(item)
+            if len(backing) != 1 or type(backing[0]) is not dict:
+                return False
             seen.add(id(item))
-            for key in item:
+            for key, entry in dict.items(backing[0]):
                 stack.append(key)
-                stack.append(item[key])
+                stack.append(entry)
         else:
             return False
     return True
@@ -483,7 +501,7 @@ def _admit_plain_object(obj: Any, kind: type, what: str) -> Dict[str, Any]:
     except AttributeError:
         raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"{what} has no instance dict") from None
     if type(own) is not dict:
-        raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"{what} instance dict is {type(own).__name__}, not dict")
+        raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"{what} instance dict is {_type_name(type(own))}, not dict")
     keys = list(dict.keys(own))
     if not all(type(key) is str for key in keys):
         raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"{what} instance dict has a non-str key")
@@ -491,7 +509,7 @@ def _admit_plain_object(obj: Any, kind: type, what: str) -> Dict[str, Any]:
     if shadows:
         raise ShellAxesRefusal(
             "AXES_INSTANCE_SHADOW",
-            f"{what} instance attribute(s) {sorted(shadows)!r} shadow {kind.__name__} class attributes",
+            f"{what} instance attribute(s) {sorted(shadows)!r} shadow {_type_name(kind)} class attributes",
         )
     admitters = _solver_cache_admitters()
     for key in keys:
@@ -502,7 +520,7 @@ def _admit_plain_object(obj: Any, kind: type, what: str) -> Dict[str, Any]:
         if not _plain_value(value):
             raise ShellAxesRefusal(
                 "AXES_OBJECT_NOT_PLAIN",
-                f"{what}.{key} is {type(dict.__getitem__(own, key)).__name__}, not a plain or admitted solver type",
+                f"{what}.{key} is {_type_name(type(dict.__getitem__(own, key)))}, not a plain or admitted solver type",
             )
     return own
 
@@ -513,18 +531,22 @@ def _admit_mesh_and_nodes(element_dict: Mapping[str, Any], mesh: Any) -> None:
     from .fe_core import FEMesh, Node, _QualifiedStateMapping
 
     if type(mesh) is not FEMesh:
-        raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"mesh is {type(mesh).__name__}, not FEMesh")
+        raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"mesh is {_type_name(type(mesh))}, not FEMesh")
     mesh_dict = _admit_plain_object(mesh, FEMesh, "mesh")
     nodes = mesh_dict.get("nodes")
     if not (type(nodes) is _QualifiedStateMapping or type(nodes) is dict):
         raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", "mesh.nodes is not the solver node mapping")
     node_ids = element_dict.get("node_ids")
-    if not (_is(type(node_ids), (tuple, list)) and all(_is(type(n), (int, np.int64, np.int32)) for n in node_ids)):
-        raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", "element node_ids are not exact ints")
+    if not (
+        _is(type(node_ids), (tuple, list))
+        and all(_is(type(n), (int, np.int64, np.int32)) and -_ID_LIMIT <= n < _ID_LIMIT for n in node_ids)
+    ):
+        # the range keeps every id printable in a refusal (Codex r2 of 2026-11-27)
+        raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", "element node_ids are not exact int64-range ints")
     for node_id in node_ids:
         node = dict.get(nodes, node_id)
         if type(node) is not Node:
-            raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"node {node_id} is {type(node).__name__}, not Node")
+            raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"node {node_id} is {_type_name(type(node))}, not Node")
         _admit_plain_object(node, Node, f"node {node_id}")
 
 
@@ -551,7 +573,7 @@ def _check_attribute_types(element: Any, names: Tuple[str, ...]) -> None:
         if not ok:
             raise ShellAxesRefusal(
                 "AXES_ATTRIBUTE_TYPE",
-                f"{name} is {type(value).__name__}; an exact built-in type is required",
+                f"{name} is {_type_name(type(value))}; an exact built-in type is required",
             )
 
 
@@ -915,7 +937,7 @@ def admit_shell_axes(element: Any, mesh: Any) -> type:
     if not any(kind is admitted for admitted in names):
         raise ShellAxesRefusal(
             "AXES_FORMULATION_NOT_QUALIFIED",
-            f"no axes adapter for element type {kind.__name__}",
+            f"no axes adapter for element type {_type_name(kind)}",
         )
     element_dict = _admit_plain_object(element, kind, "element")
     _admit_mesh_and_nodes(element_dict, mesh)

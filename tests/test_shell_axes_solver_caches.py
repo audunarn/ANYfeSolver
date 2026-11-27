@@ -341,12 +341,19 @@ def test_public_gate_runs_before_the_recovery(solved, monkeypatch):
             events.append("gate")
             raise Sentinel("SPY", "gate reached")
 
-        def recorded(*args, **kwargs):
-            events.append("recovery")
-            raise AssertionError("recovery ran before the gate")
+        def recorder(what):
+            def recorded(*args, **kwargs):
+                events.append(what)
+                raise AssertionError(f"{what} ran before the gate")
+
+            return recorded
 
         monkeypatch.setattr(module, "admit_shell_axes", spy)
-        monkeypatch.setattr(kind, "compute_stresses", recorded)
+        # every element access the module makes after the gate (Codex r2:
+        # the V2D coordinate lookup reads mesh nodes before the recovery)
+        for name in ("compute_stresses", "_coordinates", "get_node_coordinates"):
+            if hasattr(kind, name):
+                monkeypatch.setattr(kind, name, recorder(name))
         with pytest.raises(Sentinel):
             recover_shell_axes(element, model.mesh, displacement, material)
         monkeypatch.undo()
@@ -369,3 +376,75 @@ def test_public_gate_raises_the_same_refusal_as_recover_shell_axes(solved):
         del vars(q4)["_hostile"]
     assert (gate.value.code, str(gate.value)) == (full.value.code, str(full.value))
     assert gate.value.code == "AXES_OBJECT_NOT_PLAIN"
+
+
+# ------------------------------------------------- Codex r2 (2026-11-27)
+def test_mapping_proxy_over_a_python_mapping_runs_no_code_and_is_refused(solved):
+    """The proxy is read through its exact-dict backing only; a proxy over a
+    Python mapping is refused without calling the mapping."""
+
+    import collections
+    import types
+
+    model, _, _, _ = solved
+    q4, _ = _q4_v2d(model)
+    calls = []
+
+    class Spy(collections.UserDict):
+        def __iter__(self):
+            calls.append("iter")
+            return super().__iter__()
+
+        def __getitem__(self, key):
+            calls.append("getitem")
+            return super().__getitem__(key)
+
+        def __len__(self):
+            calls.append("len")
+            return super().__len__()
+
+    vars(q4)["_proxy"] = types.MappingProxyType(Spy({"a": 1.0}))
+    try:
+        _refused(q4, model.mesh)
+        assert calls == []
+        vars(q4)["_proxy"] = types.MappingProxyType({"a": 1.0, "b": (2, 3)})
+        admit_shell_axes(q4, model.mesh)
+        vars(q4)["_proxy"] = types.MappingProxyType({"a": object()})
+        _refused(q4, model.mesh)
+    finally:
+        del vars(q4)["_proxy"]
+
+
+def test_refusal_text_runs_no_metaclass_code(solved):
+    model, _, _, _ = solved
+    q4, _ = _q4_v2d(model)
+    hooks = []
+
+    class Meta(type):
+        def __getattribute__(cls, name):
+            hooks.append(name)
+            raise RuntimeError("metaclass hook ran")
+
+    class Hostile(metaclass=Meta):
+        pass
+
+    _refused(Hostile(), model.mesh, "AXES_FORMULATION_NOT_QUALIFIED")
+    vars(q4)["_hostile"] = Hostile()
+    try:
+        _refused(q4, model.mesh)
+    finally:
+        del vars(q4)["_hostile"]
+    assert hooks == []
+
+
+def test_huge_node_id_is_a_typed_refusal(solved):
+    model, _, _, _ = solved
+    q4, _ = _q4_v2d(model)
+    node_ids = vars(q4)["node_ids"]
+    for hostile in (10**5000, -(2**63) - 1, 2**63):
+        vars(q4)["node_ids"] = type(node_ids)([hostile, *list(node_ids)[1:]])
+        try:
+            _refused(q4, model.mesh)
+        finally:
+            vars(q4)["node_ids"] = node_ids
+    admit_shell_axes(q4, model.mesh)
