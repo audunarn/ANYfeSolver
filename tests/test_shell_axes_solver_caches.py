@@ -713,3 +713,17 @@ def test_axes_read_no_attribute_of_either_plan(monkeypatch):
         finally:
             monkeypatch.undo()
         assert reads == [], (build.__name__, reads[:5])
+
+
+def test_module_names_the_cache_keys_only_in_its_admitter_table():
+    """Codex r5 P2: no runtime tracer sees a C-level read, so the module source
+    is checked too: the cache keys appear only where they are admitted."""
+
+    import inspect
+
+    source = inspect.getsource(module)
+    table = inspect.getsource(module._solver_cache_admitters)
+    for key in (PLAN, S3_PLAN):
+        assert source.count(f'"{key}"') == 1 and f'"{key}"' in table, key
+    assert source.count("_V2D_LEASE_EPOCHS_KEY") == table.count("_V2D_LEASE_EPOCHS_KEY") == 2
+    assert "_qualified_v2d_lease_epochs" not in source.replace("``_qualified_v2d_lease_epochs``", "")

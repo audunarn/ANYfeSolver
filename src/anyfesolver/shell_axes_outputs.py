@@ -39,6 +39,11 @@ solver-owned values (instance overrides in a section, mapping, material or
 activity object; custom mapping or key behaviour; metaclass tricks) is out of
 contract.  Process-global hooks the host installs (audit, profile and trace
 hooks) are host code, not data, and outside this boundary (2026-11-27).
+Mid-request changes are out of contract (A''): ``admit_shell_axes`` and
+``recover_shell_axes`` assume no concurrent mutation of the element, the mesh
+and its nodes during the call.  Under such mutation they never admit an
+unchecked value, but a finaliser or weak-reference callback of a value
+released by the call may run (as it could with the #94 code).
 As defence in depth the module still admits, by type identity and before
 any other access, only exact element / FEMesh / Node objects with an
 exact ``dict`` instance dict, ``str`` keys, no instance attribute naming a
