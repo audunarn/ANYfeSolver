@@ -479,3 +479,29 @@ def test_global_overflow_and_nonfinite_resultants_are_refused():
     u[0] = 1e150
     with pytest.raises(ValueError):
         big.compute_variational_resultants(huge.mesh, u, huge.materials["mat"])
+
+
+def test_q4_planar_batch_ignores_opt_and_numbers_are_unchanged_after_the_q4_merge():
+    """Merged-tree interaction with the Q4 planar batch (386192e95): OPT is never batched and its numbers are the pre-merge ones."""
+    from anyfesolver import _q4_planar_batch as batch
+    from anyfesolver import assembly
+
+    ref = 0.1081
+    for n, nw, pinned in ((6, 1, 0.115093), (30, 2, 0.109067), (40, 2, None)):
+        m, nid = _strip(OPT_KIND, n, nw)
+        loads = [(nid[n, j], [0.0, (0.5 if j in (0, nw) else 1.0) / nw, 0, 0, 0, 0]) for j in range(nw + 1)]
+        u, tips = _tip_ux_uy(m, nid, n, nw, loads)
+        if pinned is not None:
+            assert np.mean([t[1] for t in tips]) == pytest.approx(pinned, abs=2e-6)
+        assert ref > 0
+        if n == 40:
+            assert len(m.mesh.elements) >= 128  # above the batch recovery threshold
+            rows = assembly._qualified_q4_recovery_prepass(m, m.mesh, u, None)
+            assert rows == {}  # nothing admitted: no exact qualified Q4 rows
+            normal = compute_stresses(m, u)
+            with batch._forced_fallback():
+                forced = compute_stresses(m, u)
+            assert normal.keys() == forced.keys() == m.mesh.elements.keys()
+            for eid in normal:
+                for key in normal[eid]:
+                    assert np.array_equal(normal[eid][key], forced[eid][key])
