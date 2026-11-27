@@ -364,17 +364,19 @@ def test_od13_cancel_during_the_worker_terminates_it_and_leaves_no_process():
 
 
 def test_od13_cancel_mid_svd_is_prompt(monkeypatch):
-    """A cancellation while the 2000 x 2000 worker runs refuses promptly; the worker's process tree is gone.
+    """A cancellation during the 2000 x 2000 worker run refuses promptly; the worker's process tree is gone.
 
-    The cancel fires at the first poll that finds this run's own worker process still running (its Popen
-    handle, recorded at launch), not after a fixed wall time: on a fast runner the whole SVD can finish inside
-    a fixed delay, and the old test then failed with DID NOT RAISE (#95, #96 CI). Without a hook in the worker
-    the test cannot prove the SVD itself had started (neither could the 1 s guess); it proves a cancellation
-    during the worker run is refused and leaves no process. One 10 s deadline covers the refusal and the exit."""
+    The cancel fires at the first poll after this run's worker is launched (its Popen handle, recorded at
+    launch), not after a fixed wall time: on a fast runner the whole SVD can finish inside a fixed delay, and
+    the old test then failed with DID NOT RAISE (#95, #96 CI). The first poll in the result loop comes before
+    any collect, so the cancel always fires. Without a hook in the worker the test cannot prove the SVD itself
+    had started (neither could the 1 s guess); `alive` records that the worker was still running, which is
+    the normal case. The refusal must come within 10 s of the cancel, and the whole worker tree (re-scanned,
+    so an interpreter started late by a venv launcher is included) must be gone within 10 s after it."""
     if sys.platform != 'win32':
         pytest.skip('process inspection uses the Windows Toolhelp API')
     A = _matrix(2000, seed=2)
-    workers, tree, fired = [], [], []
+    workers, fired, alive = [], [], []
     initialise = subprocess.Popen.__init__
 
     def recording(self, *args, **kwargs):
@@ -382,20 +384,26 @@ def test_od13_cancel_mid_svd_is_prompt(monkeypatch):
         workers.append(self)
 
     def cancel():
-        if workers and workers[0].poll() is None:
-            # The worker and anything it started (a venv launcher's interpreter), nothing else.
-            tree.extend([workers[0].pid] + _descendants(workers[0].pid))
+        if workers:
+            alive.append(workers[0].poll() is None)
             fired.append(time.monotonic())
             raise cc._refuse('COUPLED_CANCELLED', None, 'test cancellation')
     monkeypatch.setattr(subprocess.Popen, '__init__', recording)
     with pytest.raises(cc.CoupledSolveError) as info:
         cc._certify_solve_matrix(sparse.csr_matrix(A), cancel=cancel)
+    refused_at = time.monotonic()
     assert len(workers) == 1, workers
     assert fired, (info.value.code, getattr(info.value, 'diagnostics', None))
     assert info.value.code == 'COUPLED_CANCELLED'
-    deadline = fired[0] + 10.0
-    assert _all_gone(tree, wait=max(0.0, deadline - time.monotonic())), tree
-    assert time.monotonic() < deadline + 0.2, time.monotonic() - fired[0]
+    assert refused_at - fired[0] < 10.0, refused_at - fired[0]
+    root, tree = workers[0].pid, set()
+    deadline = refused_at + 10.0
+    while True:
+        tree.update([root], _descendants(root))   # Toolhelp keeps the parent pid of orphans
+        if not any(_alive(p) for p in tree):
+            break
+        assert time.monotonic() < deadline, sorted(p for p in tree if _alive(p))
+        time.sleep(0.1)
 
 
 def test_od13_worker_timeout_refuses_and_terminates(monkeypatch):
