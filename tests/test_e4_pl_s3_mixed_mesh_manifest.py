@@ -905,8 +905,28 @@ def _prior_through_guard_cadence_successor(relative: str, live: bytes) -> bytes:
     return live
 
 
+PLANAR_BATCH_SUCCESSOR_BUILDER = ROOT / "scripts" / "build_q4_planar_batch_successor.py"
+
+
+def _guard_cadence_live(relative: str) -> bytes:
+    """The bytes the guard cadence successor binds as live: the working-tree
+    bytes rebuilt through its single recorded successor (the Q4 planar batch
+    successor, L4), whose exact checks live in its builder."""
+
+    raw = (ROOT / relative).read_bytes()
+    spec = importlib.util.spec_from_file_location(
+        "_manifest_planar_batch_successor", PLANAR_BATCH_SUCCESSOR_BUILDER
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    problems: list[str] = []
+    prior = module.planar_batch_prior(problems, relative, raw)
+    assert not problems, problems
+    return prior
+
+
 def _read_live(relative: str) -> bytes:
-    return _prior_through_guard_cadence_successor(relative, (ROOT / relative).read_bytes())
+    return _prior_through_guard_cadence_successor(relative, _guard_cadence_live(relative))
 
 
 _DELTA_LINE = re.compile(rb"[^\n]*\n|[^\n]+\Z")
@@ -1322,7 +1342,7 @@ def test_guard_cadence_successor_keeps_live_q4_mechanics_unchanged() -> None:
     authority = _strict_json(QUALIFICATION_CONTRACT.read_bytes())["candidate"][
         "qualified_q4_mechanics_authority"
     ]
-    live = (ROOT / LIVE_ENTRY).read_bytes()
+    live = _guard_cadence_live(LIVE_ENTRY)
     prior = _read_live(LIVE_ENTRY)
     successor = _guard_cadence_successor()
     row = successor["change"]["sealed_carriers"]["e4_pl_element.py"]
@@ -1351,7 +1371,7 @@ def test_guard_cadence_successor_keeps_live_q4_mechanics_unchanged() -> None:
 
 @pytest.mark.parametrize("suffix", (b"\n# unrecorded\n", b"\r\n"))
 def test_guard_cadence_successor_rejects_unrecorded_live_bytes(suffix: bytes) -> None:
-    live = (ROOT / LIVE_ENTRY).read_bytes()
+    live = _guard_cadence_live(LIVE_ENTRY)
     with pytest.raises(AssertionError):
         _prior_through_guard_cadence_successor(LIVE_ENTRY, live + suffix)
     with pytest.raises(AssertionError):

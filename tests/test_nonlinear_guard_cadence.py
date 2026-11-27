@@ -1312,10 +1312,30 @@ PREDECESSOR = "docs/reference_cases/e4_pl_source_binding_20261125.json"
 PREDECESSOR_SHA256 = "CFBA512F71CF589FC8C2E31E7EE12FA7A58E90F6ADDBAA28EA7E52FD7B3B3032"
 
 
-def _read_checkout(relative: str) -> bytes:
-    """Bytes of *relative* as this checkout has them (patched for LF/CRLF)."""
+PLANAR_BATCH_SUCCESSOR_BUILDER = ROOT / "scripts" / "build_q4_planar_batch_successor.py"
 
-    return (ROOT / relative).read_bytes()
+
+def _through_planar_batch_successor(relative: str, data: bytes) -> bytes:
+    """This record's single recorded successor (the Q4 planar batch successor,
+    L4) changes some files this record binds as live: rebuild those bytes
+    through it.  Its exact checks live in its builder; any problem fails."""
+
+    spec = importlib.util.spec_from_file_location(
+        "_guard_cadence_test_planar_batch_successor", PLANAR_BATCH_SUCCESSOR_BUILDER
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    problems: list[str] = []
+    prior = module.planar_batch_prior(problems, relative, data)
+    assert not problems, problems
+    return prior
+
+
+def _read_checkout(relative: str) -> bytes:
+    """Bytes of *relative* this record binds, as this checkout has them
+    (patched for LF/CRLF): rebuilt through the single recorded successor."""
+
+    return _through_planar_batch_successor(relative, (ROOT / relative).read_bytes())
 
 
 def _git_environment() -> dict:
@@ -1609,9 +1629,11 @@ def test_guard_cadence_successor_is_checkout_independent(monkeypatch, ending) ->
         data = (ROOT / relative).read_bytes()
         attributes = _checkout_attributes(relative)
         if attributes.get("text") == "unset" or attributes.get("eol") == "lf":
-            return data
+            return _through_planar_batch_successor(relative, data)
         canonical = data.replace(b"\r\n", b"\n")
-        return canonical if ending == b"\n" else canonical.replace(b"\n", b"\r\n")
+        return _through_planar_batch_successor(
+            relative, canonical if ending == b"\n" else canonical.replace(b"\n", b"\r\n")
+        )
 
     monkeypatch.setattr(sys.modules[__name__], "_read_checkout", checkout)
     payload = _load_successor()
