@@ -406,9 +406,12 @@ def _assert_tree_gone(root, deadline):
     pid). An observation made after the deadline does not count."""
     tree = set()
     while True:
-        now = time.monotonic()
         tree.update([root], _descendants(root))
         left = sorted(p for p in tree if _alive(p))
+        if not left:                               # re-scan: a child started just before the root exited
+            tree.update(_descendants(root))
+            left = sorted(p for p in tree if _alive(p))
+        now = time.monotonic()                     # after the scan: a late observation does not count
         assert now <= deadline, left
         if not left:
             return
@@ -418,12 +421,13 @@ def _assert_tree_gone(root, deadline):
 def test_od13_cancel_during_a_long_worker_run_is_prompt(monkeypatch):
     """A cancellation 0.5 s into a worker run that cannot finish by itself (a 60 s sleep in place of the
     SVD) refuses within 10 s, and the worker tree is gone within 10 s after: the poll keeps running for the
-    whole worker run, not only once after launch (Codex r3 on the od13 rewrite)."""
+    whole worker run, not only once after launch: the first post-launch poll must return without
+    cancelling, so only a later poll can deliver the refusal (Codex r3, r4 on the od13 rewrite)."""
     if sys.platform != 'win32':
         pytest.skip('process inspection uses the Windows Toolhelp API')
     monkeypatch.setattr(cc, '_svd_worker_command',
                         lambda *args: [sys.executable, '-I', '-S', '-c', 'import time; time.sleep(60)'])
-    workers, fired = [], []
+    workers, fired, passed = [], [], []
     initialise = subprocess.Popen.__init__
 
     def recording(self, *args, **kwargs):
@@ -431,10 +435,14 @@ def test_od13_cancel_during_a_long_worker_run_is_prompt(monkeypatch):
         workers.append((self, time.monotonic()))
 
     def cancel():
-        if workers and time.monotonic() - workers[0][1] >= 0.5:
-            assert workers[0][0].poll() is None     # the sleep cannot have ended
-            fired.append(time.monotonic())
-            raise cc._refuse('COUPLED_CANCELLED', None, 'test cancellation')
+        if not workers:
+            return
+        if not passed or time.monotonic() - workers[0][1] < 0.5:
+            passed.append(time.monotonic())        # at least one post-launch poll returns without cancelling
+            return
+        assert workers[0][0].poll() is None         # the sleep cannot have ended
+        fired.append(time.monotonic())
+        raise cc._refuse('COUPLED_CANCELLED', None, 'test cancellation')
     monkeypatch.setattr(subprocess.Popen, '__init__', recording)
     S = sparse.csr_matrix(np.diag([4.0, 2.0, 1.0]))
     with pytest.raises(cc.CoupledSolveError) as info:
