@@ -471,17 +471,104 @@ def test_refusal_text_runs_no_metaclass_code(solved):
     assert hooks == []
 
 
-def test_huge_node_id_is_a_typed_refusal(solved):
+def test_huge_node_ids_are_admitted_when_present_and_refused_typed_when_missing(solved):
+    """Codex r2/r3: a missing huge id must not escape as ValueError from the
+    refusal text, and a present one (>= 2**63) is an ordinary admitted id."""
+
+    from anyfesolver.fe_core import FEMesh
+
     model, _, _, _ = solved
     q4, _ = _q4_v2d(model)
     node_ids = vars(q4)["node_ids"]
-    for hostile in (10**5000, -(2**63) - 1, 2**63):
+    for hostile in (10**5000, -(10**5000), 2**63):
         vars(q4)["node_ids"] = type(node_ids)([hostile, *list(node_ids)[1:]])
         try:
-            _refused(q4, model.mesh)
+            with pytest.raises(ShellAxesRefusal) as caught:
+                admit_shell_axes(q4, model.mesh)
+            assert caught.value.code == "AXES_OBJECT_NOT_PLAIN"
+            assert ("<int of" in str(caught.value))  # every one of these is beyond the 10**18 print bound
         finally:
             vars(q4)["node_ids"] = node_ids
     admit_shell_axes(q4, model.mesh)
+
+    mesh = FEMesh()
+    big = [2**63 + k for k in (1, 2, 3, 4)]
+    for node_id, xyz in zip(big, ((0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 1.0, 0.0), (0.0, 1.0, 0.0))):
+        mesh.add_node(node_id, *xyz)
+    element = QualifiedE4PLShellElement(1, big, "steel", thickness=0.02)
+    assert admit_shell_axes(element, mesh) is QualifiedE4PLShellElement
+
+
+def test_refusal_text_runs_no_str_subclass_name_code(solved):
+    """Codex r3 P1: a class may carry a str subclass as __name__; its
+    __format__ must not run in the refusal text."""
+
+    model, _, _, _ = solved
+    q4, _ = _q4_v2d(model)
+    hooks = []
+
+    class Name(str):
+        def __format__(self, spec):
+            hooks.append("format")
+            raise RuntimeError("name hook ran")
+
+        def __str__(self):
+            hooks.append("str")
+            raise RuntimeError("name hook ran")
+
+    class Hostile:
+        pass
+
+    Hostile.__name__ = Name("Hostile")
+    assert type(Hostile.__name__) is Name
+    with pytest.raises(ShellAxesRefusal) as caught:
+        admit_shell_axes(Hostile(), model.mesh)
+    assert caught.value.code == "AXES_FORMULATION_NOT_QUALIFIED"
+    assert "non-str name" in str(caught.value)
+    vars(q4)["_hostile"] = Hostile()
+    try:
+        _refused(q4, model.mesh)
+    finally:
+        del vars(q4)["_hostile"]
+    assert hooks == []
+
+
+def test_denied_proxy_inspection_is_a_refusal_not_an_exception(solved, monkeypatch):
+    """Codex r3 P2: when gc.get_referents is denied (an audit hook raising),
+    the proxy is refused instead of the exception escaping the gate."""
+
+    import types
+
+    model, _, _, _ = solved
+    q4, _ = _q4_v2d(model)
+
+    def denied(*_objects):
+        raise PermissionError("gc.get_referents denied by policy")
+
+    vars(q4)["_proxy"] = types.MappingProxyType({"a": 1})
+    try:
+        admit_shell_axes(q4, model.mesh)
+        monkeypatch.setattr(module.gc, "get_referents", denied)
+        _refused(q4, model.mesh)
+    finally:
+        del vars(q4)["_proxy"]
+
+
+def test_lease_admitter_never_calls_a_list_item():
+    """Codex r3 P2: a transient dereference (call, then release) leaves no
+    reference-count trace, so the admitter's code is checked directly: its
+    only calls are type(), len() and list.copy()."""
+
+    import ast
+    import inspect
+    import textwrap
+
+    tree = ast.parse(textwrap.dedent(inspect.getsource(module._admit_v2d_lease_epochs)))
+    calls = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            calls.append(ast.unparse(node.func))
+    assert set(calls) <= {"type", "len", "list.copy"}, calls
 
 
 # ------------------------------- qualified S3 stiffness plan (owner 2026-11-27)
@@ -541,3 +628,22 @@ def test_s3_plan_is_admitted_only_exact_and_only_on_the_mesh_key(solved):
         mesh_dict.pop("_another_s3_plan", None)
         vars(q4).pop(S3_PLAN, None)
     admit_shell_axes(q4, model.mesh)
+
+
+def test_axes_never_read_either_plan_during_qs3_and_mixed_recovery():
+    """Codex r3 P2: exact but uninitialised plans (any attribute read raises)
+    on the mesh leave every QS3, Q4 and V2D recovery and axes bit-identical."""
+
+    for build in (_qs3_cylinder, _mixed_cylinder):
+        model, load_case = build()
+        displacement, info = solve_linear(model, load_case, constraint_mode="auto")
+        assert info["convergence_info"]["status"] == "converged"
+        material = model.get_material("steel")
+        fresh, _ = build()
+        blank, _ = build()
+        vars(blank.mesh)[PLAN] = object.__new__(RecoveryBatchPlan)
+        vars(blank.mesh)[S3_PLAN] = object.__new__(PreparedReferenceS3Components)
+        for element_id, element in blank.mesh.elements.items():
+            got = recover_shell_axes(element, blank.mesh, displacement, material)
+            reference = recover_shell_axes(fresh.mesh.elements[element_id], fresh.mesh, displacement, material)
+            assert _axes_identical(got, reference), (build.__name__, element_id)
