@@ -396,14 +396,54 @@ def test_od13_cancel_mid_svd_is_prompt(monkeypatch):
     assert fired, (info.value.code, getattr(info.value, 'diagnostics', None))
     assert info.value.code == 'COUPLED_CANCELLED'
     assert refused_at - fired[0] < 10.0, refused_at - fired[0]
-    root, tree = workers[0].pid, set()
-    deadline = refused_at + 10.0
+    root, deadline = workers[0].pid, refused_at + 10.0
+    _assert_tree_gone(root, deadline)
+
+
+def _assert_tree_gone(root, deadline):
+    """The process ``root`` and every descendant are gone by ``deadline`` (re-scanned each 0.1 s, so a
+    child started late, e.g. a venv launcher's interpreter, is included; Toolhelp keeps an orphan's parent
+    pid). An observation made after the deadline does not count."""
+    tree = set()
     while True:
-        tree.update([root], _descendants(root))   # Toolhelp keeps the parent pid of orphans
-        if not any(_alive(p) for p in tree):
-            break
-        assert time.monotonic() < deadline, sorted(p for p in tree if _alive(p))
+        now = time.monotonic()
+        tree.update([root], _descendants(root))
+        left = sorted(p for p in tree if _alive(p))
+        assert now <= deadline, left
+        if not left:
+            return
         time.sleep(0.1)
+
+
+def test_od13_cancel_during_a_long_worker_run_is_prompt(monkeypatch):
+    """A cancellation 0.5 s into a worker run that cannot finish by itself (a 60 s sleep in place of the
+    SVD) refuses within 10 s, and the worker tree is gone within 10 s after: the poll keeps running for the
+    whole worker run, not only once after launch (Codex r3 on the od13 rewrite)."""
+    if sys.platform != 'win32':
+        pytest.skip('process inspection uses the Windows Toolhelp API')
+    monkeypatch.setattr(cc, '_svd_worker_command',
+                        lambda *args: [sys.executable, '-I', '-S', '-c', 'import time; time.sleep(60)'])
+    workers, fired = [], []
+    initialise = subprocess.Popen.__init__
+
+    def recording(self, *args, **kwargs):
+        initialise(self, *args, **kwargs)
+        workers.append((self, time.monotonic()))
+
+    def cancel():
+        if workers and time.monotonic() - workers[0][1] >= 0.5:
+            assert workers[0][0].poll() is None     # the sleep cannot have ended
+            fired.append(time.monotonic())
+            raise cc._refuse('COUPLED_CANCELLED', None, 'test cancellation')
+    monkeypatch.setattr(subprocess.Popen, '__init__', recording)
+    S = sparse.csr_matrix(np.diag([4.0, 2.0, 1.0]))
+    with pytest.raises(cc.CoupledSolveError) as info:
+        cc._certify_solve_matrix(S, cancel=cancel)
+    refused_at = time.monotonic()
+    assert len(workers) == 1 and fired, (info.value.code, getattr(info.value, 'diagnostics', None))
+    assert info.value.code == 'COUPLED_CANCELLED'
+    assert refused_at - workers[0][1] < 10.5, refused_at - workers[0][1]   # from launch: polls kept coming
+    _assert_tree_gone(workers[0][0].pid, refused_at + 10.0)
 
 
 def test_od13_worker_timeout_refuses_and_terminates(monkeypatch):
