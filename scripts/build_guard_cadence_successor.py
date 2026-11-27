@@ -16,6 +16,12 @@ record is the next and newest link of that chain:
 * the change commits are validated (ancestors of HEAD whose diff touches a
   sealed carrier) both when writing and by ``--check``.
 
+This record has exactly one recorded successor, the qualified Q4 planar batch
+successor (``docs/reference_cases/qualified_q4_planar_batch_successor.json``,
+L4), whose ``predecessor`` is these exact record bytes.  The "live" bytes this
+record binds are the working-tree bytes rebuilt through that successor
+(``read_live`` here, ``planar_batch_prior`` in its builder).
+
 Byte identities are checkout-independent: ``e4_pl_element.py`` is ``-text``
 (raw bytes are the same on every platform) and every other hashed file that is
 not pinned by ``.gitattributes`` is identified by its LF-normalised text.
@@ -32,6 +38,7 @@ from __future__ import annotations
 
 import difflib
 import hashlib
+import importlib.util
 import json
 import subprocess
 import sys
@@ -69,6 +76,29 @@ CHANGE_COMMITS = (
     "2a5ddf5a3 Guard window: re-check swallowed nested refusals and hand nested elements to the parent",
     "631f77eba Guard window: refused nested windows hand every owed guard to enclosing windows",
 )
+
+
+_PLANAR_BATCH_SUCCESSOR_BUILDER = ROOT / "scripts" / "build_q4_planar_batch_successor.py"
+
+
+def read_live(relative: str) -> bytes:
+    """Bytes of *relative* this record binds as live: the working-tree bytes,
+    rebuilt through the single recorded successor (the Q4 planar batch
+    successor) when that successor changes the file.  Any mismatch refuses."""
+
+    raw = (ROOT / relative).read_bytes()
+    if not _PLANAR_BATCH_SUCCESSOR_BUILDER.is_file():
+        return raw
+    spec = importlib.util.spec_from_file_location(
+        "_guard_cadence_planar_batch_successor", _PLANAR_BATCH_SUCCESSOR_BUILDER
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    problems: list[str] = []
+    data = module.planar_batch_prior(problems, relative, raw)
+    if problems:
+        raise SystemExit("; ".join(problems))
+    return data
 
 
 def ident(data: bytes) -> dict:
@@ -219,7 +249,7 @@ def build(evidence: dict) -> dict:
         prior = git("show", f"{base_commit}:{path}")
         if ident(lf(prior) if portable else prior) != bound:
             raise SystemExit(f"{path}: base bytes are not the chain-bound bytes")
-        live = (ROOT / path).read_bytes()
+        live = read_live(path)
         if (lf(live) if portable else live) != (lf(prior) if portable else prior):
             changed[path] = portable
     expected = {f"src/anyfesolver/{name}": portable for name, portable in BOUND}
@@ -228,7 +258,7 @@ def build(evidence: dict) -> dict:
     bound = {}
     for name, portable in BOUND:
         rel = f"src/anyfesolver/{name}"
-        live = (ROOT / rel).read_bytes()
+        live = read_live(rel)
         prior = git("show", f"{base_commit}:{rel}")
         current_form, prior_form = (lf(live), lf(prior)) if portable else (live, prior)
         hunks = reverse_patch(current_form, prior_form)
@@ -253,7 +283,7 @@ def build(evidence: dict) -> dict:
         other[name] = {
             "live_path": rel,
             "prior_lf_git_blob": ident(lf(git("show", f"{base_commit}:{rel}")))["git_blob"],
-            "current_lf_git_blob": ident(lf((ROOT / rel).read_bytes()))["git_blob"],
+            "current_lf_git_blob": ident(lf(read_live(rel)))["git_blob"],
         }
     predecessor = ROOT / PREDECESSOR
     note = ROOT / "docs" / "NONLINEAR_STATIC_GUARD_SPEEDUP.md"

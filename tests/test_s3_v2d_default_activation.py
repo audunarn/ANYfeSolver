@@ -205,6 +205,27 @@ def _identity(data: bytes) -> dict[str, object]:
     }
 
 
+PLANAR_BATCH_SUCCESSOR_BUILDER = ROOT / "scripts" / "build_q4_planar_batch_successor.py"
+
+
+def _guard_cadence_live(path: Path) -> bytes:
+    """The bytes the guard cadence successor binds as live: the working-tree
+    bytes rebuilt through its single recorded successor (the Q4 planar batch
+    successor, L4), whose exact checks live in its builder."""
+
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "_s3_activation_planar_batch_successor", PLANAR_BATCH_SUCCESSOR_BUILDER
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    problems: list[str] = []
+    prior = module.planar_batch_prior(problems, path.relative_to(ROOT).as_posix(), path.read_bytes())
+    assert not problems, problems
+    return prior
+
+
 def _bound_source_bytes(path: Path) -> bytes:
     """Bytes the 2026-11-24 delta binds as live: the live bytes, or for a
     carrier changed by the guard cadence successor (G2/L1/G1, owner
@@ -213,10 +234,12 @@ def _bound_source_bytes(path: Path) -> bytes:
     The successor chains from the pinned 2026-11-25 delta, which must not
     change the file (otherwise this reader fails closed).  The live bytes must
     equal the successor's recorded current identity and its reverse line
-    patch must reproduce the recorded prior identity.
+    patch must reproduce the recorded prior identity.  The live bytes are
+    first rebuilt through the guard cadence successor's single recorded
+    successor (``_guard_cadence_live``).
     """
 
-    live = path.read_bytes()
+    live = _guard_cadence_live(path)
     raw = GUARD_CADENCE_SUCCESSOR.read_bytes()
     record = json.loads(raw, object_pairs_hook=_strict_object)
     assert raw == (

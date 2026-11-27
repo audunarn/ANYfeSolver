@@ -515,10 +515,33 @@ def rebuild_through_delta(problems: list[str], label: str, record: Any, relative
     return rebuilt
 
 
+PLANAR_BATCH_SUCCESSOR_BUILDER = ROOT / "scripts" / "build_q4_planar_batch_successor.py"
+
+
+def planar_batch_prior(problems: list[str], relative: str) -> bytes:
+    """The working-tree bytes of *relative* rebuilt through the single recorded
+    successor of the guard cadence successor (the qualified Q4 planar batch
+    successor, L4): the bytes the guard cadence successor binds as live.  The
+    check itself lives in that record's builder; problems are collected here."""
+
+    raw = (ROOT / relative).read_bytes()
+    if not PLANAR_BATCH_SUCCESSOR_BUILDER.is_file():
+        return raw
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "_q4_source_binding_planar_batch_successor", PLANAR_BATCH_SUCCESSOR_BUILDER
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.planar_batch_prior(problems, relative, raw)
+
+
 def read_bound(problems: list[str], relative: str, level: str = "20261111") -> bytes:
     """Bytes of *relative* that the chain record named by *level* binds as live.
 
-    The live bytes are walked back link by link: through the guard cadence
+    The live bytes are walked back link by link: through the Q4 planar batch
+    successor (giving the guard-cadence-bound bytes), the guard cadence
     successor (giving the 2026-11-25-bound bytes), the 2026-11-25 delta (the
     2026-11-24-bound bytes) and the 2026-11-24 delta (the bytes this record
     binds).  Every check of the named record then runs unchanged on those bytes.
@@ -526,7 +549,7 @@ def read_bound(problems: list[str], relative: str, level: str = "20261111") -> b
 
     if level not in ("20261125", "20261124", "20261111"):
         raise ValueError(f"unknown chain level {level!r}")
-    data = guard_cadence_prior(problems, relative, (ROOT / relative).read_bytes())
+    data = guard_cadence_prior(problems, relative, planar_batch_prior(problems, relative))
     if level == "20261125":
         return data
     delta, delta2 = delta_records(problems)

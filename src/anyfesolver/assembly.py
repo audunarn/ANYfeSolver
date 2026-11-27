@@ -1925,6 +1925,97 @@ def compute_reactions(
     )
 
 
+def _reject_q4_batch_generation(element: Any, error: BaseException) -> None:
+    from .e4_pl_element import _reject_q4_batch_generation as reject
+
+    reject(element, error)
+
+
+def _qualified_q4_recovery_prepass(
+    model: "FEModel",
+    mesh: Any,
+    displacements: np.ndarray,
+    selected: Optional[set],
+) -> Dict[int, tuple]:
+    """Batch the default recovery of exact qualified Q4 rows (fail open to the loop).
+
+    Returns ``{elem_id: (element, material, dof_mapping, stresses, None)}`` for
+    the rows the batch admitted, plus ``(..., None, error)`` for a row whose
+    batched span saw a runtime-authority generation change (raised by the loop
+    at that row), or an empty mapping when nothing is batched.
+    Any exception here is discarded: the per-element loop then runs (and
+    reports) every row exactly as before.
+    """
+    from .e4_pl_element import (
+        QualifiedE4PLShellElement,
+        _Q4_PLANAR_BATCH_RECOVER_MIN_ROWS as RECOVER_MIN_ROWS,
+    )
+
+    try:
+        exact = []
+        for elem_id, element in mesh.elements.items():
+            if selected is not None and int(elem_id) not in selected:
+                continue
+            if type(element) is not QualifiedE4PLShellElement:
+                continue
+            exact.append((elem_id, element))
+        if len(exact) < RECOVER_MIN_ROWS:
+            # Too few rows for a batch: no material or DOF lookups here; the
+            # per-element loop runs unchanged (Codex L4 round 1 P3).
+            return {}
+        from . import _q4_planar_batch as _batch
+
+        if _batch._known_unavailable():
+            # The batch is already known to be off (self-check failed or the
+            # forced fallback): skip the lookups (Codex L4 round 2 P3).
+            return {}
+        candidates = []
+        for elem_id, element in exact:
+            material = model.get_material(element.material_name)
+            dof_mapping = np.asarray(element.get_dof_mapping(mesh), dtype=np.intp)
+            if (
+                dof_mapping.size == 0
+                or int(dof_mapping.min()) < 0
+                or int(dof_mapping.max()) >= displacements.size
+            ):
+                continue
+            candidates.append((elem_id, element, material, dof_mapping))
+        if len(candidates) < RECOVER_MIN_ROWS:
+            return {}
+        rows = QualifiedE4PLShellElement._qualified_planar_batch_stresses(
+            [
+                (element, material, displacements[dof_mapping])
+                for _elem_id, element, material, dof_mapping in candidates
+            ],
+            mesh,
+        )
+    except Exception:  # noqa: BLE001 - the per-element loop reports it
+        return {}
+    if rows is None:
+        return {}
+    recovered_rows, rejection = rows
+    batched = {
+        candidates[position][0]: (
+            candidates[position][1],
+            candidates[position][2],
+            candidates[position][3],
+            recovered,
+            None,
+        )
+        for position, recovered in recovered_rows.items()
+    }
+    if rejection is not None:
+        position, error = rejection
+        batched[candidates[position][0]] = (
+            candidates[position][1],
+            candidates[position][2],
+            candidates[position][3],
+            None,
+            error,
+        )
+    return batched
+
+
 def _compute_stresses_under_lease(
     model: "FEModel",
     displacements: np.ndarray,
@@ -2060,74 +2151,167 @@ def _compute_stresses_under_lease(
                 material=last_bracket_material,
             )
             return batched_stresses
-    for elem_id, element in mesh.elements.items():
-        if selected is not None and int(elem_id) not in selected:
-            continue
-        exact_beam = bool(
-            callable(exact_beam_candidate)
-            and exact_beam_candidate(element)
-        )
-        trusted_segment_element = bool(
-            callable(trusted_segment_candidate)
-            and trusted_segment_candidate(element)
-        )
-        if exact_beam and not exact_beam_batch_open:
-            qualified_runtime_guard(
-                stage="exact built-in beam recovery batch preflight"
+    # Default recovery of admitted planar qualified Q4 rows is computed in one
+    # batch before the loop; the loop below is unchanged (same observations
+    # and guards per element) and only takes a batched row in place of the
+    # identical per-element ``compute_stresses`` result.
+    q4_batched = (
+        {}
+        if return_global
+        else _qualified_q4_recovery_prepass(model, mesh, displacements, selected)
+    )
+    if not q4_batched:
+        # Nothing batched: the unchanged per-element loop.
+        for elem_id, element in mesh.elements.items():
+            if selected is not None and int(elem_id) not in selected:
+                continue
+            exact_beam = bool(
+                callable(exact_beam_candidate)
+                and exact_beam_candidate(element)
             )
-            exact_beam_batch_open = True
-        elif not trusted_segment_element and exact_beam_batch_open:
-            qualified_runtime_guard(
-                stage="exact built-in beam recovery batch output"
+            trusted_segment_element = bool(
+                callable(trusted_segment_candidate)
+                and trusted_segment_candidate(element)
             )
-            exact_beam_batch_open = False
-        material = model.get_material(element.material_name)
-        observation_guard(
-            stage=f"stress material observation for element {elem_id}",
-            element=element,
-            material=material,
-        )
-        if exact_beam and callable(captured_beam_dof_mapping):
-            raw_dof_mapping = captured_beam_dof_mapping(element, material)
-        else:
-            raw_dof_mapping = element.get_dof_mapping(mesh)
-        dof_mapping = np.asarray(raw_dof_mapping, dtype=np.intp)
-        if (
-            dof_mapping.size == 0
-            or int(dof_mapping.min()) < 0
-            or int(dof_mapping.max()) >= displacements.size
-        ):
-            if bool(getattr(element, "recovery_errors_fail_closed", False)):
-                raise ValueError(
-                    "fail-closed element recovery requires a complete in-range "
-                    "DOF mapping"
+            if exact_beam and not exact_beam_batch_open:
+                qualified_runtime_guard(
+                    stage="exact built-in beam recovery batch preflight"
                 )
-            continue
-        try:
-            if exact_beam and callable(recover_captured_beam):
-                stresses[elem_id] = recover_captured_beam(
-                    element,
-                    mesh,
-                    displacements[dof_mapping],
-                    material,
-                    return_global,
+                exact_beam_batch_open = True
+            elif not trusted_segment_element and exact_beam_batch_open:
+                qualified_runtime_guard(
+                    stage="exact built-in beam recovery batch output"
                 )
-            else:
-                stresses[elem_id] = element.compute_stresses(
-                    mesh,
-                    displacements[dof_mapping],
-                    material,
-                    return_global=return_global,
-                )
+                exact_beam_batch_open = False
+            material = model.get_material(element.material_name)
             observation_guard(
-                stage=f"stress element observation for element {elem_id}",
+                stage=f"stress material observation for element {elem_id}",
                 element=element,
                 material=material,
             )
-        except (IndexError, ValueError):
-            if bool(getattr(element, "recovery_errors_fail_closed", False)):
-                raise
-            continue
+            if exact_beam and callable(captured_beam_dof_mapping):
+                raw_dof_mapping = captured_beam_dof_mapping(element, material)
+            else:
+                raw_dof_mapping = element.get_dof_mapping(mesh)
+            dof_mapping = np.asarray(raw_dof_mapping, dtype=np.intp)
+            if (
+                dof_mapping.size == 0
+                or int(dof_mapping.min()) < 0
+                or int(dof_mapping.max()) >= displacements.size
+            ):
+                if bool(getattr(element, "recovery_errors_fail_closed", False)):
+                    raise ValueError(
+                        "fail-closed element recovery requires a complete in-range "
+                        "DOF mapping"
+                    )
+                continue
+            try:
+                if exact_beam and callable(recover_captured_beam):
+                    stresses[elem_id] = recover_captured_beam(
+                        element,
+                        mesh,
+                        displacements[dof_mapping],
+                        material,
+                        return_global,
+                    )
+                else:
+                    stresses[elem_id] = element.compute_stresses(
+                        mesh,
+                        displacements[dof_mapping],
+                        material,
+                        return_global=return_global,
+                    )
+                observation_guard(
+                    stage=f"stress element observation for element {elem_id}",
+                    element=element,
+                    material=material,
+                )
+            except (IndexError, ValueError):
+                if bool(getattr(element, "recovery_errors_fail_closed", False)):
+                    raise
+                continue
+    else:
+        for elem_id, element in mesh.elements.items():
+            if selected is not None and int(elem_id) not in selected:
+                continue
+            exact_beam = bool(
+                callable(exact_beam_candidate)
+                and exact_beam_candidate(element)
+            )
+            trusted_segment_element = bool(
+                callable(trusted_segment_candidate)
+                and trusted_segment_candidate(element)
+            )
+            if exact_beam and not exact_beam_batch_open:
+                qualified_runtime_guard(
+                    stage="exact built-in beam recovery batch preflight"
+                )
+                exact_beam_batch_open = True
+            elif not trusted_segment_element and exact_beam_batch_open:
+                qualified_runtime_guard(
+                    stage="exact built-in beam recovery batch output"
+                )
+                exact_beam_batch_open = False
+            material = model.get_material(element.material_name)
+            observation_guard(
+                stage=f"stress material observation for element {elem_id}",
+                element=element,
+                material=material,
+            )
+            if exact_beam and callable(captured_beam_dof_mapping):
+                raw_dof_mapping = captured_beam_dof_mapping(element, material)
+            else:
+                raw_dof_mapping = element.get_dof_mapping(mesh)
+            dof_mapping = np.asarray(raw_dof_mapping, dtype=np.intp)
+            if (
+                dof_mapping.size == 0
+                or int(dof_mapping.min()) < 0
+                or int(dof_mapping.max()) >= displacements.size
+            ):
+                if bool(getattr(element, "recovery_errors_fail_closed", False)):
+                    raise ValueError(
+                        "fail-closed element recovery requires a complete in-range "
+                        "DOF mapping"
+                    )
+                continue
+            try:
+                if exact_beam and callable(recover_captured_beam):
+                    stresses[elem_id] = recover_captured_beam(
+                        element,
+                        mesh,
+                        displacements[dof_mapping],
+                        material,
+                        return_global,
+                    )
+                else:
+                    batched_row = q4_batched.pop(elem_id, None)
+                    if (
+                        batched_row is not None
+                        and batched_row[0] is element
+                        and batched_row[1] is material
+                        and np.array_equal(batched_row[2], dof_mapping)
+                    ):
+                        if batched_row[4] is not None:
+                            # Runtime-authority generation change inside this
+                            # row's batched span: the wrapper's rejection here.
+                            _reject_q4_batch_generation(element, batched_row[4])
+                        stresses[elem_id] = batched_row[3]
+                    else:
+                        stresses[elem_id] = element.compute_stresses(
+                            mesh,
+                            displacements[dof_mapping],
+                            material,
+                            return_global=return_global,
+                        )
+                observation_guard(
+                    stage=f"stress element observation for element {elem_id}",
+                    element=element,
+                    material=material,
+                )
+            except (IndexError, ValueError):
+                if bool(getattr(element, "recovery_errors_fail_closed", False)):
+                    raise
+                continue
     if exact_beam_batch_open:
         qualified_runtime_guard(
             stage="exact built-in beam recovery batch output"
