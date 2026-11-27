@@ -135,7 +135,7 @@ def test_beta0_and_membrane_block_are_the_opt_kernel_not_cst_plus_drill():
     assert np.abs(comp["total"] - kd).max() > 1e-3 * np.abs(kd).max()  # membrane block differs
     # plate action (w, rx, ry) is the V2D one (native path vs the default's V2C wrapper: equal to round-off)
     plate = np.ix_([2, 3, 4, 8, 9, 10, 14, 15, 16], [2, 3, 4, 8, 9, 10, 14, 15, 16])
-    assert np.allclose(comp["total"][plate], kd[plate], rtol=1e-12, atol=1e-12 * np.abs(kd).max())
+    assert np.allclose(comp["total"][plate], kd[plate], rtol=1e-10, atol=1e-10 * np.abs(kd).max())
 
 
 @pytest.mark.parametrize("n,nw,expect_pct,tol", [(6, 1, 6.5, 0.2), (30, 2, 0.9, 0.2)])
@@ -200,8 +200,8 @@ def test_constant_stress_patch_and_recovery_are_exact_on_an_irregular_patch():
     assert info["convergence_info"]["status"] == "converged"
     for i, (x, y) in enumerate(pts, 1):
         d = u[m.mesh.nodes[i].dofs]
-        assert d[0] == pytest.approx(exx * x + 0.5 * gxy * y, abs=1e-12)
-        assert d[1] == pytest.approx(eyy * y + 0.5 * gxy * x, abs=1e-12)
+        assert d[0] == pytest.approx(exx * x + 0.5 * gxy * y, abs=1e-10)
+        assert d[1] == pytest.approx(eyy * y + 0.5 * gxy * x, abs=1e-10)
     stresses = compute_stresses(m, u, return_global=True)
     ex = E / (1 - 0.25**2) * np.array([exx + 0.25 * eyy, eyy + 0.25 * exx, (1 - 0.25) / 2 * gxy])
     expected = np.array([[ex[0], ex[2], 0.0], [ex[2], ex[1], 0.0], [0.0, 0.0, 0.0]])

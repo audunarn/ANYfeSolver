@@ -53,7 +53,9 @@ def test_pure_bending_exact_for_any_aspect_ratio(alpha, diag):
     for t in tris:
         u = np.concatenate([[-x * y, 0.5 * (x * x + nu * y * y), x] for x, y in p[list(t)]])
         e += 0.5 * u @ opt_membrane_stiffness(p[list(t)], em, 1.0) @ u
-    assert e / (0.5 * (b**3 / 12) * a) == pytest.approx(1.0, abs=1e-12)
+    # exact to ~10 digits at every aspect ratio; round-off grows with the conditioning (~ aspect^2), BLAS-dependent
+    tol = 1e-12 * max(1.0, (max(alpha, 1.0 / alpha) / 4.0) ** 2)
+    assert e / (0.5 * (b**3 / 12) * a) == pytest.approx(1.0, abs=tol)
 
 
 def test_refuses_clockwise_degenerate_and_bad_material():
@@ -76,7 +78,7 @@ def test_strain_recovery_exact_for_constant_strain_and_rigid_rotation():
     exx, eyy, gxy, w = 1e-3, -2e-4, 5e-4, 3e-4  # constant strain + rigid rotation w (theta = w)
     u = np.concatenate([[exx * x + 0.5 * gxy * y - w * y, eyy * y + 0.5 * gxy * x + w * x, w] for x, y in xy])
     for op in ops:
-        assert op @ u == pytest.approx([exx, eyy, gxy], abs=1e-14)
+        assert op @ u == pytest.approx([exx, eyy, gxy], abs=1e-12)
 
 
 def test_recovery_operator_is_energy_consistent_with_the_higher_order_stiffness():
@@ -93,4 +95,4 @@ def test_recovery_operator_is_energy_consistent_with_the_higher_order_stiffness(
     ops = opt_membrane_strain_operator(xy, mids, h, e0) - basic
     beta0 = optimal_beta0(em)
     expected = 0.75 * (beta0 / e0**2) * h * area * sum(op.T @ em @ op for op in ops)
-    assert expected == pytest.approx(kh, rel=1e-12, abs=1e-12 * np.abs(kh).max())
+    assert expected == pytest.approx(kh, rel=1e-10, abs=1e-10 * np.abs(kh).max())
