@@ -29,11 +29,14 @@ from anyfesolver.cylinder_benchmarks import (
     build_cylindrical_shell_benchmark_model,
 )
 from anyfesolver.e4_pl_element import QualifiedE4PLShellElement
+from anyfesolver.e4_pl_s3_element import QualifiedE4PLS3ShellElement
 from anyfesolver.e4_pl_s3_v2d_element import NativeParityE4PLS3V2DShellElement, _V2DLeaseEpoch
 from anyfesolver.recovery_batches import RecoveryBatchPlan
+from anyfesolver.s3_reference_batch import PreparedReferenceS3Components
 from anyfesolver.shell_axes_outputs import ShellAxesRefusal, admit_shell_axes, recover_shell_axes
 
 PLAN = "_recovery_batch_plan"
+S3_PLAN = "_qualified_s3_reference_stiffness_plan"
 LEASES = "_qualified_v2d_lease_epochs"
 
 
@@ -74,6 +77,37 @@ def _mixed_cylinder():
                 formulation="e4-pl-s3-v2d",
                 thickness=old.thickness,
                 reference_normal=normal,
+            )
+            next_id += 1
+    return model, load_case
+
+
+def _qs3_cylinder():
+    """288 qualified S3 triangles (every Q4 of the 24 x 6 cylinder split)."""
+
+    config = CylinderBenchmarkConfig(
+        radius=1.5,
+        height=2.0,
+        thickness=0.02,
+        pressure=2.0e4,
+        num_circumferential=24,
+        num_height=6,
+        use_8node_elements=False,
+    )
+    model, load_case = build_cylindrical_shell_benchmark_model(config)
+    mesh = model.mesh
+    ids = sorted(mesh.elements)
+    next_id = max(ids) + 1
+    for element_id in ids:
+        old = mesh.elements[element_id]
+        nodes = list(old.node_ids)
+        xyz = np.array([[mesh.nodes[n].x, mesh.nodes[n].y, mesh.nodes[n].z] for n in nodes])
+        normal = np.cross(xyz[1] - xyz[0], xyz[3] - xyz[0])
+        normal = [float(v) for v in normal / np.linalg.norm(normal)]
+        del mesh.elements[element_id]
+        for tri in ([nodes[0], nodes[1], nodes[2]], [nodes[0], nodes[2], nodes[3]]):
+            mesh.elements[next_id] = QualifiedE4PLS3ShellElement(
+                next_id, tri, old.material_name, thickness=old.thickness, reference_normal=normal
             )
             next_id += 1
     return model, load_case
@@ -447,4 +481,63 @@ def test_huge_node_id_is_a_typed_refusal(solved):
             _refused(q4, model.mesh)
         finally:
             vars(q4)["node_ids"] = node_ids
+    admit_shell_axes(q4, model.mesh)
+
+
+# ------------------------------- qualified S3 stiffness plan (owner 2026-11-27)
+def test_recover_shell_axes_after_repeated_assembly_on_qs3_is_bit_identical():
+    """Regression (fails before the fix): the second stiffness assembly on
+    qualified S3 shells stores ``mesh._qualified_s3_reference_stiffness_plan``;
+    the gate refused every shell afterwards.  The axes after it (and after
+    the ordinary recovery) equal the fresh model's bit for bit."""
+
+    model, load_case = _qs3_cylinder()
+    first, info = solve_linear(model, load_case, constraint_mode="auto")
+    assert info["convergence_info"]["status"] == "converged"
+    displacement, info = solve_linear(model, load_case, constraint_mode="auto")
+    assert info["convergence_info"]["status"] == "converged"
+    assert np.array_equal(first, displacement)
+    mesh = model.mesh
+    assert type(vars(mesh)[S3_PLAN]) is PreparedReferenceS3Components
+    recover_stress_result(model, displacement)
+    assert type(vars(mesh)[PLAN]) is RecoveryBatchPlan
+    fresh, _ = _qs3_cylinder()
+    assert S3_PLAN not in vars(fresh.mesh)
+    material = model.get_material("steel")
+    count = 0
+    for element_id, element in mesh.elements.items():
+        assert type(element) is QualifiedE4PLS3ShellElement
+        got = recover_shell_axes(element, mesh, displacement, material)
+        reference = recover_shell_axes(fresh.mesh.elements[element_id], fresh.mesh, displacement, material)
+        assert _axes_identical(got, reference), element_id
+        count += 1
+    assert count == 288
+
+
+def test_s3_plan_is_admitted_only_exact_and_only_on_the_mesh_key(solved):
+    model, _, _, _ = solved
+    q4, v2d = _q4_v2d(model)
+    blank = object.__new__(PreparedReferenceS3Components)
+
+    class PlanSubclass(PreparedReferenceS3Components):
+        pass
+
+    mesh_dict = vars(model.mesh)
+    try:
+        mesh_dict[S3_PLAN] = blank
+        admit_shell_axes(q4, model.mesh)
+        admit_shell_axes(v2d, model.mesh)
+        for hostile in (object.__new__(PlanSubclass), object(), vars(model.mesh)[PLAN]):
+            mesh_dict[S3_PLAN] = hostile
+            _refused(q4, model.mesh)
+        del mesh_dict[S3_PLAN]
+        mesh_dict["_another_s3_plan"] = blank
+        _refused(q4, model.mesh)
+        del mesh_dict["_another_s3_plan"]
+        vars(q4)[S3_PLAN] = blank
+        _refused(q4, model.mesh)
+    finally:
+        mesh_dict.pop(S3_PLAN, None)
+        mesh_dict.pop("_another_s3_plan", None)
+        vars(q4).pop(S3_PLAN, None)
     admit_shell_axes(q4, model.mesh)

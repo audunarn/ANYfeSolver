@@ -42,11 +42,14 @@ before any other access, only exact element / FEMesh / Node objects with an
 exact ``dict`` instance dict, ``str`` keys, no instance attribute naming a
 class attribute (declared dataclass fields excepted) and plain values (exact
 scalars, containers, numeric ndarrays, or exact solver-owned classes, which
-are not looked into); custom subclasses of these objects are refused.  Two
-solver-owned caches the ordinary stress recovery leaves behind are admitted
+are not looked into); custom subclasses of these objects are refused.  Three
+solver-owned caches the solve and the ordinary stress recovery leave behind are admitted
 only under their own key on their owner type (2026-11-27): the batch plan
 ``FEMesh._recovery_batch_plan`` (exact ``RecoveryBatchPlan``, not looked into;
-the axes recovery never reads it) and the V2D capture subscriptions
+the axes recovery never reads it), the qualified S3 stiffness plan
+``FEMesh._qualified_s3_reference_stiffness_plan`` (exact
+``PreparedReferenceS3Components``, not looked into, never read here; owner
+2026-11-27) and the V2D capture subscriptions
 ``_qualified_v2d_lease_epochs`` on a V2D element (an exact ``list`` of exact
 callback-free ``weakref.ref``, never dereferenced).
 ``admit_shell_axes(element, mesh)`` runs this gate alone; it is the first step
@@ -384,6 +387,12 @@ def _admit_recovery_batch_plan(value: Any) -> bool:
     return type(value) is RecoveryBatchPlan
 
 
+def _admit_s3_stiffness_plan(value: Any) -> bool:
+    from .s3_reference_batch import PreparedReferenceS3Components
+
+    return type(value) is PreparedReferenceS3Components
+
+
 def _admit_v2d_lease_epochs(value: Any) -> bool:
     """What ``_subscribe_v2d_lease_epoch`` stores: an exact list of exact
     callback-free ``weakref.ref``.  The references are never dereferenced: a
@@ -404,10 +413,12 @@ def _admit_v2d_lease_epochs(value: Any) -> bool:
 
 @functools.lru_cache(maxsize=None)
 def _solver_cache_admitters() -> Mapping[Tuple[type, str], Callable[[Any], bool]]:
-    """Solver-owned caches the ordinary stress recovery attaches (measured
-    2026-11-27 after ``solve_linear`` + ``recover_stress_result`` on legacy
-    Q4/Q8, e4-pl Q4, qualified S3 and V2D models), admitted only under their
-    own key on their exact owner type.  Everything else keeps the plain rule."""
+    """Solver-owned caches the solve and the ordinary stress recovery attach
+    (measured 2026-11-27 after ``solve_linear`` + ``recover_stress_result`` on
+    legacy Q4/Q8, e4-pl Q4, qualified S3 and V2D models; the S3 stiffness plan
+    after a repeated assembly on qualified S3 shells), admitted only under
+    their own key on their exact owner type.  Everything else keeps the plain
+    rule."""
 
     from .e4_pl_s3_v2d_element import _V2D_LEASE_EPOCHS_KEY, NativeParityE4PLS3V2DShellElement
     from .fe_core import FEMesh
@@ -415,6 +426,7 @@ def _solver_cache_admitters() -> Mapping[Tuple[type, str], Callable[[Any], bool]
     return types.MappingProxyType(
         {
             (FEMesh, "_recovery_batch_plan"): _admit_recovery_batch_plan,
+            (FEMesh, "_qualified_s3_reference_stiffness_plan"): _admit_s3_stiffness_plan,
             (NativeParityE4PLS3V2DShellElement, _V2D_LEASE_EPOCHS_KEY): _admit_v2d_lease_epochs,
         }
     )
