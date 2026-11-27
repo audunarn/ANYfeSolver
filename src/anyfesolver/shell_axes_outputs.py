@@ -37,8 +37,10 @@ Contract (owner 2026-11-26, option 1).  Trust boundary A'' with one
 narrowing for this opt-in module: customising the Python object model INSIDE
 solver-owned values (instance overrides in a section, mapping, material or
 activity object; custom mapping or key behaviour; metaclass tricks) is out of
-contract.  As defence in depth the module still admits, by type identity and
-before any other access, only exact element / FEMesh / Node objects with an
+contract.  Process-global hooks the host installs (audit, profile and trace
+hooks) are host code, not data, and outside this boundary (2026-11-27).
+As defence in depth the module still admits, by type identity and before
+any other access, only exact element / FEMesh / Node objects with an
 exact ``dict`` instance dict, ``str`` keys, no instance attribute naming a
 class attribute (declared dataclass fields excepted) and plain values (exact
 scalars, containers, numeric ndarrays, or exact solver-owned classes, which
@@ -480,9 +482,12 @@ def _plain_value(value: Any) -> bool:
             # read the backing mapping through the C traversal, never through
             # the proxy: a proxy over a Python mapping would dispatch to its
             # __iter__/__getitem__ (Codex r2 of 2026-11-27); only exact dict
+            # audit hooks see this call; they are host-installed process code,
+            # outside the A'' data boundary (as are profile/trace hooks), but a
+            # denial must still end in a refusal (Codex r3/r4 of 2026-11-27)
             try:
                 backing = gc.get_referents(item)
-            except Exception:  # an audit hook may deny the inspection: refuse (Codex r3)
+            except Exception:
                 return False
             if type(backing) is not list or len(backing) != 1 or type(backing[0]) is not dict:
                 return False
@@ -528,7 +533,10 @@ def _admit_plain_object(obj: Any, kind: type, what: str) -> Dict[str, Any]:
         raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"{what} has no instance dict") from None
     if type(own) is not dict:
         raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"{what} instance dict is {_type_name(type(own))}, not dict")
-    keys = list(dict.keys(own))
+    # one snapshot of the pairs: a concurrent cache clear (another thread)
+    # must not turn a later lookup into a KeyError (Codex r4 of 2026-11-27)
+    pairs = list(dict.items(own))
+    keys = [key for key, _value in pairs]
     if not all(type(key) is str for key in keys):
         raise ShellAxesRefusal("AXES_OBJECT_NOT_PLAIN", f"{what} instance dict has a non-str key")
     shadows = _class_attribute_names(kind).intersection(keys)
@@ -538,15 +546,14 @@ def _admit_plain_object(obj: Any, kind: type, what: str) -> Dict[str, Any]:
             f"{what} instance attribute(s) {sorted(shadows)!r} shadow {_type_name(kind)} class attributes",
         )
     admitters = _solver_cache_admitters()
-    for key in keys:
-        value = dict.__getitem__(own, key)
+    for key, value in pairs:
         admit_cache = admitters.get((kind, key))
         if admit_cache is not None and admit_cache(value):
             continue
         if not _plain_value(value):
             raise ShellAxesRefusal(
                 "AXES_OBJECT_NOT_PLAIN",
-                f"{what}.{key} is {_type_name(type(dict.__getitem__(own, key)))}, not a plain or admitted solver type",
+                f"{what}.{key} is {_type_name(type(value))}, not a plain or admitted solver type",
             )
     return own
 

@@ -647,3 +647,69 @@ def test_axes_never_read_either_plan_during_qs3_and_mixed_recovery():
             got = recover_shell_axes(element, blank.mesh, displacement, material)
             reference = recover_shell_axes(fresh.mesh.elements[element_id], fresh.mesh, displacement, material)
             assert _axes_identical(got, reference), (build.__name__, element_id)
+
+
+# ------------------------------------------------- Codex r4 (2026-11-27)
+def test_a_cache_cleared_during_admission_is_no_key_error(solved, monkeypatch):
+    """The gate reads one snapshot of each instance dict: a cache removed
+    while the gate runs (another thread clearing it) is no KeyError."""
+
+    model, _, _, _ = solved
+    q4, _ = _q4_v2d(model)
+    mesh_dict = vars(model.mesh)
+    plan = mesh_dict[PLAN]
+    real = module._plain_value
+    cleared = []
+
+    first_key, first_value = next(iter(mesh_dict.items()))
+    assert first_key != PLAN and type(first_value) not in (int, float, bool, str, type(None))
+
+    def clearing(value):
+        # fires while the mesh's own values are checked (after its snapshot)
+        if value is first_value and not cleared and PLAN in mesh_dict:
+            del mesh_dict[PLAN]  # what clear_recovery_batch_plan does
+            cleared.append(True)
+        return real(value)
+
+    monkeypatch.setattr(module, "_plain_value", clearing)
+    try:
+        admit_shell_axes(q4, model.mesh)
+        assert cleared
+    finally:
+        monkeypatch.undo()
+        mesh_dict[PLAN] = plan
+    admit_shell_axes(q4, model.mesh)
+
+
+def test_axes_read_no_attribute_of_either_plan(monkeypatch):
+    """Codex r4 P2: trace every attribute access on the populated plans while
+    the axes run on QS3, Q4 and V2D shells (a guarded getattr would pass a
+    bit-identity check)."""
+
+    for build in (_qs3_cylinder, _mixed_cylinder):
+        model, load_case = build()
+        for _ in range(2):
+            displacement, info = solve_linear(model, load_case, constraint_mode="auto")
+            assert info["convergence_info"]["status"] == "converged"
+        recover_stress_result(model, displacement)
+        material = model.get_material("steel")
+        plans = [vars(model.mesh)[key] for key in (PLAN, S3_PLAN) if key in vars(model.mesh)]
+        assert type(plans[0]) is RecoveryBatchPlan
+        if build is _qs3_cylinder:
+            assert len(plans) == 2
+        reads = []
+        for kind in {type(plan) for plan in plans}:
+            original = kind.__getattribute__
+
+            def traced(self, name, _original=original):
+                if any(self is plan for plan in plans):
+                    reads.append((type(self).__name__, name))
+                return _original(self, name)
+
+            monkeypatch.setattr(kind, "__getattribute__", traced)
+        try:
+            for element in model.mesh.elements.values():
+                recover_shell_axes(element, model.mesh, displacement, material)
+        finally:
+            monkeypatch.undo()
+        assert reads == [], (build.__name__, reads[:5])
