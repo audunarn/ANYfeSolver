@@ -48,7 +48,7 @@ only under their own key on their owner type (2026-11-27): the batch plan
 ``FEMesh._recovery_batch_plan`` (exact ``RecoveryBatchPlan``, not looked into;
 the axes recovery never reads it) and the V2D capture subscriptions
 ``_qualified_v2d_lease_epochs`` on a V2D element (an exact ``list`` of exact
-``weakref.ref`` whose referent is dead or an exact ``_V2DLeaseEpoch``).
+callback-free ``weakref.ref``, never dereferenced).
 ``admit_shell_axes(element, mesh)`` runs this gate alone; it is the first step
 of ``recover_shell_axes``.  The
 scalar attributes both the recovery and this module read must be exact types
@@ -373,7 +373,11 @@ def _admit_recovery_batch_plan(value: Any) -> bool:
 
 
 def _admit_v2d_lease_epochs(value: Any) -> bool:
-    from .e4_pl_s3_v2d_element import _V2DLeaseEpoch
+    """What ``_subscribe_v2d_lease_epoch`` stores: an exact list of exact
+    callback-free ``weakref.ref``.  The references are never dereferenced: a
+    temporary strong reference to the referent could, on release, run weak
+    reference callbacks registered elsewhere (Codex r1).  The referents are
+    ignored; nothing in this module reads them."""
 
     if type(value) is not list:
         return False
@@ -381,10 +385,7 @@ def _admit_v2d_lease_epochs(value: Any) -> bool:
     if len(items) > _PLAIN_BUDGET:
         return False
     for item in items:
-        if type(item) is not weakref.ReferenceType:
-            return False
-        referent = item()  # exact built-in weak reference: runs no Python code
-        if referent is not None and type(referent) is not _V2DLeaseEpoch:
+        if type(item) is not weakref.ReferenceType or item.__callback__ is not None:
             return False
     return True
 
@@ -535,7 +536,10 @@ def _check_attribute_types(element: Any, names: Tuple[str, ...]) -> None:
     """
 
     for name in names:
-        value = getattr(element, name)
+        try:
+            value = getattr(element, name)  # exact admitted class: trusted lookup
+        except AttributeError:
+            raise ShellAxesRefusal("AXES_ATTRIBUTE_TYPE", f"{name} is missing") from None
         if name == "director_polarity":
             ok = _is(type(value), _INT_TYPES) and (int(value) == 1 or int(value) == -1)
         elif name == "reference_normal":

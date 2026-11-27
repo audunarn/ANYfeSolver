@@ -3,8 +3,8 @@
 The ordinary recovery leaves two solver-owned caches behind: the L4 batch
 plan ``mesh._recovery_batch_plan`` (``RecoveryBatchPlan``, #95) and, on V2D
 elements of a mixed model, the trusted-capture subscription list
-``element._qualified_v2d_lease_epochs`` (weak references to
-``_V2DLeaseEpoch``).  Before this change the #94 plain-object admission
+``element._qualified_v2d_lease_epochs`` (callback-free weak references to
+``_V2DLeaseEpoch``, never dereferenced by the module).  Before this change the #94 plain-object admission
 refused every shell with ``AXES_OBJECT_NOT_PLAIN`` once either was present
 (ANYfem D2-1: all 4596 Q4 + 44 V2D of the linear barge).  The module now
 admits exactly these two values, bound to their owner type and key; the
@@ -16,6 +16,7 @@ Also the public gate ``admit_shell_axes(element, mesh)``: the very gate
 
 from __future__ import annotations
 
+import sys
 import weakref
 
 import numpy as np
@@ -222,18 +223,74 @@ def test_owned_keys_with_other_values_stay_refused():
         (weakref.ref(live),),  # tuple, not the solver's list
         [lambda: live],  # a callable, not a weak reference
         [RefSubclass(live)],  # a weak-reference subclass
-        [weakref.ref(other)],  # a live reference to a foreign object
+        [weakref.ref(live, lambda _ref: None)],  # the solver registers no callback
         [weakref.ref(live), object()],
     ):
         vars(v2d)[LEASES] = hostile
         _refused(v2d, mesh)
-    # what the solver itself stores: dead and live references to its epochs
+    # what the solver itself stores: dead and live references to its epochs;
+    # the referents are ignored (never dereferenced, never read)
     dead = _V2DLeaseEpoch()
     dead_reference = weakref.ref(dead)
     del dead
-    for admitted in ([], [dead_reference], [weakref.ref(live)], [dead_reference, weakref.ref(live)]):
+    for admitted in (
+        [],
+        [dead_reference],
+        [weakref.ref(live)],
+        [dead_reference, weakref.ref(live)],
+        [weakref.ref(other)],
+    ):
         vars(v2d)[LEASES] = admitted
         admit_shell_axes(v2d, mesh)
+
+
+def test_lease_admission_takes_no_strong_reference_to_the_referent():
+    """Codex r1 P1: dereferencing made the gate the last owner of an epoch
+    whose release runs weak-reference callbacks registered elsewhere."""
+
+    model, _ = _mixed_cylinder()
+    recover_stress_result(model, np.zeros(model.mesh.dof_manager.total_dofs))
+    _, v2d = _q4_v2d(model)
+    epoch = _V2DLeaseEpoch()
+    vars(v2d)[LEASES] = [weakref.ref(epoch)]
+    fired = []
+    watcher = weakref.ref(epoch, lambda _ref: fired.append(True))
+    before = sys.getrefcount(epoch)
+    admit_shell_axes(v2d, model.mesh)
+    assert sys.getrefcount(epoch) == before and not fired
+    del epoch
+    assert fired and watcher() is None
+    admit_shell_axes(v2d, model.mesh)  # a dead reference stays admitted
+
+
+def test_missing_gate_attribute_is_a_typed_refusal(solved):
+    """Codex r1 P2: a missing scalar raised AttributeError, not the contract's refusal."""
+
+    model, _, displacement, material = solved
+    q4, _ = _q4_v2d(model)
+    thickness = vars(q4).pop("thickness")
+    try:
+        _refused(q4, model.mesh, "AXES_ATTRIBUTE_TYPE")
+        with pytest.raises(ShellAxesRefusal) as caught:
+            recover_shell_axes(q4, model.mesh, displacement, material)
+        assert caught.value.code == "AXES_ATTRIBUTE_TYPE"
+    finally:
+        vars(q4)["thickness"] = thickness
+    admit_shell_axes(q4, model.mesh)
+
+
+def test_axes_never_read_the_batch_plan(solved):
+    """Codex r1 P2: an exact but uninitialised plan (any attribute read raises)
+    leaves recovery and axes bit-identical to the fresh model."""
+
+    model, fresh, displacement, material = solved
+    blank, _ = _mixed_cylinder()
+    vars(blank.mesh)[PLAN] = object.__new__(RecoveryBatchPlan)
+    for element_id, element in blank.mesh.elements.items():
+        admit_shell_axes(element, blank.mesh)
+        got = recover_shell_axes(element, blank.mesh, displacement, material)
+        reference = recover_shell_axes(fresh.mesh.elements[element_id], fresh.mesh, displacement, material)
+        assert _axes_identical(got, reference), element_id
 
 
 def test_public_gate_is_the_gate_recover_shell_axes_runs(solved, monkeypatch):
@@ -264,6 +321,39 @@ def test_public_gate_is_the_gate_recover_shell_axes_runs(solved, monkeypatch):
     with pytest.raises(Sentinel):
         module._derive_shell_axes_from_recovery(q4, model.mesh, displacement, material, {})
     assert len(calls) == 2
+
+
+def test_public_gate_runs_before_the_recovery(solved, monkeypatch):
+    """Codex r1 P2: the public gate is the FIRST step: when it refuses, nothing
+    else runs (no coordinates, no recovery).  A gate called only later, inside
+    the derivation, fails this test."""
+
+    model, _, displacement, material = solved
+    q4, v2d = _q4_v2d(model)
+    for element in (q4, v2d):
+        events = []
+        kind = type(element)
+
+        class Sentinel(ShellAxesRefusal):
+            pass
+
+        def spy(element, mesh):
+            events.append("gate")
+            raise Sentinel("SPY", "gate reached")
+
+        def recorded(*args, **kwargs):
+            events.append("recovery")
+            raise AssertionError("recovery ran before the gate")
+
+        monkeypatch.setattr(module, "admit_shell_axes", spy)
+        monkeypatch.setattr(kind, "compute_stresses", recorded)
+        with pytest.raises(Sentinel):
+            recover_shell_axes(element, model.mesh, displacement, material)
+        monkeypatch.undo()
+        assert events == ["gate"], events
+    # and unpatched, the same elements recover normally afterwards
+    recover_shell_axes(q4, model.mesh, displacement, material)
+    recover_shell_axes(v2d, model.mesh, displacement, material)
 
 
 def test_public_gate_raises_the_same_refusal_as_recover_shell_axes(solved):
